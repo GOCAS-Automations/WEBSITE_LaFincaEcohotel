@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "db:aplicar": "node scripts/aplicar-migraciones.mjs",
-    "db:verificar": "node scripts/aplicar-migraciones.mjs --solo-verificar"
+    "db:verificar": "node scripts/aplicar-migraciones.mjs --solo-verificar",
+    "imagenes:subir": "node scripts/subir-imagenes.mjs",
+    "imagenes:manifiesto": "node scripts/generar-manifiesto-imagenes.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.5",
