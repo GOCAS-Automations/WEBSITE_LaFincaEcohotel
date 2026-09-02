@@ -16,6 +16,7 @@ import { requireAdmin } from "@/lib/admin/auth";
 import {
   listarAlojamientos,
   listarBloqueos,
+  listarPlanes,
   listarReservas,
 } from "@/lib/admin/datos";
 import { fechaLarga, hoyISO, rangoCorto, sumarDiasISO } from "@/lib/admin/fechas";
@@ -33,10 +34,11 @@ export default async function PaginaResumen({
   const { supabase } = await requireAdmin();
   const params = await searchParams;
 
-  const [reservas, alojamientos, bloqueos] = await Promise.all([
+  const [reservas, alojamientos, bloqueos, planes] = await Promise.all([
     listarReservas(supabase, { limite: 400 }),
     listarAlojamientos(supabase),
     listarBloqueos(supabase),
+    listarPlanes(supabase),
   ]);
 
   const hoy = hoyISO();
@@ -61,6 +63,7 @@ export default async function PaginaResumen({
 
   const bloqueosVigentes = bloqueos.filter((bloqueo) => bloqueo.fin > hoy);
   const cabanasVisibles = alojamientos.filter((alojamiento) => alojamiento.activo);
+  const planesVisibles = planes.filter((plan) => plan.activo);
   const sinReservas = reservas.length === 0;
 
   return (
@@ -108,7 +111,7 @@ export default async function PaginaResumen({
             <CuerpoTarjeta>
               <EstadoVacio
                 titulo="Bienvenido al panel de La Finca"
-                descripcion="Desde aquí se maneja todo: las reservas y el calendario de las cabañas, los precios de cada plan, las experiencias que se venden y los textos y las fotos del sitio web. Empieza registrando una reserva o revisando las cabañas."
+                descripcion="Desde aquí se maneja todo: las reservas y el calendario de las cabañas, los planes tarifarios y sus precios en cada cabaña, las experiencias que se venden y los textos y las fotos del sitio web. Empieza registrando una reserva o revisando las cabañas."
                 accion={
                   <div className="flex flex-wrap justify-center gap-2">
                     <EnlaceBoton href="/admin/reservas/nueva">
@@ -190,11 +193,16 @@ export default async function PaginaResumen({
         </div>
       )}
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-3">
+      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <AtajoSeccion
           href="/admin/alojamientos"
           titulo="Cabañas"
           detalle={`${cabanasVisibles.length} visibles de ${alojamientos.length}`}
+        />
+        <AtajoSeccion
+          href="/admin/planes"
+          titulo="Planes tarifarios"
+          detalle={`${planesVisibles.length} visibles de ${planes.length}`}
         />
         <AtajoSeccion
           href="/admin/bloqueos"

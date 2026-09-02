@@ -94,6 +94,20 @@ export async function opcionesPlan(
   return planes.map((plan) => ({ id: plan.id, nombre: plan.nombre }));
 }
 
+export async function obtenerPlan(
+  supabase: SupabaseClient,
+  id: string,
+): Promise<Plan | null> {
+  const { data, error } = await supabase
+    .from("planes")
+    .select("id, nombre, descripcion, incluye, orden, activo")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  return (data as Plan | null) ?? null;
+}
+
 /** Galería de una cabaña, en orden, tal como la edita `EditorGaleria`. */
 export async function galeriaDeAlojamiento(
   supabase: SupabaseClient,

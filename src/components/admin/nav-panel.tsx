@@ -15,7 +15,15 @@ import { usePathname } from "next/navigation";
 export type ElementoNav = {
   href: string;
   etiqueta: string;
-  icono: "inicio" | "calendario" | "candado" | "cabana" | "brujula" | "regalo" | "texto";
+  icono:
+    | "inicio"
+    | "calendario"
+    | "candado"
+    | "cabana"
+    | "capas"
+    | "brujula"
+    | "regalo"
+    | "texto";
 };
 
 export const NAV_PANEL: ElementoNav[] = [
@@ -23,6 +31,7 @@ export const NAV_PANEL: ElementoNav[] = [
   { href: "/admin/reservas", etiqueta: "Reservas", icono: "calendario" },
   { href: "/admin/bloqueos", etiqueta: "Bloqueos", icono: "candado" },
   { href: "/admin/alojamientos", etiqueta: "Cabañas", icono: "cabana" },
+  { href: "/admin/planes", etiqueta: "Planes", icono: "capas" },
   { href: "/admin/experiencias", etiqueta: "Experiencias", icono: "brujula" },
   { href: "/admin/adicionales", etiqueta: "Adicionales", icono: "regalo" },
   { href: "/admin/contenido", etiqueta: "Contenido del sitio", icono: "texto" },
@@ -35,6 +44,8 @@ const TRAZOS: Record<ElementoNav["icono"], string> = {
   candado:
     "M7 11V8a5 5 0 0 1 10 0v3M6 11h12a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1Z",
   cabana: "M3 11 12 4l9 7M5.5 9.5V20h13V9.5M10 20v-5h4v5",
+  capas:
+    "M12 3 21 8 12 13 3 8 12 3ZM3.5 12 12 16.5 20.5 12M3.5 16 12 20.5 20.5 16",
   brujula:
     "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm2.8-11.8-1.6 4.6-4.6 1.6 1.6-4.6 4.6-1.6Z",
   regalo:
