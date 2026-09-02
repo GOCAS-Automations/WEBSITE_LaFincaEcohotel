@@ -1,8 +1,8 @@
 /**
  * Iconos del sitio, dibujados a mano.
  *
- * No se instala ninguna librería de iconos: el sitio usa ocho, y una
- * dependencia entera por ocho trazos es peso muerto en el paquete que descarga
+ * No se instala ninguna librería de iconos: el sitio usa una docena, y una
+ * dependencia entera por doce trazos es peso muerto en el paquete que descarga
  * el visitante (§9 del plan: Core Web Vitals en verde, sin librerías pesadas).
  *
  * Todos son decorativos y llevan `aria-hidden`: el significado lo pone SIEMPRE
@@ -115,6 +115,24 @@ export function IconoPersonas({ className }: PropsIcono) {
       <circle cx="9" cy="8" r="3.2" />
       <path d="M3.5 19.5a5.5 5.5 0 0 1 11 0" />
       <path d="M16 5.4a3.2 3.2 0 0 1 0 5.2M17.5 14.6a5.5 5.5 0 0 1 3 4.9" />
+    </Svg>
+  );
+}
+
+export function IconoCalendario({ className }: PropsIcono) {
+  return (
+    <Svg className={className}>
+      <rect x="3.5" y="5" width="17" height="15.5" rx="3" />
+      <path d="M3.5 9.5h17M8.5 3v4M15.5 3v4" />
+    </Svg>
+  );
+}
+
+export function IconoLlave({ className }: PropsIcono) {
+  return (
+    <Svg className={className}>
+      <circle cx="8" cy="8" r="4.2" />
+      <path d="M11 11l8.5 8.5M16 15.5l2 2M13.5 13l2 2" />
     </Svg>
   );
 }
