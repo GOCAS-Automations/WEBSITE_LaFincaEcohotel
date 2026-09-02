@@ -1,37 +1,224 @@
 @import "tailwindcss";
 
-/* Paleta base de La Finca: verdes, neblina, calidez.
-   Se irá afinando en la Fase 2 (sitio público). */
-:root {
-  --fondo: #ffffff;
-  --texto: #1a2420;
-  --verde-bosque: #2f5d4a;
-  --verde-claro: #7fa88f;
-  --neblina: #eef2ef;
-  --arena: #f6f1e7;
+/* ===========================================================================
+   SISTEMA DE DISEÑO — La Finca Eco Hotel
+   ---------------------------------------------------------------------------
+   Estilo iOS con identidad de La Finca: mucho aire, esquinas suaves (16–24 px),
+   sombras de varias capas casi imperceptibles, jerarquía tipográfica clara y
+   transiciones cortas (150–300 ms). Nada parpadea ni gira.
+
+   La paleta sale del isotipo y del sitio actual (`docs/MARCA.md`):
+     · petróleo #027570 — primario (viene del propio logo)
+     · oliva    #5e6033 — secundario (la otra variante real del logo)
+     · dorado   #9f6301 — acento: precios y detalles premium
+     · crema    #fefbf7 — fondo cálido (el sitio actual nunca usa blanco puro)
+
+   Las escalas se generaron alrededor de esos cuatro colores exactos: el tono
+   600 de cada familia ES el color de marca, sin retocar.
+   =========================================================================== */
+
+@theme {
+  /* --- Tipografía ------------------------------------------------------- */
+  --font-titulo: var(--fuente-titulos), ui-sans-serif, system-ui, sans-serif;
+  --font-cuerpo:
+    var(--fuente-cuerpo), ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    sans-serif;
+  --font-sans: var(--font-cuerpo);
+
+  /* --- Verde petróleo (primario) ---------------------------------------- */
+  --color-petroleo-50: #eef8f7;
+  --color-petroleo-100: #d3ecea;
+  --color-petroleo-200: #a9dad6;
+  --color-petroleo-300: #74c0bb;
+  --color-petroleo-400: #3fa19c;
+  --color-petroleo-500: #0f8681;
+  --color-petroleo-600: #027570;
+  --color-petroleo-700: #045d5a;
+  --color-petroleo-800: #084a48;
+  --color-petroleo-900: #0a3c3b;
+  --color-petroleo-950: #052524;
+
+  /* --- Verde oliva (secundario) ----------------------------------------- */
+  --color-oliva-50: #f6f7ee;
+  --color-oliva-100: #eaedd6;
+  --color-oliva-200: #d5dbaf;
+  --color-oliva-300: #b8c07f;
+  --color-oliva-400: #9aa356;
+  --color-oliva-500: #7b843f;
+  --color-oliva-600: #5e6033;
+  --color-oliva-700: #4b4d2c;
+  --color-oliva-800: #3d3e28;
+  --color-oliva-900: #343524;
+  --color-oliva-950: #1b1c11;
+
+  /* --- Dorado (acento: precios, detalles) ------------------------------- */
+  --color-dorado-50: #fdf8ed;
+  --color-dorado-100: #f8eccd;
+  --color-dorado-200: #f0d698;
+  --color-dorado-300: #e6b95d;
+  --color-dorado-400: #dda033;
+  --color-dorado-500: #c8811a;
+  --color-dorado-600: #9f6301;
+  --color-dorado-700: #814e07;
+  --color-dorado-800: #6a3f0e;
+  --color-dorado-900: #5a3510;
+  --color-dorado-950: #341c05;
+
+  /* --- Neutros cálidos (fondo, textos, bordes) -------------------------- */
+  --color-crema-50: #fefbf7;
+  --color-crema-100: #faf5ec;
+  --color-crema-200: #f2e9da;
+  --color-crema-300: #e5d9c4;
+  --color-crema-400: #c8b9a0;
+  --color-crema-500: #a1927b;
+  --color-crema-600: #7d7060;
+  --color-crema-700: #5d5449;
+  --color-crema-800: #403a33;
+  --color-crema-900: #292521;
+  --color-crema-950: #171412;
+
+  /* --- Radios (estilo iOS) ---------------------------------------------- */
+  --radius-suave: 12px;
+  --radius-tarjeta: 16px;
+  --radius-amplio: 20px;
+  --radius-generoso: 24px;
+
+  /* --- Sombras de varias capas, muy sutiles ------------------------------ */
+  --shadow-tenue:
+    0 1px 2px rgba(41, 37, 33, 0.04), 0 2px 8px -2px rgba(41, 37, 33, 0.05);
+  --shadow-tarjeta:
+    0 1px 2px rgba(41, 37, 33, 0.05), 0 6px 16px -6px rgba(41, 37, 33, 0.1),
+    0 16px 32px -20px rgba(41, 37, 33, 0.14);
+  --shadow-elevada:
+    0 1px 2px rgba(41, 37, 33, 0.06), 0 10px 24px -8px rgba(41, 37, 33, 0.14),
+    0 28px 56px -28px rgba(41, 37, 33, 0.22);
+  --shadow-flotante:
+    0 4px 12px -2px rgba(2, 117, 112, 0.28),
+    0 12px 32px -8px rgba(2, 117, 112, 0.3);
+
+  /* --- Movimiento -------------------------------------------------------- */
+  --ease-suave: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-@theme inline {
-  --color-fondo: var(--fondo);
-  --color-texto: var(--texto);
-  --color-bosque: var(--verde-bosque);
-  --color-hoja: var(--verde-claro);
-  --color-neblina: var(--neblina);
-  --color-arena: var(--arena);
-  --radius-suave: 14px;
-  --radius-tarjeta: 20px;
+/* ---------------------------------------------------------------------------
+   Base
+   ------------------------------------------------------------------------- */
+
+:root {
+  color-scheme: light;
+  scroll-behavior: smooth;
+  /* Compensa el header fijo cuando se navega a un ancla (#experiencias). */
+  scroll-padding-top: 5.5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    scroll-behavior: auto;
+  }
 }
 
 body {
-  background: var(--fondo);
-  color: var(--texto);
-  font-family:
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    "Segoe UI",
-    Roboto,
-    Helvetica,
-    Arial,
-    sans-serif;
+  background-color: var(--color-crema-50);
+  color: var(--color-crema-900);
+  font-family: var(--font-cuerpo);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Foco visible y coherente en todo el sitio (accesibilidad AA). */
+:focus-visible {
+  outline: 2px solid var(--color-petroleo-600);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+::selection {
+  background-color: var(--color-petroleo-100);
+  color: var(--color-petroleo-900);
+}
+
+/* Los titulares llevan la fuente de marca y un interletrado ligeramente
+   cerrado: es lo que da el aire "iOS" sin recurrir a pesos extremos. */
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-titulo);
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+/* ---------------------------------------------------------------------------
+   Utilidades propias
+   ------------------------------------------------------------------------- */
+
+/** Ancho de lectura común a todas las secciones. */
+@utility contenedor {
+  width: 100%;
+  max-width: 76rem;
+  margin-inline: auto;
+  padding-inline: 1.25rem;
+}
+
+@media (min-width: 640px) {
+  .contenedor {
+    padding-inline: 2rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .contenedor {
+    padding-inline: 2.5rem;
+  }
+}
+
+/** Familia tipográfica de titulares, aplicable a cualquier elemento. */
+@utility font-titulo {
+  font-family: var(--font-titulo);
+}
+
+/**
+ * Micro-aparición al hacer scroll.
+ *
+ * El estado inicial solo se aplica cuando el componente cliente `Revelar` ha
+ * marcado el elemento con `data-revelar="oculto"`. Así, si JavaScript no llega
+ * a ejecutarse, el contenido se ve igual: nunca se esconde nada de forma
+ * permanente. Sucede UNA sola vez por elemento y se desactiva por completo con
+ * `prefers-reduced-motion`.
+ */
+[data-revelar="oculto"] {
+  opacity: 0;
+  transform: translateY(14px);
+}
+
+[data-revelar] {
+  transition:
+    opacity 600ms var(--ease-suave),
+    transform 600ms var(--ease-suave);
+}
+
+[data-revelar="visible"] {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-revelar],
+  [data-revelar="oculto"] {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }

@@ -1,39 +1,48 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+
+import { clasesDeFuentes } from "@/lib/fuentes";
+import { SITIO } from "@/lib/sitio";
+
 import "./globals.css";
 
-const urlSitio = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-
+/**
+ * Metadatos base del sitio.
+ *
+ * Solo lo que de verdad se hereda sin sorpresas: `metadataBase`, la plantilla
+ * de títulos y el idioma. Todo lo demás —descripción, canónica, OpenGraph y
+ * Twitter— lo declara cada página con `metadatosPagina()` (`src/lib/seo.ts`),
+ * porque la mezcla de metadatos del App Router es superficial y un `openGraph`
+ * declarado abajo reemplaza entero al de aquí.
+ */
 export const metadata: Metadata = {
-  metadataBase: new URL(urlSitio),
+  metadataBase: new URL(SITIO.url),
   title: {
-    default: "La Finca Eco Hotel — Cabañas y naturaleza cerca de Cali",
-    template: "%s · La Finca Eco Hotel",
+    default: `${SITIO.nombre} — Cabañas en el bosque de niebla cerca de Cali`,
+    template: `%s · ${SITIO.nombre}`,
   },
   description:
-    "Ecohotel de montaña a 45 minutos de Cali. Cabañas con vista a la montaña, jacuzzi, turco, piscina y senderos. Sumérgete en un bosque rodeado de neblina y aves.",
-  keywords: [
-    "ecohotel cerca de Cali",
-    "cabañas con jacuzzi Valle del Cauca",
-    "hotel Km 18 vía Buenaventura",
-    "pasadía cerca de Cali",
-  ],
-  openGraph: {
-    type: "website",
-    locale: "es_CO",
-    siteName: "La Finca Eco Hotel",
-    title: "La Finca Eco Hotel — Cabañas y naturaleza cerca de Cali",
-    description:
-      "Ecohotel de montaña a 45 minutos de Cali. Paraíso escondido en el Valle del Cauca.",
+    "Ecohotel de montaña a 45 minutos de Cali, en el Km 18 vía Buenaventura. Cabañas para dos con jacuzzi, turco, piscina, restaurante y senderos.",
+  applicationName: SITIO.nombre,
+  authors: [{ name: SITIO.nombre }],
+  creator: SITIO.nombre,
+  publisher: SITIO.nombre,
+  formatDetection: { telephone: false },
+  icons: {
+    icon: [{ url: "/marca/icono.png", type: "image/png" }],
+    apple: [{ url: "/marca/icono.png" }],
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#027570",
+  colorScheme: "light",
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="es">
+    <html lang="es" className={clasesDeFuentes}>
       <body className="antialiased">{children}</body>
     </html>
   );
