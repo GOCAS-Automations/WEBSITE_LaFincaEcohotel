@@ -3,6 +3,8 @@ import Link from "next/link";
 
 import type { HeroListado } from "@/lib/contenido";
 
+import { Neblina } from "./atmosfera";
+
 /**
  * Banda de cabecera de las páginas internas.
  *
@@ -11,6 +13,11 @@ import type { HeroListado } from "@/lib/contenido";
  * baja del contraste 4.5:1 que exige la accesibilidad AA. Se pinta desde abajo
  * para oscurecer justo la franja donde va el texto y dejar la foto limpia
  * arriba.
+ *
+ * El tinte del degradado es verde bosque, no gris neutro: es lo que hace que la
+ * fotografía pertenezca a la paleta en vez de estar pegada encima. Y lleva la
+ * misma bruma a la deriva que el hero de la portada, en `mix-blend-screen`
+ * para que aclare la foto sin lavarla.
  */
 
 export type Miga = { nombre: string; ruta: string };
@@ -36,13 +43,16 @@ export function HeroPagina({ hero, migas, prioridad = true }: PropsHero) {
           sizes="100vw"
           className="object-cover"
         />
+        {/* La bruma va DEBAJO del degradado: encima aclararía justo la franja
+            del titular y hundiría su contraste. */}
+        <Neblina tono="clara" className="mix-blend-screen" />
         <div
           aria-hidden="true"
-          className="absolute inset-0 bg-gradient-to-t from-crema-950/85 via-crema-950/45 to-crema-950/15"
+          className="absolute inset-0 bg-gradient-to-t from-bosque-950/88 via-bosque-950/48 to-bosque-950/15"
         />
       </div>
 
-      <div className="absolute inset-x-0 bottom-0">
+      <div className="absolute inset-x-0 bottom-0 z-10">
         <div className="contenedor pb-8 sm:pb-10 lg:pb-12">
           {migas && migas.length > 0 ? (
             <nav aria-label="Ruta de navegación" className="mb-3">

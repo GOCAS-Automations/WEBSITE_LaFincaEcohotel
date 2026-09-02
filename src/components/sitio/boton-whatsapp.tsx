@@ -16,9 +16,12 @@ import { IconoWhatsapp } from "./iconos";
  * navegador no lo soporta, el botón simplemente se queda siempre visible, que
  * es el comportamiento seguro.
  *
- * La etiqueta de texto solo aparece en pantallas grandes: en móvil ocuparía
- * espacio real de lectura, y ahí el icono de WhatsApp ya es inconfundible. El
- * `aria-label` dice lo mismo para quien no ve el icono.
+ * **Solo el icono, sin texto.** El logotipo de WhatsApp es de los pocos signos
+ * gráficos que no necesitan pie: nadie lo confunde. La palabra "Escríbenos"
+ * alargaba la píldora y la convertía en el objeto más pesado de la pantalla,
+ * compitiendo con el botón de reservar, que es el que sí tiene que ganar. El
+ * `aria-label` en español sigue estando para quien no ve el icono, y es lo que
+ * anuncia un lector de pantalla.
  */
 export function BotonWhatsappFlotante({ enlace }: { enlace: string }) {
   const [oculto, setOculto] = useState(false);
@@ -43,8 +46,8 @@ export function BotonWhatsappFlotante({ enlace }: { enlace: string }) {
       rel="noopener noreferrer"
       aria-label="Escríbenos por WhatsApp"
       className={[
-        "fixed right-4 bottom-4 z-40 flex items-center gap-2.5 rounded-full",
-        "bg-[#25D366] py-3.5 pr-4 pl-3.5 text-white sm:right-6 sm:bottom-6",
+        "fixed right-4 bottom-4 z-40 flex size-14 items-center justify-center rounded-full",
+        "bg-[#25D366] text-white sm:right-6 sm:bottom-6",
         "shadow-[0_4px_12px_-2px_rgba(37,211,102,0.45),0_12px_32px_-8px_rgba(37,211,102,0.4)]",
         "transition-all duration-300 ease-out hover:brightness-105 active:scale-95",
         oculto
@@ -52,10 +55,7 @@ export function BotonWhatsappFlotante({ enlace }: { enlace: string }) {
           : "translate-y-0 opacity-100",
       ].join(" ")}
     >
-      <IconoWhatsapp className="size-6 shrink-0" />
-      <span className="hidden font-titulo text-sm font-semibold lg:inline">
-        Escríbenos
-      </span>
+      <IconoWhatsapp className="size-7 shrink-0" />
     </a>
   );
 }

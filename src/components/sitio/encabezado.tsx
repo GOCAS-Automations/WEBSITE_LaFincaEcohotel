@@ -20,13 +20,19 @@ import { NavEscritorio } from "./nav-escritorio";
  * sitio y va destacado, siempre visible, también en móvil (§10: el camino a la
  * reserva debe ser evidente desde la primera pantalla).
  *
+ * **Y va grande.** Antes era del mismo tamaño que un enlace del menú y se
+ * perdía entre las siete secciones; ahora tiene el cuerpo de un botón de
+ * acción y una sombra propia en petróleo. La barra creció de 64 a 72 px (80 en
+ * escritorio) para que quepa sin apretar: un botón grande metido a la fuerza
+ * en una barra estrecha se ve peor que uno pequeño.
+ *
  * El isotipo de La Finca no trae texto, así que el nombre se compone al lado
  * con la tipografía de marca.
  */
 export function Encabezado() {
   return (
     <header className="sticky top-0 z-50 border-b border-crema-200/70 bg-crema-50/80 backdrop-blur-xl backdrop-saturate-150">
-      <div className="contenedor flex h-16 items-center justify-between gap-4 sm:h-18">
+      <div className="contenedor flex h-[4.5rem] items-center justify-between gap-4 sm:h-20">
         <Link
           href="/"
           className="group flex shrink-0 items-center gap-2.5"
@@ -53,7 +59,7 @@ export function Encabezado() {
         <NavEscritorio enlaces={NAVEGACION} />
 
         <div className="flex items-center gap-1 sm:gap-2">
-          <Boton href="/reservar" tamano="pequeno">
+          <Boton href="/reservar" tamano="nav">
             Reservar
           </Boton>
           <MenuMovil
