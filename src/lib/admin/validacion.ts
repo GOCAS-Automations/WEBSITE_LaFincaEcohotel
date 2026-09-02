@@ -1,0 +1,393 @@
+/**
+ * Lectura y validación del `FormData` que llega a las Server Actions.
+ *
+ * Filosofía: un `ErrorDeValidacion` con un mensaje en español por cada campo
+ * mal diligenciado. Las acciones envuelven su cuerpo en `ejecutarAccion()`, que
+ * convierte esa excepción en el `EstadoAccion` que pinta la interfaz. Así
+ * ninguna validación termina en la pantalla de error de Next, que al usuario
+ * del panel no le dice nada.
+ */
+import { estadoError, type EstadoAccion } from "./tipos";
+import { esFechaISO } from "./fechas";
+
+export class ErrorDeValidacion extends Error {
+  constructor(mensaje: string) {
+    super(mensaje);
+    this.name = "ErrorDeValidacion";
+  }
+}
+
+/** Texto obligatorio. */
+export function textoRequerido(
+  form: FormData,
+  campo: string,
+  etiqueta: string,
+  maximo = 300,
+): string {
+  const valor = String(form.get(campo) ?? "").trim();
+  if (!valor) {
+    throw new ErrorDeValidacion(`El campo «${etiqueta}» es obligatorio.`);
+  }
+  if (valor.length > maximo) {
+    throw new ErrorDeValidacion(
+      `El campo «${etiqueta}» no puede superar ${maximo} caracteres.`,
+    );
+  }
+  return valor;
+}
+
+/** Texto opcional: vacío se guarda como NULL. */
+export function textoOpcional(
+  form: FormData,
+  campo: string,
+  maximo = 5000,
+): string | null {
+  const valor = String(form.get(campo) ?? "").trim();
+  if (!valor) return null;
+  return valor.slice(0, maximo);
+}
+
+/**
+ * Entero obligatorio dentro de un rango.
+ *
+ * Limpia puntos, espacios y el signo de pesos: el cliente escribe "450.000" o
+ * "$450.000" con toda naturalidad y rechazárselo sería pedirle que piense como
+ * un programa.
+ */
+export function enteroRequerido(
+  form: FormData,
+  campo: string,
+  etiqueta: string,
+  { min = 0, max = 2_000_000_000 }: { min?: number; max?: number } = {},
+): number {
+  const crudo = String(form.get(campo) ?? "").trim();
+  if (!crudo) {
+    throw new ErrorDeValidacion(`El campo «${etiqueta}» es obligatorio.`);
+  }
+  const valor = Number(crudo.replace(/[.\s$,]/g, ""));
+  if (!Number.isFinite(valor) || !Number.isInteger(valor)) {
+    throw new ErrorDeValidacion(
+      `El campo «${etiqueta}» debe ser un número entero, sin decimales.`,
+    );
+  }
+  if (valor < min || valor > max) {
+    throw new ErrorDeValidacion(
+      `El campo «${etiqueta}» debe estar entre ${min} y ${max}.`,
+    );
+  }
+  return valor;
+}
+
+/** Entero opcional (vacío → null). */
+export function enteroOpcional(
+  form: FormData,
+  campo: string,
+  etiqueta: string,
+  rango: { min?: number; max?: number } = {},
+): number | null {
+  const crudo = String(form.get(campo) ?? "").trim();
+  if (!crudo) return null;
+  return enteroRequerido(form, campo, etiqueta, rango);
+}
+
+/** Casilla de verificación o interruptor. */
+export function casilla(form: FormData, campo: string): boolean {
+  const valor = form.get(campo);
+  return valor === "on" || valor === "true" || valor === "1";
+}
+
+/** Fecha ISO obligatoria (input type="date"). */
+export function fechaRequerida(
+  form: FormData,
+  campo: string,
+  etiqueta: string,
+): string {
+  const valor = String(form.get(campo) ?? "").trim();
+  if (!valor) {
+    throw new ErrorDeValidacion(`El campo «${etiqueta}» es obligatorio.`);
+  }
+  if (!esFechaISO(valor)) {
+    throw new ErrorDeValidacion(`El campo «${etiqueta}» no es una fecha válida.`);
+  }
+  return valor;
+}
+
+/** Valor obligatorio dentro de un conjunto cerrado (desplegables). */
+export function enumRequerido<T extends string>(
+  form: FormData,
+  campo: string,
+  etiqueta: string,
+  permitidos: readonly T[],
+): T {
+  const valor = String(form.get(campo) ?? "").trim();
+  if (!permitidos.includes(valor as T)) {
+    throw new ErrorDeValidacion(`El campo «${etiqueta}» tiene un valor no válido.`);
+  }
+  return valor as T;
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function uuidRequerido(
+  form: FormData,
+  campo: string,
+  etiqueta: string,
+): string {
+  const valor = String(form.get(campo) ?? "").trim();
+  if (!UUID.test(valor)) {
+    throw new ErrorDeValidacion(`Debes elegir una opción en «${etiqueta}».`);
+  }
+  return valor;
+}
+
+export function esUuid(valor: string): boolean {
+  return UUID.test(valor);
+}
+
+/** Correo obligatorio con una comprobación de forma deliberadamente laxa. */
+export function emailRequerido(
+  form: FormData,
+  campo: string,
+  etiqueta: string,
+): string {
+  const valor = textoRequerido(form, campo, etiqueta, 200);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(valor)) {
+    throw new ErrorDeValidacion(
+      `El correo escrito en «${etiqueta}» no tiene un formato válido.`,
+    );
+  }
+  return valor;
+}
+
+/** Correo opcional. */
+export function emailOpcional(form: FormData, campo: string): string | null {
+  const valor = textoOpcional(form, campo, 200);
+  if (!valor) return null;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(valor)) {
+    throw new ErrorDeValidacion("El correo no tiene un formato válido.");
+  }
+  return valor;
+}
+
+/**
+ * Lista de textos enviada como JSON desde el editor de pastillas.
+ * Se acepta también el formato plano (una línea por elemento) por si el
+ * navegador no ejecutara JavaScript.
+ */
+export function listaTexto(form: FormData, campo: string, maximo = 40): string[] {
+  const crudo = String(form.get(campo) ?? "").trim();
+  if (!crudo) return [];
+  if (crudo.startsWith("[")) {
+    try {
+      const analizado: unknown = JSON.parse(crudo);
+      if (!Array.isArray(analizado)) return [];
+      return analizado
+        .filter((item): item is string => typeof item === "string")
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .slice(0, maximo);
+    } catch {
+      throw new ErrorDeValidacion("No se pudo leer la lista de la pantalla.");
+    }
+  }
+  return crudo
+    .split("\n")
+    .map((linea) => linea.trim())
+    .filter(Boolean)
+    .slice(0, maximo);
+}
+
+/**
+ * Dirección de imagen admitida. Lo normal es una `https://` del bucket
+ * `imagenes` de Supabase Storage, pero el cliente puede pegar cualquier URL
+ * externa. Se aceptan además rutas absolutas del propio sitio (`/logo.png`).
+ */
+export function esUrlDeImagen(valor: string): boolean {
+  if (valor.startsWith("/")) return !valor.startsWith("//");
+  try {
+    const url = new URL(valor);
+    return url.protocol === "https:" || url.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
+export type EntradaGaleria = { url: string; alt: string };
+
+/** Galería serializada como JSON desde el editor de imágenes. */
+export function listaGaleria(form: FormData, campo: string): EntradaGaleria[] {
+  const crudo = String(form.get(campo) ?? "").trim();
+  if (!crudo) return [];
+  let analizado: unknown;
+  try {
+    analizado = JSON.parse(crudo);
+  } catch {
+    throw new ErrorDeValidacion("No se pudo leer la galería de imágenes.");
+  }
+  if (!Array.isArray(analizado)) return [];
+
+  return analizado.flatMap((item): EntradaGaleria[] => {
+    if (typeof item !== "object" || item === null) return [];
+    const { url, alt } = item as Record<string, unknown>;
+    if (typeof url !== "string") return [];
+    const limpia = url.trim();
+    if (!limpia) return [];
+    if (!esUrlDeImagen(limpia)) {
+      throw new ErrorDeValidacion(
+        `La dirección de imagen «${limpia.slice(0, 60)}» no es válida. Debe empezar por https:// o por /.`,
+      );
+    }
+    return [
+      {
+        url: limpia,
+        alt: typeof alt === "string" ? alt.trim().slice(0, 300) : "",
+      },
+    ];
+  });
+}
+
+/** Campo de imagen única: cadena vacía si no hay imagen. */
+export function urlImagenOpcional(form: FormData, campo: string): string {
+  const valor = String(form.get(campo) ?? "").trim();
+  if (!valor) return "";
+  if (!esUrlDeImagen(valor)) {
+    throw new ErrorDeValidacion(
+      "La dirección de la imagen debe empezar por https:// o por /.",
+    );
+  }
+  return valor.slice(0, 500);
+}
+
+/**
+ * Texto libre multilínea → arreglo de párrafos, cortando por línea en blanco.
+ * Es la forma en que el panel edita los `parrafos[]` del CMS: una sola caja de
+ * texto, como se escribe de verdad, en vez de N campos numerados.
+ */
+export function aParrafos(valor: string | null): string[] {
+  if (!valor) return [];
+  return valor
+    .split(/\n\s*\n/)
+    .map((parrafo) => parrafo.trim().replace(/\s*\n\s*/g, " "))
+    .filter(Boolean);
+}
+
+/** El camino inverso: párrafos guardados → texto para el textarea. */
+export function deParrafos(parrafos: readonly string[] | null | undefined): string {
+  return (parrafos ?? []).join("\n\n");
+}
+
+/**
+ * Lista de objetos (testimonios, preguntas, instalaciones…) enviada como JSON
+ * desde un editor repetible del cliente.
+ *
+ * `campos` enumera las claves de texto que se conservan; cualquier otra se
+ * ignora, y un elemento en el que TODOS los campos vengan vacíos se descarta.
+ */
+export function listaObjetos(
+  form: FormData,
+  campo: string,
+  campos: readonly string[],
+  maximo = 60,
+): Record<string, string>[] {
+  const crudo = String(form.get(campo) ?? "").trim();
+  if (!crudo) return [];
+  let analizado: unknown;
+  try {
+    analizado = JSON.parse(crudo);
+  } catch {
+    throw new ErrorDeValidacion("No se pudo leer la lista de la pantalla.");
+  }
+  if (!Array.isArray(analizado)) return [];
+
+  return analizado
+    .flatMap((item): Record<string, string>[] => {
+      if (typeof item !== "object" || item === null) return [];
+      const origen = item as Record<string, unknown>;
+      const salida: Record<string, string> = {};
+      for (const clave of campos) {
+        const valor = origen[clave];
+        salida[clave] = typeof valor === "string" ? valor.trim().slice(0, 4000) : "";
+      }
+      return campos.some((clave) => salida[clave]) ? [salida] : [];
+    })
+    .slice(0, maximo);
+}
+
+/* ---------------------------------------------------------------------------
+ * Envoltorio de las Server Actions
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Envuelve el cuerpo de una Server Action.
+ *
+ * Devuelve el estado de error en vez de propagar la excepción, SALVO cuando se
+ * trata de las señales internas de Next (`redirect()` y `notFound()`), que
+ * viajan como excepciones con `digest` y deben seguir su curso. Olvidar esa
+ * excepción a la regla es el error clásico: un `redirect()` dentro de un
+ * `try/catch` deja de funcionar y la pantalla se queda quieta sin explicación.
+ */
+export async function ejecutarAccion(
+  cuerpo: () => Promise<EstadoAccion>,
+): Promise<EstadoAccion> {
+  try {
+    return await cuerpo();
+  } catch (error) {
+    if (esSenalDeNext(error)) throw error;
+    if (error instanceof ErrorDeValidacion) return estadoError(error.message);
+    console.error("[panel] error inesperado en una acción:", error);
+    return estadoError(
+      "Ocurrió un problema al guardar. Vuelve a intentarlo; si sigue pasando, avísale al desarrollador.",
+    );
+  }
+}
+
+function esSenalDeNext(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "digest" in error &&
+    typeof (error as { digest?: unknown }).digest === "string" &&
+    ((error as { digest: string }).digest.startsWith("NEXT_REDIRECT") ||
+      (error as { digest: string }).digest === "NEXT_NOT_FOUND")
+  );
+}
+
+/* ---------------------------------------------------------------------------
+ * Errores de Postgres traducidos
+ * ------------------------------------------------------------------------- */
+
+/** Clave duplicada (slug, nombre de plan, tarifa base repetida). */
+export const VIOLACION_UNICA = "23505";
+/** Llave foránea: hay filas dependientes. */
+export const VIOLACION_LLAVE_FORANEA = "23503";
+/** Restricción EXCLUDE: dos rangos de fechas se cruzan. */
+export const VIOLACION_EXCLUSION = "23P01";
+
+/**
+ * Traduce al español los errores de Postgres que el usuario del panel puede
+ * llegar a provocar. Los que no reconocemos suben como error genérico.
+ */
+export function traducirErrorPostgres(
+  error: { code?: string; message: string },
+  contexto: { unico?: string; foranea?: string; exclusion?: string } = {},
+): Error {
+  if (error.code === VIOLACION_UNICA) {
+    return new ErrorDeValidacion(
+      contexto.unico ??
+        "Ya existe otro registro con ese mismo valor. Cámbialo por uno distinto.",
+    );
+  }
+  if (error.code === VIOLACION_LLAVE_FORANEA) {
+    return new ErrorDeValidacion(
+      contexto.foranea ??
+        "No se puede hacer: hay reservas u otros registros asociados.",
+    );
+  }
+  if (error.code === VIOLACION_EXCLUSION) {
+    return new ErrorDeValidacion(
+      contexto.exclusion ??
+        "Esas fechas se cruzan con otra reserva activa de la misma cabaña.",
+    );
+  }
+  return new Error(error.message);
+}
