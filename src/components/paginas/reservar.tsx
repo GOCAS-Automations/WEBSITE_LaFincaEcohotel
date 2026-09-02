@@ -1,5 +1,7 @@
 import { Suspense } from "react";
 
+import { Neblina } from "@/components/sitio/atmosfera";
+import { CierreReserva } from "@/components/sitio/cierre-reserva";
 import { HeroPagina } from "@/components/sitio/hero-pagina";
 import { IconoWhatsapp } from "@/components/sitio/iconos";
 import {
@@ -29,9 +31,15 @@ import { enlaceWhatsapp } from "@/lib/whatsapp";
  * dónde va el botón del final.
  *
  * La página sigue siendo estática: el selector es lo único que corre en el
- * navegador, y lee los parámetros de la dirección (`?cabana=…&plan=…`) desde
- * dentro de un `<Suspense>`. Leerlos en el servidor habría vuelto dinámica toda
- * la ruta.
+ * navegador, y lee los parámetros de la dirección
+ * (`?cabana=…&plan=…&entrada=…&salida=…`) desde dentro de un `<Suspense>`.
+ * Leerlos en el servidor habría vuelto dinámica toda la ruta.
+ *
+ * **Ojo con el `overflow` en la sección del selector.** El resumen de la
+ * derecha es `position: sticky`, y un antepasado con `overflow` distinto de
+ * `visible` lo rompe en silencio. Por eso aquí la sección lleva `relative`
+ * pero NO `overflow-hidden`: la bruma se recorta sola, porque el contenedor
+ * `.neblina` ya tiene su propio `overflow: hidden`.
  */
 export async function PaginaReservar() {
   const [heroes, contenido, seccionPlanes, alojamientos, planes, contacto] =
@@ -78,7 +86,7 @@ export async function PaginaReservar() {
                 retraso={indice * 90}
                 className="h-full"
               >
-                <div className="flex h-full flex-col gap-2 rounded-[var(--radius-generoso)] bg-crema-50 p-5 ring-1 ring-crema-200/70">
+                <div className="flex h-full flex-col gap-2 rounded-[var(--radius-generoso)] rounded-tl-[2.5rem] bg-crema-50 p-5 ring-1 ring-crema-200/70">
                   <h2 className="font-titulo text-base font-bold text-petroleo-900">
                     {paso.titulo}
                   </h2>
@@ -93,52 +101,73 @@ export async function PaginaReservar() {
       </Seccion>
 
       {/* Selector */}
-      <Seccion fondo="crema" id="solicitud">
-        {cabanas.length > 0 && planes.length > 0 ? (
-          <Suspense
-            fallback={
-              <p className="py-12 text-center text-crema-600">
-                Cargando las opciones de reserva…
-              </p>
-            }
-          >
-            <SelectorReserva
-              cabanas={cabanas}
-              planes={planes.map((plan) => plan.nombre)}
-              whatsapp={contacto.whatsapp}
-              hoy={hoyEnBogota()}
-            />
-          </Suspense>
-        ) : (
-          <div className="flex flex-col items-center gap-5 py-8 text-center">
-            <p className="max-w-md text-crema-700">
-              Estamos actualizando las tarifas. Escríbenos por WhatsApp y te
-              confirmamos disponibilidad y precio.
-            </p>
-            <Boton
-              href={enlaceWhatsapp(
-                contacto.mensaje_whatsapp,
-                contacto.whatsapp,
-              )}
-              externo
-              tamano="grande"
+      <Seccion fondo="crema" id="solicitud" className="relative">
+        <Neblina tono="verde" className="opacity-50" />
+
+        <div className="relative z-10">
+          {cabanas.length > 0 && planes.length > 0 ? (
+            <Suspense
+              fallback={
+                <p className="py-12 text-center text-crema-600">
+                  Cargando las opciones de reserva…
+                </p>
+              }
             >
-              <IconoWhatsapp className="size-5" />
-              Escribir por WhatsApp
-            </Boton>
-          </div>
-        )}
+              <SelectorReserva
+                cabanas={cabanas}
+                planes={planes.map((plan) => plan.nombre)}
+                whatsapp={contacto.whatsapp}
+                hoy={hoyEnBogota()}
+              />
+            </Suspense>
+          ) : (
+            <div className="flex flex-col items-center gap-5 py-8 text-center">
+              <p className="max-w-md text-crema-700">
+                Estamos actualizando las tarifas. Escríbenos por WhatsApp y te
+                confirmamos disponibilidad y precio.
+              </p>
+              <Boton
+                href={enlaceWhatsapp(
+                  contacto.mensaje_whatsapp,
+                  contacto.whatsapp,
+                )}
+                externo
+                tamano="grande"
+              >
+                <IconoWhatsapp className="size-5" />
+                Escribir por WhatsApp
+              </Boton>
+            </div>
+          )}
 
-        <p className="mt-10 text-center text-sm text-crema-600 italic">
-          {seccionPlanes.nota}
-        </p>
-
-        {contenido.nota ? (
-          <p className="mx-auto mt-4 max-w-xl rounded-[var(--radius-tarjeta)] bg-petroleo-50 px-5 py-4 text-center text-sm text-petroleo-800">
-            {contenido.nota}
+          <p className="mt-10 text-center text-sm text-crema-600 italic">
+            {seccionPlanes.nota}
           </p>
-        ) : null}
+
+          {contenido.nota ? (
+            <p className="mx-auto mt-4 max-w-xl rounded-[var(--radius-tarjeta)] bg-petroleo-50 px-5 py-4 text-center text-sm text-petroleo-800">
+              {contenido.nota}
+            </p>
+          ) : null}
+        </div>
       </Seccion>
+
+      <CierreReserva
+        fondoAnterior="bg-crema-50"
+        titulo="¿Prefieres que te ayudemos a elegir?"
+        texto="Escríbenos por WhatsApp con tus fechas y te decimos qué cabaña y qué plan te conviene."
+        perfil="bruma"
+      >
+        <Boton
+          href={enlaceWhatsapp(contacto.mensaje_whatsapp, contacto.whatsapp)}
+          variante="crema"
+          tamano="grande"
+          externo
+        >
+          <IconoWhatsapp className="size-5" />
+          Escribir por WhatsApp
+        </Boton>
+      </CierreReserva>
     </>
   );
 }

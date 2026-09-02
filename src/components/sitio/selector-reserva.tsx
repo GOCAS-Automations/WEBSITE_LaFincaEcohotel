@@ -4,7 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { clasesBoton } from "@/components/ui/boton";
-import { formatearCOP } from "@/lib/utils/formato";
+import { formatearCOP, formatearFechaCorta } from "@/lib/utils/formato";
 import { enlaceWhatsapp, mensajeReserva } from "@/lib/whatsapp";
 
 import { IconoCheck, IconoWhatsapp } from "./iconos";
@@ -29,7 +29,33 @@ import { IconoCheck, IconoWhatsapp } from "./iconos";
  * Accesibilidad: cada grupo es un `<fieldset>` con su `<legend>`; las tarjetas
  * son `<label>` con un `<input type="radio">` real escondido, así que funcionan
  * con teclado (flechas dentro del grupo) y se anuncian como opciones.
+ *
+ * ---------------------------------------------------------------------------
+ * LOS PARÁMETROS DE LA DIRECCIÓN
+ * ---------------------------------------------------------------------------
+ * Lee `?cabana=`, `?plan=`, `?entrada=` y `?salida=`. Los dos últimos son los
+ * que envía el módulo de reserva de la portada: quien ya eligió fechas allí
+ * arriba no puede llegar aquí y encontrarse los campos vacíos.
+ *
+ * Se leen desde el CLIENTE, dentro del `<Suspense>` de la página. Leerlos en el
+ * servidor volvería dinámica la ruta `/reservar` y perdería su prerenderizado.
+ *
+ * Las fechas que llegan por la dirección **se validan**, no se creen: una URL
+ * la escribe cualquiera (o la hereda de un enlace viejo compartido por
+ * WhatsApp). Se exige el formato `AAAA-MM-DD` real, que la llegada no sea
+ * anterior a hoy y que la salida sea posterior a la llegada. Lo que no pasa el
+ * filtro se ignora en silencio: el visitante ve el formulario vacío, que es
+ * mejor que verlo con una fecha del año pasado ya elegida.
  */
+
+/** `AAAA-MM-DD` y además una fecha que existe (descarta 2026-02-31). */
+function esFechaValida(valor: string | null): valor is string {
+  if (!valor || !/^\d{4}-\d{2}-\d{2}$/.test(valor)) return false;
+  const fecha = new Date(`${valor}T12:00:00Z`);
+  return (
+    !Number.isNaN(fecha.getTime()) && fecha.toISOString().slice(0, 10) === valor
+  );
+}
 
 export type CabanaSeleccionable = {
   slug: string;
@@ -57,10 +83,21 @@ export function SelectorReserva({ cabanas, planes, whatsapp, hoy }: Props) {
       (plan) => plan.toLowerCase() === parametros.get("plan")?.toLowerCase(),
     ) ?? null;
 
+  const entradaUrl = parametros.get("entrada");
+  const salidaUrl = parametros.get("salida");
+  /* Una llegada anterior a hoy no se acepta: el `min` del campo la rechazaría
+     igualmente y el visitante se quedaría con un valor que no puede enviar. */
+  const entradaInicial =
+    esFechaValida(entradaUrl) && entradaUrl >= hoy ? entradaUrl : "";
+  const salidaInicial =
+    esFechaValida(salidaUrl) && entradaInicial && salidaUrl > entradaInicial
+      ? salidaUrl
+      : "";
+
   const [slug, setSlug] = useState<string | null>(cabanaInicial);
   const [plan, setPlan] = useState<string | null>(planInicial);
-  const [entrada, setEntrada] = useState("");
-  const [salida, setSalida] = useState("");
+  const [entrada, setEntrada] = useState(entradaInicial);
+  const [salida, setSalida] = useState(salidaInicial);
 
   const cabana = cabanas.find((opcion) => opcion.slug === slug) ?? null;
 
@@ -248,6 +285,25 @@ export function SelectorReserva({ cabanas, planes, whatsapp, hoy }: Props) {
               <dt className="text-crema-600">Plan</dt>
               <dd className="text-right font-medium text-petroleo-900">
                 {plan ?? "Sin elegir"}
+              </dd>
+            </div>
+            {/*
+              Las fechas se muestran en formato corto ("12 mar 2026") y no como
+              `2026-03-12`: el resumen es lo que el visitante repasa antes de
+              escribirle al hotel, y ahí una fecha se lee, no se descifra.
+            */}
+            <div className="flex items-baseline justify-between gap-3">
+              <dt className="text-crema-600">Llegada</dt>
+              <dd className="text-right font-medium text-petroleo-900">
+                {entrada ? formatearFechaCorta(entrada) : "Sin definir"}
+              </dd>
+            </div>
+            <div className="flex items-baseline justify-between gap-3">
+              <dt className="text-crema-600">Salida</dt>
+              <dd className="text-right font-medium text-petroleo-900">
+                {salida && !fechasInvalidas
+                  ? formatearFechaCorta(salida)
+                  : "Sin definir"}
               </dd>
             </div>
             <div className="flex items-baseline justify-between gap-3">
