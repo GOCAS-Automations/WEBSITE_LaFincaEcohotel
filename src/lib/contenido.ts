@@ -435,9 +435,9 @@ const RESPALDO_HEROES: HeroesListados = {
     titulo: "Experiencias",
     subtitulo:
       "Celebraciones listas al llegar: aniversarios, cumpleaños, picnic y veladas en medio del bosque.",
-    imagen: medio("galeria/img-53960.webp"),
+    imagen: medio("galeria/img-6086.webp"),
     imagen_alt:
-      "Picnic sobre el pasto con canasta, vino y farol, frente a la vista del valle",
+      "Pareja compartiendo una botella de vino sobre el piso alfombrado de una cabaña de madera",
   },
   el_lugar: {
     titulo: "El lugar",
@@ -450,17 +450,17 @@ const RESPALDO_HEROES: HeroesListados = {
   galeria: {
     titulo: "Galería",
     subtitulo: "El bosque, las cabañas y los rincones de La Finca en imágenes.",
-    imagen: medio("galeria/img-5567.webp"),
+    imagen: medio("galeria/img-53970.webp"),
     imagen_alt:
-      "Huésped junto a una hamaca en la terraza de La Finca, envuelta en la neblina",
+      "Camino iluminado entre la neblina de la noche en La Finca, con las farolas encendidas",
   },
   faq: {
     titulo: "Preguntas frecuentes",
     subtitulo:
       "Lo que más nos preguntan antes de llegar: ubicación, clima, mascotas, niños y servicios.",
-    imagen: medio("galeria/img-6089.webp"),
+    imagen: medio("galeria/img-6088.webp"),
     imagen_alt:
-      "Huésped con ruana mirando el bosque desde una baranda de La Finca",
+      "Camino de tierra entre guaduas y helechos en la reserva de La Finca",
   },
   contacto: {
     titulo: "Contacto",

@@ -292,18 +292,26 @@ function MosaicoFicha({
       </button>
 
       {secundarias.length > 0 ? (
-        <ul className="grid grid-cols-2 gap-3 sm:gap-4 lg:col-span-2 lg:grid-cols-2">
+        /*
+         * En escritorio la columna de miniaturas tiene que medir EXACTAMENTE lo
+         * mismo que la foto grande de al lado. Con proporciones fijas no cuadra
+         * —la portada es 4:3 y las miniaturas 3:2— y queda un hueco al final de
+         * la columna. Por eso aquí las filas se reparten la altura disponible
+         * (`grid-rows-2` + `h-full`) y la proporción solo manda en móvil, donde
+         * las miniaturas van una debajo de otra.
+         */
+        <ul className="grid grid-cols-2 gap-3 sm:gap-4 lg:col-span-2 lg:h-full lg:grid-cols-2 lg:grid-rows-2">
           {secundarias.map((imagen, posicion) => {
             const indice = posicion + 1;
             const esUltima =
               ocultas > 0 && posicion === secundarias.length - 1;
             return (
-              <li key={imagen.url}>
+              <li key={imagen.url} className="lg:min-h-0">
                 <button
                   type="button"
                   ref={(elemento) => registrar(indice, elemento)}
                   onClick={() => alAbrir(indice)}
-                  className={`${CLASES_MINIATURA} aspect-4/3 lg:aspect-3/2`}
+                  className={`${CLASES_MINIATURA} aspect-4/3 lg:aspect-auto lg:h-full`}
                   aria-label={
                     esUltima
                       ? `Ver las ${imagenes.length} fotos de la galería`

@@ -17,7 +17,15 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
  * 3. **`prefers-reduced-motion` la desactiva por completo**, no la acorta: se
  *    comprueba antes de ocultar nada (y `globals.css` lo refuerza con `!important`).
  * 4. **Es sutil**: 14 px de desplazamiento y 600 ms. Nada rebota ni gira.
+ * 5. **Nunca deja contenido escondido para siempre.** Hay un temporizador de
+ *    seguridad: pase lo que pase con el observador —un navegador que no lo
+ *    dispara, una captura automática, un contenedor con `overflow` raro— a los
+ *    3 segundos el bloque aparece. Un efecto que falla debe degradarse a
+ *    "contenido visible", jamás a "contenido invisible".
  */
+
+/** Margen de seguridad: si el observador no dispara, se revela igual. */
+const ESPERA_MAXIMA = 3000;
 
 type PropsRevelar = {
   children: ReactNode;
@@ -60,19 +68,33 @@ export function Revelar({
 
     elemento.dataset.revelar = "oculto";
 
+    let temporizador = 0;
+    let seguridad = 0;
+
     const observador = new IntersectionObserver(
       (entradas) => {
         for (const entrada of entradas) {
           if (!entrada.isIntersecting) continue;
           observador.disconnect();
-          window.setTimeout(() => setVisible(true), retraso);
+          window.clearTimeout(seguridad);
+          temporizador = window.setTimeout(() => setVisible(true), retraso);
         }
       },
       { rootMargin: "0px 0px -10% 0px", threshold: 0.05 },
     );
 
     observador.observe(elemento);
-    return () => observador.disconnect();
+
+    seguridad = window.setTimeout(() => {
+      observador.disconnect();
+      setVisible(true);
+    }, ESPERA_MAXIMA);
+
+    return () => {
+      observador.disconnect();
+      window.clearTimeout(seguridad);
+      window.clearTimeout(temporizador);
+    };
   }, [retraso]);
 
   return (

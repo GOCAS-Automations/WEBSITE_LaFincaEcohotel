@@ -46,8 +46,13 @@ export function TarjetaCabana({
           sizes="(min-width: 1024px) 30vw, (min-width: 640px) 45vw, 92vw"
           className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
         />
+        {/*
+          La etiqueta del precio lleva fondo OPACO, no translúcido: se apoya
+          sobre la foto de la cabaña, que casi siempre es madera anaranjada, y
+          un blanco al 90 % se tiñe de naranja y hunde el contraste del dorado.
+        */}
         {alojamiento.precio_desde !== null ? (
-          <p className="absolute top-3 right-3 rounded-full bg-white/90 px-3.5 py-1.5 font-titulo text-sm font-bold text-dorado-700 shadow-[var(--shadow-tenue)] backdrop-blur-sm">
+          <p className="absolute top-3 right-3 rounded-full bg-white px-3.5 py-1.5 font-titulo text-sm font-bold text-dorado-700 shadow-[var(--shadow-tarjeta)]">
             desde {formatearCOP(alojamiento.precio_desde)}
           </p>
         ) : null}
