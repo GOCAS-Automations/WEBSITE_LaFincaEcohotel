@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { Neblina } from "@/components/sitio/atmosfera";
+import { CierreReserva } from "@/components/sitio/cierre-reserva";
 import {
   IconoCheck,
   IconoFlecha,
@@ -168,7 +170,10 @@ export async function PaginaAlojamiento({
 
       {/* Planes de ESTA cabaña */}
       {alojamiento.tarifas.length > 0 ? (
-        <Seccion fondo="crema" id="planes">
+        <Seccion fondo="crema" id="planes" className="relative overflow-hidden">
+          <Neblina tono="verde" className="opacity-55" />
+
+          <div className="relative z-10">
           <EncabezadoSeccion
             antetitulo="Tarifas"
             titulo={`Planes para la ${alojamiento.nombre}`}
@@ -198,44 +203,17 @@ export async function PaginaAlojamiento({
           <p className="mt-8 text-center text-sm text-crema-600 italic">
             {seccionPlanes.nota}
           </p>
+          </div>
         </Seccion>
       ) : null}
 
-      {/* Llamada a reservar */}
-      <Seccion fondo="petroleo" espacio="compacto">
-        <div className="flex flex-col items-center gap-6 text-center">
-          <h2 className="max-w-2xl text-2xl leading-tight font-bold text-white sm:text-3xl">
-            ¿Te quedas con la {alojamiento.nombre}?
-          </h2>
-          <p className="max-w-xl text-crema-100/90">
-            Cuéntanos tus fechas y te confirmamos la disponibilidad el mismo
-            día. Respondemos por WhatsApp todos los días.
-          </p>
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <Boton
-              href={`/reservar?cabana=${alojamiento.slug}`}
-              variante="claro"
-              tamano="grande"
-            >
-              Reservar esta cabaña
-            </Boton>
-            <Boton
-              href={enlaceWhatsapp(
-                mensajeCabana(alojamiento.nombre),
-                contacto.whatsapp,
-              )}
-              variante="claro"
-              tamano="grande"
-              externo
-            >
-              <IconoWhatsapp className="size-5" />
-              Preguntar por WhatsApp
-            </Boton>
-          </div>
-        </div>
-      </Seccion>
-
-      {/* Otras cabañas */}
+      {/*
+        Otras cabañas va ANTES del cierre oscuro, no después.
+        Antes la página terminaba con una banda de color y luego volvía a
+        abrirse en blanco con más tarjetas: el cierre no cerraba nada. Ahora el
+        recorrido es ver la cabaña → su precio → qué más hay → reservar, y el
+        bosque profundo es de verdad lo último que se ve.
+      */}
       {otras.length > 0 ? (
         <Seccion fondo="blanco">
           <EncabezadoSeccion
@@ -265,6 +243,36 @@ export async function PaginaAlojamiento({
           </div>
         </Seccion>
       ) : null}
+
+      {/* Llamada a reservar */}
+      <CierreReserva
+        fondoAnterior={otras.length > 0 ? "bg-white" : "bg-crema-50"}
+        titulo={`¿Te quedas con la ${alojamiento.nombre}?`}
+        texto="Cuéntanos tus fechas y te confirmamos la disponibilidad el mismo día. Respondemos por WhatsApp todos los días."
+        perfil="cresta"
+      >
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <Boton
+            href={`/reservar?cabana=${alojamiento.slug}`}
+            variante="crema"
+            tamano="grande"
+          >
+            Reservar esta cabaña
+          </Boton>
+          <Boton
+            href={enlaceWhatsapp(
+              mensajeCabana(alojamiento.nombre),
+              contacto.whatsapp,
+            )}
+            variante="contornoClaro"
+            tamano="grande"
+            externo
+          >
+            <IconoWhatsapp className="size-5" />
+            Preguntar por WhatsApp
+          </Boton>
+        </div>
+      </CierreReserva>
     </>
   );
 }

@@ -1,5 +1,7 @@
 import Image from "next/image";
 
+import { Colibri, Neblina } from "@/components/sitio/atmosfera";
+import { CierreReserva } from "@/components/sitio/cierre-reserva";
 import { HeroPagina } from "@/components/sitio/hero-pagina";
 import { IconoUbicacion } from "@/components/sitio/iconos";
 import { Boton } from "@/components/ui/boton";
@@ -33,8 +35,15 @@ export async function PaginaElLugar() {
       />
 
       {/* Sobre nosotros */}
-      <Seccion fondo="crema">
-        <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
+      <Seccion fondo="crema" className="relative overflow-hidden">
+        <Neblina tono="verde" className="opacity-60" />
+        <Colibri
+          className="pointer-events-none absolute top-10 right-[5%] hidden w-28 text-oliva-500/45 xl:block"
+          ritmo="lento"
+          mirando="derecha"
+        />
+
+        <div className="relative z-10 grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
           <Revelar className="flex flex-col gap-6">
             <EncabezadoSeccion
               antetitulo={lugar.antetitulo}
@@ -54,7 +63,7 @@ export async function PaginaElLugar() {
           </Revelar>
 
           <Revelar retraso={110}>
-            <div className="relative aspect-16/11 overflow-hidden rounded-[var(--radius-generoso)] bg-crema-200 shadow-[var(--shadow-elevada)]">
+            <div className="relative aspect-16/11 overflow-hidden rounded-[var(--radius-generoso)] rounded-tr-[7rem] bg-crema-200 shadow-[var(--shadow-elevada)]">
               <Image
                 src={lugar.imagen}
                 alt={lugar.imagen_alt}
@@ -85,7 +94,7 @@ export async function PaginaElLugar() {
                 retraso={(indice % 3) * 90}
                 className="h-full"
               >
-                <article className="flex h-full flex-col overflow-hidden rounded-[var(--radius-generoso)] bg-crema-50 shadow-[var(--shadow-tenue)] ring-1 ring-crema-200/70 transition-shadow duration-300 hover:shadow-[var(--shadow-tarjeta)]">
+                <article className="flex h-full flex-col overflow-hidden rounded-[var(--radius-generoso)] rounded-tl-[3rem] bg-crema-50 shadow-[var(--shadow-tenue)] ring-1 ring-crema-200/70 transition-shadow duration-300 hover:shadow-[var(--shadow-tarjeta)]">
                   <div className="relative aspect-4/3 bg-crema-200">
                     <Image
                       src={instalacion.imagen}
@@ -170,20 +179,12 @@ export async function PaginaElLugar() {
         </div>
       </Seccion>
 
-      <Seccion fondo="petroleo" espacio="compacto">
-        <div className="flex flex-col items-center gap-6 text-center">
-          <h2 className="max-w-2xl text-2xl leading-tight font-bold text-white sm:text-3xl">
-            Ven a conocerlo
-          </h2>
-          <p className="max-w-xl text-crema-100/90">
-            Cinco cabañas, un bosque de niebla y 45 minutos de camino desde
-            Cali.
-          </p>
-          <Boton href="/reservar" variante="claro" tamano="grande">
-            Reservar ahora
-          </Boton>
-        </div>
-      </Seccion>
+      <CierreReserva
+        fondoAnterior="bg-crema-50"
+        titulo="Ven a conocerlo"
+        texto="Cinco cabañas, un bosque de niebla y 45 minutos de camino desde Cali."
+        perfil="cresta"
+      />
     </>
   );
 }

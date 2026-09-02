@@ -1,5 +1,7 @@
 import Image from "next/image";
 
+import { Neblina } from "@/components/sitio/atmosfera";
+import { CierreReserva } from "@/components/sitio/cierre-reserva";
 import { HeroPagina } from "@/components/sitio/hero-pagina";
 import { IconoWhatsapp } from "@/components/sitio/iconos";
 import { Boton } from "@/components/ui/boton";
@@ -40,13 +42,15 @@ export async function PaginaExperiencias() {
         ]}
       />
 
-      <Seccion fondo="crema">
-        <p className="mx-auto max-w-2xl text-center text-base leading-relaxed text-crema-700 sm:text-lg">
+      <Seccion fondo="crema" className="relative overflow-hidden">
+        <Neblina tono="verde" className="opacity-55" />
+
+        <p className="relative z-10 mx-auto max-w-2xl text-center text-base leading-relaxed text-crema-700 sm:text-lg">
           {contenido.intro}
         </p>
 
         {experiencias.length > 0 ? (
-          <ul className="mx-auto mt-12 grid max-w-5xl gap-6 sm:grid-cols-2">
+          <ul className="relative z-10 mx-auto mt-12 grid max-w-5xl gap-6 sm:grid-cols-2">
             {experiencias.map((experiencia, indice) => (
               <Revelar
                 key={experiencia.id}
@@ -54,7 +58,7 @@ export async function PaginaExperiencias() {
                 retraso={indice * 90}
                 className="h-full"
               >
-                <article className="flex h-full flex-col overflow-hidden rounded-[var(--radius-generoso)] bg-white shadow-[var(--shadow-tarjeta)] ring-1 ring-crema-200/70">
+                <article className="flex h-full flex-col overflow-hidden rounded-[var(--radius-generoso)] rounded-tr-[3.5rem] bg-white shadow-[var(--shadow-tarjeta)] ring-1 ring-crema-200/70">
                   {experiencia.imagen_url ? (
                     <div className="relative aspect-3/4 bg-crema-200">
                       <Image
@@ -119,7 +123,7 @@ export async function PaginaExperiencias() {
                 retraso={indice * 90}
                 className="h-full"
               >
-                <article className="flex h-full flex-col overflow-hidden rounded-[var(--radius-generoso)] bg-crema-50 ring-1 ring-crema-200/70">
+                <article className="flex h-full flex-col overflow-hidden rounded-[var(--radius-generoso)] rounded-tl-[3.5rem] bg-crema-50 ring-1 ring-crema-200/70">
                   <div className="relative aspect-3/4 bg-crema-200">
                     <Image
                       src={adicional.imagen}
@@ -156,20 +160,14 @@ export async function PaginaExperiencias() {
         </Seccion>
       ) : null}
 
-      <Seccion fondo="petroleo" espacio="compacto">
-        <div className="flex flex-col items-center gap-6 text-center">
-          <h2 className="max-w-2xl text-2xl leading-tight font-bold text-white sm:text-3xl">
-            Todas se suman a tu reserva
-          </h2>
-          <p className="max-w-xl text-crema-100/90">
-            Elige primero la cabaña y el plan; la experiencia se añade después y
-            queda lista antes de que llegues.
-          </p>
-          <Boton href="/reservar" variante="claro" tamano="grande">
-            Reservar ahora
-          </Boton>
-        </div>
-      </Seccion>
+      <CierreReserva
+        fondoAnterior={
+          contenido.adicionales.length > 0 ? "bg-white" : "bg-crema-50"
+        }
+        titulo="Todas se suman a tu reserva"
+        texto="Elige primero la cabaña y el plan; la experiencia se añade después y queda lista antes de que llegues."
+        espejo
+      />
     </>
   );
 }

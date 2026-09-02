@@ -1,3 +1,5 @@
+import { Neblina } from "@/components/sitio/atmosfera";
+import { CierreReserva } from "@/components/sitio/cierre-reserva";
 import { HeroPagina } from "@/components/sitio/hero-pagina";
 import { IconoWhatsapp } from "@/components/sitio/iconos";
 import { Boton } from "@/components/ui/boton";
@@ -34,8 +36,10 @@ export async function PaginaFaq() {
         ]}
       />
 
-      <Seccion fondo="crema">
-        <div className="mx-auto max-w-3xl">
+      <Seccion fondo="crema" className="relative overflow-hidden">
+        <Neblina tono="verde" className="opacity-50" />
+
+        <div className="relative z-10 mx-auto max-w-3xl">
           <p className="mb-10 text-center text-base leading-relaxed text-crema-700 sm:text-lg">
             {faq.intro}
           </p>
@@ -76,7 +80,7 @@ export async function PaginaFaq() {
             ))}
           </ul>
 
-          <div className="mt-12 flex flex-col items-center gap-4 rounded-[var(--radius-generoso)] bg-white p-8 text-center ring-1 ring-crema-200/70">
+          <div className="mt-12 flex flex-col items-center gap-4 rounded-[var(--radius-generoso)] rounded-tl-[3.5rem] bg-white p-8 text-center ring-1 ring-crema-200/70">
             <h2 className="font-titulo text-xl font-bold text-petroleo-900">
               ¿Te quedó alguna duda?
             </h2>
@@ -96,6 +100,12 @@ export async function PaginaFaq() {
           </div>
         </div>
       </Seccion>
+
+      <CierreReserva
+        fondoAnterior="bg-crema-50"
+        titulo="Ya sabes cómo es. Solo faltan las fechas."
+        perfil="bruma"
+      />
     </>
   );
 }

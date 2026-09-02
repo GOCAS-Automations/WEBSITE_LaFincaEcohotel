@@ -1,3 +1,5 @@
+import { Neblina } from "@/components/sitio/atmosfera";
+import { CierreReserva } from "@/components/sitio/cierre-reserva";
 import { HeroPagina } from "@/components/sitio/hero-pagina";
 import {
   IconoFacebook,
@@ -65,8 +67,10 @@ export async function PaginaContacto() {
         ]}
       />
 
-      <Seccion fondo="crema">
-        <div className="grid gap-10 lg:grid-cols-2 lg:gap-16">
+      <Seccion fondo="crema" className="relative">
+        <Neblina tono="verde" className="opacity-50" />
+
+        <div className="relative z-10 grid gap-10 lg:grid-cols-2 lg:gap-16">
           <Revelar className="flex flex-col gap-8">
             {/* WhatsApp, el canal principal */}
             <div className="flex flex-col items-start gap-4 rounded-[var(--radius-generoso)] bg-white p-6 shadow-[var(--shadow-tarjeta)] ring-1 ring-crema-200/70 sm:p-8">
@@ -195,6 +199,12 @@ export async function PaginaContacto() {
           </Revelar>
         </div>
       </Seccion>
+
+      <CierreReserva
+        fondoAnterior="bg-crema-50"
+        titulo="¿Ya tienes fecha?"
+        texto="Cuéntanos cuándo quieres venir y te confirmamos disponibilidad el mismo día."
+      />
     </>
   );
 }
