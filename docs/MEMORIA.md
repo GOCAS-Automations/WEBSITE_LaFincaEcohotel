@@ -184,7 +184,7 @@ dirección** (requisito del cliente). `limpieza-storage.ts` borra lo que ya no
 referencia nadie —recorre `imagenes`, `extras.imagen_url` y todos los strings
 del jsonb de `contenido`—, nunca toca una URL externa y nunca lanza.
 
-**Los cinco módulos.**
+**Los módulos.**
 
 - **Reservas** (`/admin/reservas`) — abre en el calendario mensual: filas =
   cabañas, columnas = días, barras continuas por reserva y navegación de mes por
@@ -227,6 +227,52 @@ generado, no el del atributo — el ancho se fija ahora en un contenedor).
 **Ojo con `npm run build` mientras corre `npm run dev`:** reescribe `.next` y el
 servidor de desarrollo empieza a devolver 500 hasta que se reinicia.
 
+### 2026-09-02 — Módulo de Planes tarifarios (`/admin/planes`)
+
+Cerraba el pendiente de la Fase 5: los tres planes (Entre Semana, Estándar,
+Premium) y lo que incluye cada uno solo se editaban por SQL directo. Se añadió
+el sexto módulo del panel, siguiendo al pie de la letra el patrón de
+`/admin/alojamientos` (el CRUD propio más parecido: su propia tabla, `orden` +
+`activo`, sin tipo compartido como `extras`).
+
+**Archivos nuevos.** `src/app/admin/(panel)/planes/{acciones.ts,
+formulario-plan.tsx, page.tsx, [id]/page.tsx, nueva/page.tsx}` y
+`obtenerPlan()` en `src/lib/admin/datos.ts` (`listarPlanes()` ya existía).
+Lista con orden editable en bloque (igual que cabañas) y
+mostrar/pausar/borrar por plan; ficha con nombre, descripción, "qué incluye"
+(`Chips` sobre `incluye text[]`) y orden. Toda mutación llama a
+`revalidarSitioPublico()` — los planes se pintan en la portada, en cada ficha
+de cabaña y en `/reservar` (`TarjetaPlan`).
+
+**Borrado defensivo con DOS conteos, no uno.** `tarifas.plan_id` tiene `ON
+DELETE CASCADE` hacia `planes`: Postgres NO rechazaría borrar un plan con
+precios cargados, sencillamente borraría esas tarifas en silencio. Por eso
+`eliminarPlanAction` cuenta a mano tanto `reservas.plan_id` (sí bloquea en la
+base, sin cascada) como `tarifas.plan_id` (no bloquea en la base, pero borraría
+precios sin avisar) y explica el motivo en español en los dos casos,
+recomendando pausar en vez de borrar.
+
+**Un plan nuevo nace sin tarifas.** A propósito: asignar precio es una
+decisión por cabaña, no algo que el alta de un plan deba inventar. El
+formulario de alta muestra un aviso fijo explicándolo, y al crear el plan la
+redirección a su ficha trae además un `?ok=` recordando entrar a cada cabaña a
+ponerle precio.
+
+Se añadió a `NAV_PANEL` (icono nuevo `capas`, entre Cabañas y Experiencias) y
+al resumen de `/admin` (atajo "Planes tarifarios" junto a Cabañas, Bloqueos y
+Contenido del sitio).
+
+**Verificación.** `tsc --noEmit`, `npm run lint` y `npm run build` limpios.
+Prueba de punta a punta contra la base real: Playwright headless (Chromium por
+CDP) contra `npm run dev`, con sesión iniciada rotando temporalmente la
+contraseña del usuario de pruebas del panel vía Admin API (no se conocía la
+existente) y rotándola de nuevo a un valor aleatorio al terminar. Se editó la
+descripción del plan Estándar, se confirmó el banner de éxito, se comprobó que
+el texto de prueba aparecía en la portada pública, se revirtió al texto
+original, se guardó de nuevo y se confirmó que la portada volvía a mostrar el
+texto original. **La base quedó exactamente como estaba**: 3 planes (mismo
+`orden` y misma descripción), 15 tarifas, 0 reservas, 5 alojamientos.
+
 ## Pendientes de contenido/credenciales (pedir según se necesiten)
 
 > Lo marcado como `TODO` en `supabase/seed/001_datos_iniciales.sql` sale del sitio
@@ -237,10 +283,6 @@ servidor de desarrollo empieza a devolver 500 hasta que se reinicia.
 
 - [ ] **Rotar el usuario de pruebas** `panel@lafincaecohotel.com` y crear las
       cuentas reales del equipo (ver arriba).
-- [ ] **Planes: no hay pantalla propia.** Los tres planes (Entre Semana,
-      Estándar, Premium) y lo que incluye cada uno se editan por SQL. Desde el
-      panel solo se pone su precio en cada cabaña. Si el cliente va a querer
-      cambiar los nombres o el detalle de los planes, hace falta un módulo más.
 - [ ] **Pagos: la ficha de reserva muestra el abono pero no registra
       transacciones.** La tabla `pagos` está creada y vacía; se llenará desde el
       webhook de Wompi en la fase de pagos.
