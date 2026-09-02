@@ -106,6 +106,10 @@ export function ModuloReserva({
       method="get"
       onSubmit={enviar}
       aria-label="Consultar disponibilidad"
+      /* El FAB de WhatsApp (`BotonWhatsappFlotante`) observa este atributo y
+         se aparta mientras el módulo esté en pantalla: en un teléfono es el
+         momento más importante de la portada y no puede quedar tapado. */
+      data-fab-evitar=""
       className="rounded-[var(--radius-generoso)] bg-crema-50/95 p-5 shadow-[var(--shadow-elevada)] ring-1 ring-white/60 backdrop-blur-xl sm:p-6 lg:rounded-[28px] lg:p-7"
     >
       <div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5">

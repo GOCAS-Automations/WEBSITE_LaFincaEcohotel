@@ -7,13 +7,24 @@ import { IconoWhatsapp } from "./iconos";
 /**
  * Botón flotante de WhatsApp.
  *
- * Es cliente por una sola razón: **apartarse del pie de página**. Un botón fijo
- * sobre el pie tapa justo el RNT y los enlaces legales, que son las dos cosas
- * que el sitio está obligado a mostrar. Cuando el pie entra en pantalla, el
- * botón se desliza fuera con una transición corta y vuelve al subir.
+ * Es cliente por dos razones, las dos para **apartarse de algo más
+ * importante**:
  *
- * Se observa el `<footer>` con un `IntersectionObserver`; si no existe o el
- * navegador no lo soporta, el botón simplemente se queda siempre visible, que
+ * 1. **El pie de página.** Un botón fijo sobre el pie tapa justo el RNT y los
+ *    enlaces legales, que son las dos cosas que el sitio está obligado a
+ *    mostrar. Se observa el `<footer>` con un `IntersectionObserver` y un
+ *    `rootMargin` negativo por abajo, así que se aparta un poco antes de que
+ *    el pie llegue a superponerse de verdad.
+ * 2. **Cualquier módulo marcado `data-fab-evitar`.** El módulo de reserva de
+ *    la portada (`ModuloReserva`) es el momento más importante de la página:
+ *    un FAB montado encima de sus campos en un teléfono le estorbaría al
+ *    visitante justo cuando va a actuar. En vez de acoplar este componente —
+ *    global, vive en el layout— a un módulo concreto, se observa **cualquier**
+ *    elemento con ese atributo: hoy es solo el módulo de reserva, pero
+ *    cualquier pieza futura que necesite el mismo rincón de pantalla libre
+ *    puede pedirlo con el mismo `data-*`, sin tocar este archivo.
+ *
+ * Si `IntersectionObserver` no existe, el botón se queda siempre visible, que
  * es el comportamiento seguro.
  *
  * **Solo el icono, sin texto.** El logotipo de WhatsApp es de los pocos signos
@@ -24,20 +35,46 @@ import { IconoWhatsapp } from "./iconos";
  * anuncia un lector de pantalla.
  */
 export function BotonWhatsappFlotante({ enlace }: { enlace: string }) {
-  const [oculto, setOculto] = useState(false);
+  const [ocultoPorPie, setOcultoPorPie] = useState(false);
+  const [ocultoPorModulo, setOcultoPorModulo] = useState(false);
 
   useEffect(() => {
+    if (!("IntersectionObserver" in window)) return;
+
+    const observadores: IntersectionObserver[] = [];
+
     const pie = document.querySelector("footer");
-    if (!pie || !("IntersectionObserver" in window)) return;
+    if (pie) {
+      const observadorPie = new IntersectionObserver(
+        ([entrada]) => setOcultoPorPie(entrada.isIntersecting),
+        { rootMargin: "0px 0px -40% 0px" },
+      );
+      observadorPie.observe(pie);
+      observadores.push(observadorPie);
+    }
 
-    const observador = new IntersectionObserver(
-      ([entrada]) => setOculto(entrada.isIntersecting),
-      { rootMargin: "0px 0px -40% 0px" },
+    /* Puede haber más de un objetivo (o ninguno) en la página; el FAB se
+       oculta mientras CUALQUIERA de ellos esté en el viewport. */
+    const objetivos = document.querySelectorAll<HTMLElement>(
+      "[data-fab-evitar]",
     );
+    if (objetivos.length > 0) {
+      const visibles = new Set<Element>();
+      const observadorModulos = new IntersectionObserver((entradas) => {
+        for (const entrada of entradas) {
+          if (entrada.isIntersecting) visibles.add(entrada.target);
+          else visibles.delete(entrada.target);
+        }
+        setOcultoPorModulo(visibles.size > 0);
+      });
+      objetivos.forEach((objetivo) => observadorModulos.observe(objetivo));
+      observadores.push(observadorModulos);
+    }
 
-    observador.observe(pie);
-    return () => observador.disconnect();
+    return () => observadores.forEach((observador) => observador.disconnect());
   }, []);
+
+  const oculto = ocultoPorPie || ocultoPorModulo;
 
   return (
     <a

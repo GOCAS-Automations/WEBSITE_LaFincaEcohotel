@@ -130,7 +130,14 @@ export function SelectorReserva({ cabanas, planes, whatsapp, hoy }: Props) {
 
   return (
     <div className="grid gap-8 lg:grid-cols-[1.6fr_1fr] lg:gap-10">
-      <div className="flex flex-col gap-8">
+      <div
+        className="flex flex-col gap-8"
+        /* Igual que en `ModuloReserva`: mientras estos campos —cabaña, plan,
+           fechas— estén en el viewport, el FAB de WhatsApp se aparta. Quien
+           llega desde el módulo de la portada cae aquí mismo por el ancla
+           `#solicitud`, y sin esto el FAB tapaba justo el bloque de fechas. */
+        data-fab-evitar=""
+      >
         {/* Cabaña */}
         <fieldset className="flex flex-col gap-4">
           <legend className="font-titulo text-lg font-bold text-petroleo-900">
