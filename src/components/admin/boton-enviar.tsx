@@ -1,0 +1,52 @@
+"use client";
+
+import { useFormStatus } from "react-dom";
+import type { ReactNode } from "react";
+
+import { claseBoton, type TamanoBoton, type TonoBoton } from "./ui";
+
+/**
+ * Botón de envío que se deshabilita y cambia de texto mientras la Server Action
+ * está en vuelo. `useFormStatus` lee el estado del `<form>` padre, así que este
+ * componente tiene que ser HIJO del formulario (no el formulario mismo).
+ *
+ * `confirmar` pide confirmación antes de enviar: se usa en todo lo que borra.
+ */
+export function BotonEnviar({
+  children,
+  etiquetaEnEspera = "Guardando…",
+  tono = "primario",
+  tamano = "md",
+  className = "",
+  confirmar,
+  name,
+  value,
+}: {
+  children: ReactNode;
+  etiquetaEnEspera?: string;
+  tono?: TonoBoton;
+  tamano?: TamanoBoton;
+  className?: string;
+  confirmar?: string;
+  name?: string;
+  value?: string;
+}) {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      type="submit"
+      name={name}
+      value={value}
+      disabled={pending}
+      onClick={(evento) => {
+        if (confirmar && !window.confirm(confirmar)) {
+          evento.preventDefault();
+        }
+      }}
+      className={`${claseBoton(tono, tamano)} ${className}`}
+    >
+      {pending ? etiquetaEnEspera : children}
+    </button>
+  );
+}
