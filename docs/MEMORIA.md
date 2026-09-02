@@ -382,6 +382,46 @@ la galería dejaba un agujero de tres celdas.
 calidad y el recorte social siguen siendo el techo real de lo que se puede
 lograr visualmente).
 
+### 2026-09-02 — Pulido: FAB de WhatsApp sobre el módulo de reserva + revisión del panel con sesión
+
+**1. El FAB tapaba el módulo de reserva en móvil.** El botón flotante ya se
+apartaba del pie de página con un `IntersectionObserver`; se generalizó el
+mismo patrón en `boton-whatsapp.tsx` para que observe **cualquier** elemento
+marcado `data-fab-evitar` (no solo el `<footer>`) y se oculte mientras
+cualquiera de ellos esté en el viewport. Se marcó el `<form>` de
+`ModuloReserva` (portada) y, al verificar `/reservar`, se encontró el mismo
+problema: quien llega por el ancla `#solicitud` (como hace el módulo de la
+portada) aterriza con el FAB tapando el bloque de fechas de
+`SelectorReserva`, así que se marcó también su columna de campos
+(cabaña/plan/fechas, sin incluir el resumen). `prefers-reduced-motion` no
+necesitó cambios: la regla global ya deja `transition-duration` en ~0 para
+todo el sitio, así que el ocultamiento se mantiene sin animación.
+
+Verificado por CDP (Playwright/Chromium headless contra `npm run dev`) a
+390 px: el FAB queda `opacity:0` + `pointer-events:none` mientras el módulo
+de la portada está en el fold inicial (se monta ahí por el `-mt-20` que lo
+monta sobre el hero) y mientras la sección de fechas de `/reservar` está en
+pantalla al llegar desde la portada; reaparece al alejarse de ambos y sigue
+apartándose del pie. Comprobado también a 1440 px (mismo comportamiento,
+inofensivo) y con `reducedMotion: reduce` emulado (oculta sin transición).
+
+**2. Revisión visual del panel con sesión iniciada.** Con el usuario de
+pruebas del panel, se recorrieron por CDP a 1440 px y 390 px: resumen,
+reservas (calendario), cabañas (lista + ficha de la Cabaña 01), planes,
+experiencias, adicionales y contenido. **Sin regresiones.** Confirma lo que
+decía la sesión de diseño: el panel sigue usando solo `petroleo`/`crema`
+(y `dorado` en algún acento), ninguno tocado por las familias nuevas
+`bosque`/`niebla`. No se modificó ningún archivo del panel. No se guardó
+ningún formulario ni se tocaron datos reales.
+
+**Verificación.** `tsc --noEmit`, `npm run lint` y `npm run build` limpios
+(el primer intento de build fell con una violación de acceso en Windows
+porque el `npm run dev` anterior había quedado vivo —`TaskStop` no mata el
+proceso hijo de `next dev` en Windows, hay que matarlo por PID—; al matar
+los `node.exe` sueltos el build corrió limpio). Las rutas públicas siguen
+`○`/`●` (estáticas/SSG, ISR de 1h); solo `/admin/*` es `ƒ` (dinámico),
+como corresponde a rutas con sesión.
+
 ## Pendientes de contenido/credenciales (pedir según se necesiten)
 
 > Lo marcado como `TODO` en `supabase/seed/001_datos_iniciales.sql` sale del sitio
