@@ -5,10 +5,14 @@
 
 ## Estado general
 
-- **Fase actual:** 3 (motor de reservas) o 5 (panel), según lo que decida Cesar.
-  Fases 0, 1 y **2 (sitio público) completadas** el 2026-09-02.
+- **Fase actual:** 3 (motor de reservas). Fases 0, 1, **2 (sitio público)** y
+  **5 (panel administrativo)** completadas el 2026-09-02.
 - **Decisión de alcance:** primero todo el sitio + panel administrativo; motor de reservas y pagos (Wompi) después.
 - **Repo remoto:** https://github.com/GOCAS-Automations/WEBSITE_LaFincaEcohotel.git (push pendiente de confirmación de Cesar; luego se conecta a Vercel).
+- ⚠️ **Existe un usuario temporal de pruebas del panel**
+  (`panel@lafincaecohotel.com`). Se creó con la Admin API de Supabase solo para
+  verificar el panel de punta a punta. **Hay que rotarlo o borrarlo al
+  entregar**, y crear las cuentas reales del equipo del hotel.
 
 ## Decisiones tomadas
 
@@ -29,6 +33,12 @@
 | 2026-09-02 | **Los testimonios se publican sin foto.** Las tres imágenes `sitio/testimonios/*` del bucket son retratos genéricos de archivo que no corresponden a las personas citadas. Se muestran las iniciales. |
 | 2026-09-02 | El FAQ del sitio actual decía "6 cabañas" mientras el catálogo publica 5. Se reescribió la respuesta sin la cifra para que el sitio no se contradiga. **Pendiente de confirmar el número real.** |
 | 2026-09-02 | `/reservar` lee `?cabana=` y `?plan=` desde el CLIENTE (dentro de un `<Suspense>`). Leerlos en el servidor habría vuelto dinámica la ruta y se habría perdido el prerenderizado. |
+| 2026-09-02 | **El `matcher` del middleware cubre solo `/admin`.** El sitio público no puede pagar el costo de leer cookies: perdería el prerenderizado y el ISR de sus 18 rutas. |
+| 2026-09-02 | **El panel guarda "la cabaña" completa en un solo formulario**, aunque en la base viva en tres tablas (`alojamientos`, `imagenes`, `tarifas`). Para el cliente es una sola cosa; partirlo en tres pantallas sería fiel al esquema y ajeno a cómo piensa quien lo usa. La galería se reescribe entera en cada guardado (borrar + insertar en orden): las filas de `imagenes` cambian de `id`, pero conservan URL, texto alternativo y orden. |
+| 2026-09-02 | **El valor del alojamiento de una reserva se autocalcula pero queda editable.** En la práctica se pacta un descuento o un festivo distinto, y un panel que no deje escribir el número real obliga a mentirle a la base. El TOTAL, en cambio, nunca se escribe a mano: es alojamiento + extras. |
+| 2026-09-02 | **El código de reserva (`LF-2026-0001`) se asigna por reintento ante el error 23505**, no leyendo el último y sumando uno: entre la lectura y la escritura cabe otra reserva. Manda el índice único de `reservas.codigo`. |
+| 2026-09-02 | **El módulo de contenido tiene un botón de guardar por bloque**, no uno para toda la pantalla. Con un solo formulario gigante, un campo mal puesto en la portada impediría guardar el pie de página. |
+| 2026-09-02 | **Los estados `completada` cuentan como ocupados en el panel.** El constraint de la base solo cubre `pendiente`/`confirmada` (lo correcto: una estadía pasada no debe impedir escribir), pero el calendario y el buscador de choques sí las muestran, para no ofrecer como libre una noche que sí se usó. |
 
 ## Registro de sesiones
 
@@ -126,11 +136,122 @@ compilaciones: después de cambiar contenido en la base hay que borrar
 `.next/cache` en local, o llamar a `revalidateTag()` en producción. Si no, el
 build reutiliza la respuesta vieja y el cambio no se ve.
 
+### 2026-09-02 — Fase 5 (panel administrativo) — completada
+
+**Autenticación en tres capas** (patrón portado de La Maima).
+
+1. `src/middleware.ts` con `matcher` de `/admin` y `/admin/:path*` únicamente.
+   `actualizarSesion()` (`src/lib/supabase/middleware.ts`) refresca las cookies
+   y resuelve al usuario con **`getUser()`**, que valida el JWT contra el
+   servidor de Auth; `getSession()` solo lee la cookie y no sirve para decidir.
+   `destinoAdminSeguro()` filtra el `?next=`: solo rutas que empiecen por
+   `/admin`, y rechaza `//host` y `/\host` (anti open-redirect).
+2. `requireAdmin()` (`src/lib/admin/auth.ts`) en el layout del panel, en **cada
+   página y en cada Server Action**. El middleware es conveniencia de
+   navegación, no frontera: una Server Action se invoca por POST directo.
+3. RLS como última palabra. El panel usa siempre el cliente con la sesión del
+   administrador; `service_role` **solo** en la limpieza de huérfanos de
+   Storage.
+
+Login en `/admin/login` con `signInWithPassword`, sin registro público y sin
+revelar si un correo existe. `/admin` entero marcado `noindex`.
+
+**Fundamentos (`src/lib/admin/`).** `tipos.ts` (EstadoAccion + etiquetas en
+español de estados y orígenes), `validacion.ts` (validadores que devuelven
+mensajes en español; `enteroRequerido` limpia `.`, `$` y espacios, así que
+"450.000" es válido; `ejecutarAccion()` convierte los errores de validación en
+banner y **re-lanza las señales de Next** —digest `NEXT_REDIRECT` /
+`NEXT_NOT_FOUND`—, sin lo cual un `redirect()` dentro de un `try` deja de
+funcionar; traducción de 23505 / 23503 / 23P01), `fechas.ts` (aritmética sobre
+texto ISO, sin husos horarios; rejilla de mes; `daterange`), `revalidar.ts`,
+`disponibilidad.ts` (explica los choques en español en vez de mostrar el
+23P01), `codigo-reserva.ts`, `limpieza-storage.ts`, `datos.ts`, `slug.ts`.
+
+**Componentes (`src/components/admin/`).** `ui.tsx` con los tokens del sitio
+(crema, petróleo, radios de 12–24 px), `FormularioAccion` (useActionState +
+banner), `BotonEnviar` (useFormStatus + confirmación), `Aviso` (`?ok=`/`?error=`),
+`Chips`, `CampoImagen`, `EditorGaleria`, `EditorLista` (fichas repetibles del
+CMS) y `SelectorArchivo` (botón propio en español: el nativo lo rotula el
+navegador y decía "Choose Files").
+
+**Imágenes.** Route handler en `src/app/admin/api/galeria/subir/route.ts`, bajo
+`/admin` para que lo cubra el middleware: `getUser()` → 401, MIME en lista
+blanca → 415, 10 MB → 413, carpeta validada contra un `Set`, nombre opaco
+`carpeta/AAAA-MM-DD-uuid8.ext`, `cacheControl` de un año y `upsert: false`.
+Nunca se sobrescribe una foto: cada subida crea una ruta nueva, así que las
+direcciones son inmutables. Se puede **subir del dispositivo o pegar una
+dirección** (requisito del cliente). `limpieza-storage.ts` borra lo que ya no
+referencia nadie —recorre `imagenes`, `extras.imagen_url` y todos los strings
+del jsonb de `contenido`—, nunca toca una URL externa y nunca lanza.
+
+**Los cinco módulos.**
+
+- **Reservas** (`/admin/reservas`) — abre en el calendario mensual: filas =
+  cabañas, columnas = días, barras continuas por reserva y navegación de mes por
+  URL (`?mes=2026-09`), así que es un componente de servidor sin estado que se
+  pueda desincronizar. Debajo, listado con filtros por estado. Ficha con
+  huésped, plan, extras, totales y pago. Alta manual con validación de
+  disponibilidad y cálculo automático del subtotal.
+- **Bloqueos** (`/admin/bloqueos`) — crear y quitar por cabaña + rango + motivo,
+  visibles en el calendario en gris.
+- **Cabañas** (`/admin/alojamientos`) — orden, pausar/mostrar, ficha con
+  descripción, comodidades, galería y los tres precios por plan. Borrado
+  defensivo: cuenta reservas antes y explica el motivo.
+- **Experiencias** y **Adicionales** — la misma pantalla con distinto `tipo`
+  de la tabla `extras`.
+- **Contenido del sitio** (`/admin/contenido`) — nueve secciones que cubren las
+  **18 claves** de `docs/CMS_CLAVES.md`. Cada guardado fusiona sobre el jsonb
+  existente (nunca pisa claves que el formulario no muestra), limpia huérfanas
+  y revalida las dos cachés.
+
+**Pruebas end-to-end contra la base real** (Chrome por CDP, `npm run dev`):
+entrada con el usuario de pruebas y vuelta al destino del `?next=`; alta de una
+cabaña con foto subida desde el equipo y su borrado; borrado defensivo
+rechazado por tener reservas; edición de un texto del CMS visible en la portada
+en el acto; cambio de una comodidad visible en `/alojamientos/[slug]` (la
+revalidación del patrón dinámico funciona); alta de una reserva manual con
+extras (código `LF-2026-0001`, total correcto), cambio de estado y borrado;
+bloqueo rechazado por cruzarse con la reserva —con el mensaje explicando con
+qué choca— y bloqueo válido creado y quitado; alta y borrado de un adicional.
+**La base quedó como estaba**: 5 alojamientos, 3 planes, 15 tarifas, 2 extras,
+35 imágenes, 18 filas de contenido, 0 reservas, 0 bloqueos; y el bucket con sus
+91 objetos (la foto de prueba la borró sola la limpieza de huérfanas).
+
+**Revisión visual a 1440 px y 390 px.** Se corrigieron tres cosas: las noches
+seguidas de una reserva se pintaban como cuadritos sueltos en vez de una barra;
+en el celular los botones de las listas se montaban sobre el texto; y el campo
+de orden se estiraba a todo el ancho (`CLASE_INPUT` trae `w-full` y una clase de
+ancho escrita después no siempre gana: en Tailwind manda el orden del CSS
+generado, no el del atributo — el ancho se fija ahora en un contenedor).
+
+**Ojo con `npm run build` mientras corre `npm run dev`:** reescribe `.next` y el
+servidor de desarrollo empieza a devolver 500 hasta que se reinicia.
+
 ## Pendientes de contenido/credenciales (pedir según se necesiten)
 
 > Lo marcado como `TODO` en `supabase/seed/001_datos_iniciales.sql` sale del sitio
 > público actual, no del cliente. Cuando confirme, se corrige el seed y se vuelve
 > a correr `npm run db:aplicar` (es idempotente: actualiza, no duplica).
+
+### Pendientes que dejó la Fase 5 (panel)
+
+- [ ] **Rotar el usuario de pruebas** `panel@lafincaecohotel.com` y crear las
+      cuentas reales del equipo (ver arriba).
+- [ ] **Planes: no hay pantalla propia.** Los tres planes (Entre Semana,
+      Estándar, Premium) y lo que incluye cada uno se editan por SQL. Desde el
+      panel solo se pone su precio en cada cabaña. Si el cliente va a querer
+      cambiar los nombres o el detalle de los planes, hace falta un módulo más.
+- [ ] **Pagos: la ficha de reserva muestra el abono pero no registra
+      transacciones.** La tabla `pagos` está creada y vacía; se llenará desde el
+      webhook de Wompi en la fase de pagos.
+- [ ] **Sin correos al huésped.** Al confirmar una reserva desde el panel no
+      sale ningún correo: falta Resend y el correo emisor. El código está
+      preparado para añadirlo sin tocar la lógica de reservas.
+- [ ] **No hay historial de cambios.** Si alguien borra una reserva o vacía un
+      texto del CMS, no queda rastro. Para el volumen de La Finca es
+      razonable; conviene decirlo en la capacitación.
+- [ ] **Exportar el calendario (iCal)** para sincronizar con Airbnb o Booking:
+      diseñado en el análisis de La Maima, no implementado aquí.
 
 ### Pendientes que dejó la Fase 2 (revisar con el cliente)
 
@@ -176,7 +297,11 @@ build reutiliza la respuesta vieja y el cambio no se ve.
 - [ ] Reglas de reserva: mín. noches, cancelación, check-in/out, mascotas, niños.
 - [ ] Razón social y NIT.
 - [ ] Correo emisor de confirmaciones + cuenta Resend.
-- [ ] Usuarios del panel (nombres y correos).
+- [ ] **Usuarios del panel (nombres y correos).** Hoy solo existe el usuario
+      temporal de pruebas `panel@lafincaecohotel.com`, creado con la Admin API
+      de Supabase. **Rotarlo o borrarlo al entregar.** Las cuentas nuevas se
+      crean desde el panel de Supabase (Authentication → Users, con "Auto
+      Confirm User"): el sitio no tiene registro público a propósito.
 - [ ] Accesos: Hostinger (dominio), Google Business, Analytics.
 - [ ] Cuenta Wompi (documentos, llaves sandbox/producción).
 - [ ] Decisión: pago total vs anticipo.
