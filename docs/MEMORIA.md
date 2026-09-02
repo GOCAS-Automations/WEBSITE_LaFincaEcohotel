@@ -39,6 +39,13 @@
 | 2026-09-02 | **El código de reserva (`LF-2026-0001`) se asigna por reintento ante el error 23505**, no leyendo el último y sumando uno: entre la lectura y la escritura cabe otra reserva. Manda el índice único de `reservas.codigo`. |
 | 2026-09-02 | **El módulo de contenido tiene un botón de guardar por bloque**, no uno para toda la pantalla. Con un solo formulario gigante, un campo mal puesto en la portada impediría guardar el pie de página. |
 | 2026-09-02 | **Los estados `completada` cuentan como ocupados en el panel.** El constraint de la base solo cubre `pendiente`/`confirmada` (lo correcto: una estadía pasada no debe impedir escribir), pero el calendario y el buscador de choques sí las muestran, para no ofrecer como libre una noche que sí se usó. |
+| 2026-09-02 | **La paleta se AMPLÍA, no se retoca.** Se añadieron dos familias nuevas (`bosque` y `niebla`) y no se cambió ni un tono de `petroleo`, `oliva`, `dorado` ni `crema`: esas cuatro las usa también el panel administrativo, y moverlas lo habría teñido entero. Verificado con `git diff`: cero cambios en los tokens viejos. |
+| 2026-09-02 | **La atmósfera (neblina, colibríes, motas) es CSS y SVG puros.** Ni una librería nueva, ni un `requestAnimationFrame`: solo `transform` y `opacity`, que resuelve el compositor. Todo `aria-hidden` + `pointer-events: none`, y `prefers-reduced-motion` lo **apaga** (`animation: none`), no lo acelera. |
+| 2026-09-02 | **Sin `will-change` en las capas de atmósfera.** La portada tiene 15 capas de bruma y 10 motas; declarar `will-change` en las 25 habría reservado 25 capas de composición permanentes en la GPU. Una animación de `transform` que ya corre la promueve el navegador sola. |
+| 2026-09-02 | **La bruma va DEBAJO del degradado en heros y cierres.** Encima, su `mix-blend-screen` aclaraba justo la franja del titular y hundía el contraste por debajo de 4.5:1. Debajo, aclara la foto y el degradado la oscurece a ella también. |
+| 2026-09-02 | **En fondo oscuro sólido, el botón `claro` (cristal blanco al 15 %) NO sirve:** se lee como deshabilitado. Se añadieron las variantes `crema` (relleno, ~10:1) y `contornoClaro`. El petróleo tampoco vale sobre `bosque-900`: 2,2:1, por debajo del 3:1 que pide la norma para el contorno de un control. |
+| 2026-09-02 | **La galería NO añade un campo `destacada`.** El editor del panel guarda solo `url` y `alt`, así que una clave extra se perdería en el primer guardado. Qué foto sale grande lo decide su **posición** dentro de la página, documentado en `docs/CMS_CLAVES.md`. |
+| 2026-09-02 | **La página de la galería vive en el estado del componente, no en la URL.** Meterla en la dirección obligaba a `useSearchParams` y a otro `<Suspense>` a cambio de nada: nadie comparte "la página 3 de la galería". |
 
 ## Registro de sesiones
 
@@ -272,6 +279,108 @@ el texto de prueba aparecía en la portada pública, se revirtió al texto
 original, se guardó de nuevo y se confirmó que la portada volvía a mostrar el
 texto original. **La base quedó exactamente como estaba**: 3 planes (mismo
 `orden` y misma descripción), 15 tarifas, 0 reservas, 5 alojamientos.
+
+### 2026-09-02 — Evolución de diseño del sitio público
+
+**Por qué.** Cesar revisó el sitio terminado y dio la retroalimentación clave:
+funcionaba, pero había quedado *"muy cuadriculado, seguimos mucho el estilo de
+La Maima"* —que era referencia **funcional**, nunca de diseño—. Faltaba lo que
+hace único a este cliente: un ecohotel de montaña entre neblina, bosque y aves.
+Esta sesión no toca lógica de negocio ni el panel: es dirección de arte.
+
+**1. Paleta: de cuatro familias a seis.** Se añadieron `bosque` (verdes
+profundos de bosque de niebla, 50→950) y `niebla` (grises verdosos). Las cuatro
+originales quedaron intactas —lo usa el panel—. El sitio ahora **alterna
+claro/oscuro**: la sección de planes de la portada y los cierres de todas las
+páginas internas caen en `bosque-900`, y el dorado de los precios se lee como
+joyería en vez de como una etiqueta más. Las superposiciones sobre fotografía
+pasaron de gris neutro a verde bosque, que es lo que ata las fotos a la paleta.
+
+**2. Atmósfera (`src/components/sitio/atmosfera.tsx`).** Cuatro piezas, todas de
+servidor, todas decorativas:
+
+- **`<Neblina>`** — tres elipses difusas a la deriva (54 s, 41 s y 67 s, con
+  desfases negativos para que nunca vuelvan a sincronizarse). El difuminado sale
+  del propio `radial-gradient`, no de un `filter: blur()`. Tres tonos: `clara`
+  (sobre foto oscura), `bosque` (dentro del verde) y `verde` (sobre crema, donde
+  el blanco sería invisible). Está en: los dos heros de la portada, todas las
+  cabeceras de páginas internas, la sección de planes, naturaleza, testimonios,
+  galería, experiencias, preguntas, contacto, el lugar y los cierres.
+- **`<Colibri>`** — silueta de línea fina (cuerpo cerrado, pico largo, dos alas
+  barridas y cola ahorquillada), en **tres sitios escogidos**: el hero de la
+  portada, el borde de la sección de experiencias y `/el-lugar`. Flota 11–15 s
+  sin trayectoria evidente; las alas "respiran" cada 3,6 s en vez de aletear
+  —a los 50 golpes por segundo reales solo se vería un parpadeo desagradable—.
+  Se dibujó y se corrigió mirando capturas: la primera versión parecía una
+  golondrina gorda y la segunda un pez volador.
+- **`<Motas>`** — cinco puntos de polen subiendo muy despacio. **Solo sobre
+  fondo oscuro**: sobre crema no se ven, y subirles la opacidad para que se vean
+  parece suciedad en la pantalla.
+- **`<DivisorOrganico>`** — laderas y bancos de niebla entre secciones, con tres
+  perfiles (`cresta`, `loma`, `bruma`). No son ondas seno: los puntos de control
+  están descolocados a propósito para que no se lean como las "waves" de
+  plantilla.
+
+**3. Reservar, más protagonista.**
+
+- El botón del nav pasó de `pequeno` a un tamaño propio (`nav`) y la barra
+  creció de 64 a 72/80 px para que quepa sin apretar.
+- **`<ModuloReserva>` en la portada**: cabaña (con "Cualquier cabaña" primero y
+  por defecto), llegada, salida y botón. **Cabalga sobre el borde del hero**, que
+  es a la vez el gesto que rompe la rejilla y lo que pone la acción en el primer
+  visor. Es un `<form action="/reservar" method="get">` de verdad —funciona sin
+  JavaScript— y con JavaScript se intercepta para omitir parámetros vacíos,
+  avisar de un rango imposible y caer en el ancla del selector.
+- **`/reservar` lee `?entrada=` y `?salida=`** además de `?cabana=` y `?plan=`,
+  desde el cliente dentro del `<Suspense>` existente: **la ruta sigue estática**.
+  Las fechas de la dirección se validan (formato real, no anterior a hoy, salida
+  posterior a la llegada); lo que no pasa el filtro se ignora en silencio. El
+  resumen muestra ahora llegada y salida en formato legible y ya iban en el
+  mensaje de WhatsApp.
+
+**4. Composición menos cuadriculada.** Divisores orgánicos entre secciones; el
+módulo de reserva superpuesto al hero; foto en arco de medio punto en la
+presentación; radios asimétricos en tarjetas de plan, experiencias, testimonios,
+instalaciones y pasos; la foto de COP16 **sangra** fuera del contenedor por la
+izquierda en escritorio; y las tarjetas de cabaña van escalonadas.
+
+⚠️ **El escalón tenía una trampa:** una tarjeta con `h-full` **más** un margen
+superior se sale de su celda por el alto del margen (en CSS Grid `height: 100%`
+se resuelve contra el área de la celda y el margen se suma encima). El botón de
+abajo se montaba sobre la tarjeta. Se compensa con `lg:pb-10` / `lg:pb-12` en la
+lista.
+
+**5. Galería rediseñada.** Mosaico editorial de **12 fotos por página** con
+piezas de tamaños distintos y paginación. El patrón de doce **tesela exacto** en
+los tres anchos (2 columnas = 8 filas, 3 = 6 filas, 4 = 6 filas), y la última
+página —que casi nunca viene llena— usa un reparto calculado que también llena
+todas las filas. El visor recorre **las 31 fotos**, no la página: al pasar de la
+24 a la 25 la cuadrícula de atrás cambia sola de página y, al cerrar, el foco
+vuelve a la miniatura correcta (probado). Sin campo nuevo en el CMS.
+
+**6. WhatsApp flotante:** solo el ícono, sin la palabra "Escríbenos". El
+`aria-label` en español se conserva.
+
+**Verificación.** `tsc --noEmit`, `npm run lint` y `npm run build` limpios. **Las
+18 rutas públicas siguen estáticas/SSG con ISR de una hora**; ninguna cayó a
+render dinámico. Revisión visual real por CDP (Chrome, Playwright) a **1440 px y
+390 px** de portada, listado, ficha, galería (las tres páginas), `/reservar` con
+y sin parámetros, experiencias, el lugar, preguntas y contacto — **tres pasadas**
+con corrección entre ellas. `prefers-reduced-motion` emulado y comprobado por
+estilo calculado: todas las animaciones ambientales quedan en `animation: none`
+y nada desaparece. **El panel no se rompió**: `/admin` no importa ni uno de los
+componentes tocados y los siete tokens que usa resuelven a los mismos valores.
+
+**Lo que se corrigió tras mirar las capturas** (y no antes): la bruma no se veía
+en absoluto con las opacidades iniciales; luego, ya visible, lavaba el titular
+del hero y hubo que meterla debajo del degradado; el colibrí necesitó tres
+versiones; el botón de la tarjeta de plan destacada parecía deshabilitado; había
+seis colibríes repartidos por el sitio y se bajaron a tres; y la última página de
+la galería dejaba un agujero de tres celdas.
+
+**Pendientes que deja esta sesión:** ver la lista de más abajo (fotos en alta
+calidad y el recorte social siguen siendo el techo real de lo que se puede
+lograr visualmente).
 
 ## Pendientes de contenido/credenciales (pedir según se necesiten)
 
