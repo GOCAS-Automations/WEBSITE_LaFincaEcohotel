@@ -10,22 +10,37 @@ import type { ReactNode } from "react";
 
 type PropsSeccion = {
   children: ReactNode;
-  /** Tono de fondo. `crema` alterna con `blanco` para separar secciones. */
-  fondo?: "blanco" | "crema" | "petroleo" | "oliva";
+  /**
+   * Tono de fondo.
+   *
+   * `crema` y `blanco` alternan en el ritmo normal del sitio. `bosque` es el
+   * contraste dramático: una sección oscura entera, para que la página respire
+   * claro/oscuro en vez de ser una tira continua de crema. `niebla` es el
+   * intermedio gris verdoso, cuando dos secciones claras seguidas necesitan
+   * separarse sin llegar al negro.
+   */
+  fondo?: "blanco" | "crema" | "niebla" | "bosque" | "petroleo" | "oliva";
   /** Espaciado vertical. */
-  espacio?: "normal" | "amplio" | "compacto";
+  espacio?: "normal" | "amplio" | "compacto" | "ninguno";
   id?: string;
   className?: string;
+  /** Clases del contenedor interior (para romper el ancho de lectura). */
+  claseContenedor?: string;
+  /** Quita el contenedor: el hijo se encarga de su propio ancho. */
+  sinContenedor?: boolean;
 };
 
 const FONDOS: Record<NonNullable<PropsSeccion["fondo"]>, string> = {
   blanco: "bg-white",
   crema: "bg-crema-50",
+  niebla: "bg-niebla-100",
+  bosque: "bg-bosque-900 text-crema-50",
   petroleo: "bg-petroleo-800 text-crema-50",
   oliva: "bg-oliva-700 text-crema-50",
 };
 
 const ESPACIOS: Record<NonNullable<PropsSeccion["espacio"]>, string> = {
+  ninguno: "",
   compacto: "py-12 sm:py-16",
   normal: "py-16 sm:py-20 lg:py-24",
   amplio: "py-20 sm:py-28 lg:py-32",
@@ -37,6 +52,8 @@ export function Seccion({
   espacio = "normal",
   id,
   className,
+  claseContenedor,
+  sinContenedor = false,
 }: PropsSeccion) {
   return (
     <section
@@ -45,7 +62,15 @@ export function Seccion({
         .filter(Boolean)
         .join(" ")}
     >
-      <div className="contenedor">{children}</div>
+      {sinContenedor ? (
+        children
+      ) : (
+        <div
+          className={["contenedor", claseContenedor].filter(Boolean).join(" ")}
+        >
+          {children}
+        </div>
+      )}
     </section>
   );
 }
@@ -84,7 +109,9 @@ export function EncabezadoSeccion({
         <p
           className={[
             "font-titulo text-xs font-semibold tracking-[0.18em] uppercase",
-            claro ? "text-crema-200" : "text-dorado-600",
+            /* Sobre el verde bosque el crema se apaga; el dorado 300 mantiene
+               el acento cálido de marca y pasa AA de sobra (más de 8:1). */
+            claro ? "text-dorado-300" : "text-dorado-600",
           ].join(" ")}
         >
           {antetitulo}

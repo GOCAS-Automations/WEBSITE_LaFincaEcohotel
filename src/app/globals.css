@@ -9,12 +9,28 @@
 
    La paleta sale del isotipo y del sitio actual (`docs/MARCA.md`):
      · petróleo #027570 — primario (viene del propio logo)
-     · oliva    #5e6033 — secundario (la otra variante real del logo)
+     · oliva    #5e6033 — secundario (la otra variante real del logo); es el
+                          MUSGO de la paleta: el verde tierra de la montaña
      · dorado   #9f6301 — acento: precios y detalles premium
      · crema    #fefbf7 — fondo cálido (el sitio actual nunca usa blanco puro)
 
    Las escalas se generaron alrededor de esos cuatro colores exactos: el tono
    600 de cada familia ES el color de marca, sin retocar.
+
+   EVOLUCIÓN "BOSQUE NUBLADO" (sesión de diseño)
+   ---------------------------------------------------------------------------
+   Las cuatro familias de arriba NO se tocaron: las usa también el panel
+   administrativo y cambiarlas de tono lo habría teñido entero. En su lugar se
+   AÑADIERON dos familias que faltaban para contar el lugar:
+
+     · bosque — verdes profundos de bosque de niebla. Son los fondos oscuros
+                que dan ritmo y drama al sitio (sección de planes, cierres,
+                superposiciones sobre fotografía).
+     · niebla — grises verdosos de neblina. Fondos intermedios, divisores
+                orgánicos y las capas de bruma a la deriva.
+
+   El sitio alterna ahora crema → blanco → BOSQUE → crema: la respiración
+   clara/oscura es lo que le quita el aire de plantilla cuadriculada.
    =========================================================================== */
 
 @theme {
@@ -64,6 +80,32 @@
   --color-dorado-900: #5a3510;
   --color-dorado-950: #341c05;
 
+  /* --- Bosque (verdes profundos: secciones oscuras y superposiciones) ---- */
+  --color-bosque-50: #eff7f2;
+  --color-bosque-100: #d7ece0;
+  --color-bosque-200: #b0d8c3;
+  --color-bosque-300: #7ebc9d;
+  --color-bosque-400: #4e9a77;
+  --color-bosque-500: #2f7c5c;
+  --color-bosque-600: #1f6349;
+  --color-bosque-700: #1a4f3b;
+  --color-bosque-800: #163f30;
+  --color-bosque-900: #123328;
+  --color-bosque-950: #081d17;
+
+  /* --- Niebla (grises verdosos: brumas, divisores, fondos intermedios) --- */
+  --color-niebla-50: #f5f8f7;
+  --color-niebla-100: #e9efed;
+  --color-niebla-200: #d3ded9;
+  --color-niebla-300: #b3c4be;
+  --color-niebla-400: #8ba49d;
+  --color-niebla-500: #6b857e;
+  --color-niebla-600: #556b65;
+  --color-niebla-700: #465753;
+  --color-niebla-800: #3a4845;
+  --color-niebla-900: #333e3b;
+  --color-niebla-950: #1c2422;
+
   /* --- Neutros cálidos (fondo, textos, bordes) -------------------------- */
   --color-crema-50: #fefbf7;
   --color-crema-100: #faf5ec;
@@ -95,9 +137,14 @@
   --shadow-flotante:
     0 4px 12px -2px rgba(2, 117, 112, 0.28),
     0 12px 32px -8px rgba(2, 117, 112, 0.3);
+  /** Para tarjetas apoyadas sobre fondo oscuro (bosque). */
+  --shadow-bosque:
+    0 2px 6px rgba(8, 29, 23, 0.3), 0 18px 40px -14px rgba(8, 29, 23, 0.55),
+    0 40px 80px -40px rgba(8, 29, 23, 0.6);
 
   /* --- Movimiento -------------------------------------------------------- */
   --ease-suave: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-deriva: cubic-bezier(0.45, 0.05, 0.55, 0.95);
 }
 
 /* ---------------------------------------------------------------------------
@@ -220,5 +267,307 @@ p {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
+  }
+}
+
+/* ===========================================================================
+   ATMÓSFERA — neblina, colibríes y motas de luz
+   ---------------------------------------------------------------------------
+   La Finca es un bosque de niebla: el sitio tenía que respirar como uno. Todo
+   lo de aquí es CSS y SVG puros —ni una librería, ni un solo `requestAnimation-
+   Frame`— y solo anima `transform` y `opacity`, que el compositor resuelve sin
+   volver a maquetar la página.
+
+   REGLAS QUE NO SE ROMPEN
+   -----------------------
+   1. Es ambiente, no espectáculo: ciclos de 20 a 70 segundos. Se siente, no se
+      mira. Nada parpadea ni cruza la pantalla llamando la atención.
+   2. Todo es decorativo: los elementos que lo pintan llevan `aria-hidden` y
+      `pointer-events: none`. Un lector de pantalla no oye ni una palabra de
+      esto.
+   3. `prefers-reduced-motion` lo APAGA (`animation: none`), no lo acelera. Cada
+      capa queda en su posición inicial, que ya está compuesta para verse bien
+      quieta: quien pide menos movimiento ve una foto, no un fotograma raro.
+   4. **Sin `will-change`.** La portada acabó con quince capas de bruma y diez
+      motas; declarar `will-change: transform` en las veinticinco habría
+      reservado veinticinco capas de composición permanentes en memoria de GPU
+      —justo lo que hunde el desplazamiento en un teléfono de gama media—. No
+      hace falta: una animación de `transform` que ya está corriendo la promueve
+      el navegador solo. `will-change` sirve para avisar de un movimiento que
+      todavía NO ocurre; aquí ocurre siempre.
+   ========================================================================= */
+
+/* --- Neblina a la deriva --------------------------------------------------
+   Tres elipses difusas de tamaños y velocidades distintas (54 s, 41 s, 67 s,
+   con desfases negativos para que arranquen desincronizadas y NUNCA vuelvan a
+   coincidir). El difuminado sale del propio `radial-gradient`, no de un
+   `filter: blur()`: el gradiente ya nace suave y no obliga al navegador a
+   rasterizar y desenfocar una capa enorme en cada cuadro. */
+
+.neblina {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.neblina__capa {
+  position: absolute;
+  display: block;
+  animation: deriva-niebla 54s var(--ease-deriva) infinite alternate;
+  background: radial-gradient(
+    closest-side,
+    var(--tono-niebla, rgba(255, 255, 255, 0.3)),
+    color-mix(in srgb, var(--tono-niebla, rgba(255, 255, 255, 0.3)) 34%, transparent)
+      52%,
+    transparent 78%
+  );
+}
+
+.neblina__capa:nth-child(1) {
+  left: -28%;
+  top: 2%;
+  width: 96%;
+  height: 58%;
+}
+
+.neblina__capa:nth-child(2) {
+  left: 22%;
+  top: 34%;
+  width: 104%;
+  height: 50%;
+  animation-name: deriva-niebla-contraria;
+  animation-duration: 41s;
+  animation-delay: -13s;
+}
+
+.neblina__capa:nth-child(3) {
+  left: -14%;
+  top: 58%;
+  width: 86%;
+  height: 46%;
+  animation-duration: 67s;
+  animation-delay: -31s;
+}
+
+/**
+ * Los tres tonos.
+ *
+ * Las opacidades se calibraron MIRANDO capturas, no a ojo en el editor: la
+ * primera pasada se quedó tan corta que la bruma no se veía en absoluto sobre
+ * la fotografía del hero. "Sutil" no puede querer decir "invisible": si nadie
+ * la nota, el trabajo no está hecho, solo escondido.
+ */
+
+/** Sobre fotografía oscura o sobre el verde bosque: bruma blanca. */
+.neblina--clara {
+  --tono-niebla: rgba(255, 255, 255, 0.42);
+}
+
+/** Dentro de una sección de bosque profundo: bruma verde pálida. */
+.neblina--bosque {
+  --tono-niebla: rgba(176, 216, 195, 0.3);
+}
+
+/** Sobre crema o blanco: la bruma tiene que ser MÁS oscura que el fondo. */
+.neblina--verde {
+  --tono-niebla: rgba(139, 164, 157, 0.42);
+}
+
+@keyframes deriva-niebla {
+  from {
+    transform: translate3d(-6%, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(9%, -4%, 0) scale(1.16);
+  }
+}
+
+@keyframes deriva-niebla-contraria {
+  from {
+    transform: translate3d(8%, 3%, 0) scale(1.12);
+  }
+  to {
+    transform: translate3d(-9%, -2%, 0) scale(1);
+  }
+}
+
+/* --- Colibrí --------------------------------------------------------------
+   Flotación libre de 11 s por defecto, sin trayectoria evidente: sube, se
+   desplaza y vuelve, con un balanceo de tres grados. Las alas NO aletean a la
+   velocidad real (unos 50 golpes por segundo) porque a esa frecuencia solo se
+   vería un parpadeo desagradable; en su lugar respiran muy despacio y cambian
+   de opacidad, que es lo que insinúa vida sin pedir atención. */
+
+.colibri {
+  animation: colibri-flotar 11s var(--ease-suave) infinite;
+}
+
+.colibri--lento {
+  animation-duration: 15s;
+  animation-delay: -4s;
+}
+
+.colibri--pausado {
+  animation-duration: 13s;
+  animation-delay: -7s;
+}
+
+/* El origen coincide con el hombro del dibujo (viewBox 0 0 100 66): si se
+   escala desde el centro del lienzo, las alas "resbalan" en vez de batir. */
+.colibri__ala {
+  transform-origin: 50px 34px;
+  animation: colibri-ala 3.6s ease-in-out infinite;
+}
+
+@keyframes colibri-flotar {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(-2deg);
+  }
+  25% {
+    transform: translate3d(10px, -13px, 0) rotate(1.5deg);
+  }
+  50% {
+    transform: translate3d(-5px, -21px, 0) rotate(-3deg);
+  }
+  75% {
+    transform: translate3d(-12px, -7px, 0) rotate(0deg);
+  }
+}
+
+@keyframes colibri-ala {
+  0%,
+  100% {
+    transform: scaleY(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scaleY(0.84);
+    opacity: 0.55;
+  }
+}
+
+/* --- Motas de luz ---------------------------------------------------------
+   Solo dentro de las secciones oscuras, donde leen como polen o polvo
+   atravesado por un rayo. Sobre fondo claro serían invisibles o, peor, sucias.
+   Cinco puntos, nada más: a partir de ahí parece nieve. */
+
+.motas {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.motas span {
+  position: absolute;
+  display: block;
+  border-radius: 9999px;
+  background: rgba(240, 214, 152, 0.55);
+  box-shadow: 0 0 8px 2px rgba(240, 214, 152, 0.28);
+  animation: mota-flotar 26s linear infinite;
+}
+
+.motas span:nth-child(1) {
+  left: 12%;
+  top: 68%;
+  width: 3px;
+  height: 3px;
+  animation-duration: 31s;
+  animation-delay: -4s;
+}
+.motas span:nth-child(2) {
+  left: 34%;
+  top: 82%;
+  width: 2px;
+  height: 2px;
+  animation-duration: 24s;
+  animation-delay: -12s;
+}
+.motas span:nth-child(3) {
+  left: 58%;
+  top: 74%;
+  width: 4px;
+  height: 4px;
+  animation-duration: 38s;
+  animation-delay: -20s;
+}
+.motas span:nth-child(4) {
+  left: 76%;
+  top: 88%;
+  width: 2px;
+  height: 2px;
+  animation-duration: 29s;
+  animation-delay: -8s;
+}
+.motas span:nth-child(5) {
+  left: 90%;
+  top: 62%;
+  width: 3px;
+  height: 3px;
+  animation-duration: 34s;
+  animation-delay: -25s;
+}
+
+@keyframes mota-flotar {
+  0% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.75;
+  }
+  80% {
+    opacity: 0.4;
+  }
+  100% {
+    transform: translate3d(26px, -320px, 0);
+    opacity: 0;
+  }
+}
+
+/* --- Cambio de página de la galería ---------------------------------------
+   El mosaico se vuelve a montar entero al pasar de página (cambia su `key`),
+   así que basta una animación de entrada: no hay que orquestar salida y
+   entrada a mano. 380 ms y 10 px, lo justo para que el ojo entienda que el
+   contenido es nuevo y no que la página dio un salto. */
+
+.pagina-galeria {
+  animation: aparecer-pagina 380ms var(--ease-suave) both;
+}
+
+@keyframes aparecer-pagina {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* --- El interruptor general ---------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .neblina__capa,
+  .colibri,
+  .colibri__ala,
+  .motas span {
+    animation: none !important;
+  }
+
+  /* La galería sí conserva su transición, pero instantánea: `both` dejaría el
+     mosaico en el fotograma inicial (invisible) si se anulara la animación. */
+  .pagina-galeria {
+    animation-duration: 0.001ms !important;
+  }
+
+  /* Sin recorrido, las motas se quedarían en `opacity: 0` del primer
+     fotograma; se dejan visibles y quietas, como el polvo de una foto. */
+  .motas span {
+    opacity: 0.5;
   }
 }
