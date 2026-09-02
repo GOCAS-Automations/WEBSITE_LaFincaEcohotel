@@ -397,9 +397,41 @@ El mapa embebido de esta página **no** se configura aquí: sale de
 }
 ```
 
-El orden del arreglo es el orden en pantalla. Conviene poner primero las fotos
-de mayor resolución: la cuadrícula las muestra grandes y una imagen pequeña
-estirada se ve blanda.
+**La forma del jsonb NO cambió** con el rediseño de `/galeria`: sigue siendo
+`url` + `alt`, sin campos nuevos. El editor de galerías del panel (el mismo
+`EditorGaleria` de las cabañas) guarda exactamente estas dos claves, así que no
+hay nada que tocar allí.
+
+### Cómo se destaca una foto (sin campo `destacada`)
+
+La página muestra **12 fotos por página** en un mosaico de piezas de distintos
+tamaños. Qué foto sale grande **depende de su posición dentro de su página**, no
+de una marca en la base. El patrón se repite igual en cada página completa:
+
+| Posición en la página | Cómo se ve en escritorio |
+|---|---|
+| 1.ª | **Grande** (doble de ancho y de alto) |
+| 2.ª | Alta (doble de alto) |
+| 5.ª y 6.ª | Anchas (doble de ancho) |
+| 7.ª | Alta |
+| 8.ª | **Grande** |
+| 11.ª y 12.ª | Anchas |
+| 3.ª, 4.ª, 9.ª, 10.ª | Normales |
+
+Consecuencia práctica para quien edita: **para destacar una foto, súbela a la
+1.ª o la 8.ª posición de su página** (posiciones 1, 8, 13, 20, 25 y 32 del
+arreglo completo). Y conviene seguir poniendo primero las de mayor resolución:
+son las que se muestran grandes y una imagen pequeña estirada se ve blanda.
+
+Se descartó a propósito añadir un campo `destacada`: el editor del panel guarda
+solo `url` y `alt`, así que una clave extra se habría perdido en el primer
+guardado —el sitio mostraría una foto destacada hasta que alguien tocara la
+galería y entonces dejaría de estarlo, sin explicación—. El orden, en cambio, sí
+lo controla el panel y ya se entiende.
+
+La **última página casi nunca viene llena** (31 fotos = 12 + 12 + 7). Ahí no se
+usa el patrón: el mosaico reparte las piezas que queden para que llenen todas
+las filas, sin huecos. No hay que hacer nada especial al editar.
 
 ---
 
