@@ -1,0 +1,175 @@
+import Image from "next/image";
+
+import { HeroPagina } from "@/components/sitio/hero-pagina";
+import { IconoWhatsapp } from "@/components/sitio/iconos";
+import { Boton } from "@/components/ui/boton";
+import { Revelar } from "@/components/ui/revelar";
+import { EncabezadoSeccion, Seccion } from "@/components/ui/seccion";
+import {
+  getContacto,
+  getContenidoExperiencias,
+  getExperiencias,
+  getHeroesListados,
+} from "@/lib/contenido";
+import { formatearCOP } from "@/lib/utils/formato";
+import { enlaceWhatsapp, mensajeExperiencia } from "@/lib/whatsapp";
+
+/**
+ * Experiencias.
+ *
+ * Dos bloques con distinto compromiso: arriba, las que tienen precio publicado
+ * y viven en la tabla `extras` (se venderán dentro de la reserva cuando exista
+ * el motor); abajo, las que el hotel arma a pedido y todavía no tienen tarifa
+ * confirmada. Mezclarlas haría creer que todas cuestan lo mismo.
+ */
+export async function PaginaExperiencias() {
+  const [heroes, contenido, experiencias, contacto] = await Promise.all([
+    getHeroesListados(),
+    getContenidoExperiencias(),
+    getExperiencias(),
+    getContacto(),
+  ]);
+
+  return (
+    <>
+      <HeroPagina
+        hero={heroes.experiencias}
+        migas={[
+          { nombre: "Inicio", ruta: "/" },
+          { nombre: "Experiencias", ruta: "/experiencias" },
+        ]}
+      />
+
+      <Seccion fondo="crema">
+        <p className="mx-auto max-w-2xl text-center text-base leading-relaxed text-crema-700 sm:text-lg">
+          {contenido.intro}
+        </p>
+
+        {experiencias.length > 0 ? (
+          <ul className="mx-auto mt-12 grid max-w-5xl gap-6 sm:grid-cols-2">
+            {experiencias.map((experiencia, indice) => (
+              <Revelar
+                key={experiencia.id}
+                como="li"
+                retraso={indice * 90}
+                className="h-full"
+              >
+                <article className="flex h-full flex-col overflow-hidden rounded-[var(--radius-generoso)] bg-white shadow-[var(--shadow-tarjeta)] ring-1 ring-crema-200/70">
+                  {experiencia.imagen_url ? (
+                    <div className="relative aspect-3/4 bg-crema-200">
+                      <Image
+                        src={experiencia.imagen_url}
+                        alt={`Experiencia ${experiencia.nombre} preparada en una cabaña de La Finca`}
+                        fill
+                        quality={75}
+                        sizes="(min-width: 640px) 45vw, 92vw"
+                        className="object-cover"
+                        priority={indice === 0}
+                      />
+                    </div>
+                  ) : null}
+
+                  <div className="flex flex-1 flex-col gap-3 p-6 sm:p-7">
+                    <h2 className="font-titulo text-xl font-bold text-petroleo-900">
+                      {experiencia.nombre}
+                    </h2>
+                    {experiencia.descripcion ? (
+                      <p className="text-sm leading-relaxed text-crema-700">
+                        {experiencia.descripcion}
+                      </p>
+                    ) : null}
+                    <p className="mt-auto pt-3 font-titulo text-2xl font-extrabold text-dorado-600">
+                      {formatearCOP(experiencia.precio)}
+                      <span className="ml-2 text-sm font-medium text-crema-600">
+                        por estadía
+                      </span>
+                    </p>
+                    <Boton
+                      href={enlaceWhatsapp(
+                        mensajeExperiencia(experiencia.nombre),
+                        contacto.whatsapp,
+                      )}
+                      externo
+                      className="mt-2 w-full"
+                    >
+                      <IconoWhatsapp className="size-5" />
+                      Añadir a mi reserva
+                    </Boton>
+                  </div>
+                </article>
+              </Revelar>
+            ))}
+          </ul>
+        ) : null}
+      </Seccion>
+
+      {contenido.adicionales.length > 0 ? (
+        <Seccion fondo="blanco">
+          <EncabezadoSeccion
+            antetitulo="A pedido"
+            titulo={contenido.adicionales_titulo}
+            descripcion={contenido.adicionales_descripcion}
+          />
+
+          <ul className="mx-auto mt-12 grid max-w-5xl gap-6 sm:grid-cols-2">
+            {contenido.adicionales.map((adicional, indice) => (
+              <Revelar
+                key={adicional.nombre}
+                como="li"
+                retraso={indice * 90}
+                className="h-full"
+              >
+                <article className="flex h-full flex-col overflow-hidden rounded-[var(--radius-generoso)] bg-crema-50 ring-1 ring-crema-200/70">
+                  <div className="relative aspect-3/4 bg-crema-200">
+                    <Image
+                      src={adicional.imagen}
+                      alt={adicional.imagen_alt}
+                      fill
+                      quality={75}
+                      sizes="(min-width: 640px) 45vw, 92vw"
+                      className="object-cover"
+                    />
+                  </div>
+                  <div className="flex flex-1 flex-col gap-3 p-6 sm:p-7">
+                    <h3 className="font-titulo text-xl font-bold text-petroleo-900">
+                      {adicional.nombre}
+                    </h3>
+                    <p className="text-sm leading-relaxed text-crema-700">
+                      {adicional.descripcion}
+                    </p>
+                    <Boton
+                      href={enlaceWhatsapp(
+                        mensajeExperiencia(adicional.nombre),
+                        contacto.whatsapp,
+                      )}
+                      externo
+                      variante="contorno"
+                      className="mt-auto w-full"
+                    >
+                      Consultar precio
+                    </Boton>
+                  </div>
+                </article>
+              </Revelar>
+            ))}
+          </ul>
+        </Seccion>
+      ) : null}
+
+      <Seccion fondo="petroleo" espacio="compacto">
+        <div className="flex flex-col items-center gap-6 text-center">
+          <h2 className="max-w-2xl text-2xl leading-tight font-bold text-white sm:text-3xl">
+            Todas se suman a tu reserva
+          </h2>
+          <p className="max-w-xl text-crema-100/90">
+            Elige primero la cabaña y el plan; la experiencia se añade después y
+            queda lista antes de que llegues.
+          </p>
+          <Boton href="/reservar" variante="claro" tamano="grande">
+            Reservar ahora
+          </Boton>
+        </div>
+      </Seccion>
+    </>
+  );
+}

@@ -1,20 +1,64 @@
-export default function PaginaInicio() {
+import type { Metadata } from "next";
+
+import { PaginaInicio } from "@/components/paginas/inicio";
+import {
+  getAlojamientos,
+  getContacto,
+  getHero,
+  getPrecioDesde,
+  getSeoSitio,
+} from "@/lib/contenido";
+import { grafoHotel } from "@/lib/datos-estructurados";
+import { metadatosPagina, serializarJsonLd } from "@/lib/seo";
+
+export const revalidate = 3600;
+
+export async function generateMetadata(): Promise<Metadata> {
+  const [seo, hero] = await Promise.all([getSeoSitio(), getHero()]);
+
+  return {
+    ...metadatosPagina({
+      titulo: seo.titulo,
+      tituloAbsoluto: true,
+      descripcion: seo.descripcion,
+      ruta: "/",
+      imagen: seo.imagen,
+      tituloSocial: seo.titulo,
+      descripcionSocial: hero.subtitulo,
+    }),
+    keywords: seo.palabras_clave,
+  };
+}
+
+export default async function Inicio() {
+  const [contacto, precioDesde, alojamientos, seo] = await Promise.all([
+    getContacto(),
+    getPrecioDesde(),
+    getAlojamientos(),
+    getSeoSitio(),
+  ]);
+
+  const grafo = grafoHotel({
+    contacto,
+    precioDesde,
+    descripcion: seo.descripcion,
+    numeroDeCabanas: alojamientos.length,
+    imagenes: [
+      seo.imagen.url,
+      ...alojamientos
+        .map((alojamiento) => alojamiento.galeria[0]?.url)
+        .filter((url): url is string => Boolean(url))
+        .slice(0, 4),
+    ],
+  });
+
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col justify-center gap-6 px-6 py-24">
-      <p className="text-sm font-medium tracking-wide text-[var(--verde-claro)] uppercase">
-        La Finca Eco Hotel
-      </p>
-      <h1 className="text-4xl leading-tight font-semibold text-balance text-[var(--verde-bosque)] sm:text-5xl">
-        Sumérgete en un bosque rodeado de neblina y aves
-      </h1>
-      <p className="max-w-xl text-lg text-pretty opacity-80">
-        Ecohotel de montaña a 45 minutos de Cali. Estamos construyendo el nuevo
-        sitio: cabañas, planes, experiencias y reservas en línea.
-      </p>
-      <p className="text-sm opacity-60">
-        Sitio en construcción — Fase 1 completada (base de datos y contenido
-        inicial).
-      </p>
-    </main>
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializarJsonLd(grafo) }}
+      />
+      <PaginaInicio />
+    </>
   );
 }

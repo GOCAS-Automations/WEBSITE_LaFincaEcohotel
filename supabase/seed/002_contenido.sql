@@ -494,6 +494,25 @@ update alojamientos set descripcion = $t$Cabaña con vista panorámica desde cas
 
 
 -- ----------------------------------------------------------------------------
+-- EXPERIENCIAS: detalle real y foto
+--
+-- El sitio actual publica el contenido de las dos experiencias como una lista
+-- (torta, topper, vela, vino, fotos instantáneas…). La tabla `extras` solo
+-- tiene un campo de texto, así que la lista se escribe en prosa, que es como
+-- se lee mejor en la tarjeta.
+-- ----------------------------------------------------------------------------
+update extras set
+  descripcion = $t$Incluye torta para dos, topper de feliz aniversario, vela, botella de vino, 3 fotos instantáneas y arreglo floral o fondue de frutas. Con el plan Premium te llevamos la cena hasta la cabaña.$t$,
+  imagen_url  = 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/experiencias/pw-finca-aniversario-con-amor-21-2-21.webp'
+ where nombre = 'Aniversario con Amor';
+
+update extras set
+  descripcion = $t$Incluye torta para dos, topper de feliz cumpleaños, vela, botella de vino, 3 fotos instantáneas y arreglo floral o fondue de frutas. Con el plan Premium te llevamos la cena hasta la cabaña.$t$,
+  imagen_url  = 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/experiencias/experiencia-cumpleanos-30.webp'
+ where nombre = 'Cumpleaños con Amor';
+
+
+-- ----------------------------------------------------------------------------
 -- GALERÍAS DE LAS CABAÑAS
 --
 -- Se cruzan los archivos `CABANA-N-XX.webp` del manifiesto con la cabaña que
