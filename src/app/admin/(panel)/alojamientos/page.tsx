@@ -119,7 +119,7 @@ export default async function PaginaAlojamientos({
                       )}
                     </div>
 
-                    <div className="min-w-0 flex-1">
+                    <div className="min-w-[9rem] flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <Link
                           href={`/admin/alojamientos/${alojamiento.id}`}
@@ -145,19 +145,25 @@ export default async function PaginaAlojamientos({
                       </p>
                     </div>
 
-                    <div className="flex shrink-0 items-center gap-2">
+                    <div className="flex w-full shrink-0 items-center justify-end gap-2 sm:w-auto">
                       <label className="sr-only" htmlFor={`orden__${alojamiento.id}`}>
                         Orden de {alojamiento.nombre}
                       </label>
-                      <input
-                        id={`orden__${alojamiento.id}`}
-                        name={`orden__${alojamiento.id}`}
-                        type="number"
-                        min={0}
-                        max={9999}
-                        defaultValue={alojamiento.orden ?? 0}
-                        className={`${CLASE_INPUT} w-[4.5rem] px-2 py-1.5 text-center text-[0.8125rem]`}
-                      />
+                      {/* El ancho se fija en el contenedor: `CLASE_INPUT` ya
+                          trae `w-full` y una clase de ancho puesta después no
+                          siempre gana en Tailwind (manda el orden del CSS
+                          generado, no el del atributo). */}
+                      <div className="w-[4.5rem]">
+                        <input
+                          id={`orden__${alojamiento.id}`}
+                          name={`orden__${alojamiento.id}`}
+                          type="number"
+                          min={0}
+                          max={9999}
+                          defaultValue={alojamiento.orden ?? 0}
+                          className={`${CLASE_INPUT} px-2 py-1.5 text-center text-[0.8125rem]`}
+                        />
+                      </div>
                       <Link
                         href={`/admin/alojamientos/${alojamiento.id}`}
                         className="rounded-full px-3 py-1.5 text-[0.8125rem] font-semibold text-petroleo-700 transition-colors hover:bg-petroleo-600/10"

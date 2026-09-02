@@ -90,7 +90,7 @@ export async function ListaExtras({
                   )}
                 </div>
 
-                <div className="min-w-0 flex-1">
+                <div className="min-w-[9rem] flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <Link
                       href={`${ruta}/${extra.id}`}
@@ -110,7 +110,7 @@ export async function ListaExtras({
                   </p>
                 </div>
 
-                <div className="flex shrink-0 flex-wrap items-center gap-1">
+                <div className="flex w-full shrink-0 flex-wrap items-center gap-1 sm:w-auto">
                   <Link
                     href={`${ruta}/${extra.id}`}
                     className="rounded-full px-3 py-1.5 text-[0.8125rem] font-semibold text-petroleo-700 transition-colors hover:bg-petroleo-600/10"

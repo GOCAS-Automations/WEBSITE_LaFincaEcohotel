@@ -26,7 +26,7 @@ import {
   type ReservaAdmin,
 } from "@/lib/admin/tipos";
 import { formatearCOP } from "@/lib/utils/formato";
-import type { Extra } from "@/lib/tipos/basedatos";
+import type { EstadoReserva, Extra } from "@/lib/tipos/basedatos";
 
 /**
  * Formulario de reserva manual: la que se apunta cuando alguien escribe por
@@ -72,6 +72,9 @@ export function FormularioReserva({
     reserva ? String(reserva.subtotal_alojamiento) : "",
   );
   const [subtotalTocado, setSubtotalTocado] = useState(Boolean(reserva));
+  const [estado, setEstado] = useState<EstadoReserva>(
+    reserva?.estado ?? "confirmada",
+  );
 
   const [seleccion, setSeleccion] = useState<Record<string, number>>(() => {
     const inicial: Record<string, number> = {};
@@ -415,23 +418,28 @@ export function FormularioReserva({
                     {marcado && (
                       <label className="flex items-center gap-2 text-[0.75rem] text-crema-700">
                         Cantidad
-                        <input
-                          type="number"
-                          name={`cantidad_${extra.id}`}
-                          min={1}
-                          max={99}
-                          value={cantidad}
-                          onChange={(evento) =>
-                            setSeleccion((actual) => ({
-                              ...actual,
-                              [extra.id]: Math.max(
-                                1,
-                                Number(evento.target.value) || 1,
-                              ),
-                            }))
-                          }
-                          className={`${CLASE_INPUT} w-16 px-2 py-1.5 text-center text-[0.8125rem]`}
-                        />
+                        {/* El ancho va en el contenedor: `CLASE_INPUT` trae
+                            `w-full` y no siempre pierde ante una clase escrita
+                            después. */}
+                        <span className="block w-16">
+                          <input
+                            type="number"
+                            name={`cantidad_${extra.id}`}
+                            min={1}
+                            max={99}
+                            value={cantidad}
+                            onChange={(evento) =>
+                              setSeleccion((actual) => ({
+                                ...actual,
+                                [extra.id]: Math.max(
+                                  1,
+                                  Number(evento.target.value) || 1,
+                                ),
+                              }))
+                            }
+                            className={`${CLASE_INPUT} px-2 py-1.5 text-center text-[0.8125rem]`}
+                          />
+                        </span>
                       </label>
                     )}
                   </li>
@@ -471,16 +479,22 @@ export function FormularioReserva({
           htmlFor="estado"
           obligatorio
           className="sm:col-span-2"
+          /* La explicación va debajo y cambia con la opción elegida: metida
+             dentro de cada <option> se corta en el celular. */
+          ayuda={AYUDA_ESTADO[estado]}
         >
           <Desplegable
             id="estado"
             name="estado"
-            defaultValue={reserva?.estado ?? "confirmada"}
+            value={estado}
+            onChange={(evento) =>
+              setEstado(evento.target.value as EstadoReserva)
+            }
             required
           >
-            {ESTADOS_RESERVA.map((estado) => (
-              <option key={estado} value={estado}>
-                {ETIQUETA_ESTADO[estado]} — {AYUDA_ESTADO[estado]}
+            {ESTADOS_RESERVA.map((opcion) => (
+              <option key={opcion} value={opcion}>
+                {ETIQUETA_ESTADO[opcion]}
               </option>
             ))}
           </Desplegable>

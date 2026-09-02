@@ -198,6 +198,11 @@ export function CalendarioMes({
                           ? ocupacion.get(`${alojamiento.id}|${dias[indice - 1]}`)
                           : undefined
                       }
+                      siguiente={
+                        indice < dias.length - 1
+                          ? ocupacion.get(`${alojamiento.id}|${dias[indice + 1]}`)
+                          : undefined
+                      }
                     />
                   ))}
                 </tr>
@@ -210,16 +215,26 @@ export function CalendarioMes({
   );
 }
 
+/** Identidad de lo que ocupa una celda, para saber si la barra continúa. */
+function identidad(ocupacion?: Ocupacion): string | null {
+  if (!ocupacion) return null;
+  return ocupacion.tipo === "reserva"
+    ? ocupacion.reserva.id
+    : ocupacion.bloqueo.id;
+}
+
 function Celda({
   dia,
   hoy,
   ocupacion,
   anterior,
+  siguiente,
 }: {
   dia: string;
   hoy: string;
   ocupacion?: Ocupacion;
   anterior?: Ocupacion;
+  siguiente?: Ocupacion;
 }) {
   const finde = esFinDeSemana(dia);
   const esHoy = dia === hoy;
@@ -230,70 +245,69 @@ function Celda({
       ? "bg-crema-900/[0.03]"
       : "";
 
-  if (!ocupacion) {
-    return (
-      <td
-        className={`h-9 border-b border-crema-900/[0.05] p-0.5 ${fondoLibre}`}
-      />
-    );
-  }
+  const claseCelda = `h-9 border-b border-crema-900/[0.05] p-0 align-middle ${fondoLibre}`;
 
-  const clave =
-    ocupacion.tipo === "reserva" ? ocupacion.reserva.id : ocupacion.bloqueo.id;
-  const claveAnterior =
-    anterior?.tipo === "reserva"
-      ? anterior.reserva.id
-      : anterior?.tipo === "bloqueo"
-        ? anterior.bloqueo.id
-        : null;
-  const continua = clave === claveAnterior;
+  if (!ocupacion) return <td className={claseCelda} />;
+
+  /* Las noches seguidas de la misma reserva se pintan como UNA barra continua:
+     solo el primer día lleva el nombre y solo los extremos van redondeados. */
+  const clave = identidad(ocupacion);
+  const empieza = clave !== identidad(anterior);
+  const termina = clave !== identidad(siguiente);
+
+  const bordes = `${empieza ? "ml-0.5 rounded-l-[4px] pl-1" : ""} ${
+    termina ? "mr-0.5 rounded-r-[4px]" : ""
+  }`;
 
   if (ocupacion.tipo === "bloqueo") {
     const { bloqueo } = ocupacion;
+    const motivo = bloqueo.motivo ?? "sin motivo";
     return (
-      <td className={`h-9 border-b border-crema-900/[0.05] p-0.5 ${fondoLibre}`}>
-        <span
-          title={`Bloqueo: ${bloqueo.motivo ?? "sin motivo"}`}
-          className={`flex h-full w-full items-center justify-center rounded-[3px] ${COLOR_BLOQUEO}`}
-        >
-          {!continua && (
-            <svg
-              viewBox="0 0 24 24"
-              className="h-3 w-3"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.4"
-              aria-hidden="true"
-            >
-              <path d="M7 11V8a5 5 0 0 1 10 0v3M6 11h12v9H6z" />
-            </svg>
-          )}
-          <span className="sr-only">
-            Bloqueado: {bloqueo.motivo ?? "sin motivo"}
+      <td className={claseCelda}>
+        <div className="flex h-full items-stretch py-1">
+          <span
+            title={`Bloqueo: ${motivo}`}
+            className={`flex flex-1 items-center overflow-hidden ${bordes} ${COLOR_BLOQUEO}`}
+          >
+            {empieza && (
+              <svg
+                viewBox="0 0 24 24"
+                className="h-3 w-3 shrink-0"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                aria-hidden="true"
+              >
+                <path d="M7 11V8a5 5 0 0 1 10 0v3M6 11h12v9H6z" />
+              </svg>
+            )}
+            <span className="sr-only">Bloqueado: {motivo}</span>
           </span>
-        </span>
+        </div>
       </td>
     );
   }
 
   const { reserva } = ocupacion;
   return (
-    <td className={`h-9 border-b border-crema-900/[0.05] p-0.5 ${fondoLibre}`}>
-      <Link
-        href={`/admin/reservas/${reserva.id}`}
-        title={`${reserva.huesped_nombre} · ${reserva.codigo} · ${ETIQUETA_ESTADO[reserva.estado]}`}
-        className={`flex h-full w-full items-center overflow-hidden rounded-[3px] px-0.5 transition-opacity hover:opacity-80 ${COLOR_ESTADO[reserva.estado]}`}
-      >
-        {!continua && (
-          <span className="truncate text-[0.5625rem] font-semibold leading-none">
-            {primerNombre(reserva.huesped_nombre)}
+    <td className={claseCelda}>
+      <div className="flex h-full items-stretch py-1">
+        <Link
+          href={`/admin/reservas/${reserva.id}`}
+          title={`${reserva.huesped_nombre} · ${reserva.codigo} · ${ETIQUETA_ESTADO[reserva.estado]}`}
+          className={`flex flex-1 items-center overflow-hidden transition-opacity hover:opacity-80 ${bordes} ${COLOR_ESTADO[reserva.estado]}`}
+        >
+          {empieza && (
+            <span className="truncate text-[0.5625rem] font-semibold leading-none">
+              {primerNombre(reserva.huesped_nombre)}
+            </span>
+          )}
+          <span className="sr-only">
+            {reserva.huesped_nombre}, reserva {reserva.codigo},{" "}
+            {ETIQUETA_ESTADO[reserva.estado]}
           </span>
-        )}
-        <span className="sr-only">
-          {reserva.huesped_nombre}, reserva {reserva.codigo},{" "}
-          {ETIQUETA_ESTADO[reserva.estado]}
-        </span>
-      </Link>
+        </Link>
+      </div>
     </td>
   );
 }

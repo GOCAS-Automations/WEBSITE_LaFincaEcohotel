@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { SelectorArchivo } from "./selector-archivo";
 import { CLASE_INPUT } from "./ui";
 import {
   AYUDA_DIRECCION,
@@ -268,12 +269,11 @@ function MiniCampoImagen({
           placeholder="https://…"
           className={`${CLASE_INPUT} py-1.5 text-[0.75rem]`}
         />
-        <input
-          type="file"
-          accept="image/jpeg,image/png,image/webp,image/avif"
-          disabled={subiendo}
-          onChange={(evento) => void subir(evento.target.files)}
-          className="block w-full text-[0.6875rem] text-crema-600 file:mr-2 file:rounded-full file:border-0 file:bg-petroleo-600 file:px-3 file:py-1 file:text-[0.6875rem] file:font-semibold file:text-white hover:file:bg-petroleo-700"
+        <SelectorArchivo
+          compacto
+          etiqueta="Elegir foto"
+          deshabilitado={subiendo}
+          onArchivos={(archivos) => void subir(archivos)}
         />
         {subiendo && (
           <p className="text-[0.6875rem] font-medium text-petroleo-700">

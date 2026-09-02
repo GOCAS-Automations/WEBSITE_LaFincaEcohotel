@@ -94,7 +94,7 @@ export default async function PaginaBloqueos({
                       key={bloqueo.id}
                       className="flex flex-wrap items-center gap-3 px-4 py-3.5 sm:px-6"
                     >
-                      <div className="min-w-0 flex-1">
+                      <div className="min-w-[12rem] flex-1">
                         <p className="text-[0.9375rem] font-semibold text-crema-900">
                           {bloqueo.alojamiento_nombre ?? "Cabaña"}
                           <span className="mx-2 font-normal text-crema-400">
@@ -142,7 +142,7 @@ export default async function PaginaBloqueos({
                     key={bloqueo.id}
                     className="flex flex-wrap items-center gap-3 px-4 py-3 sm:px-6"
                   >
-                    <p className="min-w-0 flex-1 text-[0.8125rem] text-crema-600">
+                    <p className="min-w-[12rem] flex-1 text-[0.8125rem] text-crema-600">
                       {bloqueo.alojamiento_nombre ?? "Cabaña"}
                       <span className="mx-1.5">·</span>
                       {rangoCorto(bloqueo.inicio, bloqueo.fin)}

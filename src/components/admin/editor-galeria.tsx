@@ -1,8 +1,9 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import type { ReactNode } from "react";
 
+import { nombreDeArchivo, SelectorArchivo } from "./selector-archivo";
 import { CLASE_INPUT } from "./ui";
 import {
   AYUDA_DIRECCION,
@@ -47,7 +48,6 @@ export function EditorGaleria({
   const [direccion, setDireccion] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [subiendo, setSubiendo] = useState(false);
-  const campoArchivo = useRef<HTMLInputElement>(null);
 
   function mover(indice: number, delta: number) {
     const destino = indice + delta;
@@ -109,7 +109,6 @@ export function EditorGaleria({
       // medias: repetirlas dejaría copias sueltas en el bucket.
       if (anadidas.length) setItems((actuales) => [...actuales, ...anadidas]);
       setSubiendo(false);
-      if (campoArchivo.current) campoArchivo.current.value = "";
     }
   }
 
@@ -157,7 +156,7 @@ export function EditorGaleria({
                   className="truncate text-[0.75rem] text-crema-600"
                   title={item.url}
                 >
-                  {item.url}
+                  {nombreDeArchivo(item.url)}
                 </p>
                 <input
                   type="text"
@@ -215,15 +214,13 @@ export function EditorGaleria({
           <p className="mt-1 text-[0.75rem] leading-relaxed text-crema-600">
             JPG, PNG o WebP. Máximo 10 MB por foto. Puedes elegir varias a la vez.
           </p>
-          <input
-            ref={campoArchivo}
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/avif"
-            multiple
-            disabled={subiendo}
-            onChange={(evento) => void subir(evento.target.files)}
-            className="mt-2.5 block w-full text-[0.8125rem] text-crema-600 file:mr-3 file:rounded-full file:border-0 file:bg-petroleo-600 file:px-4 file:py-2 file:text-[0.8125rem] file:font-semibold file:text-white hover:file:bg-petroleo-700"
-          />
+          <div className="mt-2.5">
+            <SelectorArchivo
+              multiple
+              deshabilitado={subiendo}
+              onArchivos={(archivos) => void subir(archivos)}
+            />
+          </div>
           {subiendo && (
             <p className="mt-2 text-[0.75rem] font-medium text-petroleo-700">
               Subiendo…

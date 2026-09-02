@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 
+import { SelectorArchivo } from "./selector-archivo";
 import { CLASE_INPUT } from "./ui";
 import {
   AYUDA_DIRECCION,
@@ -37,7 +38,6 @@ export function CampoImagen({
   const [subiendo, setSubiendo] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rota, setRota] = useState(false);
-  const campoArchivo = useRef<HTMLInputElement>(null);
 
   function aplicar(nueva: string) {
     setUrl(nueva);
@@ -71,7 +71,6 @@ export function CampoImagen({
       setError(fallo instanceof Error ? fallo.message : "No se pudo subir la imagen.");
     } finally {
       setSubiendo(false);
-      if (campoArchivo.current) campoArchivo.current.value = "";
     }
   }
 
@@ -113,14 +112,10 @@ export function CampoImagen({
           )}
 
           <div>
-            <input
-              ref={campoArchivo}
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/avif"
-              disabled={subiendo}
-              onChange={(evento) => void subir(evento.target.files)}
-              aria-label="Subir una imagen desde este dispositivo"
-              className="block w-full text-[0.8125rem] text-crema-600 file:mr-3 file:rounded-full file:border-0 file:bg-petroleo-600 file:px-4 file:py-2 file:text-[0.8125rem] file:font-semibold file:text-white hover:file:bg-petroleo-700"
+            <SelectorArchivo
+              etiqueta="Elegir foto"
+              deshabilitado={subiendo}
+              onArchivos={(archivos) => void subir(archivos)}
             />
             {subiendo && (
               <p className="mt-1.5 text-[0.75rem] font-medium text-petroleo-700">
