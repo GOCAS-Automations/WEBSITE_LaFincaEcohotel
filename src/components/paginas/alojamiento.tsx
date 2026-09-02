@@ -84,7 +84,9 @@ export async function PaginaAlojamiento({
                   <IconoPersonas className="size-4 text-petroleo-500" />
                   Hasta {alojamiento.capacidad} personas
                 </span>
-                <span className="text-crema-400" aria-hidden="true">
+                {/* En móvil los dos datos van en líneas distintas: el punto
+                    separador se quedaría colgando al final de la primera. */}
+                <span className="hidden text-crema-400 sm:inline" aria-hidden="true">
                   ·
                 </span>
                 <span>Km 18 vía Cali–Buenaventura</span>
