@@ -14,8 +14,14 @@ import type { ComponentProps, ReactNode } from "react";
  * `:focus-visible` global de `globals.css`.
  */
 
-export type VarianteBoton = "primario" | "secundario" | "contorno" | "claro";
-export type TamanoBoton = "normal" | "grande" | "pequeno";
+export type VarianteBoton =
+  | "primario"
+  | "secundario"
+  | "contorno"
+  | "claro"
+  | "crema"
+  | "contornoClaro";
+export type TamanoBoton = "normal" | "grande" | "pequeno" | "nav";
 
 const BASE =
   "inline-flex items-center justify-center gap-2 rounded-full font-titulo font-semibold " +
@@ -33,12 +39,35 @@ const VARIANTES: Record<VarianteBoton, string> = {
   /** Sobre fotografía: cristal translúcido, como los controles de iOS. */
   claro:
     "bg-white/15 text-white ring-1 ring-white/40 backdrop-blur-md hover:bg-white/25 hover:ring-white/60",
+  /**
+   * Acción principal sobre una sección de bosque profundo.
+   *
+   * El petróleo de `primario` NO sirve ahí: sobre `bosque-900` su superficie
+   * queda en 2,2:1 contra el fondo y la norma pide 3:1 para el contorno de un
+   * control (WCAG 1.4.11). El crema llega a 12:1 y, de paso, es lo que hace que
+   * el botón se lea como un claro entre los árboles.
+   */
+  crema:
+    "bg-crema-50 text-bosque-900 shadow-[0_2px_8px_rgba(8,29,23,0.35),0_14px_32px_-12px_rgba(8,29,23,0.6)] " +
+    "hover:bg-white hover:shadow-[0_3px_10px_rgba(8,29,23,0.4),0_18px_40px_-14px_rgba(8,29,23,0.65)]",
+  /** Acción secundaria sobre bosque: contorno con el contraste suficiente. */
+  contornoClaro:
+    "bg-transparent text-crema-50 ring-1 ring-crema-100/50 hover:bg-white/10 hover:ring-crema-100/80",
 };
 
 const TAMANOS: Record<TamanoBoton, string> = {
   pequeno: "px-4 py-2 text-sm",
   normal: "px-6 py-3 text-[0.95rem]",
   grande: "px-7 py-3.5 text-base sm:px-8 sm:py-4 sm:text-[1.05rem]",
+  /**
+   * El "Reservar" de la barra superior.
+   *
+   * Tiene su propio tamaño —y no `normal` con clases sueltas encima— porque en
+   * Tailwind gana el orden del CSS generado, no el del atributo `class`: un
+   * `px-5` escrito después de un `px-6` no siempre manda. Cualquier medida que
+   * deba imponerse sobre la de la tabla tiene que vivir EN la tabla.
+   */
+  nav: "px-5 py-2.5 text-[0.95rem] sm:px-7 sm:py-3",
 };
 
 export function clasesBoton(
