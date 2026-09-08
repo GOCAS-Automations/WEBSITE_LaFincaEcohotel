@@ -1,13 +1,16 @@
 # Qué necesitamos de La Finca para terminar el sitio
 
-**Para:** Juan Camilo Mejía · **De:** Cesar Castaño — GOCAS Automations · **Fecha:** 8 de septiembre de 2026
+**Para:** equipo de La Finca Eco Hotel · **De:** Cesar Castaño — GOCAS Automations · **Fecha:** 8 de septiembre de 2026
 
-El sitio nuevo ya está armado: todas las páginas y el panel para que el equipo del
-hotel administre contenido, cabañas, experiencias y reservas por su cuenta.
-Para terminarlo nos faltan los datos y accesos de abajo.
+Estamos armando la primera versión del sitio nuevo: es una **beta en construcción**.
+Para seguir avanzando nos faltan los datos y accesos de abajo.
 
-> **Lo único que necesito de ti:** decirme a quién le pido cada cosa.
-> Los contactos que tengo son **Camilo** (accesos y Drive) y **Santiago** (marca).
+> **Cómo nos ayudan:** decirnos quién nos consigue cada cosa —o mandárnoslo directo—.
+> Contactos: **Camilo** (accesos y Drive), **Santiago** (marca) y **Amapola**.
+> **Juan Camilo Mejía** ayuda a repartir la lista dentro del equipo.
+
+> **Lo más urgente (4 puntos):** logo original (1.1), documento de identidad de marca (1.2),
+> fotos en alta calidad (2.1) y precio de cada cabaña (5.1).
 
 **Prioridad:** 🔴 sin esto no se puede publicar · 🟡 se necesita antes de entregar · 🟢 puede llegar después
 
@@ -22,7 +25,7 @@ Para terminarlo nos faltan los datos y accesos de abajo.
 | | Qué necesitamos | Para qué | ¿Quién? |
 |---|---|---|---|
 | 🔴 | Logo oficial en vectorial (.ai, .svg o .pdf) | Hoy usamos el del sitio actual, a 513 px | |
-| 🟡 | Manual de marca o colores oficiales | Confirmar la paleta que aplicamos: verde petróleo, oliva y dorado | |
+| 🔴 | Documento de identidad de marca | Manual con colores, tipografías y usos del logo. **Amapola mencionó que podría existir** | |
 | 🟢 | Licencia de la tipografía **Intro** | Es la del sitio actual y es comercial. Mientras tanto usamos una equivalente | |
 
 ## 2. Fotos y video
@@ -48,7 +51,7 @@ Para terminarlo nos faltan los datos y accesos de abajo.
 | | Qué necesitamos | Para qué | ¿Quién? |
 |---|---|---|---|
 | 🔴 | Razón social y NIT | Van en el pie de página y en los documentos legales | |
-| 🔴 | Aprobación de los 4 documentos legales | Privacidad, términos, tratamiento de datos y cancelación. Ya están redactados como borrador, listos para revisar | |
+| 🔴 | Revisión de los 4 textos legales | Privacidad, términos, tratamiento de datos y cancelación. Los borradores los hacemos nosotros; ellos los leen y aprueban | |
 
 ## 5. Tarifas y reglas de la casa
 
