@@ -11,6 +11,10 @@ Para terminarlo nos faltan los datos y accesos de abajo.
 
 **Prioridad:** 🔴 sin esto no se puede publicar · 🟡 se necesita antes de entregar · 🟢 puede llegar después
 
+> **Documento oficial:** este archivo es la copia de trabajo del equipo. El que se envía al
+> cliente es `EcoHotel - La Finca/Requerimientos_LaFinca.pdf` (`DOC-LF-2026-02`), generado
+> desde `html/Requerimientos_LaFinca.html` con la identidad de GOCAS. Si cambia uno, actualizar el otro.
+
 ---
 
 ## 1. Marca
@@ -58,7 +62,18 @@ Para terminarlo nos faltan los datos y accesos de abajo.
 
 ---
 
-## 6. Seis preguntas rápidas
+## 6. Pagos en línea
+
+> GOCAS nunca toca el dinero de La Finca: la cuenta de Wompi se abre a nombre del hotel
+> y el dinero de cada reserva llega directo a su cuenta bancaria.
+
+| | Qué necesitamos | Para qué | ¿Quién? |
+|---|---|---|---|
+| 🔴 | Cuenta bancaria de La Finca | Donde Wompi consignará el dinero de las reservas, entre 1 y 3 días hábiles después de cada pago | |
+| 🔴 | Documentos para abrir la cuenta Wompi | Cámara de comercio, RUT, cédula del representante legal y RNT. Sin la cuenta abierta no se puede cobrar en línea | |
+| 🔴 | ¿Pago total o anticipo al reservar? | Definir si el huésped paga toda la estadía o solo una parte (30 %, 50 %). Se puede cambiar después desde el panel | |
+
+## 7. Seis preguntas rápidas
 
 Dudas que salieron del sitio actual y que no podemos resolver por nuestra cuenta:
 
