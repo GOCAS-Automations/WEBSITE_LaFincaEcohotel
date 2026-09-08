@@ -1,16 +1,17 @@
 # Qué necesitamos de La Finca para terminar el sitio
 
-**Para:** equipo de La Finca Eco Hotel · **De:** Cesar Castaño — GOCAS Automations · **Fecha:** 8 de septiembre de 2026
+**Para:** Juan Camilo Mejía · **De:** Cesar Castaño — GOCAS Automations · **Fecha:** 8 de septiembre de 2026
 
 Estamos armando la primera versión del sitio nuevo: es una **beta en construcción**.
 Para seguir avanzando nos faltan los datos y accesos de abajo.
 
-> **Cómo nos ayudan:** decirnos quién nos consigue cada cosa —o mandárnoslo directo—.
-> Contactos: **Camilo** (accesos y Drive), **Santiago** (marca) y **Amapola**.
-> **Juan Camilo Mejía** ayuda a repartir la lista dentro del equipo.
+> **Lo que necesitamos de Juan Camilo:** decirnos a quién le pedimos cada cosa.
+> Amapola (dueña) pidió delegar estos requerimientos entre los contactos que pasó:
+> **Camilo** (accesos y Drive) y **Santiago** (marca).
+> El **documento de identidad de marca lo envía Amapola directamente** — ese no se delega.
 
-> **Lo más urgente (4 puntos):** logo original (1.1), documento de identidad de marca (1.2),
-> fotos en alta calidad (2.1) y precio de cada cabaña (5.1).
+> **Lo más urgente (3 puntos):** logo original (1.1), fotos en alta calidad (2.1)
+> y precio de cada cabaña (5.1).
 
 **Prioridad:** 🔴 sin esto no se puede publicar · 🟡 se necesita antes de entregar · 🟢 puede llegar después
 
@@ -25,7 +26,7 @@ Para seguir avanzando nos faltan los datos y accesos de abajo.
 | | Qué necesitamos | Para qué | ¿Quién? |
 |---|---|---|---|
 | 🔴 | Logo oficial en vectorial (.ai, .svg o .pdf) | Hoy usamos el del sitio actual, a 513 px | |
-| 🔴 | Documento de identidad de marca | Manual con colores, tipografías y usos del logo. **Amapola mencionó que podría existir** | |
+| 🔴 | Documento de identidad de marca | Manual con colores, tipografías y usos del logo | **Amapola** (quedó de enviarlo) |
 | 🟢 | Licencia de la tipografía **Intro** | Es la del sitio actual y es comercial. Mientras tanto usamos una equivalente | |
 
 ## 2. Fotos y video
