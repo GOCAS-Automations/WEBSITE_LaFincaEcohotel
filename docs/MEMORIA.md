@@ -422,6 +422,22 @@ los `node.exe` sueltos el build corrió limpio). Las rutas públicas siguen
 `○`/`●` (estáticas/SSG, ISR de 1h); solo `/admin/*` es `ƒ` (dinámico),
 como corresponde a rutas con sesión.
 
+### 2026-09-08 — Documento de requerimientos para el cliente
+
+Se consolidó en `docs/SOLICITUD_REQUERIMIENTOS.md` todo lo que falta pedirle a La
+Finca: los pendientes del §12 del plan más los que dejaron las fases 2 y 5. **Se
+excluyó a propósito todo lo de pagos** (cuenta Wompi, llaves, decisión de anticipo
+vs pago total), por indicación de Cesar.
+
+Son 24 puntos en 6 bloques: marca, fotos y video, accesos, datos legales, tarifas y
+reglas, y seis preguntas de contenido. Cada punto lleva prioridad (bloquea la
+publicación / antes de entregar / puede esperar) y una casilla de responsable.
+
+Va dirigido a **Juan Camilo Mejía** (arquitecto anterior) para que indique a quién
+pedirle cada cosa; los otros contactos son **Camilo** (accesos y Drive) y
+**Santiago** (marca). También se publicó como página web compartible, con la misma
+información y la asignación de responsable marcable.
+
 ## Pendientes de contenido/credenciales (pedir según se necesiten)
 
 > Lo marcado como `TODO` en `supabase/seed/001_datos_iniciales.sql` sale del sitio
