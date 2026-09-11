@@ -36,7 +36,12 @@ export const SITIO = {
     pais: "Colombia",
     direccionCompleta:
       "Km 18 vía Cali–Buenaventura, Vereda Loma Alta, Valle del Cauca, Colombia",
-    horarioRestaurante: "8:00 a. m. – 11:00 p. m., todos los días",
+    /* El sitio viejo decía 8:00 a. m. – 11:00 p. m. El hotel confirmó el
+       horario real en septiembre de 2026 (§6 de `docs/DATOS_CLIENTE.md`), y
+       además aclaró que el restaurante es SOLO para huéspedes: publicarlo sin
+       esa coletilla traía gente a almorzar que no podía entrar. */
+    horarioRestaurante:
+      "9:00 a. m. – 8:00 p. m., todos los días · exclusivo para huéspedes",
   },
 
   /** Coordenadas aproximadas del Km 18 (vía Cali–Buenaventura). */
@@ -62,16 +67,24 @@ export const SITIO = {
 
   /**
    * Condiciones de estadía. Están aquí porque las publican a la vez los datos
-   * estructurados y los documentos legales: si mañana cambia el horario de
-   * entrada, debe cambiar en un solo sitio.
+   * estructurados, las preguntas frecuentes y los documentos legales: si mañana
+   * cambia el horario de entrada, debe cambiar en un solo sitio.
    *
-   * TODO confirmar con el cliente (§12 del plan): horas de check-in/out y
-   * mínimo de noches. Los valores actuales son los habituales del sector, no
-   * los del hotel.
+   * CONFIRMADAS por el hotel en septiembre de 2026 (§5 de
+   * `docs/DATOS_CLIENTE.md`). Antes eran los valores habituales del sector; el
+   * check-out real es la 1:00 p. m., no el mediodía.
+   *
+   * `llegadaZonas` no es el check-in: desde la 1:00 p. m. ya se pueden usar el
+   * restaurante, los senderos y las zonas sociales, aunque la cabaña se
+   * entregue a las 3:00 p. m.
+   *
+   * TODO (Amapola): ¿aplica mínimo de noches en fines de semana o festivos?
+   * Entre semana confirmaron que no hay mínimo.
    */
   estadia: {
+    llegadaZonas: "13:00",
     checkIn: "15:00",
-    checkOut: "12:00",
+    checkOut: "13:00",
     admiteMascotas: true,
     permiteFumar: false,
   },
@@ -178,14 +191,20 @@ export const LEGAL_ACTUALIZADO = "2026-09-02";
 /**
  * Imagen de OpenGraph / Twitter cuando una página no aporta la suya.
  *
- * TODO: falta un recorte dedicado a 1200×630 en el bucket. Mientras tanto se
- * usa el banner del hero, que es el que mejor sobrevive al recorte central que
- * hacen WhatsApp y Facebook. Las medidas declaradas son una pista de
- * proporción para los lectores de OpenGraph.
+ * Es una tarjeta DEDICADA de 1200×630, compuesta con
+ * `npm run imagenes:social` (`scripts/generar-imagen-social.mjs`): una foto
+ * oficial del corredor abierto al bosque, el velo de petróleo de la marca, el
+ * isotipo en blanco y el wordmark. Antes se compartía el banner del hero y se
+ * declaraba 1200×630 sin serlo: WhatsApp y Facebook recortan al centro, y ese
+ * recorte se comía el cielo y la cabaña.
+ *
+ * Si se regenera, la ruta NO cambia: las redes cachean la URL durante semanas
+ * y una dirección nueva significa que los enlaces ya compartidos siguen
+ * mostrando la imagen vieja.
  */
 export const IMAGEN_SOCIAL = {
-  url: medio("sitio/home/banner-img-1075-baja-2.webp"),
+  url: medio("sitio/social/tarjeta-og-1200x630.webp"),
   ancho: 1200,
   alto: 630,
-  alt: "La Finca Eco Hotel, bosque de niebla en el Valle del Cauca",
+  alt: "La Finca Eco Hotel — cabañas en el bosque de niebla del Km 18, cerca de Cali",
 } as const;

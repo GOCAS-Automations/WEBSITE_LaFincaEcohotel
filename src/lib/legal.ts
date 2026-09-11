@@ -17,8 +17,14 @@
  * cancelación son una propuesta, no una decisión suya. El pendiente está
  * anotado en `docs/MEMORIA.md`.
  *
+ * ACTUALIZACIÓN (septiembre de 2026): las reglas de negocio ya NO son una
+ * propuesta nuestra. La política de cancelación, las condiciones de pago y los
+ * horarios de llegada y salida son los que el hotel confirmó en
+ * `docs/DATOS_CLIENTE.md`. Lo que sigue pendiente es la revisión jurídica y la
+ * aprobación de Amapola sobre la REDACCIÓN.
+ *
  * Datos que faltan y hay que completar cuando el cliente los entregue:
- * razón social y NIT, correo de notificaciones y decisión sobre anticipo.
+ * razón social y NIT (Raquel Lenis) y el correo de notificaciones (Amapola).
  */
 import type { ContactoSitio } from "./contenido";
 import { LEGAL_ACTUALIZADO, SITIO } from "./sitio";
@@ -206,8 +212,10 @@ export function documentosLegales(
           bloques: [
             lista([
               "Todos los precios se expresan en pesos colombianos (COP) e incluyen los impuestos aplicables, salvo que se indique lo contrario.",
-              "La tarifa corresponde al plan elegido (Entre Semana, Estándar o Premium) por noche y para dos personas.",
+              "La tarifa corresponde al plan elegido (Entre Semana, Estándar o Premium) por noche y para dos personas. El plan Día de Calma se cobra por el día y no incluye hospedaje.",
               "Las experiencias y servicios adicionales se cobran aparte de la tarifa de alojamiento.",
+              "Para confirmar la reserva se paga un anticipo del 50 %. El 50 % restante se paga el día de la llegada, mediante un link de pago que enviamos con anticipación.",
+              "En La Finca no hay datáfono ni se maneja efectivo. Nunca solicitamos datos de tarjeta por WhatsApp ni por ningún otro canal de mensajería.",
               "Los pagos en línea se procesan a través de una pasarela autorizada. No almacenamos los datos de tu medio de pago.",
             ]),
           ],
@@ -216,10 +224,13 @@ export function documentosLegales(
           titulo: "5. Llegada, salida y estadía",
           bloques: [
             p(
-              `El horario de entrada es a partir de las ${SITIO.estadia.checkIn} y el de salida hasta las ${SITIO.estadia.checkOut}. Los cambios de horario dependen de la disponibilidad y deben acordarse previamente.`,
+              `Desde las ${SITIO.estadia.llegadaZonas} puedes usar el restaurante, los senderos, los decks y las zonas sociales. La cabaña se entrega a las ${SITIO.estadia.checkIn} y la salida es hasta las ${SITIO.estadia.checkOut}. Los cambios de horario dependen de la disponibilidad y deben acordarse previamente.`,
             ),
             p(
-              "El restaurante atiende todos los días en el horario publicado en el sitio. El desayuno está incluido en los tres planes.",
+              "El restaurante atiende todos los días en el horario publicado en el sitio y es de uso exclusivo para huéspedes. El desayuno está incluido en los tres planes de hospedaje.",
+            ),
+            p(
+              "La experiencia está diseñada para parejas adultas. Recibimos bebés de hasta diez (10) meses, que se alojan con su madre y no generan costo; no disponemos de cuna ni de silla alta.",
             ),
           ],
         },
@@ -232,7 +243,7 @@ export function documentosLegales(
             lista([
               "No se permite el ingreso de vehículos a la propiedad. El parqueadero es externo y vigilado 24 horas.",
               "El recorrido del bosque se hace únicamente por los senderos habilitados. No está permitido internarse en el bosque.",
-              "Las mascotas son bienvenidas en todas las áreas, bajo la responsabilidad y el cuidado permanente de sus acompañantes.",
+              "Las mascotas son bienvenidas en todas las áreas, bajo la responsabilidad y el cuidado permanente de sus acompañantes. La primera no tiene costo; a partir de la segunda se cobra el valor publicado por estadía.",
               "No está permitido fumar dentro de las cabañas ni en las zonas cerradas.",
               "No se permite encender fuego fuera de los espacios dispuestos para ello.",
               "Te pedimos cuidar el descanso de los demás huéspedes: somos pocas cabañas y el silencio es parte de lo que se viene a buscar.",
@@ -404,12 +415,29 @@ export function documentosLegales(
     },
 
     /* ------------------------------------------------------------------ */
+    /*
+     * POLÍTICA DE CANCELACIÓN — reescrita con las reglas REALES del hotel
+     * ------------------------------------------------------------------
+     * La versión anterior proponía una escala de plazos (100 % / 50 % / 0 %)
+     * que era razonable en el sector pero que NO era la del hotel: nos la
+     * habíamos inventado a falta de dato. En septiembre de 2026 el cliente
+     * confirmó la suya (§5 de `docs/DATOS_CLIENTE.md`) y es bastante más
+     * estricta: sin reembolsos, un solo cambio de fecha y con tres días de
+     * antelación.
+     *
+     * Publicar la propuesta en vez de la real habría sido peor que no publicar
+     * nada: un huésped puede reclamar con el texto del sitio en la mano.
+     *
+     * ⚠ SIGUE SIENDO UN BORRADOR EN LO JURÍDICO: las reglas de negocio son las
+     * del hotel, pero la redacción y el encaje con el Estatuto del Consumidor
+     * los tiene que aprobar el cliente (Amapola) antes del lanzamiento.
+     */
     cancelacion: {
       titulo: "Política de cancelación y reembolsos",
       entrada:
-        "Qué pasa si necesitas cambiar o cancelar tu reserva, y cómo funcionan los reembolsos.",
+        "Qué pasa si necesitas cambiar tu reserva, y en qué casos no hay devolución.",
       descripcion:
-        "Política de cancelación y reembolsos de La Finca Eco Hotel: plazos, cambios de fecha, no presentación y derecho de retracto.",
+        "Política de cancelación de La Finca Eco Hotel: cambios de fecha, no presentación y derecho de retracto.",
       ruta: "/legal/cancelacion",
       actualizado: LEGAL_ACTUALIZADO,
       secciones: [
@@ -417,7 +445,7 @@ export function documentosLegales(
           titulo: "1. Antes de reservar",
           bloques: [
             p(
-              "Somos un hotel pequeño: cada cancelación deja una cabaña vacía que difícilmente se vuelve a vender con poca antelación. Por eso los plazos de esta política son claros y se aplican por igual a todos los huéspedes.",
+              "Somos un hotel pequeño: cada cancelación deja una cabaña vacía que difícilmente se vuelve a vender con poca antelación. Por eso nuestra política es estricta y te pedimos leerla antes de confirmar.",
             ),
             p(
               "Las condiciones aplicables son las vigentes al momento de confirmar tu reserva y quedan indicadas en el mensaje de confirmación.",
@@ -425,31 +453,35 @@ export function documentosLegales(
           ],
         },
         {
-          titulo: "2. Cancelación por parte del huésped",
+          titulo: "2. La reserva no es reembolsable",
           bloques: [
-            lista([
-              "Con más de quince (15) días calendario de antelación a la fecha de llegada: se reembolsa el 100 % de lo pagado.",
-              "Entre quince (15) y siete (7) días calendario antes de la llegada: se reembolsa el 50 % de lo pagado, o se conserva el 100 % como saldo a favor para una nueva fecha dentro de los seis (6) meses siguientes.",
-              "Con menos de siete (7) días calendario de antelación: no hay reembolso. Podemos ofrecer un cambio de fecha según disponibilidad.",
-            ]),
             p(
-              "La solicitud de cancelación debe hacerse por escrito a nuestro canal de atención. La fecha que cuenta es la de recepción del mensaje.",
+              "Una vez confirmada la reserva no hay reembolsos, ni totales ni parciales, del anticipo ni de ningún otro pago.",
+            ),
+            p(
+              "Lo que sí ofrecemos es un cambio de fecha, en las condiciones del punto siguiente.",
             ),
           ],
         },
         {
-          titulo: "3. Cambios de fecha",
+          titulo: "3. Cambio de fecha",
           bloques: [
-            p(
-              "Un cambio de fecha solicitado con más de siete (7) días calendario de antelación no tiene costo y está sujeto a disponibilidad. Si la nueva fecha corresponde a una temporada de tarifa más alta, se cobra la diferencia; si es de tarifa más baja, no se reembolsa la diferencia.",
-            ),
+            lista([
+              "Se solicita con mínimo tres (3) días calendario de anticipación a la fecha de llegada.",
+              "Se permite un (1) solo cambio por reserva.",
+              "Está sujeto a disponibilidad. Si la nueva fecha corresponde a una tarifa más alta, se cobra la diferencia; si es más baja, no se reembolsa la diferencia.",
+              "La solicitud debe hacerse por escrito a nuestro canal de atención. La fecha que cuenta es la de recepción del mensaje.",
+            ]),
           ],
         },
         {
           titulo: "4. No presentación y salida anticipada",
           bloques: [
             p(
-              "Si no llegas el día de tu reserva y no nos avisas, se considera una no presentación y no hay lugar a reembolso. Si decides marcharte antes de terminar la estadía, tampoco se reembolsan las noches no utilizadas.",
+              "Cancelar el mismo día de la llegada, o no presentarse, se considera un incumplimiento de la reserva: no da lugar a devolución ni a reprogramación.",
+            ),
+            p(
+              "Si decides marcharte antes de terminar la estadía, tampoco se reembolsan las noches no utilizadas.",
             ),
           ],
         },
@@ -468,18 +500,21 @@ export function documentosLegales(
           titulo: "6. Derecho de retracto",
           bloques: [
             p(
-              "En las compras hechas a distancia se aplica el derecho de retracto del artículo 47 de la Ley 1480 de 2011 (Estatuto del Consumidor): puedes retractarte dentro de los cinco (5) días hábiles siguientes a la compra y recibir el reembolso de lo pagado.",
+              "En las compras hechas a distancia se aplica el derecho de retracto del artículo 47 de la Ley 1480 de 2011 (Estatuto del Consumidor): puedes retractarte dentro de los cinco (5) días hábiles siguientes a la compra y recibir el reembolso de lo pagado. Este derecho es de orden público y prevalece sobre el punto 2 de esta política.",
             ),
             p(
-              "Este derecho no aplica cuando la prestación del servicio comienza, de común acuerdo, antes de que venza ese plazo: es decir, cuando la fecha de llegada está dentro de esos cinco días hábiles.",
+              "No aplica cuando la prestación del servicio comienza, de común acuerdo, antes de que venza ese plazo: es decir, cuando la fecha de llegada está dentro de esos cinco días hábiles.",
             ),
           ],
         },
         {
           titulo: "7. Cómo se hacen los reembolsos",
           bloques: [
+            p(
+              "Cuando corresponda un reembolso —por retracto, o por una cancelación nuestra—:",
+            ),
             lista([
-              "El reembolso se hace por el mismo medio de pago con el que se hizo la transacción.",
+              "Se hace por el mismo medio de pago con el que se hizo la transacción.",
               "El tiempo de acreditación depende de la entidad financiera y de la pasarela de pagos; normalmente toma entre cinco (5) y quince (15) días hábiles.",
               "Los costos de la transacción que la pasarela no devuelva podrán descontarse del valor a reembolsar.",
             ]),

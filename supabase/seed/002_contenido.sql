@@ -1,23 +1,22 @@
 -- ============================================================================
--- SEED 002 — Contenido del sitio, galerías de las cabañas y descripciones
+-- SEED 002 — Contenido del sitio y galerías de las cabañas
 --
--- ORIGEN DE LOS TEXTOS: `docs/CONTENIDO_ACTUAL.md` (extraído del sitio en
--- producción lafincaecohotel.com). Las URLs de las fotos salen de
--- `supabase/seed/imagenes-manifest.json` (91 archivos ya en el bucket público
--- `imagenes`).
+-- ⚠ ARCHIVO GENERADO. NO EDITAR A MANO.
+--    Se produce con `npm run seed:contenido` a partir de los respaldos de
+--    `src/lib/contenido.ts` y del catálogo de fotos de `src/lib/fotos.ts`.
+--    Si hay que cambiar un texto o una foto, se cambia ALLÍ y se regenera:
+--    cualquier edición directa de este archivo se pierde en la siguiente
+--    ejecución y, mientras tanto, hace que el código y la base digan cosas
+--    distintas.
 --
--- EL CONTRATO DE ESTAS CLAVES ESTÁ EN `docs/CMS_CLAVES.md`. Si aquí se añade
--- una clave, allí también: ese documento es lo que usa el panel administrativo.
+-- FUENTE DE VERDAD DEL CONTENIDO: `docs/DATOS_CLIENTE.md`.
+-- CONTRATO DE LAS CLAVES: `docs/CMS_CLAVES.md`.
 --
--- IDEMPOTENTE: se puede re-ejecutar. `on conflict ... do update` actualiza en
--- vez de duplicar.
+-- IDEMPOTENTE: `on conflict … do update` actualiza en vez de duplicar.
 --
 -- ⚠ OJO CUANDO EL PANEL ESTÉ EN LÍNEA: volver a correr este archivo SOBREESCRIBE
---   lo que el cliente haya editado desde el panel. A partir de ese momento este
---   seed es solo para reconstruir la base desde cero, no para desplegar.
---
--- Todos estos textos tienen su gemelo como respaldo en `src/lib/contenido.ts`:
--- si la base no responde durante el build, el sitio publica igual.
+--   lo que el cliente haya editado desde el panel. A partir de ese momento es
+--   solo para reconstruir la base desde cero, no para desplegar.
 -- ============================================================================
 
 set search_path to public, extensions;
@@ -26,8 +25,6 @@ set search_path to public, extensions;
 -- CONTENIDO EDITABLE DEL SITIO
 -- ----------------------------------------------------------------------------
 insert into contenido (clave, valor) values
-
--- --- Datos de contacto, redes y RNT ----------------------------------------
 ('sitio.contacto', $json${
   "whatsapp": "573160476671",
   "whatsapp_visible": "+57 316 047 6671",
@@ -38,7 +35,7 @@ insert into contenido (clave, valor) values
   "region": "Valle del Cauca",
   "pais": "Colombia",
   "direccion_completa": "Km 18 vía Cali–Buenaventura, Vereda Loma Alta, Valle del Cauca, Colombia",
-  "horario_restaurante": "8:00 a. m. – 11:00 p. m., todos los días",
+  "horario_restaurante": "9:00 a. m. – 8:00 p. m., todos los días · exclusivo para huéspedes",
   "rnt": "114565",
   "instagram": "https://www.instagram.com/lafinca_cali/",
   "instagram_usuario": "@lafinca_cali",
@@ -49,126 +46,134 @@ insert into contenido (clave, valor) values
   "mapa_embed": "https://maps.google.com/maps?q=La%20Finca%20Eco%20Hotel%20Km%2018%20v%C3%ADa%20Cali%20Buenaventura&t=&z=13&ie=UTF8&iwloc=&output=embed"
 }$json$::jsonb),
 
--- --- SEO del sitio ----------------------------------------------------------
 ('sitio.seo', $json${
-  "titulo": "La Finca Eco Hotel — Cabañas en el bosque de niebla cerca de Cali",
-  "descripcion": "Ecohotel de montaña a 45 minutos de Cali, en el Km 18 vía Buenaventura. Cabañas para dos con jacuzzi, turco, piscina, restaurante y senderos.",
+  "titulo": "La Finca Eco Hotel — Cabañas con jacuzzi cerca de Cali",
+  "descripcion": "Ecohotel en el bosque de niebla, Km 18 vía Cali–Buenaventura. Cinco cabañas para dos con jacuzzi, turco, piscina y restaurante, a 45 minutos de Cali.",
   "palabras_clave": [
     "ecohotel cerca de Cali",
     "cabañas con jacuzzi Valle del Cauca",
     "hotel Km 18 vía Buenaventura",
     "bosque de niebla Cali",
-    "cabañas para parejas cerca de Cali"
+    "plan romántico para parejas cerca de Cali"
   ],
   "imagen": {
-    "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/sitio/home/banner-img-1075-baja-2.webp",
-    "alt": "La Finca Eco Hotel, cabañas en el bosque de niebla del Valle del Cauca",
+    "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/sitio/social/tarjeta-og-1200x630.webp",
+    "alt": "La Finca Eco Hotel — cabañas en el bosque de niebla del Km 18, cerca de Cali",
     "ancho": 1200,
     "alto": 630
   }
 }$json$::jsonb),
 
--- --- Portada: hero ----------------------------------------------------------
 ('home.hero', $json${
-  "antetitulo": "Ecohotel en el Valle del Cauca",
-  "titulo": "Sumérgete en un bosque rodeado de neblina y aves",
-  "subtitulo": "Somos un paraíso escondido en el Valle del Cauca a tan solo 45 minutos de Cali.",
-  "parrafo": "Sumérgete en la esencia de la finca colombiana rodeado de bosque, neblina y aves. Disfruta de la comodidad y confort en un entorno de tranquilidad y serenidad.",
-  "cta_texto": "Reservar ahora",
+  "antetitulo": "Km 18 vía Cali–Buenaventura",
+  "titulo": "Vive despacio. Respira profundo. Estás en La Finca.",
+  "subtitulo": "Cinco cabañas para dos en un bosque de niebla del Valle del Cauca, a 45 minutos de Cali.",
+  "parrafo": "Te invitamos a respirar más despacio, a escuchar lo que el bosque quiere contarte y a dejar que la neblina te devuelva la calma.",
+  "cta_texto": "Reservar",
   "cta_href": "/reservar",
-  "cta_secundario_texto": "Descubre nuestro paraíso",
+  "cta_secundario_texto": "Conoce el lugar",
   "cta_secundario_href": "/el-lugar",
-  "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-1075.webp",
-  "imagen_movil": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/sitio/home/banner-principal-home-movil-11.webp",
-  "imagen_alt": "Cabañas de techo azul de La Finca Eco Hotel sobre la ladera, entre hortensias y bosque de montaña"
+  "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/02.webp",
+  "imagen_movil": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/01.webp",
+  "imagen_alt": "Corredor techado de La Finca Eco Hotel abierto al bosque de niebla del Km 18, con jardineras y baranda de madera"
 }$json$::jsonb),
 
--- --- Portada: presentación --------------------------------------------------
 ('home.intro', $json${
   "antetitulo": "Bienvenidos",
-  "titulo": "Un bosque de niebla a 45 minutos de Cali",
+  "titulo": "Un suspiro del bosque convertido en descanso",
   "parrafos": [
-    "La Finca es un ecohotel de montaña en el Km 18 de la vía Cali–Buenaventura, en la Vereda Loma Alta. Aquí el día empieza con la neblina entre los árboles y el canto de las aves que habitan la reserva.",
-    "Son pocas cabañas, pensadas para dos personas, con cama doble, baño privado y vista a la montaña. Pocas cabañas significan silencio, privacidad y una atención que se nota."
+    "La Finca Eco Hotel está en el Km 18 de la vía Cali–Buenaventura, en la Vereda Loma Alta, dentro de un bosque de niebla del Valle del Cauca. Son cinco cabañas pensadas para dos personas, cada una independiente, con cama doble, baño privado y vista a la montaña.",
+    "No hay televisor en ninguna cabaña, y es a propósito. Hay estación de café y aromáticas ilimitadas, batas y cobijas térmicas para el frío, y el canto de las aves a las seis de la mañana."
   ],
-  "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-5389.webp",
-  "imagen_alt": "Huésped en el deck de La Finca junto a una hamaca, con el bosque y la montaña al fondo",
+  "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/05.webp",
+  "imagen_alt": "Las cabañas de techo azul de La Finca Eco Hotel sobre la ladera, con los senderos y los jardines de la reserva",
   "datos": [
-    { "valor": "45 min", "etiqueta": "desde Cali" },
-    { "valor": "5", "etiqueta": "cabañas para dos" },
-    { "valor": "18 °C", "etiqueta": "clima de montaña" }
-  ]
-}$json$::jsonb),
-
--- --- Portada: encabezado de cabañas ----------------------------------------
-('home.cabanas', $json${
-  "antetitulo": "Alojamiento",
-  "titulo": "Nuestras cabañas",
-  "descripcion": "Cabañas independientes para dos, con cama doble, baño privado y vista a la montaña. Algunas con jacuzzi privado.",
-  "cta_texto": "Ver todas las cabañas",
-  "cta_href": "/alojamientos"
-}$json$::jsonb),
-
--- --- Portada: encabezado de planes -----------------------------------------
-('home.planes', $json${
-  "antetitulo": "Detalles & Tarifas",
-  "titulo": "Elige tu plan",
-  "descripcion": "La estadía se reserva por plan, no por cabaña: eliges el nivel de servicio que quieres y lo disfrutas en la cabaña que prefieras.",
-  "nota": "Tarifas referenciales para temporada baja. Pueden variar según temporada, festivos y alta demanda.",
-  "cta_texto": "Reservar ahora",
-  "cta_href": "/reservar"
-}$json$::jsonb),
-
--- --- Portada: encabezado de experiencias -----------------------------------
-('home.experiencias', $json${
-  "antetitulo": "Experiencias",
-  "titulo": "Celebra en medio del bosque",
-  "descripcion": "Añade una experiencia a tu reserva y encuentra la cabaña lista: decoración, torta, vino y fotos para que la fecha quede marcada.",
-  "cta_texto": "Ver experiencias",
-  "cta_href": "/experiencias"
-}$json$::jsonb),
-
--- --- Portada: esencia / naturaleza -----------------------------------------
-('home.esencia', $json${
-  "antetitulo": "Naturaleza",
-  "titulo": "Encontramos un bosque de neblina",
-  "parrafos": [
-    "Estamos dentro de una reserva natural: por eso los carros se quedan en el parqueadero externo y el bosque se recorre a pie. Es la forma de proteger a las especies que viven aquí.",
-    "El clima es frío, con mínimas de 18 grados, y días templados que invitan a caminar por los senderos, quedarse en el deck o simplemente escuchar."
-  ],
-  "imagenes": [
     {
-      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-6088.webp",
-      "alt": "Camino de tierra entre guaduas y helechos en la reserva de La Finca"
+      "valor": "45 min",
+      "etiqueta": "desde Cali"
     },
     {
-      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-5568.webp",
-      "alt": "Huésped apoyada en la baranda de un mirador, mirando el bosque de niebla"
+      "valor": "5",
+      "etiqueta": "cabañas para dos"
     },
     {
-      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-5569.webp",
-      "alt": "Sendero de piedra iluminado entre los helechos del bosque de La Finca"
+      "valor": "18 °C",
+      "etiqueta": "clima de montaña"
     }
   ]
 }$json$::jsonb),
 
--- --- Portada: reconocimiento COP16 ------------------------------------------
+('home.cabanas', $json${
+  "antetitulo": "Alojamiento",
+  "titulo": "Nuestras cinco cabañas",
+  "descripcion": "Cada una tiene algo que las otras no: dos niveles, un jacuzzi bajo un árbol, un comedor en el balcón o la única chimenea de La Finca. Todas para dos personas.",
+  "cta_texto": "Ver todas las cabañas",
+  "cta_href": "/alojamientos"
+}$json$::jsonb),
+
+('home.planes', $json${
+  "antetitulo": "Planes y tarifas",
+  "titulo": "Elige tu plan",
+  "descripcion": "El precio lo pone el plan, no la cabaña: eliges el nivel de servicio que quieres y lo disfrutas en la cabaña que prefieras.",
+  "nota": "Tarifas referenciales de temporada baja. Pueden variar en festivos y alta demanda. IVA incluido.",
+  "imagen_fondo": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/03.webp",
+  "cta_texto": "Reservar ahora",
+  "cta_href": "/reservar"
+}$json$::jsonb),
+
+('home.experiencias', $json${
+  "antetitulo": "Experiencias",
+  "titulo": "Celebra en medio del bosque",
+  "descripcion": "Añade una experiencia a tu reserva y encuentra la cabaña lista al llegar: torta, vino, decoración y fotos instantáneas para que la fecha quede marcada.",
+  "cta_texto": "Ver experiencias",
+  "cta_href": "/experiencias"
+}$json$::jsonb),
+
+('home.esencia', $json${
+  "antetitulo": "Nuestra esencia",
+  "titulo": "Un lugar donde el lujo no brilla: se siente",
+  "parrafos": [
+    "Donde la belleza no se muestra: se respira. Cada rincón ha sido creado para recordarte que la vida también puede ser lenta, suave y serena.",
+    "Nuestra misión es crear espacios donde el descanso se vuelva un ritual natural, donde el confort moderno se mezcle con la tierra húmeda y la neblina que abraza las montañas.",
+    "Soñamos con ser un refugio de bienestar y sostenibilidad, un símbolo del eco-lujo consciente, donde la comodidad y el respeto por la tierra caminen de la mano."
+  ],
+  "imagenes": [
+    {
+      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/03.webp",
+      "alt": "Deck de inmersión metálico suspendido entre los árboles del bosque de niebla",
+      "ancho": 1086,
+      "alto": 1231
+    },
+    {
+      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/04.webp",
+      "alt": "Ducha de madera al aire libre de La Finca, en medio del bosque",
+      "ancho": 1086,
+      "alto": 1231
+    },
+    {
+      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/08.webp",
+      "alt": "Pareja abrigada frente a la fogata encendida de La Finca, de noche",
+      "ancho": 941,
+      "alto": 1421
+    }
+  ]
+}$json$::jsonb),
+
 ('home.reconocimiento', $json${
   "antetitulo": "Reconocimientos",
   "titulo": "Somos COP16",
   "parrafos": [
     "Somos COP16 y, junto con la Cámara de Comercio de Cali, nos preparamos para este evento donde mostramos la mejor imagen de nuestra región al mundo entero.",
-    "La COP16 —la Conferencia de las Partes sobre Diversidad Biológica— se celebró en Cali, y La Finca hizo parte de la vitrina del Valle del Cauca."
+    "La reserva funciona con respaldo de paneles solares y los vehículos se quedan en el parqueadero externo: dentro de La Finca solo se entra a pie, para no alterar a las especies que viven aquí."
   ],
-  "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/sitio/reconocimientos/somos-cop-16-mesa-de-trabajo-1.webp",
-  "imagen_alt": "Camino entre hortensias hacia las cabañas de La Finca, con el bosque de niebla al fondo",
+  "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/04.webp",
+  "imagen_alt": "Ducha de madera al aire libre de La Finca Eco Hotel, en medio del bosque de niebla",
   "cta_texto": "Reservar ahora",
   "cta_href": "/reservar"
 }$json$::jsonb),
 
--- --- Portada: testimonios reales --------------------------------------------
 ('home.testimonios', $json${
-  "antetitulo": "Testimonios",
+  "antetitulo": "Reseñas",
   "titulo": "Lo que cuentan quienes ya vinieron",
   "items": [
     {
@@ -198,384 +203,514 @@ insert into contenido (clave, valor) values
   ]
 }$json$::jsonb),
 
--- --- Portada: llamada final -------------------------------------------------
 ('home.cta_final', $json${
-  "titulo": "¿Necesitas más razones para reservar?",
+  "titulo": "Deja que la neblina te devuelva la calma",
   "texto": "Escríbenos y te ayudamos a elegir la cabaña, el plan y la fecha. Respondemos por WhatsApp todos los días.",
   "cta_texto": "Reservar ahora",
   "cta_href": "/reservar",
-  "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/sitio/home/pw-finca-landing-banner-1-mesa-de-trabajo-1-copia-10.webp",
-  "imagen_alt": "Camino iluminado hacia la casa principal de La Finca, envuelto en la neblina del atardecer"
+  "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/07.webp",
+  "imagen_alt": "Mesa y sillas de piedra bajo las farolas de La Finca Eco Hotel, entre la neblina del atardecer"
 }$json$::jsonb),
 
--- --- Cabeceras de las páginas internas --------------------------------------
 ('heroes.listados', $json${
   "alojamientos": {
     "titulo": "Nuestras cabañas",
-    "subtitulo": "Cabañas independientes para dos, con cama doble, baño privado y vista a la montaña.",
-    "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/cabanas/cabanas-25.webp",
-    "imagen_alt": "Habitación de una cabaña de La Finca con cama doble y ventanal hacia la terraza y el bosque"
+    "subtitulo": "Cinco cabañas independientes para dos, con cama doble, baño privado y vista al bosque de niebla.",
+    "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-03/02.webp",
+    "imagen_alt": "Balcón techado de la Cabaña 03 con hamaca y comedor, frente al bosque de niebla"
   },
   "experiencias": {
     "titulo": "Experiencias",
-    "subtitulo": "Celebraciones listas al llegar: aniversarios, cumpleaños, picnic y veladas en medio del bosque.",
-    "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-6086.webp",
-    "imagen_alt": "Pareja compartiendo una botella de vino sobre el piso alfombrado de una cabaña de madera"
+    "subtitulo": "Aniversarios y cumpleaños listos al llegar, y los detalles que se añaden a tu reserva.",
+    "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-05/05.webp",
+    "imagen_alt": "Chimenea encendida de la Cabaña 05, la única cabaña que tiene, con cojines y juegos de mesa"
   },
   "el_lugar": {
     "titulo": "El lugar",
-    "subtitulo": "Una reserva natural en el Km 18, con zona húmeda, piscina, restaurante y senderos.",
-    "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/37.png",
-    "imagen_alt": "Deck techado de La Finca con bancas de madera y vista al valle entre nubes"
+    "subtitulo": "Una reserva natural en el Km 18, con jacuzzi, turco, piscina de agua fría, restaurante y senderos.",
+    "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/06.webp",
+    "imagen_alt": "Piscina de agua fría de La Finca Eco Hotel con su chorrera, frente a las montañas y las nubes"
   },
   "galeria": {
     "titulo": "Galería",
     "subtitulo": "El bosque, las cabañas y los rincones de La Finca en imágenes.",
-    "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-53970.webp",
-    "imagen_alt": "Camino iluminado entre la neblina de la noche en La Finca, con las farolas encendidas"
+    "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/07.webp",
+    "imagen_alt": "Mesa y sillas de piedra bajo las farolas de La Finca, entre la neblina del atardecer"
   },
   "faq": {
     "titulo": "Preguntas frecuentes",
-    "subtitulo": "Lo que más nos preguntan antes de llegar: ubicación, clima, mascotas, niños y servicios.",
-    "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-6088.webp",
-    "imagen_alt": "Camino de tierra entre guaduas y helechos en la reserva de La Finca"
+    "subtitulo": "Lo que más nos preguntan antes de llegar: cómo llegar, el clima, las mascotas, los niños y los pagos.",
+    "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/04.webp",
+    "imagen_alt": "Ducha de madera al aire libre de La Finca, en medio del bosque de niebla"
   },
   "contacto": {
     "titulo": "Contacto",
     "subtitulo": "Escríbenos por WhatsApp: resolvemos dudas y confirmamos disponibilidad el mismo día.",
-    "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-6087.webp",
-    "imagen_alt": "Hortensias y bebedero de colibríes en los jardines de La Finca, con la montaña al fondo"
+    "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/01.webp",
+    "imagen_alt": "Deck techado de La Finca con comedor de vidrio y sillas, frente a las montañas"
   },
   "reservar": {
     "titulo": "Reserva tu estadía",
     "subtitulo": "Elige cabaña y plan, y confirmamos tu fecha por WhatsApp en pocos minutos.",
-    "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/cabanas/cabanas-28.webp",
-    "imagen_alt": "Terraza de una cabaña de La Finca con hamaca, mesa para dos y vista al bosque"
+    "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-01/01.webp",
+    "imagen_alt": "Habitación de la Cabaña 01 en el nivel superior, con cama doble bajo el techo de madera"
   }
 }$json$::jsonb),
 
--- --- Página de experiencias: intro y experiencias sin precio publicado ------
 ('experiencias', $json${
-  "intro": "Preparamos la cabaña antes de que llegues: decoración, torta, vino y los detalles de la celebración listos. Se añaden a tu reserva.",
+  "intro": "Preparamos la cabaña antes de que llegues: decoración, torta, vino y los detalles de la celebración listos. Se añaden a tu reserva y se cobran una sola vez por estadía.",
   "adicionales_titulo": "Otras experiencias",
-  "adicionales_descripcion": "También armamos estos planes a pedido. Escríbenos y te contamos qué incluye cada uno y cuánto cuesta.",
-  "adicionales": [
-    {
-      "nombre": "Picnic en el bosque",
-      "descripcion": "Mantel, canasta, cojines y una mesa baja montados en el pasto, frente a la montaña.",
-      "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/experiencias/experiencia-picnic-30.webp",
-      "imagen_alt": "Picnic montado sobre un mantel de cuadros rojos con canasta, pan y flores"
-    },
-    {
-      "nombre": "Velada romántica",
-      "descripcion": "Cena servida en una mesa decorada, con vino, flores y farol, solo para ustedes dos.",
-      "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/experiencias/experiencia-velada-30.webp",
-      "imagen_alt": "Mesa para dos servida con cena, vino tinto, rosas y farol para una velada romántica"
-    }
-  ]
+  "adicionales_descripcion": "¿Tienes algo distinto en mente? Escríbenos por WhatsApp y lo armamos contigo.",
+  "adicionales": []
 }$json$::jsonb),
 
--- --- Preguntas frecuentes (las 11 del sitio actual) -------------------------
--- NOTA: la respuesta original decía "6 cabañas" mientras el resto del sitio
--- muestra 5. Se publica sin la cifra para que el sitio no se contradiga.
--- TODO confirmar con el cliente cuántas cabañas hay realmente.
 ('faq', $json${
   "intro": "Si tu pregunta no está aquí, escríbenos por WhatsApp: respondemos todos los días.",
   "items": [
     {
-      "pregunta": "¿Dónde estamos ubicados?",
-      "respuesta": "Nos encontramos en el km 18, vía Cali–Buenaventura, Vereda Loma Alta, a aproximadamente 45 minutos al oeste de Cali."
+      "pregunta": "¿Dónde están ubicados y cómo se llega?",
+      "respuesta": "En el Km 18 de la vía Cali–Buenaventura, Vereda Loma Alta, a unos 45 minutos al occidente de Cali. La vía no está pavimentada en el último tramo, pero es apta para cualquier carro. El punto exacto y el video de llegada te los enviamos cuando confirmes el pago."
     },
     {
-      "pregunta": "¿Tienen zona de parqueadero?",
-      "respuesta": "Sí, contamos con un parqueadero externo vigilado las 24 horas. Por estar en una reserva natural, no se permite el ingreso de vehículos a La Finca, con el propósito de proteger a las especies que habitan el lugar."
+      "pregunta": "¿Cuántas cabañas tienen?",
+      "respuesta": "Cinco. Todas son independientes, con capacidad máxima para 2 personas, cama doble, baño privado y vista a la montaña. Pocas cabañas significan silencio, privacidad y una atención que se nota."
     },
     {
-      "pregunta": "¿Cómo es el clima?",
-      "respuesta": "Estamos ubicados en un bosque de niebla del Valle del Cauca, lo que nos brinda un clima frío con temperaturas mínimas de 18 grados centígrados. Sin embargo, también disfrutamos de días templados."
+      "pregunta": "¿Todas las cabañas tienen jacuzzi privado?",
+      "respuesta": "Las cabañas 01, 02 y 05 tienen jacuzzi privado en zona exterior. Las cabañas 03 y 04 comparten uno de uso privado por turnos: se reserva con Nicolás, nuestro anfitrión, para que cada pareja lo disfrute sola. Todos son climatizados, con burbujas y luces."
+    },
+    {
+      "pregunta": "¿A qué hora puedo llegar y a qué hora debo salir?",
+      "respuesta": "Desde la 1:00 p. m. puedes usar el restaurante, los senderos, los decks y las zonas sociales. La cabaña se entrega a las 3:00 p. m. El check-out es a la 1:00 p. m."
+    },
+    {
+      "pregunta": "¿Cómo se reserva y cómo se paga?",
+      "respuesta": "Con un anticipo del 50 % se confirma la reserva; el 50 % restante se paga el día de la llegada con un link de pago que te enviamos con anticipación. En La Finca no hay datáfono ni manejamos efectivo. Nunca te pediremos los datos de tu tarjeta por WhatsApp."
+    },
+    {
+      "pregunta": "¿Puedo cancelar o cambiar la fecha?",
+      "respuesta": "Una vez confirmada la reserva no hay reembolsos. Sí puedes cambiar la fecha una sola vez, avisando con mínimo 3 días de anticipación. Cancelar el mismo día o no presentarse se considera incumplimiento y no da lugar a devolución ni reprogramación."
+    },
+    {
+      "pregunta": "¿Cómo es el clima y qué debo llevar?",
+      "respuesta": "Estamos en un bosque de niebla, con temperaturas que bajan hasta los 18 °C y días templados. Trae ropa abrigada, algo impermeable y zapatos cómodos para los senderos. En la cabaña encontrarás batas y cobijas térmicas."
+    },
+    {
+      "pregunta": "¿Tienen parqueadero?",
+      "respuesta": "Sí, un parqueadero externo vigilado las 24 horas en la entrada. Los vehículos no ingresan a la reserva natural, para proteger a las especies que habitan el lugar: desde el parqueadero se entra a pie."
+    },
+    {
+      "pregunta": "¿Puedo llevar a mi mascota?",
+      "respuesta": "¡Claro! Las mascotas son bienvenidas en todas nuestras áreas, con cuidado responsable de sus acompañantes. La primera no tiene costo; a partir de la segunda hay un valor de $50.000 por estadía."
+    },
+    {
+      "pregunta": "¿Pueden ir niños?",
+      "respuesta": "La experiencia está diseñada para parejas adultas. Recibimos bebés de hasta 10 meses, que duermen con la mamá y no tienen costo. No contamos con cuna ni silla alta."
     },
     {
       "pregunta": "¿Cuentan con restaurante?",
-      "respuesta": "Sí, ofrecemos servicio de restaurante todos los días de 8:00 a. m. a 11:00 p. m."
+      "respuesta": "Sí, de 9:00 a. m. a 8:00 p. m. todos los días, exclusivo para huéspedes. El desayuno se sirve desde las 9:00 a. m. y tenemos opciones vegetarianas, veganas y sin gluten."
     },
     {
-      "pregunta": "¿Permiten el ingreso de mascotas?",
-      "respuesta": "¡Por supuesto! Las mascotas son bienvenidas en todas nuestras áreas. Solo pedimos que sus cuidadores sean responsables, para garantizar la seguridad y comodidad tanto de las mascotas como de los demás huéspedes."
+      "pregunta": "¿Qué horarios tienen las zonas comunes?",
+      "respuesta": "El jacuzzi está disponible de 3:00 p. m. a 12:00 a. m. y se solicita con anticipación para alistarlo. La fogata con masmelos se enciende a las 9:00 p. m. La piscina de agua fría con chorrera y el turco por turnos están disponibles durante el día."
     },
     {
-      "pregunta": "¿Tienen cabañas para familias grandes?",
-      "respuesta": "Nuestras cabañas están diseñadas principalmente para parejas: cada una tiene capacidad para 2 personas."
+      "pregunta": "¿Se puede visitar sin quedarse a dormir?",
+      "respuesta": "Sí, con el plan Día de Calma: de 10:00 a. m. a 5:00 p. m., con almuerzo a la carta, refrigerio y acceso a piscina, turco, decks, senderos y salón. No incluye hospedaje."
     },
     {
-      "pregunta": "¿Permiten niños?",
-      "respuesta": "Sí, los niños son bienvenidos. Sin embargo, ten en cuenta que nuestras instalaciones y experiencias están enfocadas principalmente en adultos y parejas."
+      "pregunta": "¿Hay televisor en las cabañas?",
+      "respuesta": "No, y es a propósito. Las cabañas están pensadas para desconectarse. Sí hay WiFi, estación de café y aromáticas ilimitadas, mininevera, agua caliente, secador, amenities de baño y botiquín."
     },
     {
-      "pregunta": "¿Cada cabaña tiene zona húmeda privada?",
-      "respuesta": "Algunas de nuestras cabañas cuentan con jacuzzi privado. Además, ofrecemos una zona húmeda social disponible para todos los huéspedes."
+      "pregunta": "¿Se pueden hacer eventos?",
+      "respuesta": "Sí. Tenemos un salón multifuncional para hasta 30 personas, ideal para retiros, cumpleaños y reuniones. Los talleres de yoga o meditación se programan desde 10 personas."
     },
     {
-      "pregunta": "¿Cuentan con pasadía?",
-      "respuesta": "Actualmente no ofrecemos servicio de pasadía."
+      "pregunta": "¿Se puede caminar por el bosque?",
+      "respuesta": "Hay senderos y miradores habilitados dentro de la reserva, además de caminatas por los alrededores. No se permite el senderismo fuera de los senderos, por conservación del bosque."
     },
     {
-      "pregunta": "¿Se pueden realizar eventos en sus instalaciones?",
-      "respuesta": "Sí, disponemos de un salón multifuncional ideal para retiros, cumpleaños y reuniones empresariales, con capacidad máxima para 30 personas."
-    },
-    {
-      "pregunta": "¿Hay zonas para hacer deporte?",
-      "respuesta": "En los alrededores se pueden realizar caminatas. Sin embargo, no está permitido ingresar al bosque para actividades como senderismo, con el fin de preservar el entorno natural."
+      "pregunta": "¿Es accesible para personas con movilidad reducida?",
+      "respuesta": "El terreno es de montaña y no es plano: hay escaleras y pendientes entre las cabañas y las zonas comunes, así que no lo recomendamos para personas con movilidad reducida. Escríbenos y te contamos con detalle cómo es el recorrido."
     }
   ]
 }$json$::jsonb),
 
--- --- Página "El lugar" ------------------------------------------------------
 ('lugar', $json${
   "antetitulo": "Sobre nosotros",
-  "titulo": "Una finca colombiana dentro de una reserva natural",
+  "titulo": "Una reserva natural en el bosque de niebla",
   "parrafos": [
-    "La Finca Eco Hotel está en el Km 18 de la vía Cali–Buenaventura, en la Vereda Loma Alta, dentro de un bosque de niebla del Valle del Cauca. Se llega en unos 45 minutos desde Cali y, apenas se sube, el clima cambia: entra el frío, la neblina y el sonido de las aves.",
-    "El lugar se pensó al revés de un hotel grande: pocas cabañas, mucho bosque y un equipo pequeño que conoce a cada huésped por su nombre. Nicolás y Jackeline reciben personalmente a quienes llegan.",
-    "Cuidar la reserva es parte del plan. Los vehículos se quedan en el parqueadero externo y el bosque solo se recorre por los senderos habilitados, para no alterar a las especies que viven aquí."
+    "La Finca Eco Hotel está en el Km 18 de la vía Cali–Buenaventura, en la Vereda Loma Alta. Se llega en unos 45 minutos desde Cali y, apenas se sube, el clima cambia: entra el frío, la neblina y el canto de las aves.",
+    "El lugar se pensó al revés de un hotel grande: cinco cabañas, mucho bosque y un equipo pequeño. Nicolás, nuestro anfitrión, recibe a cada pareja, coordina los turnos de jacuzzi y turco y resuelve lo que haga falta.",
+    "Cuidar la reserva es parte del plan. La energía tiene respaldo de paneles solares, los vehículos se quedan en el parqueadero externo y el bosque solo se recorre por los senderos habilitados. Somos COP16, en alianza con la Cámara de Comercio de Cali."
   ],
-  "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/sitio/home/banner-img-1075-baja-4.webp",
-  "imagen_alt": "Las cabañas de techo azul de La Finca sobre la ladera, entre hortensias y bosque de montaña",
-  "instalaciones_titulo": "Instalaciones",
-  "instalaciones_descripcion": "Todo lo que está incluido con tu estadía, además de la cabaña.",
+  "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/05.webp",
+  "imagen_alt": "Las cabañas de techo azul de La Finca Eco Hotel sobre la ladera, con los senderos y los jardines",
+  "instalaciones_titulo": "Zonas comunes",
+  "instalaciones_descripcion": "Todo esto está incluido con tu estadía, además de la cabaña.",
   "instalaciones": [
     {
-      "nombre": "Zona húmeda",
-      "descripcion": "Jacuzzi y turco de uso social para todos los huéspedes. Algunas cabañas, además, tienen jacuzzi privado.",
-      "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-6091.webp",
-      "imagen_alt": "Huéspedes en el jacuzzi social de La Finca, con el bosque de montaña al fondo"
-    },
-    {
-      "nombre": "Piscina y decks",
-      "descripcion": "Piscina y decks de madera con vista a la montaña, abiertos durante toda la estadía.",
-      "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-5390.webp",
-      "imagen_alt": "Escaleras que bajan a la piscina de La Finca, rodeadas de jardines y con vista al bosque"
+      "nombre": "Zona de hidroterapia",
+      "descripcion": "Jacuzzi climatizado de 3:00 p. m. a 12:00 a. m. (se solicita con anticipación), turco por turnos y piscina de agua fría con chorrera para alternar frío y calor.",
+      "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/06.webp",
+      "imagen_alt": "Piscina de agua fría de La Finca con su chorrera, frente a las montañas y las nubes"
     },
     {
       "nombre": "Restaurante",
-      "descripcion": "Servicio todos los días de 8:00 a. m. a 11:00 p. m. Desayuno incluido en los tres planes, y carta para almuerzo y cena.",
-      "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/lugar/restaurante-24.webp",
-      "imagen_alt": "Comedor del restaurante de La Finca con mesas de madera y ventanales hacia el bosque"
+      "descripcion": "De 9:00 a. m. a 8:00 p. m. todos los días, exclusivo para huéspedes. Desayuno desde las 9:00 a. m., con opciones vegetarianas, veganas y sin gluten.",
+      "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/01.webp",
+      "imagen_alt": "Deck techado de La Finca con comedor de vidrio y sillas, frente a las montañas"
+    },
+    {
+      "nombre": "Decks de inmersión",
+      "descripcion": "Plataformas suspendidas entre los árboles para sentarse a mirar el bosque, respirar y no hacer nada más.",
+      "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/03.webp",
+      "imagen_alt": "Deck de inmersión metálico suspendido entre los árboles del bosque de niebla"
+    },
+    {
+      "nombre": "Ducha al aire libre",
+      "descripcion": "Una ducha de madera en medio del bosque, para terminar el recorrido por los senderos como se debe.",
+      "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/04.webp",
+      "imagen_alt": "Ducha de madera al aire libre de La Finca, en medio del bosque"
+    },
+    {
+      "nombre": "Fogata con masmelos",
+      "descripcion": "A las 9:00 p. m. encendemos la fogata. Está incluida en todos los planes de hospedaje.",
+      "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/08.webp",
+      "imagen_alt": "Pareja abrigada frente a la fogata encendida de La Finca, de noche"
     },
     {
       "nombre": "Salón multifuncional",
-      "descripcion": "Espacio para retiros, cumpleaños y reuniones empresariales, con capacidad máxima para 30 personas.",
-      "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/lugar/salon-la-finca-24.webp",
-      "imagen_alt": "Salón techado y abierto de La Finca, con bancas y vista al valle entre nubes"
-    },
-    {
-      "nombre": "Senderos",
-      "descripcion": "Caminos habilitados para recorrer el bosque de niebla y avistar las aves de la reserva.",
-      "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-5569.webp",
-      "imagen_alt": "Sendero de piedra entre los helechos del bosque de niebla de La Finca"
-    },
-    {
-      "nombre": "Fogata",
-      "descripcion": "Al caer la tarde encendemos la fogata en el deck. Los planes Entre Semana y Premium incluyen los pinchos de masmelos.",
-      "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-53920.webp",
-      "imagen_alt": "Huéspedes abrigados frente a una fogata encendida en el deck del bosque"
+      "descripcion": "Espacio para retiros, cumpleaños y reuniones, con capacidad máxima para 30 personas. Talleres de yoga o meditación desde 10 personas.",
+      "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/07.webp",
+      "imagen_alt": "Mesa y sillas de piedra bajo las farolas de La Finca, entre la neblina del atardecer"
     }
   ],
   "llegar_titulo": "Cómo llegar",
   "llegar_parrafos": [
-    "Desde Cali se toma la vía a Buenaventura y se sube hasta el Km 18. Son unos 45 minutos en carro desde el occidente de la ciudad.",
-    "Al llegar, el vehículo se deja en el parqueadero externo vigilado y el ingreso a las cabañas se hace a pie: estamos dentro de una reserva natural y no permitimos el ingreso de carros para proteger a las especies del bosque."
+    "Desde Cali se toma la vía a Buenaventura y se sube hasta el Km 18. Son unos 45 minutos en carro desde el occidente de la ciudad. El último tramo no está pavimentado, pero es apto para cualquier vehículo.",
+    "Al llegar, el carro se deja en el parqueadero externo vigilado y se entra a pie: estamos dentro de una reserva natural y no permitimos el ingreso de vehículos, para no alterar a las especies del bosque."
   ],
   "llegar_indicaciones": [
     "Km 18, vía Cali–Buenaventura, Vereda Loma Alta (Valle del Cauca).",
     "Aproximadamente 45 minutos desde Cali.",
-    "Parqueadero externo vigilado 24 horas.",
-    "Si vienes en transporte público o taxi, escríbenos por WhatsApp y te damos el punto exacto de llegada."
+    "Parqueadero externo vigilado 24 horas; los vehículos no ingresan a la reserva.",
+    "El pin exacto y el video de llegada se envían al confirmar el pago."
   ]
 }$json$::jsonb),
 
--- --- Galería general (las 31 fotos de la carpeta `galeria/`) ----------------
--- Ordenadas por resolución: las diez últimas vienen del WordPress actual a
--- 225×300 px. TODO reemplazarlas cuando llegue la carpeta en alta calidad.
 ('galeria', $json${
-  "intro": "El bosque, las cabañas y las zonas sociales de La Finca, tal como las encuentran nuestros huéspedes.",
+  "intro": "El bosque, las cabañas y las zonas comunes de La Finca, tal como las encuentran nuestros huéspedes.",
   "imagenes": [
-    { "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-1075.webp", "alt": "Vista de las cabañas de techo azul de La Finca sobre la ladera, entre hortensias" },
-    { "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/37.png", "alt": "Deck techado de La Finca con bancas de madera y vista al valle entre nubes" },
-    { "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/41.png", "alt": "Comedor del restaurante de La Finca con mesas de madera y ventanales hacia la niebla" },
-    { "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-5389.webp", "alt": "Huésped en el deck junto a una hamaca, con el bosque y el cielo despejado al fondo" },
-    { "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-5390.webp", "alt": "Escaleras que bajan a la piscina de La Finca, rodeadas de jardines" },
-    { "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-5391.webp", "alt": "Huésped y su perro en el jacuzzi al aire libre, con la montaña detrás" },
-    { "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-5394.webp", "alt": "Huésped en bata en la terraza de una cabaña, mirando el bosque de montaña" },
-    { "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-53920.webp", "alt": "Pareja abrigada frente a una fogata encendida en el deck del bosque" },
-    { "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-53950.webp", "alt": "Pareja en bata junto a la fogata de noche, con copas de vino y masmelos" },
-    { "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-53960.webp", "alt": "Picnic sobre el pasto con canasta, vino y farol, frente a la vista del valle" },
-    { "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-53970.webp", "alt": "Pareja abrazada entre la neblina de la noche, junto a las farolas del camino" },
-    { "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-5567.webp", "alt": "Huésped junto a una hamaca en la terraza, envuelta en la neblina" },
-    { "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-5568.webp", "alt": "Huésped apoyada en la baranda de un mirador, mirando el bosque de niebla" },
-    { "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-5569.webp", "alt": "Sendero de piedra entre los helechos del bosque de niebla de La Finca" },
-    { "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-6086.webp", "alt": "Pareja compartiendo una botella de vino en el piso alfombrado de una cabaña de madera" },
-    { "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-6087.webp", "alt": "Huésped junto a las hortensias y el bebedero de colibríes, con la montaña al fondo" },
-    { "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-6088.webp", "alt": "Camino de tierra entre guaduas y helechos en la reserva de La Finca" },
-    { "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-6089.webp", "alt": "Huésped con ruana mirando el bosque desde una baranda de La Finca" },
-    { "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-6091.webp", "alt": "Huéspedes en el jacuzzi social de La Finca, con el bosque de montaña al fondo" },
-    { "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-4424.webp", "alt": "Perro cocker spaniel sentado en el deck techado, con el valle detrás" },
-    { "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/49.png", "alt": "Jacuzzi encendido de noche, con toallas dobladas y una mesa iluminada al lado" },
-    { "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/fotos-landing-mesa-de-trabajo-1.webp", "alt": "Huésped con ruana fucsia mirando el bosque desde la baranda" },
-    { "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/fotos-landing-mesa-de-trabajo-1-copia.webp", "alt": "Huésped caminando por el camino de tierra que cruza la reserva" },
-    { "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/fotos-landing-mesa-de-trabajo-1-copia-2.webp", "alt": "Huésped sonriendo junto a las hortensias del jardín, con la montaña al fondo" },
-    { "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/fotos-landing-mesa-de-trabajo-1-copia-3.webp", "alt": "Pareja sentada en el piso de una cabaña de madera con una mesita y copas" },
-    { "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/fotos-landing-mesa-de-trabajo-1-copia-4.webp", "alt": "Huésped caminando por el sendero del bosque entre los helechos" },
-    { "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/fotos-landing-mesa-de-trabajo-1-copia-5.webp", "alt": "Huésped de espaldas apoyada en la baranda frente al bosque de niebla" },
-    { "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/fotos-landing-mesa-de-trabajo-1-copia-6.webp", "alt": "Huésped sentada junto a la hamaca de la terraza, entre la niebla" },
-    { "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/fotos-landing-mesa-de-trabajo-1-copia-7.webp", "alt": "Huésped y su perro en el jacuzzi al aire libre, bajo el cielo despejado" },
-    { "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/fotos-landing-mesa-de-trabajo-1-copia-8.webp", "alt": "Perro cocker spaniel sobre una rampa en el deck, con el valle al fondo" },
-    { "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/fotos-landing-mesa-de-trabajo-1-copia-9.webp", "alt": "Grupo de amigas en el jacuzzi social de La Finca" }
+    {
+      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/02.webp",
+      "alt": "Corredor techado de La Finca con jardineras y baranda de madera, abierto al bosque de niebla del Km 18",
+      "ancho": 2400,
+      "alto": 1530
+    },
+    {
+      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-01/01.webp",
+      "alt": "Habitación de la Cabaña 01 en el nivel superior, con cama doble bajo el techo de madera",
+      "ancho": 1448,
+      "alto": 923
+    },
+    {
+      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/06.webp",
+      "alt": "Piscina de agua fría de La Finca con su chorrera, frente a las montañas y las nubes",
+      "ancho": 1086,
+      "alto": 1231
+    },
+    {
+      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-02/05.webp",
+      "alt": "Jacuzzi privado de la Cabaña 02 bajo el árbol, rodeado de guadua, con toallas dobladas",
+      "ancho": 1448,
+      "alto": 923
+    },
+    {
+      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/01.webp",
+      "alt": "Deck techado de La Finca con comedor de vidrio y sillas, frente a las montañas",
+      "ancho": 2400,
+      "alto": 2720
+    },
+    {
+      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-05/05.webp",
+      "alt": "Chimenea encendida de la Cabaña 05, la única cabaña que tiene, con cojines y juegos de mesa",
+      "ancho": 1448,
+      "alto": 923
+    },
+    {
+      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/05.webp",
+      "alt": "Las cabañas de techo azul de La Finca sobre la ladera, con los senderos y los jardines",
+      "ancho": 1536,
+      "alto": 1741
+    },
+    {
+      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-03/02.webp",
+      "alt": "Balcón techado de la Cabaña 03 con hamaca y comedor, frente al bosque de niebla",
+      "ancho": 1448,
+      "alto": 923
+    },
+    {
+      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/03.webp",
+      "alt": "Deck de inmersión metálico suspendido entre los árboles del bosque de niebla",
+      "ancho": 1086,
+      "alto": 1231
+    },
+    {
+      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-01/03.webp",
+      "alt": "Balcón de la Cabaña 01 con hamaca, mesa para dos y vista al bosque de niebla",
+      "ancho": 1086,
+      "alto": 1231
+    },
+    {
+      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/07.webp",
+      "alt": "Mesa y sillas de piedra bajo las farolas de La Finca, entre la neblina del atardecer",
+      "ancho": 1448,
+      "alto": 923
+    },
+    {
+      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-04/09.webp",
+      "alt": "Rincón de estar y estación de café de la Cabaña 04, con vista al bosque",
+      "ancho": 1448,
+      "alto": 923
+    },
+    {
+      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/04.webp",
+      "alt": "Ducha de madera al aire libre de La Finca, en medio del bosque",
+      "ancho": 1086,
+      "alto": 1231
+    },
+    {
+      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-05/03.webp",
+      "alt": "Cama doble de la Cabaña 05 junto al ventanal, con vista panorámica a la montaña",
+      "ancho": 1122,
+      "alto": 1192
+    },
+    {
+      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/08.webp",
+      "alt": "Pareja abrigada frente a la fogata encendida de La Finca, de noche",
+      "ancho": 941,
+      "alto": 1421
+    },
+    {
+      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-03/09.webp",
+      "alt": "Jacuzzi exterior de las cabañas 03 y 04, con toallas y vista al bosque",
+      "ancho": 1086,
+      "alto": 1231
+    },
+    {
+      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-01/06.webp",
+      "alt": "Jacuzzi privado al aire libre de la Cabaña 01, con toallas y vista a las montañas",
+      "ancho": 1448,
+      "alto": 923
+    },
+    {
+      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-02/04.webp",
+      "alt": "Terraza de la Cabaña 02 con hamaca, mesa para dos y vista a las montañas",
+      "ancho": 1448,
+      "alto": 923
+    },
+    {
+      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-03/06.webp",
+      "alt": "Zona social techada de las cabañas 03 y 04, con cocina de isla y comedor",
+      "ancho": 1086,
+      "alto": 1231
+    },
+    {
+      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-05/04.webp",
+      "alt": "Comedor para dos de la Cabaña 05 frente al ventanal, con vista al valle",
+      "ancho": 1122,
+      "alto": 1192
+    },
+    {
+      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-04/10.webp",
+      "alt": "Fachada blanca y techo azul de la Cabaña 04, con jardineras de flores",
+      "ancho": 1122,
+      "alto": 1192
+    },
+    {
+      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-01/05.webp",
+      "alt": "Cocina y comedor del nivel inferior de la Cabaña 01, con barra, sillas altas y sillones",
+      "ancho": 1448,
+      "alto": 923
+    },
+    {
+      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-03/07.webp",
+      "alt": "Sala compartida de las cabañas 03 y 04, con sillones de madera y ventanales al bosque",
+      "ancho": 1086,
+      "alto": 1231
+    },
+    {
+      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-02/01.webp",
+      "alt": "Habitación de la Cabaña 02 con cama doble, paredes de madera y mininevera",
+      "ancho": 1448,
+      "alto": 923
+    },
+    {
+      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-05/01.webp",
+      "alt": "Sala y cocina de la Cabaña 05, con barra de piedra y ventanal al bosque",
+      "ancho": 1031,
+      "alto": 1296
+    },
+    {
+      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-03/08.webp",
+      "alt": "Fachada blanca y techo azul de la Cabaña 03, con jardineras de flores",
+      "ancho": 1122,
+      "alto": 1192
+    },
+    {
+      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-01/02.webp",
+      "alt": "Sala del nivel inferior de la Cabaña 01, con cojines, tapete y plantas",
+      "ancho": 1448,
+      "alto": 923
+    },
+    {
+      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-04/08.webp",
+      "alt": "Batas térmicas y lámpara junto al ventanal de la Cabaña 04",
+      "ancho": 1086,
+      "alto": 1231
+    },
+    {
+      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-05/06.webp",
+      "alt": "Jacuzzi privado exterior de la Cabaña 05, con toallas y vista al jardín",
+      "ancho": 1086,
+      "alto": 1231
+    },
+    {
+      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-03/04.webp",
+      "alt": "Rincón de la Cabaña 03 con batas, cojines y mesa baja junto al ventanal",
+      "ancho": 1086,
+      "alto": 1231
+    },
+    {
+      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-02/03.webp",
+      "alt": "Estación de café y aromáticas de la Cabaña 02, junto a la ventana",
+      "ancho": 1086,
+      "alto": 1231
+    },
+    {
+      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-03/11.webp",
+      "alt": "Habitación de la Cabaña 03 con cama doble y ventanal al balcón",
+      "ancho": 1448,
+      "alto": 923
+    }
   ]
 }$json$::jsonb),
 
--- --- Página de reserva (hub previo al motor) --------------------------------
 ('reservar', $json${
   "intro": "Elige la cabaña y el plan que quieres. Te llevamos a WhatsApp con el mensaje ya escrito y confirmamos disponibilidad el mismo día.",
   "pasos": [
     {
       "titulo": "1. Elige tu cabaña",
-      "texto": "Cinco cabañas independientes para dos personas. Algunas con jacuzzi privado."
+      "texto": "Cinco cabañas independientes para dos personas. Cada una con su rasgo propio: jacuzzi privado, comedor en el balcón o chimenea."
     },
     {
       "titulo": "2. Elige tu plan",
-      "texto": "Entre Semana, Estándar o Premium. Cambia lo que incluye la estadía, no la cabaña."
+      "texto": "Entre Semana de lunes a jueves; Estándar y Premium de viernes a domingo y festivos. También está el Día de Calma, sin hospedaje."
     },
     {
-      "titulo": "3. Confirmamos por WhatsApp",
-      "texto": "Te respondemos con la disponibilidad, el total y la forma de pago. Sin intermediarios."
+      "titulo": "3. Confirmamos y reservas con el 50 %",
+      "texto": "Te respondemos con la disponibilidad y el total. Con el 50 % de anticipo queda confirmada; el resto se paga el día de la llegada por link."
     }
   ],
-  "nota": "Muy pronto vas a poder reservar y pagar en línea desde esta misma página."
+  "nota": "En La Finca no hay datáfono ni manejamos efectivo, y nunca pedimos datos de tarjeta por WhatsApp. Muy pronto vas a poder reservar y pagar en línea desde esta misma página."
 }$json$::jsonb),
 
--- --- Página 404 -------------------------------------------------------------
 ('no_encontrado', $json${
   "titulo": "Esta página se perdió en la neblina",
   "mensaje": "La dirección que buscas no existe o cambió de lugar. Vuelve al inicio o escríbenos por WhatsApp y te orientamos.",
   "cta_texto": "Volver al inicio",
   "cta_href": "/",
-  "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/sitio/home/pajaro-banner-3-22.webp",
-  "imagen_alt": "Ave de pecho amarillo posada sobre un tronco cubierto de musgo, en la reserva de La Finca"
+  "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/03.webp",
+  "imagen_alt": "Deck de inmersión metálico suspendido entre los árboles del bosque de niebla"
 }$json$::jsonb)
-
-on conflict (clave) do update set valor = excluded.valor;
+on conflict (clave) do update set
+  valor          = excluded.valor,
+  actualizado_at = now();
 
 
 -- ----------------------------------------------------------------------------
--- DESCRIPCIONES DE LAS CABAÑAS
+-- FOTOS DE LAS EXPERIENCIAS
 --
--- El sitio actual NO publica descripción por cabaña (ver CONTENIDO_ACTUAL.md):
--- solo el nombre y la galería. Estos textos se redactaron a partir de las fotos
--- oficiales de cada cabaña, describiendo únicamente lo que se ve en ellas.
--- Sustituyen el marcador de posición de `001_datos_iniciales.sql`.
---
--- TODO confirmar con el cliente: son borradores y pueden no reflejar cambios
--- recientes de mobiliario o dotación.
+-- Son las únicas imágenes del sitio anterior que se conservan: el Drive no trae
+-- ninguna foto de la mesa de aniversario ni de la bandeja de cumpleaños, y
+-- estas dos sí muestran lo que el hotel monta en la cabaña. Revisadas una por
+-- una: no llevan el nombre antiguo del hotel.
 -- ----------------------------------------------------------------------------
-update alojamientos set descripcion = $t$Cabaña de dos ambientes. La sala tiene sillones de madera con cojines y una barra con cocineta, nevera y estación de café; al lado, un rincón de estar con mesa baja para el vino de bienvenida. La habitación tiene cama doble y el baño privado, ducha con amenidades.$t$
- where slug = 'cabana-01';
-
-update alojamientos set descripcion = $t$Cabaña con terraza propia: hamaca y mesa para dos con vista abierta al valle, ideal para el café de la mañana entre la neblina. Adentro, habitación con cama doble, cómoda de bienvenida con vino y copas, y baño privado con ducha.$t$
- where slug = 'cabana-02';
-
-update alojamientos set descripcion = $t$La cabaña más amplia: además de la habitación con cama doble, tiene una sala-terraza techada con muebles de madera, cocina abierta con isla y comedor, un balcón con banca frente al bosque y una hamaca colgada mirando la montaña.$t$
- where slug = 'cabana-03';
-
-update alojamientos set descripcion = $t$Cabaña independiente de fachada blanca y techo azul, con salida directa de la habitación a la terraza: hamaca, mesa para dos y el bosque justo enfrente. Adentro, un rincón alfombrado con mesa baja y baño privado con ducha.$t$
- where slug = 'cabana-04';
-
-update alojamientos set descripcion = $t$Cabaña con vista panorámica desde casi todos los rincones: sala con muebles de madera frente al ventanal, chimenea para las noches frías, mesa para dos junto a la ventana y cocineta con estación de café. La habitación tiene cama doble y ventanal a la montaña.$t$
- where slug = 'cabana-05';
-
-
--- ----------------------------------------------------------------------------
--- EXPERIENCIAS: detalle real y foto
---
--- El sitio actual publica el contenido de las dos experiencias como una lista
--- (torta, topper, vela, vino, fotos instantáneas…). La tabla `extras` solo
--- tiene un campo de texto, así que la lista se escribe en prosa, que es como
--- se lee mejor en la tarjeta.
--- ----------------------------------------------------------------------------
-update extras set
-  descripcion = $t$Incluye torta para dos, topper de feliz aniversario, vela, botella de vino, 3 fotos instantáneas y arreglo floral o fondue de frutas. Con el plan Premium te llevamos la cena hasta la cabaña.$t$,
-  imagen_url  = 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/experiencias/pw-finca-aniversario-con-amor-21-2-21.webp'
+update extras set imagen_url = 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/experiencias/pw-finca-aniversario-con-amor-21-2-21.webp'
  where nombre = 'Aniversario con Amor';
-
-update extras set
-  descripcion = $t$Incluye torta para dos, topper de feliz cumpleaños, vela, botella de vino, 3 fotos instantáneas y arreglo floral o fondue de frutas. Con el plan Premium te llevamos la cena hasta la cabaña.$t$,
-  imagen_url  = 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/experiencias/experiencia-cumpleanos-30.webp'
+update extras set imagen_url = 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/experiencias/experiencia-cumpleanos-30.webp'
  where nombre = 'Cumpleaños con Amor';
-
 
 -- ----------------------------------------------------------------------------
 -- GALERÍAS DE LAS CABAÑAS
 --
--- Se cruzan los archivos `CABANA-N-XX.webp` del manifiesto con la cabaña que
--- les corresponde. El `orden` no sigue el nombre del archivo sino el criterio
--- de una ficha de alojamiento: primero la habitación (es la foto que decide la
--- reserva), después las zonas comunes y la terraza, y al final el baño.
+-- Las fotos oficiales que el cliente entregó en septiembre de 2026, ya subidas
+-- al bucket bajo `drive/`. El orden es el de `src/lib/fotos.ts`: primero el
+-- rasgo que hace única a esa cabaña (es la portada de las tarjetas y del
+-- zigzag), después la habitación y las zonas de estar, y el baño al final.
 --
--- Idempotente gracias al índice único `imagenes_url_unica` (migración 005).
+-- Las fichas gráficas «0. PORTADA …» NO entran: son texto dentro de una imagen
+-- y llevan impreso el nombre antiguo del hotel.
+--
+-- Se BORRA la galería entera antes de insertar. No basta con un
+-- `on conflict do update`: eso actualiza las filas que vuelven a aparecer pero
+-- deja vivas las que ya no están, y así es como acabaron mezcladas en la misma
+-- galería las fotos del WordPress viejo, las de `drive/` y las de `web/`.
+--
+-- Consecuencia asumida: si el cliente añade fotos desde el panel, volver a
+-- correr este seed se las lleva. Es el mismo aviso de la cabecera del archivo.
 -- ----------------------------------------------------------------------------
+delete from imagenes where alojamiento_id is not null;
+
 insert into imagenes (alojamiento_id, url, alt, orden)
-select
-  a.id,
-  'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/cabanas/' || f.archivo,
-  f.alt,
-  f.orden
+select a.id, f.url, f.alt, f.orden
 from (values
-  -- Cabaña 01
-  ('cabana-01', 'cabana-1-08.webp', 'Habitación de la Cabaña 01 con cama doble, lámparas de noche y baúl a los pies', 1),
-  ('cabana-01', 'cabana-1-07.webp', 'Rincón de estar de la Cabaña 01 con sofá, mesa redonda y vino de bienvenida', 2),
-  ('cabana-01', 'cabana-1-02.webp', 'Sala de la Cabaña 01 con sillones de madera, cojines turquesa y mesa de centro', 3),
-  ('cabana-01', 'cabana-1-01.webp', 'Barra de la Cabaña 01 con cocineta, nevera, cafetera y sillas altas', 4),
-  ('cabana-01', 'cabana-1-05.webp', 'Ducha de la Cabaña 01 con grifería de cobre y amenidades de baño', 5),
-  ('cabana-01', 'cabana-1-04.webp', 'Lavamanos y espejo del baño de la Cabaña 01, con toallas dobladas', 6),
-  ('cabana-01', 'cabana-1-03.webp', 'Baño de la Cabaña 01 con pared de azulejos azules', 7),
-  ('cabana-01', 'cabana-1-06.webp', 'Cómoda de la Cabaña 01 con batas colgadas y toallas listas para los huéspedes', 8),
-
-  -- Cabaña 02
-  ('cabana-02', 'cabana-2-01.webp', 'Habitación de la Cabaña 02 con cama doble y mesas de noche con lámparas', 1),
-  ('cabana-02', 'cabana-2-04.webp', 'Mesa para dos en la terraza de la Cabaña 02, con vista al valle', 2),
-  ('cabana-02', 'cabana-2-05.webp', 'Hamaca blanca en la terraza de la Cabaña 02, frente al bosque', 3),
-  ('cabana-02', 'cabana-2-06.webp', 'Cómoda de bienvenida de la Cabaña 02 con vino, copas y letrero de bienvenida', 4),
-  ('cabana-02', 'cabana-2-02.webp', 'Terraza de la Cabaña 02 con mesa redonda y sillas turquesa entre la neblina', 5),
-  ('cabana-02', 'cabana-2-03.webp', 'Rincón del corredor de la Cabaña 02 con mesa, sillas turquesa y hortensias', 6),
-  ('cabana-02', 'cabana-2-07.webp', 'Ducha de la Cabaña 02 con grifería de cobre y eucalipto colgado', 7),
-  ('cabana-02', 'cabana-2-08.webp', 'Baño de la Cabaña 02 con lavamanos sobre mesón de madera', 8),
-
-  -- Cabaña 03
-  ('cabana-03', 'cabana-3-01.webp', 'Habitación de la Cabaña 03 con cama doble, cómoda y ventana al bosque', 1),
-  ('cabana-03', 'cabana-3-07.webp', 'Terraza de la Cabaña 03 con hamaca y sillas, frente al bosque de montaña', 2),
-  ('cabana-03', 'cabana-3-03.webp', 'Sala techada de la Cabaña 03 con muebles de madera y cojines amarillos', 3),
-  ('cabana-03', 'cabana-3-04.webp', 'Balcón de la Cabaña 03 con banca de madera y vista al bosque de niebla', 4),
-  ('cabana-03', 'cabana-3-05.webp', 'Cocina abierta de la Cabaña 03 con isla de concreto y comedor junto al ventanal', 5),
-  ('cabana-03', 'cabana-3-02.webp', 'Rincón alfombrado de la Cabaña 03 con mesita, farol y vino', 6),
-  ('cabana-03', 'cabana-3-06.webp', 'Baño de la Cabaña 03 con ducha, planta colgante y toallas', 7),
-
-  -- Cabaña 04
-  ('cabana-04', 'cabana-4-05.webp', 'Habitación de la Cabaña 04 con cama doble y salida directa a la terraza con hamaca', 1),
-  ('cabana-04', 'cabana-4-04.webp', 'Terraza de la Cabaña 04 con hamaca, mesa para dos y vista al bosque', 2),
-  ('cabana-04', 'cabana-4-02.webp', 'Fachada blanca de la Cabaña 04 con techo azul y ventanales al jardín', 3),
-  ('cabana-04', 'cabana-4-01.webp', 'Rincón alfombrado de la Cabaña 04 con mesita, copas y canasta de bienvenida', 4),
-  ('cabana-04', 'cabana-4-03.webp', 'Baño de la Cabaña 04 con lavamanos, toallas y planta colgante', 5),
-
-  -- Cabaña 05
-  ('cabana-05', 'cabana-5-01.webp', 'Cama doble de la Cabaña 05 junto al ventanal, con vista a la montaña', 1),
-  ('cabana-05', 'cabana-5-05.webp', 'Sala de la Cabaña 05 con muebles de madera, cojines turquesa y ventanales al valle', 2),
-  ('cabana-05', 'cabana-5-04.webp', 'Mesa para dos de la Cabaña 05 junto a la ventana, frente al bosque', 3),
-  ('cabana-05', 'cabana-5-06.webp', 'Chimenea encendida de la Cabaña 05, con vino, copas y juegos de mesa', 4),
-  ('cabana-05', 'cabana-5-03.webp', 'Cocina de la Cabaña 05 con isla, estufa y vista al bosque', 5),
-  ('cabana-05', 'cabana-5-02.webp', 'Estación de café de la Cabaña 05 con nevera pequeña y cafetera', 6),
-  ('cabana-05', 'cabana-5-07.webp', 'Baño de la Cabaña 05 con ducha, lavamanos y planta colgante', 7)
-) as f(slug, archivo, alt, orden)
+  ('cabana-01', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-01/01.webp', 'Habitación de la Cabaña 01 en el nivel superior, con cama doble bajo el techo de madera', 1),
+  ('cabana-01', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-01/06.webp', 'Jacuzzi privado al aire libre de la Cabaña 01, con toallas y vista a las montañas', 2),
+  ('cabana-01', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-01/03.webp', 'Balcón de la Cabaña 01 con hamaca, mesa para dos y vista al bosque de niebla', 3),
+  ('cabana-01', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-01/05.webp', 'Cocina y comedor del nivel inferior de la Cabaña 01, con barra, sillas altas y sillones', 4),
+  ('cabana-01', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-01/02.webp', 'Sala del nivel inferior de la Cabaña 01, con cojines, tapete y plantas', 5),
+  ('cabana-01', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-01/04.webp', 'Baño privado de la Cabaña 01, con azulejos azules y hortensias', 6),
+  ('cabana-02', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-02/05.webp', 'Jacuzzi privado de la Cabaña 02 bajo el árbol, rodeado de guadua, con toallas dobladas', 1),
+  ('cabana-02', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-02/04.webp', 'Terraza de la Cabaña 02 con hamaca, mesa para dos y vista a las montañas', 2),
+  ('cabana-02', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-02/01.webp', 'Habitación de la Cabaña 02 con cama doble, paredes de madera y mininevera', 3),
+  ('cabana-02', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-02/03.webp', 'Estación de café y aromáticas de la Cabaña 02, junto a la ventana', 4),
+  ('cabana-02', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-02/02.webp', 'Baño privado de la Cabaña 02 con ducha, lavamanos y espejo', 5),
+  ('cabana-03', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-03/02.webp', 'Balcón techado de la Cabaña 03 con hamaca y comedor, frente al bosque de niebla', 1),
+  ('cabana-03', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-03/11.webp', 'Habitación de la Cabaña 03 con cama doble y ventanal al balcón', 2),
+  ('cabana-03', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-03/10.webp', 'Comedor en el balcón de la Cabaña 03, con hamaca y vista al valle', 3),
+  ('cabana-03', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-03/09.webp', 'Jacuzzi exterior de las cabañas 03 y 04, con toallas y vista al bosque', 4),
+  ('cabana-03', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-03/06.webp', 'Zona social techada de las cabañas 03 y 04, con cocina de isla y comedor', 5),
+  ('cabana-03', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-03/07.webp', 'Sala compartida de las cabañas 03 y 04, con sillones de madera y ventanales al bosque', 6),
+  ('cabana-03', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-03/04.webp', 'Rincón de la Cabaña 03 con batas, cojines y mesa baja junto al ventanal', 7),
+  ('cabana-03', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-03/03.webp', 'Interior de la Cabaña 03 con mininevera, estación de café y ventana al bosque', 8),
+  ('cabana-03', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-03/01.webp', 'Estación de café de la Cabaña 03, con cafetera, jarra y vasos', 9),
+  ('cabana-03', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-03/08.webp', 'Fachada blanca y techo azul de la Cabaña 03, con jardineras de flores', 10),
+  ('cabana-03', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-03/05.webp', 'Baño privado de la Cabaña 03 con ducha, lavamanos y espejo', 11),
+  ('cabana-04', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-04/05.webp', 'Balcón de la Cabaña 04 con hamaca, comedor redondo y vista al bosque de niebla', 1),
+  ('cabana-04', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-04/04.webp', 'Habitación de la Cabaña 04 con cama doble y ventanal al balcón', 2),
+  ('cabana-04', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-04/11.webp', 'Jacuzzi exterior de las cabañas 03 y 04, rodeado de guadua, con toallas', 3),
+  ('cabana-04', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-04/06.webp', 'Zona social techada de las cabañas 03 y 04, con cocina de isla y comedor', 4),
+  ('cabana-04', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-04/07.webp', 'Sala compartida de las cabañas 03 y 04, con sillones de madera y ventanales al bosque', 5),
+  ('cabana-04', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-04/09.webp', 'Rincón de estar y estación de café de la Cabaña 04, con vista al bosque', 6),
+  ('cabana-04', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-04/02.webp', 'Rincón de la Cabaña 04 con cojines y mesa baja junto a la ventana', 7),
+  ('cabana-04', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-04/08.webp', 'Batas térmicas y lámpara junto al ventanal de la Cabaña 04', 8),
+  ('cabana-04', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-04/01.webp', 'Estación de café de la Cabaña 04, con cafetera, jarra y vasos', 9),
+  ('cabana-04', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-04/10.webp', 'Fachada blanca y techo azul de la Cabaña 04, con jardineras de flores', 10),
+  ('cabana-04', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-04/03.webp', 'Baño privado de la Cabaña 04 con ducha, lavamanos y toallas', 11),
+  ('cabana-05', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-05/05.webp', 'Chimenea encendida de la Cabaña 05, la única cabaña que tiene, con cojines y juegos de mesa', 1),
+  ('cabana-05', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-05/03.webp', 'Cama doble de la Cabaña 05 junto al ventanal, con vista panorámica a la montaña', 2),
+  ('cabana-05', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-05/04.webp', 'Comedor para dos de la Cabaña 05 frente al ventanal, con vista al valle', 3),
+  ('cabana-05', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-05/01.webp', 'Sala y cocina de la Cabaña 05, con barra de piedra y ventanal al bosque', 4),
+  ('cabana-05', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-05/06.webp', 'Jacuzzi privado exterior de la Cabaña 05, con toallas y vista al jardín', 5),
+  ('cabana-05', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-05/02.webp', 'Baño privado de la Cabaña 05 con ducha, lavamanos y plantas', 6)
+) as f(slug, url, alt, orden)
 join alojamientos a on a.slug = f.slug
 on conflict (url) do update set
   alojamiento_id = excluded.alojamiento_id,
   alt            = excluded.alt,
   orden          = excluded.orden;
+

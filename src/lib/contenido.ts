@@ -28,7 +28,15 @@
 import { cache } from "react";
 
 import { crearClientePublico } from "./supabase/public";
-import { medio, SITIO } from "./sitio";
+import {
+  FOTO,
+  GALERIA_CABANA_01,
+  GALERIA_CABANA_03,
+  GALERIA_CABANA_05,
+  GALERIA_GENERAL,
+  ZONAS_COMUNES,
+} from "./fotos";
+import { IMAGEN_SOCIAL, SITIO } from "./sitio";
 import type { Alojamiento, Extra, Plan } from "./tipos/basedatos";
 
 /* ===========================================================================
@@ -39,6 +47,19 @@ export type ImagenGaleria = {
   url: string;
   /** Obligatorio por accesibilidad y SEO. Nunca se publica una foto sin él. */
   alt: string;
+  /**
+   * Medidas ORIGINALES del archivo, en píxeles.
+   *
+   * Opcionales porque una foto pegada a mano desde el panel no las trae. Cuando
+   * están, la galería respeta la proporción real de la fotografía en vez de
+   * recortarla a una casilla, y el navegador reserva el hueco exacto antes de
+   * descargarla (cero salto de maquetación).
+   *
+   * Vienen de `supabase/seed/imagenes-manifest-v2.json`, que las midió al subir
+   * cada archivo al bucket.
+   */
+  ancho?: number;
+  alto?: number;
 };
 
 export type HeroInicio = {
@@ -78,8 +99,18 @@ export type SeccionInicio = {
   cta_href: string;
 };
 
-/** Igual que `SeccionInicio` pero con la nota legal de las tarifas. */
-export type SeccionPlanes = SeccionInicio & { nota: string };
+/**
+ * Igual que `SeccionInicio`, más la nota legal de las tarifas y la foto de
+ * bosque que se usa como fondo de las secciones oscuras.
+ *
+ * La imagen vive aquí —y no incrustada en el componente— porque el cliente
+ * tiene que poder cambiarla desde el panel cuando renueve las fotos, sin
+ * esperar a un despliegue.
+ */
+export type SeccionPlanes = SeccionInicio & {
+  nota: string;
+  imagen_fondo: string;
+};
 
 export type EsenciaInicio = {
   antetitulo: string;
@@ -228,37 +259,49 @@ export type ContenidoNoEncontrado = {
 /* ===========================================================================
  * Respaldos en código
  * ---------------------------------------------------------------------------
- * Los textos salen de `docs/CONTENIDO_ACTUAL.md` (extraídos del sitio en
- * producción). Lo que no existía allí y hubo que redactar está señalado.
+ * FUENTE DE VERDAD: `docs/DATOS_CLIENTE.md` — lo que el hotel confirmó en
+ * septiembre de 2026 (respuestas de Juan Camilo, configuración del bot de
+ * ventas y el manual de identidad de marca). Manda sobre `CONTENIDO_ACTUAL.md`
+ * (el texto del WordPress viejo) y sobre cualquier borrador anterior.
+ *
+ * REGLA: lo que no esté respaldado por esos dos documentos NO se publica. Si
+ * hace falta un dato que nadie ha confirmado, va marcado `TODO` y se pregunta;
+ * nunca se inventa un horario, un precio ni una política.
+ *
+ * Las frases de marca («Vive despacio. Respira profundo. Estás en La Finca.»,
+ * «un suspiro del bosque convertido en descanso», la misión y la visión) están
+ * transcritas LITERALMENTE del manual: son texto aprobado y no se reescriben.
  * ======================================================================== */
 
 const RESPALDO_HERO: HeroInicio = {
-  antetitulo: "Ecohotel en el Valle del Cauca",
-  titulo: "Sumérgete en un bosque rodeado de neblina y aves",
+  antetitulo: "Km 18 vía Cali–Buenaventura",
+  /* Frase oficial del manual de marca (última página). Es el lema del hotel,
+     no un titular de agencia: se publica tal cual. */
+  titulo: "Vive despacio. Respira profundo. Estás en La Finca.",
   subtitulo:
-    "Somos un paraíso escondido en el Valle del Cauca a tan solo 45 minutos de Cali.",
+    "Cinco cabañas para dos en un bosque de niebla del Valle del Cauca, a 45 minutos de Cali.",
   parrafo:
-    "Sumérgete en la esencia de la finca colombiana rodeado de bosque, neblina y aves. Disfruta de la comodidad y confort en un entorno de tranquilidad y serenidad.",
-  cta_texto: "Reservar ahora",
+    "Te invitamos a respirar más despacio, a escuchar lo que el bosque quiere contarte y a dejar que la neblina te devuelva la calma.",
+  cta_texto: "Reservar",
   cta_href: "/reservar",
-  cta_secundario_texto: "Descubre nuestro paraíso",
+  cta_secundario_texto: "Conoce el lugar",
   cta_secundario_href: "/el-lugar",
-  imagen: medio("galeria/img-1075.webp"),
-  imagen_movil: medio("sitio/home/banner-principal-home-movil-11.webp"),
+  imagen: FOTO.heroEscritorio,
+  imagen_movil: FOTO.heroMovil,
   imagen_alt:
-    "Cabañas de techo azul de La Finca Eco Hotel sobre la ladera, entre hortensias y bosque de montaña",
+    "Corredor techado de La Finca Eco Hotel abierto al bosque de niebla del Km 18, con jardineras y baranda de madera",
 };
 
 const RESPALDO_INTRO: IntroInicio = {
   antetitulo: "Bienvenidos",
-  titulo: "Un bosque de niebla a 45 minutos de Cali",
+  titulo: "Un suspiro del bosque convertido en descanso",
   parrafos: [
-    "La Finca es un ecohotel de montaña en el Km 18 de la vía Cali–Buenaventura, en la Vereda Loma Alta. Aquí el día empieza con la neblina entre los árboles y el canto de las aves que habitan la reserva.",
-    "Son pocas cabañas, pensadas para dos personas, con cama doble, baño privado y vista a la montaña. Pocas cabañas significan silencio, privacidad y una atención que se nota.",
+    "La Finca Eco Hotel está en el Km 18 de la vía Cali–Buenaventura, en la Vereda Loma Alta, dentro de un bosque de niebla del Valle del Cauca. Son cinco cabañas pensadas para dos personas, cada una independiente, con cama doble, baño privado y vista a la montaña.",
+    "No hay televisor en ninguna cabaña, y es a propósito. Hay estación de café y aromáticas ilimitadas, batas y cobijas térmicas para el frío, y el canto de las aves a las seis de la mañana.",
   ],
-  imagen: medio("galeria/img-5389.webp"),
+  imagen: FOTO.panoramica,
   imagen_alt:
-    "Huésped en el deck de La Finca junto a una hamaca, con el bosque y la montaña al fondo",
+    "Las cabañas de techo azul de La Finca Eco Hotel sobre la ladera, con los senderos y los jardines de la reserva",
   datos: [
     { valor: "45 min", etiqueta: "desde Cali" },
     { valor: "5", etiqueta: "cabañas para dos" },
@@ -268,19 +311,22 @@ const RESPALDO_INTRO: IntroInicio = {
 
 const RESPALDO_CABANAS: SeccionInicio = {
   antetitulo: "Alojamiento",
-  titulo: "Nuestras cabañas",
+  titulo: "Nuestras cinco cabañas",
   descripcion:
-    "Cabañas independientes para dos, con cama doble, baño privado y vista a la montaña. Algunas con jacuzzi privado.",
+    "Cada una tiene algo que las otras no: dos niveles, un jacuzzi bajo un árbol, un comedor en el balcón o la única chimenea de La Finca. Todas para dos personas.",
   cta_texto: "Ver todas las cabañas",
   cta_href: "/alojamientos",
 };
 
 const RESPALDO_PLANES: SeccionPlanes = {
-  antetitulo: "Detalles & Tarifas",
+  antetitulo: "Planes y tarifas",
   titulo: "Elige tu plan",
   descripcion:
-    "La estadía se reserva por plan, no por cabaña: eliges el nivel de servicio que quieres y lo disfrutas en la cabaña que prefieras.",
-  nota: "Tarifas referenciales para temporada baja. Pueden variar según temporada, festivos y alta demanda.",
+    "El precio lo pone el plan, no la cabaña: eliges el nivel de servicio que quieres y lo disfrutas en la cabaña que prefieras.",
+  /* Condición que el cliente pidió dejar visible en todas partes donde se
+     publique un precio (§3 de DATOS_CLIENTE.md). */
+  nota: "Tarifas referenciales de temporada baja. Pueden variar en festivos y alta demanda. IVA incluido.",
+  imagen_fondo: FOTO.fondoBosque,
   cta_texto: "Reservar ahora",
   cta_href: "/reservar",
 };
@@ -289,31 +335,24 @@ const RESPALDO_EXPERIENCIAS: SeccionInicio = {
   antetitulo: "Experiencias",
   titulo: "Celebra en medio del bosque",
   descripcion:
-    "Añade una experiencia a tu reserva y encuentra la cabaña lista: decoración, torta, vino y fotos para que la fecha quede marcada.",
+    "Añade una experiencia a tu reserva y encuentra la cabaña lista al llegar: torta, vino, decoración y fotos instantáneas para que la fecha quede marcada.",
   cta_texto: "Ver experiencias",
   cta_href: "/experiencias",
 };
 
 const RESPALDO_ESENCIA: EsenciaInicio = {
-  antetitulo: "Naturaleza",
-  titulo: "Encontramos un bosque de neblina",
+  antetitulo: "Nuestra esencia",
+  /* Frase oficial del manual de marca. */
+  titulo: "Un lugar donde el lujo no brilla: se siente",
   parrafos: [
-    "Estamos dentro de una reserva natural: por eso los carros se quedan en el parqueadero externo y el bosque se recorre a pie. Es la forma de proteger a las especies que viven aquí.",
-    "El clima es frío, con mínimas de 18 grados, y días templados que invitan a caminar por los senderos, quedarse en el deck o simplemente escuchar.",
+    "Donde la belleza no se muestra: se respira. Cada rincón ha sido creado para recordarte que la vida también puede ser lenta, suave y serena.",
+    "Nuestra misión es crear espacios donde el descanso se vuelva un ritual natural, donde el confort moderno se mezcle con la tierra húmeda y la neblina que abraza las montañas.",
+    "Soñamos con ser un refugio de bienestar y sostenibilidad, un símbolo del eco-lujo consciente, donde la comodidad y el respeto por la tierra caminen de la mano.",
   ],
   imagenes: [
-    {
-      url: medio("galeria/img-6088.webp"),
-      alt: "Camino de tierra entre guaduas y helechos en la reserva de La Finca",
-    },
-    {
-      url: medio("galeria/img-5568.webp"),
-      alt: "Huésped apoyada en la baranda de un mirador, mirando el bosque de niebla",
-    },
-    {
-      url: medio("galeria/img-5569.webp"),
-      alt: "Sendero de piedra iluminado entre los helechos del bosque de La Finca",
-    },
+    ZONAS_COMUNES[3],
+    ZONAS_COMUNES[4],
+    ZONAS_COMUNES[7],
   ],
 };
 
@@ -322,17 +361,26 @@ const RESPALDO_RECONOCIMIENTO: ReconocimientoInicio = {
   titulo: "Somos COP16",
   parrafos: [
     "Somos COP16 y, junto con la Cámara de Comercio de Cali, nos preparamos para este evento donde mostramos la mejor imagen de nuestra región al mundo entero.",
-    "La COP16 —la Conferencia de las Partes sobre Diversidad Biológica— se celebró en Cali, y La Finca hizo parte de la vitrina del Valle del Cauca.",
+    "La reserva funciona con respaldo de paneles solares y los vehículos se quedan en el parqueadero externo: dentro de La Finca solo se entra a pie, para no alterar a las especies que viven aquí.",
   ],
-  imagen: medio("sitio/reconocimientos/somos-cop-16-mesa-de-trabajo-1.webp"),
+  imagen: FOTO.duchaBosque,
   imagen_alt:
-    "Camino entre hortensias hacia las cabañas de La Finca, con el bosque de niebla al fondo",
+    "Ducha de madera al aire libre de La Finca Eco Hotel, en medio del bosque de niebla",
   cta_texto: "Reservar ahora",
   cta_href: "/reservar",
 };
 
+/**
+ * Testimonios de RESPALDO.
+ *
+ * La portada muestra las reseñas reales de Google (`src/lib/resenas-google.ts`)
+ * leídas en vivo de la ficha del hotel. Estos textos —también reales, tomados
+ * de esa misma ficha— solo salen si la API falla, si falta la clave o si no
+ * queda ninguna reseña de 4★ o más. Son el plan B para que el bloque de
+ * confianza nunca desaparezca del recorrido.
+ */
 const RESPALDO_TESTIMONIOS: TestimoniosInicio = {
-  antetitulo: "Testimonios",
+  antetitulo: "Reseñas",
   titulo: "Lo que cuentan quienes ya vinieron",
   items: [
     {
@@ -369,16 +417,14 @@ const RESPALDO_TESTIMONIOS: TestimoniosInicio = {
 };
 
 const RESPALDO_CTA_FINAL: CtaFinal = {
-  titulo: "¿Necesitas más razones para reservar?",
+  titulo: "Deja que la neblina te devuelva la calma",
   texto:
     "Escríbenos y te ayudamos a elegir la cabaña, el plan y la fecha. Respondemos por WhatsApp todos los días.",
   cta_texto: "Reservar ahora",
   cta_href: "/reservar",
-  imagen: medio(
-    "sitio/home/pw-finca-landing-banner-1-mesa-de-trabajo-1-copia-10.webp",
-  ),
+  imagen: FOTO.atardecer,
   imagen_alt:
-    "Camino iluminado hacia la casa principal de La Finca, envuelto en la neblina del atardecer",
+    "Mesa y sillas de piedra bajo las farolas de La Finca Eco Hotel, entre la neblina del atardecer",
 };
 
 const RESPALDO_CONTACTO: ContactoSitio = {
@@ -404,21 +450,21 @@ const RESPALDO_CONTACTO: ContactoSitio = {
 };
 
 const RESPALDO_SEO: SeoSitio = {
-  titulo: "La Finca Eco Hotel — Cabañas en el bosque de niebla cerca de Cali",
+  titulo: "La Finca Eco Hotel — Cabañas con jacuzzi cerca de Cali",
   descripcion:
-    "Ecohotel de montaña a 45 minutos de Cali, en el Km 18 vía Buenaventura. Cabañas para dos con jacuzzi, turco, piscina, restaurante y senderos.",
+    "Ecohotel en el bosque de niebla, Km 18 vía Cali–Buenaventura. Cinco cabañas para dos con jacuzzi, turco, piscina y restaurante, a 45 minutos de Cali.",
   palabras_clave: [
     "ecohotel cerca de Cali",
     "cabañas con jacuzzi Valle del Cauca",
     "hotel Km 18 vía Buenaventura",
     "bosque de niebla Cali",
-    "cabañas para parejas cerca de Cali",
+    "plan romántico para parejas cerca de Cali",
   ],
   imagen: {
-    url: medio("sitio/home/banner-img-1075-baja-2.webp"),
-    alt: "La Finca Eco Hotel, cabañas en el bosque de niebla del Valle del Cauca",
-    ancho: 1200,
-    alto: 630,
+    url: IMAGEN_SOCIAL.url,
+    alt: IMAGEN_SOCIAL.alt,
+    ancho: IMAGEN_SOCIAL.ancho,
+    alto: IMAGEN_SOCIAL.alto,
   },
 };
 
@@ -426,282 +472,269 @@ const RESPALDO_HEROES: HeroesListados = {
   alojamientos: {
     titulo: "Nuestras cabañas",
     subtitulo:
-      "Cabañas independientes para dos, con cama doble, baño privado y vista a la montaña.",
-    imagen: medio("cabanas/cabanas-25.webp"),
-    imagen_alt:
-      "Habitación de una cabaña de La Finca con cama doble y ventanal hacia la terraza y el bosque",
+      "Cinco cabañas independientes para dos, con cama doble, baño privado y vista al bosque de niebla.",
+    imagen: GALERIA_CABANA_03[0].url,
+    imagen_alt: GALERIA_CABANA_03[0].alt,
   },
   experiencias: {
     titulo: "Experiencias",
     subtitulo:
-      "Celebraciones listas al llegar: aniversarios, cumpleaños, picnic y veladas en medio del bosque.",
-    imagen: medio("galeria/img-6086.webp"),
-    imagen_alt:
-      "Pareja compartiendo una botella de vino sobre el piso alfombrado de una cabaña de madera",
+      "Aniversarios y cumpleaños listos al llegar, y los detalles que se añaden a tu reserva.",
+    imagen: GALERIA_CABANA_05[0].url,
+    imagen_alt: GALERIA_CABANA_05[0].alt,
   },
   el_lugar: {
     titulo: "El lugar",
     subtitulo:
-      "Una reserva natural en el Km 18, con zona húmeda, piscina, restaurante y senderos.",
-    imagen: medio("galeria/37.png"),
+      "Una reserva natural en el Km 18, con jacuzzi, turco, piscina de agua fría, restaurante y senderos.",
+    imagen: FOTO.piscina,
     imagen_alt:
-      "Deck techado de La Finca con bancas de madera y vista al valle entre nubes",
+      "Piscina de agua fría de La Finca Eco Hotel con su chorrera, frente a las montañas y las nubes",
   },
   galeria: {
     titulo: "Galería",
     subtitulo: "El bosque, las cabañas y los rincones de La Finca en imágenes.",
-    imagen: medio("galeria/img-53970.webp"),
+    imagen: FOTO.atardecer,
     imagen_alt:
-      "Camino iluminado entre la neblina de la noche en La Finca, con las farolas encendidas",
+      "Mesa y sillas de piedra bajo las farolas de La Finca, entre la neblina del atardecer",
   },
   faq: {
     titulo: "Preguntas frecuentes",
     subtitulo:
-      "Lo que más nos preguntan antes de llegar: ubicación, clima, mascotas, niños y servicios.",
-    imagen: medio("galeria/img-6088.webp"),
+      "Lo que más nos preguntan antes de llegar: cómo llegar, el clima, las mascotas, los niños y los pagos.",
+    imagen: FOTO.duchaBosque,
     imagen_alt:
-      "Camino de tierra entre guaduas y helechos en la reserva de La Finca",
+      "Ducha de madera al aire libre de La Finca, en medio del bosque de niebla",
   },
   contacto: {
     titulo: "Contacto",
     subtitulo:
       "Escríbenos por WhatsApp: resolvemos dudas y confirmamos disponibilidad el mismo día.",
-    imagen: medio("galeria/img-6087.webp"),
+    imagen: FOTO.deckComedor,
     imagen_alt:
-      "Hortensias y bebedero de colibríes en los jardines de La Finca, con la montaña al fondo",
+      "Deck techado de La Finca con comedor de vidrio y sillas, frente a las montañas",
   },
   reservar: {
     titulo: "Reserva tu estadía",
     subtitulo:
       "Elige cabaña y plan, y confirmamos tu fecha por WhatsApp en pocos minutos.",
-    imagen: medio("cabanas/cabanas-28.webp"),
-    imagen_alt:
-      "Terraza de una cabaña de La Finca con hamaca, mesa para dos y vista al bosque",
+    imagen: GALERIA_CABANA_01[0].url,
+    imagen_alt: GALERIA_CABANA_01[0].alt,
   },
 };
 
 /**
- * Experiencias que el sitio actual publica con pieza gráfica pero SIN precio
- * (Picnic en el bosque y Velada romántica). Las dos que sí tienen precio
- * —Aniversario y Cumpleaños con Amor— viven en la tabla `extras`, porque se
- * venderán dentro de la reserva.
- * TODO confirmar con el cliente el precio y el detalle de estas dos.
+ * Página de experiencias.
+ *
+ * Las cuatro cosas que se venden aparte —Aniversario con Amor, Cumpleaños con
+ * Amor, Fondue y Segunda mascota— viven en la tabla `extras`, con su precio
+ * real, porque se van a poder añadir dentro de la reserva. Aquí solo quedan los
+ * textos de la página.
+ *
+ * `adicionales` va VACÍO a propósito. Contenía «Picnic en el bosque» y «Velada
+ * romántica», dos experiencias que el sitio viejo publicaba con foto y sin
+ * precio y que el hotel confirmó que NO existen (§4 de DATOS_CLIENTE.md). Se
+ * retiraron del CMS, del seed y de la base. El campo se conserva por si el
+ * cliente quiere anunciar algo a pedido desde el panel.
  */
 const RESPALDO_EXPERIENCIAS_PAGINA: ContenidoExperiencias = {
   intro:
-    "Preparamos la cabaña antes de que llegues: decoración, torta, vino y los detalles de la celebración listos. Se añaden a tu reserva.",
+    "Preparamos la cabaña antes de que llegues: decoración, torta, vino y los detalles de la celebración listos. Se añaden a tu reserva y se cobran una sola vez por estadía.",
   adicionales_titulo: "Otras experiencias",
   adicionales_descripcion:
-    "También armamos estos planes a pedido. Escríbenos y te contamos qué incluye cada uno y cuánto cuesta.",
-  adicionales: [
-    {
-      nombre: "Picnic en el bosque",
-      descripcion:
-        "Mantel, canasta, cojines y una mesa baja montados en el pasto, frente a la montaña.",
-      imagen: medio("experiencias/experiencia-picnic-30.webp"),
-      imagen_alt:
-        "Picnic montado sobre un mantel de cuadros rojos con canasta, pan y flores",
-    },
-    {
-      nombre: "Velada romántica",
-      descripcion:
-        "Cena servida en una mesa decorada, con vino, flores y farol, solo para ustedes dos.",
-      imagen: medio("experiencias/experiencia-velada-30.webp"),
-      imagen_alt:
-        "Mesa para dos servida con cena, vino tinto, rosas y farol para una velada romántica",
-    },
-  ],
+    "¿Tienes algo distinto en mente? Escríbenos por WhatsApp y lo armamos contigo.",
+  adicionales: [],
 };
 
 /**
- * Las 11 preguntas del sitio actual, con las respuestas tal cual las publica
- * el hotel. Única corrección: la respuesta original decía "6 cabañas" mientras
- * el resto del sitio muestra 5. Se publica el número que coincide con el
- * catálogo real para que el sitio no se contradiga a sí mismo.
- * TODO confirmar con el cliente cuál es el número correcto.
+ * Preguntas frecuentes.
+ *
+ * Reescritas ENTERAS con `docs/DATOS_CLIENTE.md`. Las del sitio viejo tenían
+ * tres errores que costaban reservas: decían «6 cabañas» (son cinco), daban el
+ * restaurante de 8:00 a. m. a 11:00 p. m. (es de 9:00 a. m. a 8:00 p. m. y solo
+ * para huéspedes) y afirmaban que no había pasadía (existe el Día de Calma).
+ * También decían que los niños son bienvenidos sin matizar, cuando la
+ * experiencia está diseñada para parejas adultas.
  */
 const RESPALDO_FAQ: ContenidoFaq = {
   intro:
     "Si tu pregunta no está aquí, escríbenos por WhatsApp: respondemos todos los días.",
   items: [
     {
-      pregunta: "¿Dónde estamos ubicados?",
+      pregunta: "¿Dónde están ubicados y cómo se llega?",
       respuesta:
-        "Nos encontramos en el km 18, vía Cali–Buenaventura, Vereda Loma Alta, a aproximadamente 45 minutos al oeste de Cali.",
+        "En el Km 18 de la vía Cali–Buenaventura, Vereda Loma Alta, a unos 45 minutos al occidente de Cali. La vía no está pavimentada en el último tramo, pero es apta para cualquier carro. El punto exacto y el video de llegada te los enviamos cuando confirmes el pago.",
     },
     {
-      pregunta: "¿Tienen zona de parqueadero?",
+      pregunta: "¿Cuántas cabañas tienen?",
       respuesta:
-        "Sí, contamos con un parqueadero externo vigilado las 24 horas. Por estar en una reserva natural, no se permite el ingreso de vehículos a La Finca, con el propósito de proteger a las especies que habitan el lugar.",
+        "Cinco. Todas son independientes, con capacidad máxima para 2 personas, cama doble, baño privado y vista a la montaña. Pocas cabañas significan silencio, privacidad y una atención que se nota.",
     },
     {
-      pregunta: "¿Cómo es el clima?",
+      pregunta: "¿Todas las cabañas tienen jacuzzi privado?",
       respuesta:
-        "Estamos ubicados en un bosque de niebla del Valle del Cauca, lo que nos brinda un clima frío con temperaturas mínimas de 18 grados centígrados. Sin embargo, también disfrutamos de días templados.",
+        "Las cabañas 01, 02 y 05 tienen jacuzzi privado en zona exterior. Las cabañas 03 y 04 comparten uno de uso privado por turnos: se reserva con Nicolás, nuestro anfitrión, para que cada pareja lo disfrute sola. Todos son climatizados, con burbujas y luces.",
+    },
+    {
+      pregunta: "¿A qué hora puedo llegar y a qué hora debo salir?",
+      respuesta:
+        "Desde la 1:00 p. m. puedes usar el restaurante, los senderos, los decks y las zonas sociales. La cabaña se entrega a las 3:00 p. m. El check-out es a la 1:00 p. m.",
+    },
+    {
+      pregunta: "¿Cómo se reserva y cómo se paga?",
+      respuesta:
+        "Con un anticipo del 50 % se confirma la reserva; el 50 % restante se paga el día de la llegada con un link de pago que te enviamos con anticipación. En La Finca no hay datáfono ni manejamos efectivo. Nunca te pediremos los datos de tu tarjeta por WhatsApp.",
+    },
+    {
+      pregunta: "¿Puedo cancelar o cambiar la fecha?",
+      respuesta:
+        "Una vez confirmada la reserva no hay reembolsos. Sí puedes cambiar la fecha una sola vez, avisando con mínimo 3 días de anticipación. Cancelar el mismo día o no presentarse se considera incumplimiento y no da lugar a devolución ni reprogramación.",
+    },
+    {
+      pregunta: "¿Cómo es el clima y qué debo llevar?",
+      respuesta:
+        "Estamos en un bosque de niebla, con temperaturas que bajan hasta los 18 °C y días templados. Trae ropa abrigada, algo impermeable y zapatos cómodos para los senderos. En la cabaña encontrarás batas y cobijas térmicas.",
+    },
+    {
+      pregunta: "¿Tienen parqueadero?",
+      respuesta:
+        "Sí, un parqueadero externo vigilado las 24 horas en la entrada. Los vehículos no ingresan a la reserva natural, para proteger a las especies que habitan el lugar: desde el parqueadero se entra a pie.",
+    },
+    {
+      pregunta: "¿Puedo llevar a mi mascota?",
+      respuesta:
+        "¡Claro! Las mascotas son bienvenidas en todas nuestras áreas, con cuidado responsable de sus acompañantes. La primera no tiene costo; a partir de la segunda hay un valor de $50.000 por estadía.",
+    },
+    {
+      pregunta: "¿Pueden ir niños?",
+      respuesta:
+        "La experiencia está diseñada para parejas adultas. Recibimos bebés de hasta 10 meses, que duermen con la mamá y no tienen costo. No contamos con cuna ni silla alta.",
     },
     {
       pregunta: "¿Cuentan con restaurante?",
       respuesta:
-        "Sí, ofrecemos servicio de restaurante todos los días de 8:00 a. m. a 11:00 p. m.",
+        "Sí, de 9:00 a. m. a 8:00 p. m. todos los días, exclusivo para huéspedes. El desayuno se sirve desde las 9:00 a. m. y tenemos opciones vegetarianas, veganas y sin gluten.",
     },
     {
-      pregunta: "¿Permiten el ingreso de mascotas?",
+      pregunta: "¿Qué horarios tienen las zonas comunes?",
       respuesta:
-        "¡Por supuesto! Las mascotas son bienvenidas en todas nuestras áreas. Solo pedimos que sus cuidadores sean responsables, para garantizar la seguridad y comodidad tanto de las mascotas como de los demás huéspedes.",
+        "El jacuzzi está disponible de 3:00 p. m. a 12:00 a. m. y se solicita con anticipación para alistarlo. La fogata con masmelos se enciende a las 9:00 p. m. La piscina de agua fría con chorrera y el turco por turnos están disponibles durante el día.",
     },
     {
-      pregunta: "¿Tienen cabañas para familias grandes?",
+      pregunta: "¿Se puede visitar sin quedarse a dormir?",
       respuesta:
-        "Nuestras cabañas están diseñadas principalmente para parejas: cada una tiene capacidad para 2 personas.",
+        "Sí, con el plan Día de Calma: de 10:00 a. m. a 5:00 p. m., con almuerzo a la carta, refrigerio y acceso a piscina, turco, decks, senderos y salón. No incluye hospedaje.",
     },
     {
-      pregunta: "¿Permiten niños?",
+      pregunta: "¿Hay televisor en las cabañas?",
       respuesta:
-        "Sí, los niños son bienvenidos. Sin embargo, ten en cuenta que nuestras instalaciones y experiencias están enfocadas principalmente en adultos y parejas.",
+        "No, y es a propósito. Las cabañas están pensadas para desconectarse. Sí hay WiFi, estación de café y aromáticas ilimitadas, mininevera, agua caliente, secador, amenities de baño y botiquín.",
     },
     {
-      pregunta: "¿Cada cabaña tiene zona húmeda privada?",
+      pregunta: "¿Se pueden hacer eventos?",
       respuesta:
-        "Algunas de nuestras cabañas cuentan con jacuzzi privado. Además, ofrecemos una zona húmeda social disponible para todos los huéspedes.",
+        "Sí. Tenemos un salón multifuncional para hasta 30 personas, ideal para retiros, cumpleaños y reuniones. Los talleres de yoga o meditación se programan desde 10 personas.",
     },
     {
-      pregunta: "¿Cuentan con pasadía?",
-      respuesta: "Actualmente no ofrecemos servicio de pasadía.",
-    },
-    {
-      pregunta: "¿Se pueden realizar eventos en sus instalaciones?",
+      pregunta: "¿Se puede caminar por el bosque?",
       respuesta:
-        "Sí, disponemos de un salón multifuncional ideal para retiros, cumpleaños y reuniones empresariales, con capacidad máxima para 30 personas.",
+        "Hay senderos y miradores habilitados dentro de la reserva, además de caminatas por los alrededores. No se permite el senderismo fuera de los senderos, por conservación del bosque.",
     },
     {
-      pregunta: "¿Hay zonas para hacer deporte?",
+      pregunta: "¿Es accesible para personas con movilidad reducida?",
       respuesta:
-        "En los alrededores se pueden realizar caminatas. Sin embargo, no está permitido ingresar al bosque para actividades como senderismo, con el fin de preservar el entorno natural.",
+        "El terreno es de montaña y no es plano: hay escaleras y pendientes entre las cabañas y las zonas comunes, así que no lo recomendamos para personas con movilidad reducida. Escríbenos y te contamos con detalle cómo es el recorrido.",
     },
   ],
 };
 
 const RESPALDO_LUGAR: ContenidoLugar = {
   antetitulo: "Sobre nosotros",
-  titulo: "Una finca colombiana dentro de una reserva natural",
+  titulo: "Una reserva natural en el bosque de niebla",
   parrafos: [
-    "La Finca Eco Hotel está en el Km 18 de la vía Cali–Buenaventura, en la Vereda Loma Alta, dentro de un bosque de niebla del Valle del Cauca. Se llega en unos 45 minutos desde Cali y, apenas se sube, el clima cambia: entra el frío, la neblina y el sonido de las aves.",
-    "El lugar se pensó al revés de un hotel grande: pocas cabañas, mucho bosque y un equipo pequeño que conoce a cada huésped por su nombre. Nicolás y Jackeline reciben personalmente a quienes llegan.",
-    "Cuidar la reserva es parte del plan. Los vehículos se quedan en el parqueadero externo y el bosque solo se recorre por los senderos habilitados, para no alterar a las especies que viven aquí.",
+    "La Finca Eco Hotel está en el Km 18 de la vía Cali–Buenaventura, en la Vereda Loma Alta. Se llega en unos 45 minutos desde Cali y, apenas se sube, el clima cambia: entra el frío, la neblina y el canto de las aves.",
+    "El lugar se pensó al revés de un hotel grande: cinco cabañas, mucho bosque y un equipo pequeño. Nicolás, nuestro anfitrión, recibe a cada pareja, coordina los turnos de jacuzzi y turco y resuelve lo que haga falta.",
+    "Cuidar la reserva es parte del plan. La energía tiene respaldo de paneles solares, los vehículos se quedan en el parqueadero externo y el bosque solo se recorre por los senderos habilitados. Somos COP16, en alianza con la Cámara de Comercio de Cali.",
   ],
-  imagen: medio("sitio/home/banner-img-1075-baja-4.webp"),
+  imagen: FOTO.panoramica,
   imagen_alt:
-    "Las cabañas de techo azul de La Finca sobre la ladera, entre hortensias y bosque de montaña",
-  instalaciones_titulo: "Instalaciones",
+    "Las cabañas de techo azul de La Finca Eco Hotel sobre la ladera, con los senderos y los jardines",
+  instalaciones_titulo: "Zonas comunes",
   instalaciones_descripcion:
-    "Todo lo que está incluido con tu estadía, además de la cabaña.",
+    "Todo esto está incluido con tu estadía, además de la cabaña.",
   instalaciones: [
     {
-      nombre: "Zona húmeda",
+      nombre: "Zona de hidroterapia",
       descripcion:
-        "Jacuzzi y turco de uso social para todos los huéspedes. Algunas cabañas, además, tienen jacuzzi privado.",
-      imagen: medio("galeria/img-6091.webp"),
+        "Jacuzzi climatizado de 3:00 p. m. a 12:00 a. m. (se solicita con anticipación), turco por turnos y piscina de agua fría con chorrera para alternar frío y calor.",
+      imagen: FOTO.piscina,
       imagen_alt:
-        "Huéspedes en el jacuzzi social de La Finca, con el bosque de montaña al fondo",
-    },
-    {
-      nombre: "Piscina y decks",
-      descripcion:
-        "Piscina y decks de madera con vista a la montaña, abiertos durante toda la estadía.",
-      imagen: medio("galeria/img-5390.webp"),
-      imagen_alt:
-        "Escaleras que bajan a la piscina de La Finca, rodeadas de jardines y con vista al bosque",
+        "Piscina de agua fría de La Finca con su chorrera, frente a las montañas y las nubes",
     },
     {
       nombre: "Restaurante",
       descripcion:
-        "Servicio todos los días de 8:00 a. m. a 11:00 p. m. Desayuno incluido en los tres planes, y carta para almuerzo y cena.",
-      imagen: medio("lugar/restaurante-24.webp"),
+        "De 9:00 a. m. a 8:00 p. m. todos los días, exclusivo para huéspedes. Desayuno desde las 9:00 a. m., con opciones vegetarianas, veganas y sin gluten.",
+      imagen: FOTO.deckComedor,
       imagen_alt:
-        "Comedor del restaurante de La Finca con mesas de madera y ventanales hacia el bosque",
+        "Deck techado de La Finca con comedor de vidrio y sillas, frente a las montañas",
+    },
+    {
+      nombre: "Decks de inmersión",
+      descripcion:
+        "Plataformas suspendidas entre los árboles para sentarse a mirar el bosque, respirar y no hacer nada más.",
+      imagen: ZONAS_COMUNES[3].url,
+      imagen_alt: ZONAS_COMUNES[3].alt,
+    },
+    {
+      nombre: "Ducha al aire libre",
+      descripcion:
+        "Una ducha de madera en medio del bosque, para terminar el recorrido por los senderos como se debe.",
+      imagen: FOTO.duchaBosque,
+      imagen_alt:
+        "Ducha de madera al aire libre de La Finca, en medio del bosque",
+    },
+    {
+      nombre: "Fogata con masmelos",
+      descripcion:
+        "A las 9:00 p. m. encendemos la fogata. Está incluida en todos los planes de hospedaje.",
+      imagen: FOTO.fogata,
+      imagen_alt:
+        "Pareja abrigada frente a la fogata encendida de La Finca, de noche",
     },
     {
       nombre: "Salón multifuncional",
       descripcion:
-        "Espacio para retiros, cumpleaños y reuniones empresariales, con capacidad máxima para 30 personas.",
-      imagen: medio("lugar/salon-la-finca-24.webp"),
-      imagen_alt:
-        "Salón techado y abierto de La Finca, con bancas y vista al valle entre nubes",
-    },
-    {
-      nombre: "Senderos",
-      descripcion:
-        "Caminos habilitados para recorrer el bosque de niebla y avistar las aves de la reserva.",
-      imagen: medio("galeria/img-5569.webp"),
-      imagen_alt:
-        "Sendero de piedra entre los helechos del bosque de niebla de La Finca",
-    },
-    {
-      nombre: "Fogata",
-      descripcion:
-        "Al caer la tarde encendemos la fogata en el deck. Los planes Entre Semana y Premium incluyen los pinchos de masmelos.",
-      imagen: medio("galeria/img-53920.webp"),
-      imagen_alt:
-        "Huéspedes abrigados frente a una fogata encendida en el deck del bosque",
+        "Espacio para retiros, cumpleaños y reuniones, con capacidad máxima para 30 personas. Talleres de yoga o meditación desde 10 personas.",
+      imagen: ZONAS_COMUNES[6].url,
+      imagen_alt: ZONAS_COMUNES[6].alt,
     },
   ],
   llegar_titulo: "Cómo llegar",
   llegar_parrafos: [
-    "Desde Cali se toma la vía a Buenaventura y se sube hasta el Km 18. Son unos 45 minutos en carro desde el occidente de la ciudad.",
-    "Al llegar, el vehículo se deja en el parqueadero externo vigilado y el ingreso a las cabañas se hace a pie: estamos dentro de una reserva natural y no permitimos el ingreso de carros para proteger a las especies del bosque.",
+    "Desde Cali se toma la vía a Buenaventura y se sube hasta el Km 18. Son unos 45 minutos en carro desde el occidente de la ciudad. El último tramo no está pavimentado, pero es apto para cualquier vehículo.",
+    "Al llegar, el carro se deja en el parqueadero externo vigilado y se entra a pie: estamos dentro de una reserva natural y no permitimos el ingreso de vehículos, para no alterar a las especies del bosque.",
   ],
   llegar_indicaciones: [
     "Km 18, vía Cali–Buenaventura, Vereda Loma Alta (Valle del Cauca).",
     "Aproximadamente 45 minutos desde Cali.",
-    "Parqueadero externo vigilado 24 horas.",
-    "Si vienes en transporte público o taxi, escríbenos por WhatsApp y te damos el punto exacto de llegada.",
+    "Parqueadero externo vigilado 24 horas; los vehículos no ingresan a la reserva.",
+    "El pin exacto y el video de llegada se envían al confirmar el pago.",
   ],
 };
 
 /**
- * Galería general: las 31 fotos de la carpeta `galeria/` del bucket.
+ * Galería general: las fotos oficiales, sin una sola repetida.
  *
- * Van ordenadas por resolución: las diez últimas (`fotos-landing-*`) vienen del
- * WordPress actual a 225×300 px y se ven blandas si se muestran grandes, así
- * que cierran la cuadrícula en las casillas pequeñas.
- * TODO: reemplazarlas cuando llegue la carpeta de fotos en alta calidad (§12).
+ * Sale de `src/lib/fotos.ts`, que es donde vive el catálogo con su texto
+ * alternativo. Las fotos del WordPress viejo —225×300 px, y algunas con toallas
+ * bordadas «Finca Villarreal», el nombre anterior del hotel— ya no se publican
+ * en ninguna parte del sitio.
  */
 const RESPALDO_GALERIA: ContenidoGaleria = {
   intro:
-    "El bosque, las cabañas y las zonas sociales de La Finca, tal como las encuentran nuestros huéspedes.",
-  imagenes: [
-    { url: medio("galeria/img-1075.webp"), alt: "Vista de las cabañas de techo azul de La Finca sobre la ladera, entre hortensias" },
-    { url: medio("galeria/37.png"), alt: "Deck techado de La Finca con bancas de madera y vista al valle entre nubes" },
-    { url: medio("galeria/41.png"), alt: "Comedor del restaurante de La Finca con mesas de madera y ventanales hacia la niebla" },
-    { url: medio("galeria/img-5389.webp"), alt: "Huésped en el deck junto a una hamaca, con el bosque y el cielo despejado al fondo" },
-    { url: medio("galeria/img-5390.webp"), alt: "Escaleras que bajan a la piscina de La Finca, rodeadas de jardines" },
-    { url: medio("galeria/img-5391.webp"), alt: "Huésped y su perro en el jacuzzi al aire libre, con la montaña detrás" },
-    { url: medio("galeria/img-5394.webp"), alt: "Huésped en bata en la terraza de una cabaña, mirando el bosque de montaña" },
-    { url: medio("galeria/img-53920.webp"), alt: "Pareja abrigada frente a una fogata encendida en el deck del bosque" },
-    { url: medio("galeria/img-53950.webp"), alt: "Pareja en bata junto a la fogata de noche, con copas de vino y masmelos" },
-    { url: medio("galeria/img-53960.webp"), alt: "Picnic sobre el pasto con canasta, vino y farol, frente a la vista del valle" },
-    { url: medio("galeria/img-53970.webp"), alt: "Pareja abrazada entre la neblina de la noche, junto a las farolas del camino" },
-    { url: medio("galeria/img-5567.webp"), alt: "Huésped junto a una hamaca en la terraza, envuelta en la neblina" },
-    { url: medio("galeria/img-5568.webp"), alt: "Huésped apoyada en la baranda de un mirador, mirando el bosque de niebla" },
-    { url: medio("galeria/img-5569.webp"), alt: "Sendero de piedra entre los helechos del bosque de niebla de La Finca" },
-    { url: medio("galeria/img-6086.webp"), alt: "Pareja compartiendo una botella de vino en el piso alfombrado de una cabaña de madera" },
-    { url: medio("galeria/img-6087.webp"), alt: "Huésped junto a las hortensias y el bebedero de colibríes, con la montaña al fondo" },
-    { url: medio("galeria/img-6088.webp"), alt: "Camino de tierra entre guaduas y helechos en la reserva de La Finca" },
-    { url: medio("galeria/img-6089.webp"), alt: "Huésped con ruana mirando el bosque desde una baranda de La Finca" },
-    { url: medio("galeria/img-6091.webp"), alt: "Huéspedes en el jacuzzi social de La Finca, con el bosque de montaña al fondo" },
-    { url: medio("galeria/img-4424.webp"), alt: "Perro cocker spaniel sentado en el deck techado, con el valle detrás" },
-    { url: medio("galeria/49.png"), alt: "Jacuzzi encendido de noche, con toallas dobladas y una mesa iluminada al lado" },
-    { url: medio("galeria/fotos-landing-mesa-de-trabajo-1.webp"), alt: "Huésped con ruana fucsia mirando el bosque desde la baranda" },
-    { url: medio("galeria/fotos-landing-mesa-de-trabajo-1-copia.webp"), alt: "Huésped caminando por el camino de tierra que cruza la reserva" },
-    { url: medio("galeria/fotos-landing-mesa-de-trabajo-1-copia-2.webp"), alt: "Huésped sonriendo junto a las hortensias del jardín, con la montaña al fondo" },
-    { url: medio("galeria/fotos-landing-mesa-de-trabajo-1-copia-3.webp"), alt: "Pareja sentada en el piso de una cabaña de madera con una mesita y copas" },
-    { url: medio("galeria/fotos-landing-mesa-de-trabajo-1-copia-4.webp"), alt: "Huésped caminando por el sendero del bosque entre los helechos" },
-    { url: medio("galeria/fotos-landing-mesa-de-trabajo-1-copia-5.webp"), alt: "Huésped de espaldas apoyada en la baranda frente al bosque de niebla" },
-    { url: medio("galeria/fotos-landing-mesa-de-trabajo-1-copia-6.webp"), alt: "Huésped sentada junto a la hamaca de la terraza, entre la niebla" },
-    { url: medio("galeria/fotos-landing-mesa-de-trabajo-1-copia-7.webp"), alt: "Huésped y su perro en el jacuzzi al aire libre, bajo el cielo despejado" },
-    { url: medio("galeria/fotos-landing-mesa-de-trabajo-1-copia-8.webp"), alt: "Perro cocker spaniel sobre una rampa en el deck, con el valle al fondo" },
-    { url: medio("galeria/fotos-landing-mesa-de-trabajo-1-copia-9.webp"), alt: "Grupo de amigas en el jacuzzi social de La Finca" },
-  ],
+    "El bosque, las cabañas y las zonas comunes de La Finca, tal como las encuentran nuestros huéspedes.",
+  imagenes: GALERIA_GENERAL,
 };
 
 const RESPALDO_RESERVAR: ContenidoReservar = {
@@ -711,20 +744,20 @@ const RESPALDO_RESERVAR: ContenidoReservar = {
     {
       titulo: "1. Elige tu cabaña",
       texto:
-        "Cinco cabañas independientes para dos personas. Algunas con jacuzzi privado.",
+        "Cinco cabañas independientes para dos personas. Cada una con su rasgo propio: jacuzzi privado, comedor en el balcón o chimenea.",
     },
     {
       titulo: "2. Elige tu plan",
       texto:
-        "Entre Semana, Estándar o Premium. Cambia lo que incluye la estadía, no la cabaña.",
+        "Entre Semana de lunes a jueves; Estándar y Premium de viernes a domingo y festivos. También está el Día de Calma, sin hospedaje.",
     },
     {
-      titulo: "3. Confirmamos por WhatsApp",
+      titulo: "3. Confirmamos y reservas con el 50 %",
       texto:
-        "Te respondemos con la disponibilidad, el total y la forma de pago. Sin intermediarios.",
+        "Te respondemos con la disponibilidad y el total. Con el 50 % de anticipo queda confirmada; el resto se paga el día de la llegada por link.",
     },
   ],
-  nota: "Muy pronto vas a poder reservar y pagar en línea desde esta misma página.",
+  nota: "En La Finca no hay datáfono ni manejamos efectivo, y nunca pedimos datos de tarjeta por WhatsApp. Muy pronto vas a poder reservar y pagar en línea desde esta misma página.",
 };
 
 const RESPALDO_NO_ENCONTRADO: ContenidoNoEncontrado = {
@@ -733,9 +766,8 @@ const RESPALDO_NO_ENCONTRADO: ContenidoNoEncontrado = {
     "La dirección que buscas no existe o cambió de lugar. Vuelve al inicio o escríbenos por WhatsApp y te orientamos.",
   cta_texto: "Volver al inicio",
   cta_href: "/",
-  imagen: medio("sitio/home/pajaro-banner-3-22.webp"),
-  imagen_alt:
-    "Ave de pecho amarillo posada sobre un tronco cubierto de musgo, en la reserva de La Finca",
+  imagen: ZONAS_COMUNES[3].url,
+  imagen_alt: ZONAS_COMUNES[3].alt,
 };
 
 /* ===========================================================================
@@ -765,6 +797,42 @@ export const CLAVES_CONTENIDO = [
 ] as const;
 
 export type ClaveContenido = (typeof CLAVES_CONTENIDO)[number];
+
+/**
+ * Los respaldos, indexados por su clave.
+ *
+ * ---------------------------------------------------------------------------
+ * POR QUÉ ESTE MAPA EXISTE
+ * ---------------------------------------------------------------------------
+ * El contenido vivía DOS veces: aquí arriba, en TypeScript, y otra vez a mano
+ * en `supabase/seed/002_contenido.sql`. Eran seiscientas líneas de JSON
+ * transcritas, y bastaba corregir una frase en un lado y olvidarla en el otro
+ * para que el sitio publicado y la base dijeran cosas distintas —que es
+ * exactamente lo que pasó con el horario del restaurante—.
+ *
+ * Ahora el seed se GENERA de aquí (`npm run seed:contenido`). El código es la
+ * única fuente y el SQL es un artefacto, como lo es un `build`.
+ */
+export const RESPALDOS: Record<ClaveContenido, Record<string, unknown>> = {
+  "sitio.contacto": RESPALDO_CONTACTO,
+  "sitio.seo": RESPALDO_SEO,
+  "home.hero": RESPALDO_HERO,
+  "home.intro": RESPALDO_INTRO,
+  "home.cabanas": RESPALDO_CABANAS,
+  "home.planes": RESPALDO_PLANES,
+  "home.experiencias": RESPALDO_EXPERIENCIAS,
+  "home.esencia": RESPALDO_ESENCIA,
+  "home.reconocimiento": RESPALDO_RECONOCIMIENTO,
+  "home.testimonios": RESPALDO_TESTIMONIOS,
+  "home.cta_final": RESPALDO_CTA_FINAL,
+  "heroes.listados": RESPALDO_HEROES,
+  experiencias: RESPALDO_EXPERIENCIAS_PAGINA,
+  faq: RESPALDO_FAQ,
+  lugar: RESPALDO_LUGAR,
+  galeria: RESPALDO_GALERIA,
+  reservar: RESPALDO_RESERVAR,
+  no_encontrado: RESPALDO_NO_ENCONTRADO,
+};
 
 /**
  * Lee la tabla entera de una vez.
@@ -928,6 +996,14 @@ export const getNoEncontrado = cache(() =>
 export type TarifaDePlan = {
   plan: Plan;
   precio_noche: number;
+  /**
+   * Precio por noche si viaja UNA sola persona. `null` = se cobra igual.
+   *
+   * Hoy solo lo usa el plan Entre Semana ($350.000 para dos, $200.000 para
+   * una). Es un dato que el hotel publica y que cambia la decisión de quien
+   * viaja solo, así que se muestra al lado del precio principal.
+   */
+  precio_noche_1_persona: number | null;
   /** Días ISO en los que aplica (1 = lunes). `null` = todos. */
   dias_semana: number[] | null;
 };
@@ -983,7 +1059,9 @@ export const getPlanes = cache(async (): Promise<Plan[]> => {
     const supabase = crearClientePublico();
     const { data, error } = await supabase
       .from("planes")
-      .select("id, nombre, descripcion, incluye, orden, activo")
+      .select(
+        "id, nombre, descripcion, incluye, tipo, dias_aplica, horario, precio_base, orden, activo",
+      )
       .eq("activo", true)
       .order("orden", { ascending: true });
 
@@ -1013,7 +1091,9 @@ const getTarifasPorAlojamiento = cache(
           const supabase = crearClientePublico();
           const { data, error } = await supabase
             .from("tarifas")
-            .select("alojamiento_id, plan_id, precio_noche, dias_semana, vigencia")
+            .select(
+              "alojamiento_id, plan_id, precio_noche, precio_noche_1_persona, dias_semana, vigencia",
+            )
             .is("vigencia", null);
 
           if (error) {
@@ -1040,6 +1120,7 @@ const getTarifasPorAlojamiento = cache(
       lista.push({
         plan,
         precio_noche: fila.precio_noche,
+        precio_noche_1_persona: fila.precio_noche_1_persona ?? null,
         dias_semana: fila.dias_semana,
       });
       agrupadas.set(fila.alojamiento_id, lista);
@@ -1132,6 +1213,20 @@ export const getExperiencias = cache(async (): Promise<Extra[]> => {
   return extras.filter((extra) => extra.tipo === "experiencia");
 });
 
+/**
+ * Adicionales: lo que se suma a la reserva y no es una celebración entera.
+ *
+ * Hoy son el Fondue ($25.000) y la segunda mascota ($50.000). Se separan de las
+ * experiencias porque el compromiso es distinto —uno es «celebramos tu
+ * aniversario», el otro es «tráete el segundo perro»— y mezclarlos en la misma
+ * rejilla de tarjetas grandes le daba a una mascota el mismo peso visual que a
+ * una decoración de $150.000.
+ */
+export const getAdicionales = cache(async (): Promise<Extra[]> => {
+  const extras = await getExtras();
+  return extras.filter((extra) => extra.tipo === "adicional");
+});
+
 /** Precio más bajo publicado en todo el hotel: el "desde" de la portada. */
 export const getPrecioDesde = cache(async (): Promise<number | null> => {
   const alojamientos = await getAlojamientos();
@@ -1152,6 +1247,14 @@ export type PlanConPrecio = {
   precio_minimo: number | null;
   /** `true` si no todas las cabañas cobran lo mismo por este plan. */
   varia: boolean;
+  /**
+   * Precio más bajo para UNA sola persona, si el plan lo publica.
+   *
+   * Hoy solo Entre Semana: $350.000 para dos, $200.000 para una. Ocultarlo
+   * dejaría fuera a quien viaja solo entre semana, que es justo el huésped que
+   * el plan busca.
+   */
+  precio_1_persona: number | null;
 };
 
 export const getPlanesConPrecio = cache(async (): Promise<PlanConPrecio[]> => {
@@ -1161,15 +1264,37 @@ export const getPlanesConPrecio = cache(async (): Promise<PlanConPrecio[]> => {
   ]);
 
   return planes.map((plan) => {
-    const precios = alojamientos
+    /*
+      LOS PLANES DE DÍA NO TIENEN TARIFA POR CABAÑA.
+      El Día de Calma no ocupa cabaña ni noche: su precio vive en
+      `planes.precio_base`. Sin esta rama saldría en la portada como «Consulta
+      la tarifa» teniendo un precio publicado de $250.000.
+    */
+    if (plan.tipo === "dia") {
+      return {
+        plan,
+        precio_minimo: plan.precio_base,
+        varia: false,
+        precio_1_persona: null,
+      };
+    }
+
+    const tarifas = alojamientos
       .flatMap((alojamiento) => alojamiento.tarifas)
-      .filter((tarifa) => tarifa.plan.id === plan.id)
-      .map((tarifa) => tarifa.precio_noche);
+      .filter((tarifa) => tarifa.plan.id === plan.id);
+
+    const precios = tarifas.map((tarifa) => tarifa.precio_noche);
+    const preciosUnaPersona = tarifas
+      .map((tarifa) => tarifa.precio_noche_1_persona)
+      .filter((precio): precio is number => typeof precio === "number");
 
     return {
       plan,
       precio_minimo: precios.length ? Math.min(...precios) : null,
       varia: new Set(precios).size > 1,
+      precio_1_persona: preciosUnaPersona.length
+        ? Math.min(...preciosUnaPersona)
+        : null,
     };
   });
 });
@@ -1267,14 +1392,20 @@ export const getUltimaModificacion = cache(
  * Utilidades
  * ======================================================================== */
 
-/** Portada de una galería, con respaldo seguro si viene vacía. */
+/**
+ * Portada de una galería, con respaldo seguro si viene vacía.
+ *
+ * El respaldo es una foto de zonas comunes y no de una cabaña concreta: si una
+ * cabaña se quedó sin fotos en la base, enseñar la habitación de OTRA cabaña
+ * sería mentir sobre lo que se está reservando.
+ */
 export function portada(
   galeria: ImagenGaleria[],
   altRespaldo: string,
 ): ImagenGaleria {
   return (
     galeria[0] ?? {
-      url: medio("cabanas/cabanas-25.webp"),
+      url: FOTO.panoramica,
       alt: altRespaldo,
     }
   );
