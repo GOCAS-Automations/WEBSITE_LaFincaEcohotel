@@ -1,5 +1,7 @@
+import Image from "next/image";
+
 /**
- * Atmósfera del sitio: neblina, colibríes, motas de luz y divisores orgánicos.
+ * Atmósfera del sitio: bosque real, neblina, resplandor, patrón y botánica.
  *
  * ---------------------------------------------------------------------------
  * POR QUÉ EXISTE ESTE ARCHIVO
@@ -7,8 +9,30 @@
  * La Finca no es "un hotel con fotos de bosque": es un bosque de niebla con
  * cabañas dentro. Un sitio hecho solo de rectángulos apilados sobre fondo crema
  * puede estar bien resuelto y aun así no contar eso. Estas piezas son las que
- * ponen el lugar en la pantalla —bruma que se mueve, un colibrí suspendido,
+ * ponen el lugar en la pantalla —bruma que se mueve, la luz del amanecer,
  * bordes de sección que son laderas y no líneas rectas—.
+ *
+ * ---------------------------------------------------------------------------
+ * DE DÓNDE SALE CADA PIEZA (manual de marca `IV LA FINCA.pdf`)
+ * ---------------------------------------------------------------------------
+ * · `Resplandor`     — el degradado de luz verde-crema que entra por una
+ *                      esquina del petróleo. Está en CASI TODAS las páginas
+ *                      del manual: es la firma visual de la marca.
+ * · `PatronColibri`  — la página 12 del manual, entera: el isotipo repetido a
+ *                      baja opacidad. Se construye con `mask-image` sobre el
+ *                      PNG oficial, así que el logo NO se redibuja ni se
+ *                      altera (el manual lo prohíbe expresamente). Sustituyó a
+ *                      un colibrí dibujado a mano en SVG que, a tamaño real y
+ *                      con poca opacidad, no se leía como un ave sino como un
+ *                      garabato — y que además no era el ave de la marca.
+ * · `RamaBotanica`   — la ilustración de línea fina de la papelería, las tazas
+ *                      y los colgadores de puerta (páginas 13–16).
+ * · `FondoBosque`    — fotografía REAL de las zonas comunes bajo el petróleo,
+ *                      en lugar del verde plano que había antes.
+ *
+ * Lo que se RETIRÓ: las «motas de luz» (puntitos dorados flotando). No salían
+ * del manual, el dorado ni siquiera está en la paleta oficial, y sobre el
+ * verde se leían como purpurina en vez de como polen.
  *
  * TODO es servidor y TODO es decorativo:
  *   · Cero `"use client"`: son etiquetas y rutas SVG, no hay estado.
@@ -60,126 +84,232 @@ export function Neblina({ tono = "clara", className }: PropsNeblina) {
   );
 }
 
+
 /* ===========================================================================
- * Motas de luz
+ * Resplandor de luz
  * ======================================================================== */
 
 /**
- * Cinco motas de polen subiendo muy despacio. Solo tienen sentido sobre fondo
- * oscuro: sobre crema no se ven, y si se les sube la opacidad para que se vean,
- * parecen suciedad en la pantalla.
+ * El degradado de luz de la marca.
+ *
+ * En el manual, el petróleo NUNCA es un color plano: siempre tiene una zona
+ * donde la luz entra y lo aclara hasta casi el verde claro. Esa luz es la
+ * neblina del amanecer, y es lo que separa la identidad de La Finca de
+ * "cualquier hotel con verde oscuro".
+ *
+ * Va en `mix-blend-screen`, así que aclara lo que tenga debajo —color plano o
+ * fotografía— en vez de pintarse encima como una mancha.
  */
-export function Motas({ className }: { className?: string }) {
+export function Resplandor({
+  desde = "derecha",
+  className,
+}: {
+  /** Esquina por la que entra la luz. Alternarla entre secciones evita que se
+   *  lea como un elemento de plantilla repetido. */
+  desde?: "derecha" | "izquierda";
+  className?: string;
+}) {
   return (
     <div
       aria-hidden="true"
-      className={["motas", className].filter(Boolean).join(" ")}
-    >
-      <span />
-      <span />
-      <span />
-      <span />
-      <span />
-    </div>
+      className={[
+        "resplandor",
+        desde === "izquierda" ? "resplandor--izquierda" : "",
+        className,
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    />
   );
 }
 
 /* ===========================================================================
- * Colibrí
+ * Patrón de colibríes
  * ======================================================================== */
 
-type PropsColibri = {
-  /** Variante de ritmo, para que dos colibríes nunca floten al unísono. */
-  ritmo?: "normal" | "lento" | "pausado";
-  /** Mira a la izquierda por defecto; `derecha` lo voltea. */
-  mirando?: "izquierda" | "derecha";
+/**
+ * El isotipo repetido a baja opacidad, como en la página 12 del manual.
+ *
+ * Se pinta con `mask-image` sobre `/marca/icono.png`: el PNG tiene canal alfa,
+ * así que su silueta recorta un color plano. Esto importa —el manual prohíbe
+ * alterar el logo— porque no estamos redibujando nada: estamos usando el
+ * archivo oficial tal cual, solo que como máscara.
+ *
+ * `tono="claro"` para fondos claros (petróleo bajísimo) y el de por defecto
+ * para fondos oscuros (verde claro de marca al 13 %).
+ */
+export function PatronColibri({
+  tono = "oscuro",
+  className,
+}: {
+  tono?: "oscuro" | "claro";
   className?: string;
-};
+}) {
+  return (
+    <div
+      aria-hidden="true"
+      className={[
+        "patron-colibri",
+        tono === "claro" ? "patron-colibri--claro" : "",
+        className,
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    />
+  );
+}
+
+/* ===========================================================================
+ * Rama botánica de línea
+ * ======================================================================== */
 
 /**
- * Colibrí de línea fina.
+ * La rama de hojas de trazo fino del manual (papelería, tazas, colgadores).
  *
- * Es una **silueta de trazo**, no un dibujo animado: cuerpo y cola en línea de
- * 1,4 px y las alas rellenas al 16 % para dar volumen sin peso. Un colibrí
- * caricaturesco —ojo grande, colores planos— habría convertido un ecohotel en
- * un parque temático.
+ * Está dibujada a mano, no calcada: son hojas lanceoladas alternas sobre un
+ * tallo curvo, con tres bayas al final, que es exactamente la construcción de
+ * la ilustración del manual. Va SIEMPRE en `currentColor` para poder pintarla
+ * en verde claro sobre petróleo o en petróleo sobre crema, que son los dos
+ * usos que aparecen en la guía.
  *
- * El aleteo real de un colibrí son unos cincuenta golpes por segundo. Animarlo
- * a esa velocidad se ve como un error de renderizado, así que las alas
- * "respiran" cada 3,6 s cambiando de escala y opacidad: la lectura es "está
- * vivo y suspendido", no "está aleteando".
+ * Respira muy despacio (28 s) gracias a la clase `.botanica`: apenas un grado
+ * de giro. Si se nota el movimiento, está mal calibrado.
  */
-export function Colibri({
+export function RamaBotanica({
   ritmo = "normal",
-  mirando = "izquierda",
+  espejo = false,
   className,
-}: PropsColibri) {
+}: {
+  ritmo?: "normal" | "lenta";
+  /** Voltea la rama para que dos no se lean como la misma calcomanía. */
+  espejo?: boolean;
+  className?: string;
+}) {
   return (
     <svg
-      viewBox="0 0 100 66"
+      viewBox="0 0 160 220"
       aria-hidden="true"
       focusable="false"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
       className={[
-        "colibri",
-        ritmo === "lento" ? "colibri--lento" : "",
-        ritmo === "pausado" ? "colibri--pausado" : "",
-        mirando === "derecha" ? "-scale-x-100" : "",
+        "botanica",
+        ritmo === "lenta" ? "botanica--lenta" : "",
+        espejo ? "-scale-x-100" : "",
         "pointer-events-none",
         className,
       ]
         .filter(Boolean)
         .join(" ")}
     >
-      {/* Alas: el único relleno del dibujo. Van primero para quedar detrás. */}
-      <g className="colibri__ala">
-        {/* La lejana, corta y empinada: la que da la profundidad. */}
-        <path
-          d="M48 33C50 22 54 12 60 3C59 16 55 27 52 36Z"
-          fill="currentColor"
-          fillOpacity="0.09"
-          stroke="currentColor"
-          strokeWidth="1"
-          strokeOpacity="0.5"
-          strokeLinejoin="round"
-        />
-        {/* La cercana, larga y barrida hacia atrás: la que da el vuelo. */}
-        <path
-          d="M52 32C61 21 74 10 93 3C79 13 65 25 57 38Z"
-          fill="currentColor"
-          fillOpacity="0.15"
-          stroke="currentColor"
-          strokeWidth="1.1"
-          strokeLinejoin="round"
-        />
+      {/* Tallo principal: una sola curva larga, sin puntos de inflexión
+          simétricos (una curva simétrica se lee como un adorno de librería). */}
+      <path d="M18 214C30 176 44 140 66 108C86 79 112 55 142 38" />
+
+      {/* Hojas alternas. Cada una es una lanceta cerrada con su nervadura:
+          dos trazos por hoja, que es lo mínimo para que parezca dibujada y no
+          recortada. Los tamaños decrecen hacia la punta, como en una rama. */}
+      <g>
+        <path d="M40 168C24 162 14 148 12 130C31 131 44 144 48 160Z" />
+        <path d="M40 168C36 158 32 149 25 140" />
+
+        <path d="M57 137C64 118 80 107 99 105C94 124 80 137 63 141Z" />
+        <path d="M57 137C68 131 78 124 90 114" />
+
+        <path d="M76 107C64 96 58 80 59 63C76 70 86 85 86 101Z" />
+        <path d="M76 107C76 96 75 87 70 76" />
+
+        <path d="M98 82C107 66 123 57 141 57C135 74 121 85 105 87Z" />
+        <path d="M98 82C108 77 117 71 128 63" />
+
+        <path d="M120 60C112 49 109 35 112 21C126 28 133 42 131 56Z" />
+        <path d="M120 60C121 50 121 42 118 32" />
       </g>
 
-      <g
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.15"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        {/* Cola: dos plumas finas, en el eje del cuerpo (no abiertas en V:
-            abiertas parecen cola de pez). */}
-        <path d="M67 43C76 43 84 45 93 48" />
-        <path d="M68 47C75 50 81 54 87 60" />
-        {/* Pico: largo, como el de los colibríes del bosque de niebla. */}
-        <path d="M8 26L30 31" strokeWidth="1.35" />
+      {/* Las tres bayas del extremo: el detalle que aparece en las tazas y en
+          el membrete del manual. Sin ellas la rama se queda en "unas hojas". */}
+      <g fill="currentColor" stroke="none">
+        <circle cx="144" cy="34" r="3.1" />
+        <circle cx="133" cy="24" r="2.2" />
+        <circle cx="150" cy="46" r="1.9" />
       </g>
+    </svg>
+  );
+}
 
-      {/* Cuerpo y cabeza, de una sola línea cerrada. */}
-      <path
-        d="M30 31C36 25 46 24 54 29C62 34 68 40 70 45C63 49 52 50 44 46C36 42 30 36 30 31Z"
-        fill="currentColor"
-        fillOpacity="0.07"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinejoin="round"
+/* ===========================================================================
+ * Fondo de bosque
+ * ======================================================================== */
+
+/**
+ * Una sección oscura hecha de bosque de verdad.
+ *
+ * Antes las zonas oscuras del sitio eran `bg-bosque-900`: un verde plano,
+ * correcto y muerto. Ahora son una fotografía real de las zonas comunes con
+ * cuatro capas encima, en este orden exacto y por este motivo:
+ *
+ *   1. **La foto**, en `object-cover`. Es el lugar.
+ *   2. **El velo de petróleo** (85–92 %). No es para "oscurecer": es para que
+ *      la fotografía ENTRE en la paleta. Sin él, una foto de bosque verde
+ *      amarillento al lado del petróleo de marca se ven como dos verdes que
+ *      discuten. Con él, la foto ES el petróleo.
+ *   3. **La bruma a la deriva**, en `screen`, que es lo único que se mueve.
+ *   4. **El resplandor y el patrón de colibríes**, la firma de la marca.
+ *
+ * El velo además es lo que garantiza el contraste: sobre la foto sola, un
+ * titular blanco bailaría entre 2:1 y 12:1 según la zona. Con el velo al 88 %
+ * el peor caso sigue pasando AA holgadamente.
+ */
+export function FondoBosque({
+  imagen,
+  /**
+   * Intensidad del velo de petróleo.
+   * `denso` para secciones con texto largo o tarjetas encima; `suave` cuando
+   * la foto es la protagonista y el texto va en un bloque con su propio fondo.
+   */
+  velo = "denso",
+  patron = true,
+  resplandor = "derecha",
+  className,
+}: {
+  imagen: string;
+  velo?: "denso" | "suave";
+  patron?: boolean;
+  resplandor?: "derecha" | "izquierda" | "ninguno";
+  className?: string;
+}) {
+  return (
+    <div
+      aria-hidden="true"
+      className={["absolute inset-0 overflow-hidden", className]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      <Image
+        src={imagen}
+        alt=""
+        fill
+        quality={68}
+        sizes="100vw"
+        className="object-cover"
       />
 
-      <circle cx="37.5" cy="31.5" r="1.05" fill="currentColor" />
-    </svg>
+      <div
+        className={
+          velo === "denso"
+            ? "absolute inset-0 bg-petroleo-950/92"
+            : "absolute inset-0 bg-petroleo-950/80"
+        }
+      />
+
+      <Neblina tono="bosque" className="mix-blend-screen" />
+
+      {resplandor !== "ninguno" ? <Resplandor desde={resplandor} /> : null}
+      {patron ? <PatronColibri /> : null}
+    </div>
   );
 }
 
