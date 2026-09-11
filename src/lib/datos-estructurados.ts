@@ -44,12 +44,23 @@ export function grafoHotel({
   imagenes,
   descripcion,
   numeroDeCabanas,
+  calificacion,
 }: {
   contacto: ContactoSitio;
   precioDesde: number | null;
   imagenes: string[];
   descripcion: string;
   numeroDeCabanas: number;
+  /**
+   * Promedio y número de calificaciones de la ficha de Google.
+   *
+   * Se pasa desde la página, que ya llamó a `getResenasGoogle()` para pintar
+   * las reseñas: así el dato estructurado y lo que se ve en pantalla salen de
+   * la MISMA lectura. Si la API no respondió, llega `undefined` y el bloque no
+   * se emite: schema.org prohíbe declarar un `aggregateRating` sin respaldo, y
+   * Google penaliza el marcado que no corresponde a contenido visible.
+   */
+  calificacion?: { promedio: number; total: number };
 }) {
   const telefono = contacto.whatsapp ? `+${contacto.whatsapp}` : undefined;
 
@@ -89,18 +100,40 @@ export function grafoHotel({
         checkinTime: SITIO.estadia.checkIn,
         checkoutTime: SITIO.estadia.checkOut,
         numberOfRooms: numeroDeCabanas,
+        ...(calificacion
+          ? {
+              aggregateRating: {
+                "@type": "AggregateRating",
+                ratingValue: calificacion.promedio,
+                reviewCount: calificacion.total,
+                bestRating: 5,
+                worstRating: 1,
+              },
+            }
+          : {}),
+        /*
+          Las amenidades son las que el hotel confirmó (§6 de
+          `docs/DATOS_CLIENTE.md`), incluidas las que se declaran en NEGATIVO:
+          que no hay televisor es una decisión del hotel y un dato que el
+          huésped quiere saber antes de reservar, no una carencia que esconder.
+        */
         amenityFeature: [
-          "Jacuzzi",
-          "Turco",
-          "Piscina",
-          "Restaurante",
-          "WiFi",
-          "Parqueadero vigilado",
-          "Senderos",
-        ].map((nombre) => ({
+          ["Jacuzzi climatizado", true],
+          ["Turco", true],
+          ["Piscina de agua fría", true],
+          ["Restaurante", true],
+          ["WiFi", true],
+          ["Parqueadero externo vigilado 24 horas", true],
+          ["Senderos y miradores", true],
+          ["Avistamiento de aves", true],
+          ["Fogata", true],
+          ["Salón para eventos", true],
+          ["Estación de café y aromáticas", true],
+          ["Televisor en las habitaciones", false],
+        ].map(([nombre, value]) => ({
           "@type": "LocationFeatureSpecification",
           name: nombre,
-          value: true,
+          value,
         })),
       },
     ],

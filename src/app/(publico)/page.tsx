@@ -9,6 +9,7 @@ import {
   getSeoSitio,
 } from "@/lib/contenido";
 import { grafoHotel } from "@/lib/datos-estructurados";
+import { getResenasGoogle } from "@/lib/resenas-google";
 import { metadatosPagina, serializarJsonLd } from "@/lib/seo";
 
 export const revalidate = 3600;
@@ -31,11 +32,17 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function Inicio() {
-  const [contacto, precioDesde, alojamientos, seo] = await Promise.all([
+  const [contacto, precioDesde, alojamientos, seo, resenas] = await Promise.all([
     getContacto(),
     getPrecioDesde(),
     getAlojamientos(),
     getSeoSitio(),
+    /* Misma lectura que usa `PaginaInicio` para pintar las reseñas: viene
+       envuelta en `cache()` de React, así que dentro de este render la API se
+       llama UNA sola vez aunque se pida dos veces. Es lo que garantiza que el
+       `aggregateRating` del JSON-LD y las estrellas que se ven en pantalla
+       digan exactamente lo mismo. */
+    getResenasGoogle(),
   ]);
 
   const grafo = grafoHotel({
@@ -43,6 +50,11 @@ export default async function Inicio() {
     precioDesde,
     descripcion: seo.descripcion,
     numeroDeCabanas: alojamientos.length,
+    ...(resenas
+      ? {
+          calificacion: { promedio: resenas.promedio, total: resenas.total },
+        }
+      : {}),
     imagenes: [
       seo.imagen.url,
       ...alojamientos
