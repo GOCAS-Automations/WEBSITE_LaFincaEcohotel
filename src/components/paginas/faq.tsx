@@ -5,7 +5,12 @@ import { IconoWhatsapp } from "@/components/sitio/iconos";
 import { Boton } from "@/components/ui/boton";
 import { Revelar } from "@/components/ui/revelar";
 import { Seccion } from "@/components/ui/seccion";
-import { getContacto, getFaq, getHeroesListados } from "@/lib/contenido";
+import {
+  getContacto,
+  getFaq,
+  getHeroesListados,
+  getSeccionPlanes,
+} from "@/lib/contenido";
 import { enlaceWhatsapp } from "@/lib/whatsapp";
 
 /**
@@ -20,10 +25,11 @@ import { enlaceWhatsapp } from "@/lib/whatsapp";
  * El mismo contenido alimenta los datos estructurados `FAQPage` de la página.
  */
 export async function PaginaFaq() {
-  const [heroes, faq, contacto] = await Promise.all([
+  const [heroes, faq, contacto, seccionPlanes] = await Promise.all([
     getHeroesListados(),
     getFaq(),
     getContacto(),
+    getSeccionPlanes(),
   ]);
 
   return (
@@ -102,6 +108,7 @@ export async function PaginaFaq() {
       </Seccion>
 
       <CierreReserva
+        imagen={seccionPlanes.imagen_fondo}
         fondoAnterior="bg-crema-50"
         titulo="Ya sabes cómo es. Solo faltan las fechas."
         perfil="bruma"

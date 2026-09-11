@@ -12,7 +12,11 @@ import {
 import { Boton } from "@/components/ui/boton";
 import { Revelar } from "@/components/ui/revelar";
 import { Seccion } from "@/components/ui/seccion";
-import { getContacto, getHeroesListados } from "@/lib/contenido";
+import {
+  getContacto,
+  getHeroesListados,
+  getSeccionPlanes,
+} from "@/lib/contenido";
 import { SITIO } from "@/lib/sitio";
 import { enlaceWhatsapp } from "@/lib/whatsapp";
 
@@ -26,9 +30,10 @@ import { enlaceWhatsapp } from "@/lib/whatsapp";
  * nadie le responde. Cuando el cliente confirme el correo, se añade aquí.
  */
 export async function PaginaContacto() {
-  const [heroes, contacto] = await Promise.all([
+  const [heroes, contacto, seccionPlanes] = await Promise.all([
     getHeroesListados(),
     getContacto(),
+    getSeccionPlanes(),
   ]);
 
   const redes = [
@@ -147,7 +152,7 @@ export async function PaginaContacto() {
             {/* Redes */}
             {redes.length > 0 ? (
               <div>
-                <h2 className="font-titulo text-sm font-semibold tracking-[0.16em] text-dorado-600 uppercase">
+                <h2 className="font-titulo text-sm font-semibold tracking-[0.16em] text-oliva-600 uppercase">
                   Síguenos
                 </h2>
                 <ul className="mt-4 flex flex-col gap-2">
@@ -201,6 +206,7 @@ export async function PaginaContacto() {
       </Seccion>
 
       <CierreReserva
+        imagen={seccionPlanes.imagen_fondo}
         fondoAnterior="bg-crema-50"
         titulo="¿Ya tienes fecha?"
         texto="Cuéntanos cuándo quieres venir y te confirmamos disponibilidad el mismo día."

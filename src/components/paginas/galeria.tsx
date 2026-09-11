@@ -3,7 +3,11 @@ import { CierreReserva } from "@/components/sitio/cierre-reserva";
 import { HeroPagina } from "@/components/sitio/hero-pagina";
 import { Galeria } from "@/components/ui/galeria";
 import { Seccion } from "@/components/ui/seccion";
-import { getGaleria, getHeroesListados } from "@/lib/contenido";
+import {
+  getGaleria,
+  getHeroesListados,
+  getSeccionPlanes,
+} from "@/lib/contenido";
 
 /**
  * Galería general.
@@ -31,9 +35,10 @@ import { getGaleria, getHeroesListados } from "@/lib/contenido";
  * sin tener que leer el código.
  */
 export async function PaginaGaleria() {
-  const [heroes, galeria] = await Promise.all([
+  const [heroes, galeria, seccionPlanes] = await Promise.all([
     getHeroesListados(),
     getGaleria(),
+    getSeccionPlanes(),
   ]);
 
   return (
@@ -65,6 +70,7 @@ export async function PaginaGaleria() {
       </Seccion>
 
       <CierreReserva
+        imagen={seccionPlanes.imagen_fondo}
         fondoAnterior="bg-crema-50"
         titulo="Lo que se ve en las fotos se siente mejor en persona"
       />

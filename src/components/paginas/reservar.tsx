@@ -153,6 +153,7 @@ export async function PaginaReservar() {
       </Seccion>
 
       <CierreReserva
+        imagen={seccionPlanes.imagen_fondo}
         fondoAnterior="bg-crema-50"
         titulo="¿Prefieres que te ayudemos a elegir?"
         texto="Escríbenos por WhatsApp con tus fechas y te decimos qué cabaña y qué plan te conviene."

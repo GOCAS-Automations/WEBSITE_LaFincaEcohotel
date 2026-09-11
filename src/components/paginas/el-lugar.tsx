@@ -1,13 +1,18 @@
 import Image from "next/image";
 
-import { Colibri, Neblina } from "@/components/sitio/atmosfera";
+import { Neblina, PatronColibri, RamaBotanica } from "@/components/sitio/atmosfera";
 import { CierreReserva } from "@/components/sitio/cierre-reserva";
 import { HeroPagina } from "@/components/sitio/hero-pagina";
 import { IconoUbicacion } from "@/components/sitio/iconos";
 import { Boton } from "@/components/ui/boton";
 import { Revelar } from "@/components/ui/revelar";
 import { EncabezadoSeccion, Seccion } from "@/components/ui/seccion";
-import { getContacto, getHeroesListados, getLugar } from "@/lib/contenido";
+import {
+  getContacto,
+  getHeroesListados,
+  getLugar,
+  getSeccionPlanes,
+} from "@/lib/contenido";
 
 /**
  * El lugar: quiénes somos, instalaciones y cómo llegar.
@@ -18,10 +23,11 @@ import { getContacto, getHeroesListados, getLugar } from "@/lib/contenido";
  * primer visor.
  */
 export async function PaginaElLugar() {
-  const [heroes, lugar, contacto] = await Promise.all([
+  const [heroes, lugar, contacto, seccionPlanes] = await Promise.all([
     getHeroesListados(),
     getLugar(),
     getContacto(),
+    getSeccionPlanes(),
   ]);
 
   return (
@@ -37,10 +43,11 @@ export async function PaginaElLugar() {
       {/* Sobre nosotros */}
       <Seccion fondo="crema" className="relative overflow-hidden">
         <Neblina tono="verde" className="opacity-60" />
-        <Colibri
-          className="pointer-events-none absolute top-10 right-[5%] hidden w-28 text-oliva-500/45 xl:block"
-          ritmo="lento"
-          mirando="derecha"
+        <PatronColibri tono="claro" />
+        <RamaBotanica
+          className="absolute top-[8%] right-[-5%] hidden w-56 text-oliva-400/25 lg:block"
+          ritmo="lenta"
+          espejo
         />
 
         <div className="relative z-10 grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
@@ -180,6 +187,7 @@ export async function PaginaElLugar() {
       </Seccion>
 
       <CierreReserva
+        imagen={seccionPlanes.imagen_fondo}
         fondoAnterior="bg-crema-50"
         titulo="Ven a conocerlo"
         texto="Cinco cabañas, un bosque de niebla y 45 minutos de camino desde Cali."

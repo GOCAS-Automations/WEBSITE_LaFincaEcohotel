@@ -21,7 +21,7 @@ export async function PaginaLegal({ clave }: { clave: ClaveLegal }) {
   return (
     <>
       <div className="border-b border-crema-200/70 bg-white">
-        <div className="contenedor pt-8 pb-10 sm:pt-12 sm:pb-14">
+        <div className="contenedor bajo-nav pb-10 sm:pb-14">
           <nav aria-label="Ruta de navegación" className="mb-4">
             <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-crema-600">
               <li className="flex items-center gap-2">
@@ -94,7 +94,7 @@ export async function PaginaLegal({ clave }: { clave: ClaveLegal }) {
             aria-label="Otros documentos legales"
             className="mt-4 border-t border-crema-300/70 pt-8"
           >
-            <h2 className="font-titulo text-sm font-semibold tracking-[0.16em] text-dorado-600 uppercase">
+            <h2 className="font-titulo text-sm font-semibold tracking-[0.16em] text-oliva-600 uppercase">
               Otros documentos
             </h2>
             <ul className="mt-4 flex flex-wrap gap-x-6 gap-y-3">

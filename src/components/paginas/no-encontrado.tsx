@@ -22,7 +22,7 @@ export async function ContenidoNoEncontrado() {
   ]);
 
   return (
-    <section className="contenedor flex flex-col items-center gap-8 py-16 text-center sm:py-24">
+    <section className="contenedor bajo-nav flex flex-col items-center gap-8 pb-16 text-center sm:pb-24">
       <div className="relative size-56 sm:size-72">
         <Image
           src={contenido.imagen}
@@ -36,7 +36,7 @@ export async function ContenidoNoEncontrado() {
       </div>
 
       <div className="flex flex-col items-center gap-4">
-        <p className="font-titulo text-sm font-semibold tracking-[0.18em] text-dorado-600 uppercase">
+        <p className="font-titulo text-sm font-semibold tracking-[0.18em] text-oliva-600 uppercase">
           Error 404
         </p>
         <h1 className="max-w-2xl text-3xl leading-tight font-extrabold text-petroleo-900 sm:text-4xl">

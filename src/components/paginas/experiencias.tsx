@@ -10,8 +10,10 @@ import { EncabezadoSeccion, Seccion } from "@/components/ui/seccion";
 import {
   getContacto,
   getContenidoExperiencias,
+  getAdicionales,
   getExperiencias,
   getHeroesListados,
+  getSeccionPlanes,
 } from "@/lib/contenido";
 import { formatearCOP } from "@/lib/utils/formato";
 import { enlaceWhatsapp, mensajeExperiencia } from "@/lib/whatsapp";
@@ -25,12 +27,15 @@ import { enlaceWhatsapp, mensajeExperiencia } from "@/lib/whatsapp";
  * confirmada. Mezclarlas haría creer que todas cuestan lo mismo.
  */
 export async function PaginaExperiencias() {
-  const [heroes, contenido, experiencias, contacto] = await Promise.all([
-    getHeroesListados(),
-    getContenidoExperiencias(),
-    getExperiencias(),
-    getContacto(),
-  ]);
+  const [heroes, contenido, experiencias, adicionales, contacto, seccionPlanes] =
+    await Promise.all([
+      getHeroesListados(),
+      getContenidoExperiencias(),
+      getExperiencias(),
+      getAdicionales(),
+      getContacto(),
+      getSeccionPlanes(),
+    ]);
 
   return (
     <>
@@ -82,7 +87,7 @@ export async function PaginaExperiencias() {
                         {experiencia.descripcion}
                       </p>
                     ) : null}
-                    <p className="mt-auto pt-3 font-titulo text-2xl font-extrabold text-dorado-600">
+                    <p className="mt-auto pt-3 font-titulo text-2xl font-extrabold text-petroleo-700">
                       {formatearCOP(experiencia.precio)}
                       <span className="ml-2 text-sm font-medium text-crema-600">
                         por estadía
@@ -106,6 +111,45 @@ export async function PaginaExperiencias() {
           </ul>
         ) : null}
       </Seccion>
+
+      {/*
+        LOS ADICIONALES, en lista y no en tarjetas con foto.
+        Son el fondue ($25.000) y la segunda mascota ($50.000): cosas pequeñas
+        que se suman a la reserva. Darles una tarjeta con fotografía del mismo
+        tamaño que a una celebración de $150.000 confundía la jerarquía y hacía
+        creer que el fondue era un plan.
+      */}
+      {adicionales.length > 0 ? (
+        <Seccion fondo="blanco">
+          <EncabezadoSeccion
+            antetitulo="Adicionales"
+            titulo="Detalles que puedes sumar"
+            descripcion="Se piden al reservar o al llegar, y se cobran una sola vez por estadía."
+          />
+
+          <ul className="mx-auto mt-10 flex max-w-3xl flex-col gap-3">
+            {adicionales.map((adicional, indice) => (
+              <Revelar key={adicional.id} como="li" retraso={indice * 80}>
+                <article className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 rounded-[var(--radius-generoso)] bg-crema-50 px-5 py-4 ring-1 ring-crema-200/70 sm:px-7 sm:py-5">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-titulo text-lg font-bold text-petroleo-900">
+                      {adicional.nombre}
+                    </h3>
+                    {adicional.descripcion ? (
+                      <p className="mt-1 text-sm leading-relaxed text-crema-700">
+                        {adicional.descripcion}
+                      </p>
+                    ) : null}
+                  </div>
+                  <p className="font-titulo text-xl font-extrabold whitespace-nowrap text-petroleo-700">
+                    {formatearCOP(adicional.precio)}
+                  </p>
+                </article>
+              </Revelar>
+            ))}
+          </ul>
+        </Seccion>
+      ) : null}
 
       {contenido.adicionales.length > 0 ? (
         <Seccion fondo="blanco">
@@ -161,8 +205,11 @@ export async function PaginaExperiencias() {
       ) : null}
 
       <CierreReserva
+        imagen={seccionPlanes.imagen_fondo}
         fondoAnterior={
-          contenido.adicionales.length > 0 ? "bg-white" : "bg-crema-50"
+          contenido.adicionales.length > 0 || adicionales.length > 0
+            ? "bg-white"
+            : "bg-crema-50"
         }
         titulo="Todas se suman a tu reserva"
         texto="Elige primero la cabaña y el plan; la experiencia se añade después y queda lista antes de que llegues."
