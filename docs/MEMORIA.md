@@ -438,6 +438,53 @@ pedirle cada cosa; los otros contactos son **Camilo** (accesos y Drive) y
 **Santiago** (marca). También se publicó como página web compartible, con la misma
 información y la asignación de responsable marcable.
 
+### 2026-09-11 — Importadas las fotos oficiales nuevas desde Google Drive
+
+Cesar compartió por Drive las fotos oficiales de las 5 cabañas y las zonas
+comunes. Se creó `scripts/importar-fotos-drive.mjs` (fases `descargar` →
+`optimizar` → `subir` → `manifiesto`, cada una re-ejecutable) y se corrió de
+punta a punta.
+
+- **53 imágenes** descargadas, optimizadas a WebP calidad 82 (máx. 2400 px de
+  ancho, sin agrandar) y subidas al bucket `imagenes` bajo el prefijo nuevo
+  **`drive/`**: `drive/cabana-01/…` … `drive/cabana-05/…` y
+  `drive/zonas-comunes/…`. No se tocó nada de lo ya existente en el bucket.
+- Conteo por carpeta: cabaña 1 → 7 (1 portada + 6 fotos), cabaña 2 → 6 (1+5),
+  cabaña 3 → 12 (1+11), cabaña 4 → 12 (1+11), cabaña 5 → 7 (1+6), zonas
+  comunes → 9 (1+8).
+- **Peso:** los originales PNG pesaban 2–3 MB cada uno (dos de zonas comunes,
+  22 MB y 20 MB); en WebP quedaron entre 73 KB y 1.5 MB — muy por debajo del
+  límite de 10 MB del bucket (verificado por SQL contra `storage.objects`:
+  máximo real 1.56 MB, cero objetos sobre el límite).
+- **Clasificación foto/ficha:** las 6 imágenes "0. PORTADA …" (una por
+  carpeta) son piezas gráficas de marketing —título "Cabaña N", lista "Cuenta
+  con:" e iconos de amenidades sobre foto desenfocada— no fotografías. Se
+  revisaron visualmente y se marcaron `tipo: "ficha"` en el manifiesto; el
+  resto (`1.png` … `11.png`) son fotografías reales (confirmado revisando
+  varias de distintas cabañas y de zonas comunes). Las fichas se subieron
+  igual, solo quedan marcadas para que la galería del sitio no las mezcle con
+  fotos.
+- **Manifiesto nuevo:** `supabase/seed/imagenes-manifest-v2.json` (53
+  entradas: `ruta_bucket`, `url_publica`, `seccion`, `tipo`, `orden`, `ancho`,
+  `alto`, `relacion`, `bytes`, `archivo_original`, `id_drive`). No reemplaza
+  a `imagenes-manifest.json` (el de las fotos ya integradas al CMS); queda
+  como insumo para cuando se decida incorporar estas fotos a `contenido`/
+  `imagenes` del sitio.
+- **Verificación:** conteo SQL por carpeta contra `storage.objects` (53/53,
+  máx. 1.56 MB) y 3 URLs públicas al azar responden `HTTP 200` con
+  `content-type: image/webp` y el tamaño esperado.
+- Los 48 IDs de Drive descargaron sin fallos; los dos archivos grandes de
+  zonas comunes (>25 MB en Drive) necesitaron el fallback
+  `drive.usercontent.google.com` porque Drive devolvía la página de
+  confirmación de virus — funcionó a la primera.
+- Nuevo script npm: `imagenes:importar-drive`. `sharp` pasó de dependencia
+  transitiva de Next a **devDependency explícita** del proyecto.
+- **Pendiente:** estas fotos nuevas aún no están conectadas a las páginas del
+  sitio (siguen usando el manifiesto y las galerías ya cargadas en el CMS).
+  Falta decidir con Cesar si reemplazan la galería actual de cada cabaña o se
+  añaden, y si las fichas de portada se usan en alguna parte del sitio o solo
+  quedan de referencia.
+
 ## Pendientes de contenido/credenciales (pedir según se necesiten)
 
 > Lo marcado como `TODO` en `supabase/seed/001_datos_iniciales.sql` sale del sitio
