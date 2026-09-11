@@ -49,7 +49,7 @@ export async function PaginaAlojamiento({
     <>
       {/* Migas y encabezado */}
       <div className="border-b border-crema-200/70 bg-white">
-        <div className="contenedor pt-6 pb-8 sm:pt-8 sm:pb-10">
+        <div className="contenedor bajo-nav pb-8 sm:pb-10">
           <nav aria-label="Ruta de navegación">
             <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-crema-600">
               <li className="flex items-center gap-2">
@@ -100,7 +100,7 @@ export async function PaginaAlojamiento({
                 <span className="text-xs tracking-wide text-crema-600 uppercase">
                   Desde
                 </span>
-                <span className="font-titulo text-3xl font-extrabold text-dorado-600">
+                <span className="font-titulo text-3xl font-extrabold text-petroleo-700">
                   {formatearCOP(alojamiento.precio_desde)}
                 </span>
                 <span className="text-xs text-crema-600">
@@ -246,6 +246,7 @@ export async function PaginaAlojamiento({
 
       {/* Llamada a reservar */}
       <CierreReserva
+        imagen={seccionPlanes.imagen_fondo}
         fondoAnterior={otras.length > 0 ? "bg-white" : "bg-crema-50"}
         titulo={`¿Te quedas con la ${alojamiento.nombre}?`}
         texto="Cuéntanos tus fechas y te confirmamos la disponibilidad el mismo día. Respondemos por WhatsApp todos los días."

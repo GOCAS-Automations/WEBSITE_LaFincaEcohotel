@@ -212,7 +212,6 @@ export function Galeria({
           key={pagina}
           imagenes={visibles}
           desplazamiento={desplazamiento}
-          completa={visibles.length === porPagina}
           prioridad={prioridad && pagina === 1}
           alAbrir={setAbierta}
           registrar={registrar}
@@ -353,136 +352,81 @@ function MosaicoUniforme({
 }
 
 /* ===========================================================================
- * Mosaico editorial
+ * Mosaico editorial — mampostería que RESPETA la proporción de cada foto
+ * ---------------------------------------------------------------------------
+ * QUÉ HABÍA ANTES Y POR QUÉ SE CAMBIÓ
+ * ---------------------------------------------------------------------------
+ * Había una rejilla de doce casillas de tamaños distintos que teselaba
+ * perfectamente en los tres anchos. Sobre el papel estaba muy bien resuelta;
+ * en la pantalla tenía un problema que ninguna cuenta arregla: cada casilla
+ * imponía su proporción a la foto con `object-cover`. Una vertical de 3:4
+ * metida en una casilla apaisada de 2:1 perdía la mitad de la imagen, y en
+ * estas fotos lo que se perdía era justo lo que se quería enseñar —el bosque
+ * sobre el deck, el valle bajo la hamaca, la altura de la ducha entre los
+ * árboles—.
+ *
+ * Ahora las fotos se reparten en columnas y CADA UNA conserva su proporción
+ * original: no se recorta ni un píxel. Los «tamaños variados» que pedía el
+ * diseño siguen ahí, pero ya no los inventa una rejilla: los pone la
+ * fotografía, que es de donde tienen que salir.
+ *
+ * CÓMO
+ * ----
+ * `columns` de CSS (2 en teléfono, 3 en tableta, 4 en escritorio) con
+ * `break-inside: avoid` en cada pieza. Es la única forma de conseguir
+ * mampostería sin JavaScript, sin medir nada en el cliente y sin un segundo
+ * repintado al cargar. Las columnas se equilibran solas.
+ *
+ * La contrapartida de `columns` es que el orden visual baja por columnas en
+ * vez de avanzar por filas. En una galería de fotos no importa —no hay una
+ * secuencia que leer— y se compensa con las páginas de doce: cada página es un
+ * bloque corto y coherente.
+ *
+ * CERO SALTO DE MAQUETACIÓN
+ * -------------------------
+ * Cada pieza declara su `aspect-ratio` con las medidas reales del archivo
+ * (vienen del manifiesto, ver `src/lib/fotos.ts`), así que el navegador reserva
+ * el hueco exacto ANTES de descargar la imagen. Las fotos pegadas a mano desde
+ * el panel no traen medidas: para esas se asume 4:3, que es la proporción más
+ * común, y se dice aquí para que nadie lo tome por un descuido.
  * ======================================================================== */
 
-/**
- * El ritmo de doce piezas.
- *
- * ---------------------------------------------------------------------------
- * CÓMO SE ELIGIERON ESTAS DOCE CASILLAS
- * ---------------------------------------------------------------------------
- * No son doce tamaños al azar: el patrón **teselan exactamente** la rejilla en
- * los tres anchos, sin dejar un solo hueco cuando la página va llena.
- *
- *   · 2 columnas (teléfono): 16 celdas = 8 filas.
- *   · 3 columnas (tableta):  18 celdas = 6 filas.
- *   · 4 columnas (escritorio): 24 celdas = 6 filas.
- *
- * Que cuadre importa: un mosaico de tamaños mezclados que deja agujeros se lee
- * como un error de maquetación, no como una decisión. Las clases llevan los
- * `lg:col-span-1` / `lg:row-span-1` explícitos donde hace falta, porque una
- * clase de `md` sigue aplicando en `lg` si no se la anula.
- *
- * `grid-auto-flow: dense` está puesto solo como red de seguridad para la
- * ÚLTIMA página, que casi nunca viene completa (31 fotos = 12 + 12 + 7): ahí
- * las piezas pequeñas rellenan los huecos que dejan las grandes.
- */
-const PATRON_EDITORIAL = [
-  /*  0 */ "col-span-2 row-span-2",
-  /*  1 */ "lg:row-span-2",
-  /*  2 */ "",
-  /*  3 */ "md:col-span-2 lg:col-span-1",
-  /*  4 */ "lg:col-span-2",
-  /*  5 */ "md:row-span-2 lg:col-span-2 lg:row-span-1",
-  /*  6 */ "lg:row-span-2",
-  /*  7 */ "lg:col-span-2 lg:row-span-2",
-  /*  8 */ "",
-  /*  9 */ "",
-  /* 10 */ "md:col-span-2",
-  /* 11 */ "col-span-2 md:col-span-1 lg:col-span-2",
-];
-
-/* ---------------------------------------------------------------------------
- * La última página casi nunca viene llena
- * ---------------------------------------------------------------------------
- * Con 31 fotos y páginas de 12, la tercera trae 7. El patrón de arriba solo
- * tesela con doce piezas: aplicado a siete dejaba una pieza alta y sola en una
- * fila de cuatro columnas, con un hueco de tres celdas al lado. Un mosaico con
- * un agujero se lee como un error de maquetación, no como una decisión.
- *
- * Para una página incompleta se calcula un reparto propio: se decide cuántas
- * filas caben, se distribuyen los elementos entre ellas lo más parejo posible y
- * dentro de cada fila se reparten las columnas. El resultado SIEMPRE llena
- * todas las filas, con cualquier número de fotos y en los tres anchos —y sigue
- * teniendo piezas de tamaños distintos, que era el objetivo—.
- */
-function repartirFila(total: number, columnas: number): number[] {
-  const filas = Math.max(1, Math.ceil(total / columnas));
-  const anchos = new Array<number>(total);
-  let indice = 0;
-
-  for (let fila = 0; fila < filas; fila++) {
-    // Los que quedan, repartidos entre las filas que quedan.
-    const enEstaFila = Math.ceil((total - indice) / (filas - fila));
-    const base = Math.floor(columnas / enEstaFila);
-    let sobra = columnas - base * enEstaFila;
-    for (let k = 0; k < enEstaFila; k++) {
-      anchos[indice++] = base + (sobra-- > 0 ? 1 : 0);
-    }
+/** Proporción `ancho / alto` de una foto, con respaldo seguro. */
+function proporcion(imagen: ImagenGaleria): number {
+  if (
+    typeof imagen.ancho === "number" &&
+    typeof imagen.alto === "number" &&
+    imagen.ancho > 0 &&
+    imagen.alto > 0
+  ) {
+    return imagen.ancho / imagen.alto;
   }
-
-  return anchos;
-}
-
-/* Tailwind necesita las clases escritas tal cual en el código: no puede
-   deducir `col-span-${n}` de una plantilla. */
-const COL_BASE = ["", "col-span-1", "col-span-2"];
-const COL_MD = ["", "md:col-span-1", "md:col-span-2", "md:col-span-3"];
-const COL_LG = [
-  "",
-  "lg:col-span-1",
-  "lg:col-span-2",
-  "lg:col-span-3",
-  "lg:col-span-4",
-];
-
-/** Clases de cada pieza de una página incompleta. */
-function patronParcial(total: number): string[] {
-  const base = repartirFila(total, 2);
-  const md = repartirFila(total, 3);
-  const lg = repartirFila(total, 4);
-  return Array.from({ length: total }, (_, i) =>
-    [COL_BASE[base[i]], COL_MD[md[i]], COL_LG[lg[i]]].join(" "),
-  );
-}
-
-/** `sizes` aproximado según lo ancha que sea la pieza en escritorio. */
-function medidasDe(clases: string): string {
-  const anchaEnEscritorio =
-    clases.includes("lg:col-span-2") ||
-    clases.includes("lg:col-span-3") ||
-    clases.includes("lg:col-span-4") ||
-    (clases.includes("col-span-2") && !clases.includes("lg:col-span-1"));
-  return anchaEnEscritorio
-    ? "(min-width: 1024px) 48vw, (min-width: 768px) 64vw, 96vw"
-    : "(min-width: 1024px) 24vw, (min-width: 768px) 32vw, 48vw";
+  return 4 / 3;
 }
 
 function MosaicoEditorial({
   imagenes,
   desplazamiento,
   prioridad,
-  completa,
   alAbrir,
   registrar,
-}: PropsMosaico & { desplazamiento: number; completa: boolean }) {
-  const clases = completa
-    ? imagenes.map(
-        (_, posicion) =>
-          PATRON_EDITORIAL[posicion % PATRON_EDITORIAL.length],
-      )
-    : patronParcial(imagenes.length);
-
+}: PropsMosaico & { desplazamiento: number }) {
   return (
-    <ul className="pagina-galeria grid grid-flow-row-dense grid-cols-2 auto-rows-[8.5rem] gap-3 sm:auto-rows-[10.5rem] sm:gap-4 md:grid-cols-3 md:auto-rows-[11.5rem] lg:grid-cols-4 lg:auto-rows-[12.5rem]">
+    <div className="pagina-galeria columns-2 gap-3 sm:gap-4 md:columns-3 lg:columns-4">
       {imagenes.map((imagen, posicion) => (
-        <li key={`${imagen.url}-${posicion}`} className={clases[posicion]}>
+        <div
+          key={`${imagen.url}-${posicion}`}
+          /* `break-inside-avoid` impide que una foto se parta entre dos
+             columnas; `mb-*` hace de separación vertical, porque `gap` en
+             `columns` solo separa en horizontal. */
+          className="mb-3 break-inside-avoid sm:mb-4"
+        >
           <button
             type="button"
             ref={(elemento) => registrar(posicion, elemento)}
             onClick={() => alAbrir(desplazamiento + posicion)}
-            className={`${CLASES_MINIATURA} h-full`}
+            className={CLASES_MINIATURA}
+            style={{ aspectRatio: proporcion(imagen) }}
             aria-label={`Ampliar: ${imagen.alt}`}
           >
             <Image
@@ -492,7 +436,9 @@ function MosaicoEditorial({
               /* Solo 68, 75 y 90 están declaradas en `next.config.ts`: una
                  calidad fuera de esa lista revienta en ejecución. */
               quality={75}
-              sizes={medidasDe(clases[posicion])}
+              sizes="(min-width: 1024px) 24vw, (min-width: 768px) 32vw, 48vw"
+              /* `object-cover` sobre una caja que YA tiene la proporción de la
+                 foto no recorta nada: solo cubre el píxel de redondeo. */
               className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.05]"
               priority={prioridad && posicion === 0}
             />
@@ -503,14 +449,15 @@ function MosaicoEditorial({
             */}
             <span
               aria-hidden="true"
-              className="absolute inset-0 bg-gradient-to-t from-bosque-950/45 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+              className="absolute inset-0 bg-gradient-to-t from-petroleo-950/45 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100"
             />
           </button>
-        </li>
+        </div>
       ))}
-    </ul>
+    </div>
   );
 }
+
 
 /* ===========================================================================
  * Paginación
@@ -656,7 +603,18 @@ function MosaicoFicha({
         type="button"
         ref={(elemento) => registrar(0, elemento)}
         onClick={() => alAbrir(0)}
-        className={`${CLASES_MINIATURA} aspect-16/10 rounded-tl-[3.5rem] lg:col-span-3 lg:aspect-4/3`}
+        className={`${CLASES_MINIATURA} rounded-tl-[3.5rem] lg:col-span-3`}
+        /*
+          La portada de la ficha usa su PROPIA proporción, acotada entre 3:4 y
+          16:10. Antes era 16:10 fija: las portadas verticales —la del balcón de
+          la Cabaña 04, por ejemplo— perdían el bosque de arriba y la baranda de
+          abajo, que es justo lo que hace especial a esa cabaña. El acotamiento
+          existe para que una foto muy alargada no empuje el resto de la ficha
+          fuera de la pantalla.
+        */
+        style={{
+          aspectRatio: Math.min(1.6, Math.max(0.75, proporcion(portada))),
+        }}
         aria-label={`Ampliar: ${portada.alt}`}
       >
         <Image
@@ -691,9 +649,13 @@ function MosaicoFicha({
                   ref={(elemento) => registrar(indice, elemento)}
                   onClick={() => alAbrir(indice)}
                   className={`${CLASES_MINIATURA} aspect-4/3 lg:aspect-auto lg:h-full`}
+                  /* La última miniatura muestra «+6» y antes se anunciaba como
+                     «Ver las 11 fotos de la galería»: un nombre accesible que
+                     no contiene el texto visible rompe la navegación por voz
+                     (quien dicta lee «+6» y el comando no encuentra nada). */
                   aria-label={
                     esUltima
-                      ? `Ver las ${imagenes.length} fotos de la galería`
+                      ? `+${ocultas} fotos más: ver la galería completa`
                       : `Ampliar: ${imagen.alt}`
                   }
                 >
