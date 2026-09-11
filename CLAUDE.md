@@ -25,6 +25,7 @@ Next.js (App Router) + TypeScript + Tailwind CSS + Supabase (Postgres/Auth/Stora
 8. Commits pequeños y descriptivos, **en español**.
 9. RNT 114565 en el footer (obligación legal). Botón flotante de WhatsApp en todo el sitio.
 10. Imágenes del sitio viven en Supabase Storage (bucket `imagenes`); desde el panel se puede subir archivo o pegar URL.
+11. **Al reemplazar una imagen, borrar del bucket la que deja de usarse.** Nunca dejar huérfanos: tras cambiar referencias, listar lo no referenciado (dry-run primero, conservar `sitio/marca/`) y eliminarlo. Regla explícita de Cesar.
 
 ## Diseño
 

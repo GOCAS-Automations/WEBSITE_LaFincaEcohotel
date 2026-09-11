@@ -211,20 +211,30 @@ Misma forma para las dos:
 
 ## `home.planes`
 
-Igual que las anteriores **más** la nota legal de las tarifas:
+Igual que las anteriores **más** la nota legal de las tarifas y la foto de
+fondo de las secciones oscuras:
 
 ```jsonc
 {
-  "antetitulo": "Detalles & Tarifas",
+  "antetitulo": "Planes y tarifas",
   "titulo": "Elige tu plan",
   "descripcion": "…",
-  "nota": "Tarifas referenciales para temporada baja. Pueden variar según temporada, festivos y alta demanda.",
+  "nota": "Tarifas referenciales de temporada baja. Pueden variar en festivos y alta demanda. IVA incluido.",
+  "imagen_fondo": "https://…",   // CAMPO NUEVO (sept. 2026)
   "cta_texto": "Reservar ahora",
   "cta_href": "/reservar"
 }
 ```
 
-Los precios **no** se editan aquí: salen de la tabla `tarifas`.
+**`imagen_fondo`** es la fotografía de bosque que se ve —bajo un velo de
+petróleo, con bruma y el patrón de colibríes encima— detrás de la sección de
+planes de la portada Y detrás del bloque de cierre de TODAS las páginas
+internas. Antes esas zonas eran un verde plano. Cambiarla aquí las cambia
+todas de golpe; conviene una foto cerrada y verde (con mucho cielo, el velo la
+convierte en una mancha clara).
+
+Los precios **no** se editan aquí: salen de la tabla `tarifas` y, para los
+planes de día, de `planes.precio_base`.
 
 ---
 
@@ -236,7 +246,7 @@ Los precios **no** se editan aquí: salen de la tabla `tarifas`.
   "titulo": "Encontramos un bosque de neblina",
   "parrafos": ["…", "…"],
   "imagenes": [                       // exactamente 3 se ven bien; con menos, la fila se recompone
-    { "url": "https://…", "alt": "…" }
+    { "url": "https://…", "alt": "…", "ancho": 1448, "alto": 923 }
   ]
 }
 ```
@@ -392,10 +402,16 @@ El mapa embebido de esta página **no** se configura aquí: sale de
 {
   "intro": "…",
   "imagenes": [
-    { "url": "https://…", "alt": "…" }
+    { "url": "https://…", "alt": "…", "ancho": 1448, "alto": 923 }
   ]
 }
 ```
+
+`ancho` y `alto` son **opcionales y nuevos** (sept. 2026): son las medidas en
+píxeles del archivo original. Con ellas, el mosaico respeta la proporción real
+de cada foto en vez de recortarla a una casilla, y el navegador reserva el
+hueco exacto antes de descargarla. Una foto pegada a mano desde el panel puede
+no traerlas: en ese caso se asume 4:3.
 
 **La forma del jsonb NO cambió** con el rediseño de `/galeria`: sigue siendo
 `url` + `alt`, sin campos nuevos. El editor de galerías del panel (el mismo

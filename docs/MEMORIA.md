@@ -6,7 +6,8 @@
 ## Estado general
 
 - **Fase actual:** 3 (motor de reservas). Fases 0, 1, **2 (sitio público)** y
-  **5 (panel administrativo)** completadas el 2026-09-02.
+  **5 (panel administrativo)** completadas el 2026-09-02. El **rediseño con los
+  datos y las fotos reales del cliente** se completó el 2026-09-11.
 - **Decisión de alcance:** primero todo el sitio + panel administrativo; motor de reservas y pagos (Wompi) después.
 - **Repo remoto:** https://github.com/GOCAS-Automations/WEBSITE_LaFincaEcohotel.git (push pendiente de confirmación de Cesar; luego se conecta a Vercel).
 - ⚠️ **Existe un usuario temporal de pruebas del panel**
@@ -26,8 +27,13 @@
 | 2026-09-02 | `btree_gist` se instala en el esquema `extensions` (recomendación de Supabase), no en `public`. Las migraciones fijan `search_path to public, extensions`. |
 | 2026-09-02 | El bucket `imagenes` se crea por SQL (`storage.buckets`) y no por la API, para que quede versionado en `supabase/migrations/003_storage.sql`. |
 | 2026-09-02 | Se mantiene Next.js 15.5.25. `npm audit` reporta una vulnerabilidad de `postcss` heredada de Next; el único arreglo disponible es subir a Next 16, que no está en el alcance acordado. Afecta solo a la compilación, no al sitio publicado. Revisar cuando se planee el salto de versión. |
-| 2026-09-02 | **Tipografía:** "Intro" (la del sitio actual) es comercial y su licencia está pendiente. Se sustituye por **Manrope** en titulares e **Inter** en cuerpo, vía `next/font`. El cambio a Intro está preparado en un solo archivo: `src/lib/fuentes.ts`. |
-| 2026-09-02 | **Paleta:** el tono 600 de cada familia ES el color de marca sin retocar (petróleo `#027570`, oliva `#5e6033`, dorado `#9f6301`); el resto de la escala se generó alrededor. Fondo crema `#fefbf7`, nunca blanco puro, como en el sitio actual. |
+| 2026-09-02 | **Tipografía:** "Intro" (la del sitio actual) es comercial y su licencia está pendiente. Se sustituye por **Manrope**, vía `next/font`. El cambio a Intro está preparado en un solo archivo: `src/lib/fuentes.ts`. |
+| 2026-09-11 | **Una sola familia tipográfica**, como en el manual: Manrope también en el cuerpo (antes Inter). Menos peso y más fiel al sistema real de la marca. |
+| 2026-09-02 | **Paleta:** el tono 600 de cada familia ES el color de marca sin retocar; el resto de la escala se generó alrededor. Fondo crema `#fefbf7`, nunca blanco puro. |
+| 2026-09-11 | **La paleta oficial son TRES colores** (manual, pp. 8–9): petróleo `#027570`, oliva `#5E6033` y verde claro `#E8F4D9` (familia `brote`). El **dorado `#9f6301` se retiró del sitio público** —venía del WordPress viejo, no del manual— y queda definido solo para el panel. |
+| 2026-09-11 | **El seed de contenido se genera desde el código** (`npm run seed:contenido`). Dos copias del mismo texto siempre divergen: ya había pasado con el horario del restaurante. |
+| 2026-09-11 | **El patrón de colibríes es un PNG horneado, no una máscara CSS.** Con `mask-image` por duplicado costaba 3,6 s de Style & Layout en la portada (Lighthouse 42). Con el mosaico de fondo, 275 ms (Lighthouse 96). |
+| 2026-09-11 | **Las fotos publicadas viven en `web/`, recortadas**, sin la franja de check-in que traen los archivos del Drive. Los originales intactos se conservan en `drive/` y la limpieza del bucket los protege. |
 | 2026-09-02 | **Los textos legales viven en código** (`src/lib/legal.ts`), no en el CMS: son documentos jurídicos y deben versionarse con fecha de revisión (`LEGAL_ACTUALIZADO`), no editarse sin historial desde un panel. |
 | 2026-09-02 | **La página de contacto no lleva formulario.** El hotel no tiene hoy un buzón de correo publicado ni un destino verificado; un formulario que no llega a nadie es peor que no tenerlo. Se añade cuando el cliente confirme el correo. |
 | 2026-09-02 | **Los testimonios se publican sin foto.** Las tres imágenes `sitio/testimonios/*` del bucket son retratos genéricos de archivo que no corresponden a las personas citadas. Se muestran las iniciales. |
@@ -484,6 +490,174 @@ punta a punta.
   Falta decidir con Cesar si reemplazan la galería actual de cada cabaña o se
   añaden, y si las fichas de portada se usan en alguna parte del sitio o solo
   quedan de referencia.
+
+### 2026-09-11 — Rediseño con datos reales, fotos oficiales e identidad de marca
+
+Sesión larga. Entró por fin el material definitivo del cliente —`docs/DATOS_CLIENTE.md`,
+el manual `IV LA FINCA.pdf` y la carpeta `ACTUALIZADAS IMG` del Drive— y el sitio
+se rehízo encima de él. Hasta ahora publicaba textos del WordPress viejo, precios
+provisionales y fotos de 225×300 px.
+
+#### Identidad: la paleta del manual, y son TRES colores
+
+- **Fuera el dorado `#9f6301` del sitio público.** No está en el manual: salió
+  del WordPress. Donde había dorado —precios, antetítulos, comillas de los
+  testimonios, el subrayado del menú— ahora hay `brote` (el verde claro oficial
+  `#E8F4D9`, familia nueva) sobre oscuro y `oliva`/`petróleo` sobre claro. La
+  familia `dorado` sigue definida **solo para el panel `/admin`**.
+- **Una sola tipografía.** El cuerpo iba en Inter y los titulares en Manrope.
+  El manual usa Intro Alt para todo, así que la sustituta también: Manrope
+  variable en las dos variables CSS. De paso se fueron 48 kB de fuente en
+  prioridad máxima.
+- **Fuera las «motas de luz»** (puntitos dorados flotando). No salían de ningún
+  sitio y se leían como purpurina. En su lugar entraron las tres texturas que el
+  manual sí tiene: el **resplandor** de luz en una esquina, el **patrón de
+  colibríes** y la **rama botánica** de línea fina.
+- **Fuera el colibrí dibujado a mano en SVG.** A tamaño real y con poca opacidad
+  no se leía como un ave sino como un garabato, y no era el ave de la marca. El
+  patrón se construye ahora con el PNG oficial del isotipo, sin redibujarlo.
+
+#### Diseño
+
+- **Navegación: cápsula flotante.** Separada de los tres bordes, esquinas de
+  píldora, petróleo translúcido con desenfoque, y se compacta al desplazar
+  (`capsula-nav.tsx`, el único cliente del encabezado). El rectángulo crema de
+  lado a lado le ponía techo de oficina a la fotografía del hero.
+- **Hero centrado con el módulo de reserva DENTRO.** Antes el módulo cabalgaba
+  entre dos secciones; en el teléfono tapaba el pie del titular. Ahora es una
+  columna centrada —antetítulo, titular, frase, módulo— y un enlace secundario
+  discreto. El camino a reservar está en el primer visor sin desplazarse.
+- **Las cinco cabañas en la portada, alineadas.** Se quitó el escalón de la
+  tarjeta del medio: en cuanto una descripción tenía una línea más, se leía como
+  un fallo de maquetación. Es un flex con `justify-center`, así que la última
+  fila (dos tarjetas) queda centrada bajo las tres de arriba.
+- **`/alojamientos` en zigzag**, filas alternas foto/texto con el rasgo
+  distintivo de cada cabaña, su descripción entera y su precio. La alternancia va
+  por prop explícita, no por `nth-child`: si el cliente desactiva una cabaña
+  desde el panel, el ritmo no se rompe.
+- **Las secciones oscuras son bosque de verdad**: fotografía de zonas comunes
+  bajo un velo de petróleo al 92 %, con bruma a la deriva, resplandor y patrón
+  encima (`FondoBosque`). Antes eran un verde plano. La foto se edita desde el
+  panel (`home.planes.imagen_fondo`) y cambia a la vez la portada y el cierre de
+  todas las páginas internas.
+- **Galería en mampostería**, respetando la proporción original de cada foto.
+  La rejilla de doce casillas anterior imponía su proporción con `object-cover`
+  y se comía media imagen. Doce por página, sin una sola foto repetida (las
+  gemelas 03 y 04 comparten escenas: en la galería general entra solo una).
+
+#### Contenido: todo desde `docs/DATOS_CLIENTE.md`
+
+- **Precios reales**: Entre Semana $350.000 / $200.000 una persona (lun–jue),
+  Estándar $480.000 y Premium $680.000 (vie–dom y festivos), y el nuevo **Día de
+  Calma** $250.000 (10 a. m. – 5 p. m., sin hospedaje). Nunca la palabra
+  «pasadía».
+- **Las cinco cabañas** con su rasgo distintivo real, amenidades y la regla de
+  que la **02 solo se ofrece con el plan Estándar**.
+- **Experiencias**: se borraron «Picnic en el bosque» y «Velada romántica» (no
+  existen); entraron Fondue $25.000 y segunda mascota $50.000 como adicionales.
+- **FAQ reescritas enteras** (17 preguntas). Las viejas tenían tres errores que
+  costaban reservas: decían «6 cabañas», daban el restaurante de 8 a 23 h
+  (es de 9 a 20 h y solo para huéspedes) y afirmaban que no había pasadía.
+- **Políticas reales** en `src/lib/legal.ts`: sin reembolsos, un solo cambio de
+  fecha con 3 días de anticipación, no-show = incumplimiento, anticipo del 50 %
+  y saldo por link, sin datáfono ni efectivo. Check-out a la 1:00 p. m. (no al
+  mediodía). **Siguen siendo borradores en la redacción**: las reglas de negocio
+  ya son las del hotel, la revisión jurídica la debe aprobar Amapola.
+- **Frases de marca literales** del manual en hero y esencia.
+
+#### Fotos
+
+- Las 47 fotos del Drive traían impresa en el pie la línea «Check-in: 3:00 pm |
+  Check-out: 1:00 pm | www.lafincaecohotel.com» (vienen de un export de
+  Instagram). En el sitio del propio hotel esa franja sobra y aparecía cincuenta
+  veces. `npm run imagenes:recortar` genera en `web/` las mismas fotos sin ese
+  15 % inferior; **los originales intactos se quedan en `drive/`** y el script de
+  limpieza los protege.
+- **Tarjeta social dedicada** de 1200×630 (`npm run imagenes:social`), compuesta
+  con una foto oficial, el velo de petróleo, el isotipo en blanco y el wordmark.
+  Antes se compartía el banner del hero declarado como 1200×630 sin serlo.
+- **Limpieza del bucket** (regla 11 de `CLAUDE.md`): `npm run imagenes:limpiar`
+  calcula lo referenciado en `contenido`, `imagenes` y `extras`, y borra lo que
+  sobra. Se eliminaron **87 objetos (15,1 MB)**: todo el WordPress viejo, las dos
+  experiencias retiradas y los retratos de archivo de los testimonios. Quedan
+  **105 objetos (27 MB)**: `drive/` (53 originales), `web/` (47 publicadas),
+  `sitio/marca/` y `sitio/social/`, más las dos fotos de experiencias que sí se
+  usan. Dry-run por defecto; hace falta `--ejecutar`.
+
+#### Reseñas de Google, en vivo
+
+`src/lib/resenas-google.ts` lee la ficha del hotel con **Places API (New)**
+(`place_id ChIJeyNhUdivMI4Rk9zjFWJ_Hrk`), cacheada un día, filtra ≥4★ y ordena
+por fecha. Hoy: **4,7 ★ con 50 calificaciones** y 5 reseñas con foto, enlace al
+perfil y la atribución que exigen los términos de Google. Si falla la API o falta
+la clave, cae a los testimonios del CMS sin romper el build. El `aggregateRating`
+del JSON-LD sale de la MISMA lectura, así que nunca promete algo que la página no
+muestre.
+
+#### Base de datos y panel (migración 006)
+
+- `planes` gana `tipo` (`hospedaje`|`dia`), `dias_aplica`, `horario` y
+  `precio_base`; `tarifas` gana `precio_noche_1_persona`.
+- «Planes disponibles por cabaña» = existencia de la fila en `tarifas`. El panel
+  tiene un interruptor por cabaña × plan que la crea o la borra.
+- El panel edita todo lo nuevo en español claro. Verificado con sesión real.
+- **`supabase/seed/002_contenido.sql` ahora se GENERA** (`npm run seed:contenido`)
+  desde `RESPALDOS` de `src/lib/contenido.ts`. Eran 600 líneas de JSON
+  transcritas a mano y ya habían divergido del código (el horario del
+  restaurante). El código es la única fuente; el SQL es un artefacto.
+
+#### Rendimiento
+
+Lighthouse móvil subió de 42 a 96 en la portada. El culpable era el patrón de
+colibríes hecho con `mask-image` por duplicado: **3,6 s de Style & Layout**.
+Enmascarar superficies del tamaño de una sección hay que componerlo en cada
+pintado. Ahora el tresbolillo va horneado en un PNG (`npm run marca:patron`) y se
+repite como fondo. También se quitó `mix-blend-mode` del resplandor, se unificó
+la tipografía y se dejó de preargar la foto de hero que el móvil no ve.
+
+**Lighthouse móvil final:** portada 96 · ficha de cabaña 95 · galería 95 ·
+alojamientos 95. Accesibilidad **100** en las cuatro, buenas prácticas 100,
+SEO 100. (Escritorio: portada 97.)
+
+#### Decisiones que conviene recordar
+
+| Tema | Decisión |
+|---|---|
+| Watermark de las fotos | Se recorta el 15 % inferior en `web/`; los originales se conservan en `drive/`. La pegatina circular del logo en la esquina superior SÍ se conserva: es la marca del hotel y queda bien. |
+| Galería general | Se arma a mano y no concatenando las cinco galerías: las cabañas 03 y 04 son gemelas y compartían escenas idénticas con distinta URL. |
+| Portada de la cabaña 01 | La habitación, no el jacuzzi: la foto del jacuzzi de la 01 y la de la 02 son casi idénticas y juntas parecían la misma cabaña repetida. |
+| `crema-600` | Se oscureció de `#7d7060` a `#726555`: el texto secundario no llegaba a 4,5:1 sobre niebla ni sobre el verde claro de marca. |
+| Cápsula de navegación | 78 % de opacidad, no 55 %: al 55 % se veía preciosa sobre el hero y perdía contraste sobre las páginas que abren en blanco. |
+| `aria-label` en los logos | Retirados. El nombre accesible sustituye al texto visible y no coincidía con él, así que la navegación por voz no encontraba el enlace. |
+
+#### Pendientes que deja esta sesión
+
+- [ ] **Pedir al cliente fotos SIN la franja de check-in**, o confirmar que el
+      recorte del 15 % le parece bien. Hoy publicamos su material recortado.
+- [ ] **Aprobación de los textos legales por Amapola.** Las reglas ya son las
+      suyas; la redacción es nuestra.
+- [ ] `GOOGLE_PLACES_API_KEY` hay que añadirla al proyecto de **Vercel**: en
+      local está en `.env.local`, pero sin ella en producción las reseñas caen al
+      respaldo del CMS.
+- [ ] **El Día de Calma no encaja en el modelo de reservas.** `reservas.estancia`
+      es un `daterange` por cabaña; un plan de día no ocupa ninguna. Hoy el panel
+      obliga a poner cabaña y rango: funciona, pero es una muleta. Decidir cómo
+      se modela (¿aforo por día?) antes de vender el plan en línea.
+- [ ] **La tarifa de una persona no llega al cálculo del panel:** `mapaDeTarifas`
+      solo devuelve `precio_noche`, así que el subtotal sugerido usa el precio de
+      dos aunque `num_personas` sea 1.
+- [ ] `tarifas.dias_semana` duplica `planes.dias_aplica`. Se mantiene sincronizado
+      por el seed; conviene eliminarla en una 007 cuando exista el motor.
+- [ ] Sigue abierto: mínimo de noches en fines de semana y festivos; razón social
+      y NIT; logo vectorial y licencia de Intro.
+
+#### `TODO` sin respaldo del cliente que se dejaron marcados
+
+Ninguno en el texto publicado: todo lo que se ve en el sitio sale de
+`docs/DATOS_CLIENTE.md` o de `docs/CONTENIDO_ACTUAL.md`. Lo no confirmado (mínimo
+de noches, NIT, fotos definitivas) está anotado como `TODO` en
+`supabase/seed/001_datos_iniciales.sql` y en `src/lib/sitio.ts`, y **no se
+publica en ninguna página**.
 
 ## Pendientes de contenido/credenciales (pedir según se necesiten)
 
