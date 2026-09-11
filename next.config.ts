@@ -18,6 +18,14 @@ const nextConfig: NextConfig = {
         hostname: origenSupabase.hostname,
         pathname: "/storage/v1/object/public/**",
       },
+      {
+        // Fotos de perfil de quienes dejan reseñas en Google. Es el único host
+        // desde el que Places API sirve esos avatares; `src/lib/resenas-google.ts`
+        // descarta cualquier otra URL para que nunca llegue aquí un host no
+        // declarado (que haría fallar `next/image` en tiempo de ejecución).
+        protocol: "https",
+        hostname: "lh3.googleusercontent.com",
+      },
     ],
     /**
      * Anchos que Next puede generar. La lista por defecto trae ocho tamaños y
