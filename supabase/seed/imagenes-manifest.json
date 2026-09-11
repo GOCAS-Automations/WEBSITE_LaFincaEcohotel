@@ -1,598 +1,17 @@
 [
   {
-    "ruta_bucket": "cabanas/cabana-1-01.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/cabanas/cabana-1-01.webp",
-    "seccion": "cabanas",
-    "archivo_original": "CABANA-1-01.webp",
-    "bytes": 107370
-  },
-  {
-    "ruta_bucket": "cabanas/cabana-1-02.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/cabanas/cabana-1-02.webp",
-    "seccion": "cabanas",
-    "archivo_original": "CABANA-1-02.webp",
-    "bytes": 89812
-  },
-  {
-    "ruta_bucket": "cabanas/cabana-1-03.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/cabanas/cabana-1-03.webp",
-    "seccion": "cabanas",
-    "archivo_original": "CABANA-1-03.webp",
-    "bytes": 38632
-  },
-  {
-    "ruta_bucket": "cabanas/cabana-1-04.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/cabanas/cabana-1-04.webp",
-    "seccion": "cabanas",
-    "archivo_original": "CABANA-1-04.webp",
-    "bytes": 53504
-  },
-  {
-    "ruta_bucket": "cabanas/cabana-1-05.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/cabanas/cabana-1-05.webp",
-    "seccion": "cabanas",
-    "archivo_original": "CABANA-1-05.webp",
-    "bytes": 33806
-  },
-  {
-    "ruta_bucket": "cabanas/cabana-1-06.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/cabanas/cabana-1-06.webp",
-    "seccion": "cabanas",
-    "archivo_original": "CABANA-1-06.webp",
-    "bytes": 62782
-  },
-  {
-    "ruta_bucket": "cabanas/cabana-1-07.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/cabanas/cabana-1-07.webp",
-    "seccion": "cabanas",
-    "archivo_original": "CABANA-1-07.webp",
-    "bytes": 103824
-  },
-  {
-    "ruta_bucket": "cabanas/cabana-1-08.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/cabanas/cabana-1-08.webp",
-    "seccion": "cabanas",
-    "archivo_original": "CABANA-1-08.webp",
-    "bytes": 85026
-  },
-  {
-    "ruta_bucket": "cabanas/cabana-2-01.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/cabanas/cabana-2-01.webp",
-    "seccion": "cabanas",
-    "archivo_original": "CABANA-2-01.webp",
-    "bytes": 76712
-  },
-  {
-    "ruta_bucket": "cabanas/cabana-2-02.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/cabanas/cabana-2-02.webp",
-    "seccion": "cabanas",
-    "archivo_original": "CABANA-2-02.webp",
-    "bytes": 91414
-  },
-  {
-    "ruta_bucket": "cabanas/cabana-2-03.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/cabanas/cabana-2-03.webp",
-    "seccion": "cabanas",
-    "archivo_original": "CABANA-2-03.webp",
-    "bytes": 108686
-  },
-  {
-    "ruta_bucket": "cabanas/cabana-2-04.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/cabanas/cabana-2-04.webp",
-    "seccion": "cabanas",
-    "archivo_original": "CABANA-2-04.webp",
-    "bytes": 92758
-  },
-  {
-    "ruta_bucket": "cabanas/cabana-2-05.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/cabanas/cabana-2-05.webp",
-    "seccion": "cabanas",
-    "archivo_original": "CABANA-2-05.webp",
-    "bytes": 74230
-  },
-  {
-    "ruta_bucket": "cabanas/cabana-2-06.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/cabanas/cabana-2-06.webp",
-    "seccion": "cabanas",
-    "archivo_original": "CABANA-2-06.webp",
-    "bytes": 66746
-  },
-  {
-    "ruta_bucket": "cabanas/cabana-2-07.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/cabanas/cabana-2-07.webp",
-    "seccion": "cabanas",
-    "archivo_original": "CABANA-2-07.webp",
-    "bytes": 34260
-  },
-  {
-    "ruta_bucket": "cabanas/cabana-2-08.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/cabanas/cabana-2-08.webp",
-    "seccion": "cabanas",
-    "archivo_original": "CABANA-2-08.webp",
-    "bytes": 41950
-  },
-  {
-    "ruta_bucket": "cabanas/cabana-3-01.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/cabanas/cabana-3-01.webp",
-    "seccion": "cabanas",
-    "archivo_original": "CABANA-3-01.webp",
-    "bytes": 78906
-  },
-  {
-    "ruta_bucket": "cabanas/cabana-3-02.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/cabanas/cabana-3-02.webp",
-    "seccion": "cabanas",
-    "archivo_original": "CABANA-3-02.webp",
-    "bytes": 108726
-  },
-  {
-    "ruta_bucket": "cabanas/cabana-3-03.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/cabanas/cabana-3-03.webp",
-    "seccion": "cabanas",
-    "archivo_original": "CABANA-3-03.webp",
-    "bytes": 109812
-  },
-  {
-    "ruta_bucket": "cabanas/cabana-3-04.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/cabanas/cabana-3-04.webp",
-    "seccion": "cabanas",
-    "archivo_original": "CABANA-3-04.webp",
-    "bytes": 107886
-  },
-  {
-    "ruta_bucket": "cabanas/cabana-3-05.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/cabanas/cabana-3-05.webp",
-    "seccion": "cabanas",
-    "archivo_original": "CABANA-3-05.webp",
-    "bytes": 84408
-  },
-  {
-    "ruta_bucket": "cabanas/cabana-3-06.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/cabanas/cabana-3-06.webp",
-    "seccion": "cabanas",
-    "archivo_original": "CABANA-3-06.webp",
-    "bytes": 45180
-  },
-  {
-    "ruta_bucket": "cabanas/cabana-3-07.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/cabanas/cabana-3-07.webp",
-    "seccion": "cabanas",
-    "archivo_original": "CABANA-3-07.webp",
-    "bytes": 111466
-  },
-  {
-    "ruta_bucket": "cabanas/cabana-4-01.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/cabanas/cabana-4-01.webp",
-    "seccion": "cabanas",
-    "archivo_original": "CABANA-4-01.webp",
-    "bytes": 94286
-  },
-  {
-    "ruta_bucket": "cabanas/cabana-4-02.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/cabanas/cabana-4-02.webp",
-    "seccion": "cabanas",
-    "archivo_original": "CABANA-4-02.webp",
-    "bytes": 108792
-  },
-  {
-    "ruta_bucket": "cabanas/cabana-4-03.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/cabanas/cabana-4-03.webp",
-    "seccion": "cabanas",
-    "archivo_original": "CABANA-4-03.webp",
-    "bytes": 59880
-  },
-  {
-    "ruta_bucket": "cabanas/cabana-4-04.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/cabanas/cabana-4-04.webp",
-    "seccion": "cabanas",
-    "archivo_original": "CABANA-4-04.webp",
-    "bytes": 115860
-  },
-  {
-    "ruta_bucket": "cabanas/cabana-4-05.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/cabanas/cabana-4-05.webp",
-    "seccion": "cabanas",
-    "archivo_original": "CABANA-4-05.webp",
-    "bytes": 83080
-  },
-  {
-    "ruta_bucket": "cabanas/cabana-5-01.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/cabanas/cabana-5-01.webp",
-    "seccion": "cabanas",
-    "archivo_original": "CABANA-5-01.webp",
-    "bytes": 92434
-  },
-  {
-    "ruta_bucket": "cabanas/cabana-5-02.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/cabanas/cabana-5-02.webp",
-    "seccion": "cabanas",
-    "archivo_original": "CABANA-5-02.webp",
-    "bytes": 91150
-  },
-  {
-    "ruta_bucket": "cabanas/cabana-5-03.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/cabanas/cabana-5-03.webp",
-    "seccion": "cabanas",
-    "archivo_original": "CABANA-5-03.webp",
-    "bytes": 78188
-  },
-  {
-    "ruta_bucket": "cabanas/cabana-5-04.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/cabanas/cabana-5-04.webp",
-    "seccion": "cabanas",
-    "archivo_original": "CABANA-5-04.webp",
-    "bytes": 58898
-  },
-  {
-    "ruta_bucket": "cabanas/cabana-5-05.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/cabanas/cabana-5-05.webp",
-    "seccion": "cabanas",
-    "archivo_original": "CABANA-5-05.webp",
-    "bytes": 78380
-  },
-  {
-    "ruta_bucket": "cabanas/cabana-5-06.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/cabanas/cabana-5-06.webp",
-    "seccion": "cabanas",
-    "archivo_original": "CABANA-5-06.webp",
-    "bytes": 53148
-  },
-  {
-    "ruta_bucket": "cabanas/cabana-5-07.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/cabanas/cabana-5-07.webp",
-    "seccion": "cabanas",
-    "archivo_original": "CABANA-5-07.webp",
-    "bytes": 59842
-  },
-  {
-    "ruta_bucket": "cabanas/cabanas-25.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/cabanas/cabanas-25.webp",
-    "seccion": "cabanas",
-    "archivo_original": "CABANAS-25.webp",
-    "bytes": 88978
-  },
-  {
-    "ruta_bucket": "cabanas/cabanas-28.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/cabanas/cabanas-28.webp",
-    "seccion": "cabanas",
-    "archivo_original": "CABANAS-28.webp",
-    "bytes": 113398
-  },
-  {
     "ruta_bucket": "experiencias/experiencia-cumpleanos-30.webp",
     "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/experiencias/experiencia-cumpleanos-30.webp",
     "seccion": "experiencias",
-    "archivo_original": "EXPERIENCIA-CUMPLEANOS-30.webp",
+    "archivo_original": "experiencia-cumpleanos-30.webp",
     "bytes": 69226
-  },
-  {
-    "ruta_bucket": "experiencias/experiencia-picnic-30.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/experiencias/experiencia-picnic-30.webp",
-    "seccion": "experiencias",
-    "archivo_original": "EXPERIENCIA-PICNIC-30.webp",
-    "bytes": 104246
-  },
-  {
-    "ruta_bucket": "experiencias/experiencia-velada-30.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/experiencias/experiencia-velada-30.webp",
-    "seccion": "experiencias",
-    "archivo_original": "EXPERIENCIA-VELADA-30.webp",
-    "bytes": 58892
   },
   {
     "ruta_bucket": "experiencias/pw-finca-aniversario-con-amor-21-2-21.webp",
     "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/experiencias/pw-finca-aniversario-con-amor-21-2-21.webp",
     "seccion": "experiencias",
-    "archivo_original": "PW-FINCA-ANIVERSARIO-CON-AMOR-21-2-21.webp",
+    "archivo_original": "pw-finca-aniversario-con-amor-21-2-21.webp",
     "bytes": 196462
-  },
-  {
-    "ruta_bucket": "galeria/37.png",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/37.png",
-    "seccion": "galeria",
-    "archivo_original": "37.png",
-    "bytes": 2248450
-  },
-  {
-    "ruta_bucket": "galeria/41.png",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/41.png",
-    "seccion": "galeria",
-    "archivo_original": "41.png",
-    "bytes": 1701959
-  },
-  {
-    "ruta_bucket": "galeria/49.png",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/49.png",
-    "seccion": "galeria",
-    "archivo_original": "49.png",
-    "bytes": 2131647
-  },
-  {
-    "ruta_bucket": "galeria/fotos-landing-mesa-de-trabajo-1-copia-2.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/fotos-landing-mesa-de-trabajo-1-copia-2.webp",
-    "seccion": "galeria",
-    "archivo_original": "FOTOS-LANDING_Mesa-de-trabajo-1-copia-2.webp",
-    "bytes": 21830
-  },
-  {
-    "ruta_bucket": "galeria/fotos-landing-mesa-de-trabajo-1-copia-3.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/fotos-landing-mesa-de-trabajo-1-copia-3.webp",
-    "seccion": "galeria",
-    "archivo_original": "FOTOS-LANDING_Mesa-de-trabajo-1-copia-3.webp",
-    "bytes": 20120
-  },
-  {
-    "ruta_bucket": "galeria/fotos-landing-mesa-de-trabajo-1-copia-4.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/fotos-landing-mesa-de-trabajo-1-copia-4.webp",
-    "seccion": "galeria",
-    "archivo_original": "FOTOS-LANDING_Mesa-de-trabajo-1-copia-4.webp",
-    "bytes": 17856
-  },
-  {
-    "ruta_bucket": "galeria/fotos-landing-mesa-de-trabajo-1-copia-5.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/fotos-landing-mesa-de-trabajo-1-copia-5.webp",
-    "seccion": "galeria",
-    "archivo_original": "FOTOS-LANDING_Mesa-de-trabajo-1-copia-5.webp",
-    "bytes": 18904
-  },
-  {
-    "ruta_bucket": "galeria/fotos-landing-mesa-de-trabajo-1-copia-6.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/fotos-landing-mesa-de-trabajo-1-copia-6.webp",
-    "seccion": "galeria",
-    "archivo_original": "FOTOS-LANDING_Mesa-de-trabajo-1-copia-6.webp",
-    "bytes": 9798
-  },
-  {
-    "ruta_bucket": "galeria/fotos-landing-mesa-de-trabajo-1-copia-7.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/fotos-landing-mesa-de-trabajo-1-copia-7.webp",
-    "seccion": "galeria",
-    "archivo_original": "FOTOS-LANDING_Mesa-de-trabajo-1-copia-7.webp",
-    "bytes": 12922
-  },
-  {
-    "ruta_bucket": "galeria/fotos-landing-mesa-de-trabajo-1-copia-8.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/fotos-landing-mesa-de-trabajo-1-copia-8.webp",
-    "seccion": "galeria",
-    "archivo_original": "FOTOS-LANDING_Mesa-de-trabajo-1-copia-8.webp",
-    "bytes": 21466
-  },
-  {
-    "ruta_bucket": "galeria/fotos-landing-mesa-de-trabajo-1-copia-9.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/fotos-landing-mesa-de-trabajo-1-copia-9.webp",
-    "seccion": "galeria",
-    "archivo_original": "FOTOS-LANDING_Mesa-de-trabajo-1-copia-9.webp",
-    "bytes": 12208
-  },
-  {
-    "ruta_bucket": "galeria/fotos-landing-mesa-de-trabajo-1-copia.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/fotos-landing-mesa-de-trabajo-1-copia.webp",
-    "seccion": "galeria",
-    "archivo_original": "FOTOS-LANDING_Mesa-de-trabajo-1-copia.webp",
-    "bytes": 30684
-  },
-  {
-    "ruta_bucket": "galeria/fotos-landing-mesa-de-trabajo-1.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/fotos-landing-mesa-de-trabajo-1.webp",
-    "seccion": "galeria",
-    "archivo_original": "FOTOS-LANDING_Mesa-de-trabajo-1.webp",
-    "bytes": 18536
-  },
-  {
-    "ruta_bucket": "galeria/img-1075.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-1075.webp",
-    "seccion": "galeria",
-    "archivo_original": "IMG_1075.webp",
-    "bytes": 842568
-  },
-  {
-    "ruta_bucket": "galeria/img-4424.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-4424.webp",
-    "seccion": "galeria",
-    "archivo_original": "IMG_4424.webp",
-    "bytes": 293970
-  },
-  {
-    "ruta_bucket": "galeria/img-5389.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-5389.webp",
-    "seccion": "galeria",
-    "archivo_original": "IMG_5389.webp",
-    "bytes": 359568
-  },
-  {
-    "ruta_bucket": "galeria/img-5390.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-5390.webp",
-    "seccion": "galeria",
-    "archivo_original": "IMG_5390.webp",
-    "bytes": 564234
-  },
-  {
-    "ruta_bucket": "galeria/img-5391.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-5391.webp",
-    "seccion": "galeria",
-    "archivo_original": "IMG_5391.webp",
-    "bytes": 177826
-  },
-  {
-    "ruta_bucket": "galeria/img-53920.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-53920.webp",
-    "seccion": "galeria",
-    "archivo_original": "IMG_53920.webp",
-    "bytes": 472094
-  },
-  {
-    "ruta_bucket": "galeria/img-5394.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-5394.webp",
-    "seccion": "galeria",
-    "archivo_original": "IMG_5394.webp",
-    "bytes": 279220
-  },
-  {
-    "ruta_bucket": "galeria/img-53950.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-53950.webp",
-    "seccion": "galeria",
-    "archivo_original": "IMG_53950.webp",
-    "bytes": 88348
-  },
-  {
-    "ruta_bucket": "galeria/img-53960.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-53960.webp",
-    "seccion": "galeria",
-    "archivo_original": "IMG_53960.webp",
-    "bytes": 163498
-  },
-  {
-    "ruta_bucket": "galeria/img-53970.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-53970.webp",
-    "seccion": "galeria",
-    "archivo_original": "IMG_53970.webp",
-    "bytes": 92980
-  },
-  {
-    "ruta_bucket": "galeria/img-5567.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-5567.webp",
-    "seccion": "galeria",
-    "archivo_original": "IMG_5567.webp",
-    "bytes": 75726
-  },
-  {
-    "ruta_bucket": "galeria/img-5568.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-5568.webp",
-    "seccion": "galeria",
-    "archivo_original": "IMG_5568.webp",
-    "bytes": 213892
-  },
-  {
-    "ruta_bucket": "galeria/img-5569.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-5569.webp",
-    "seccion": "galeria",
-    "archivo_original": "IMG_5569.webp",
-    "bytes": 208918
-  },
-  {
-    "ruta_bucket": "galeria/img-6086.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-6086.webp",
-    "seccion": "galeria",
-    "archivo_original": "IMG_6086.webp",
-    "bytes": 322486
-  },
-  {
-    "ruta_bucket": "galeria/img-6087.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-6087.webp",
-    "seccion": "galeria",
-    "archivo_original": "IMG_6087.webp",
-    "bytes": 199186
-  },
-  {
-    "ruta_bucket": "galeria/img-6088.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-6088.webp",
-    "seccion": "galeria",
-    "archivo_original": "IMG_6088.webp",
-    "bytes": 739284
-  },
-  {
-    "ruta_bucket": "galeria/img-6089.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-6089.webp",
-    "seccion": "galeria",
-    "archivo_original": "IMG_6089.webp",
-    "bytes": 171408
-  },
-  {
-    "ruta_bucket": "galeria/img-6091.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/galeria/img-6091.webp",
-    "seccion": "galeria",
-    "archivo_original": "IMG_6091.webp",
-    "bytes": 116438
-  },
-  {
-    "ruta_bucket": "sitio/home/banner-img-1075-baja-2.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/sitio/home/banner-img-1075-baja-2.webp",
-    "seccion": "home",
-    "archivo_original": "BANNER-IMG_1075-BAJA-2.webp",
-    "bytes": 196782
-  },
-  {
-    "ruta_bucket": "sitio/home/banner-img-1075-baja-4.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/sitio/home/banner-img-1075-baja-4.webp",
-    "seccion": "home",
-    "archivo_original": "BANNER-IMG_1075-BAJA-4.webp",
-    "bytes": 70422
-  },
-  {
-    "ruta_bucket": "sitio/home/banner-principal-home-movil-11.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/sitio/home/banner-principal-home-movil-11.webp",
-    "seccion": "home",
-    "archivo_original": "BANNER-PRINCIPAL-HOME-MOVIL-11.webp",
-    "bytes": 169120
-  },
-  {
-    "ruta_bucket": "sitio/home/bosque-de-neblina-a-45-minutos0-22.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/sitio/home/bosque-de-neblina-a-45-minutos0-22.webp",
-    "seccion": "home",
-    "archivo_original": "BOSQUE-DE-NEBLINA-A-45-MINUTOS0-22.webp",
-    "bytes": 53444
-  },
-  {
-    "ruta_bucket": "sitio/home/ecohotel-la-finca-valle-del-cauca0-21.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/sitio/home/ecohotel-la-finca-valle-del-cauca0-21.webp",
-    "seccion": "home",
-    "archivo_original": "ECOHOTEL-LA-FINCA-VALLE-DEL-CAUCA0-21.webp",
-    "bytes": 17560
-  },
-  {
-    "ruta_bucket": "sitio/home/encontramos-un-bosque-de-neblina0-23.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/sitio/home/encontramos-un-bosque-de-neblina0-23.webp",
-    "seccion": "home",
-    "archivo_original": "ENCONTRAMOS-UN-BOSQUE-DE-NEBLINA0-23.webp",
-    "bytes": 27888
-  },
-  {
-    "ruta_bucket": "sitio/home/pajaro-banner-3-22.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/sitio/home/pajaro-banner-3-22.webp",
-    "seccion": "home",
-    "archivo_original": "PAJARO-BANNER-3-22.webp",
-    "bytes": 114628
-  },
-  {
-    "ruta_bucket": "sitio/home/pw-finca-landing-banner-1-mesa-de-trabajo-1-copia-10.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/sitio/home/pw-finca-landing-banner-1-mesa-de-trabajo-1-copia-10.webp",
-    "seccion": "home",
-    "archivo_original": "PW-FINCA-LANDING-BANNER-1_Mesa-de-trabajo-1-copia-10.webp",
-    "bytes": 143098
-  },
-  {
-    "ruta_bucket": "sitio/iconos/iconos-cabana-blancos-26.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/sitio/iconos/iconos-cabana-blancos-26.webp",
-    "seccion": "iconos",
-    "archivo_original": "ICONOS-CABANA-BLANCOS-26.webp",
-    "bytes": 4488
-  },
-  {
-    "ruta_bucket": "sitio/iconos/iconos-cabanas-cafe.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/sitio/iconos/iconos-cabanas-cafe.webp",
-    "seccion": "iconos",
-    "archivo_original": "ICONOS-CABANAS-CAFE.webp",
-    "bytes": 5082
-  },
-  {
-    "ruta_bucket": "lugar/restaurante-24.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/lugar/restaurante-24.webp",
-    "seccion": "lugar",
-    "archivo_original": "RESTAURANTE-24.webp",
-    "bytes": 56024
-  },
-  {
-    "ruta_bucket": "lugar/salon-la-finca-24.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/lugar/salon-la-finca-24.webp",
-    "seccion": "lugar",
-    "archivo_original": "SALON-LA-FINCA-24.webp",
-    "bytes": 74398
-  },
-  {
-    "ruta_bucket": "lugar/zona-humeda-la-finca-24.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/lugar/zona-humeda-la-finca-24.webp",
-    "seccion": "lugar",
-    "archivo_original": "ZONA-HUMEDA-LA-FINCA-24.webp",
-    "bytes": 63344
   },
   {
     "ruta_bucket": "sitio/marca/icono.webp",
@@ -609,31 +28,710 @@
     "bytes": 7680
   },
   {
-    "ruta_bucket": "sitio/reconocimientos/somos-cop-16-mesa-de-trabajo-1.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/sitio/reconocimientos/somos-cop-16-mesa-de-trabajo-1.webp",
-    "seccion": "reconocimientos",
-    "archivo_original": "SOMOS-COP-16_Mesa-de-trabajo-1.webp",
-    "bytes": 36170
+    "ruta_bucket": "drive/cabana-01/01.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/cabana-01/01.webp",
+    "seccion": "otros",
+    "archivo_original": "01.webp",
+    "bytes": 170338
   },
   {
-    "ruta_bucket": "sitio/testimonios/testimonio-01.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/sitio/testimonios/testimonio-01.webp",
-    "seccion": "testimonios",
-    "archivo_original": "TESTIMONIO-01.webp",
-    "bytes": 6450
+    "ruta_bucket": "drive/cabana-01/02.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/cabana-01/02.webp",
+    "seccion": "otros",
+    "archivo_original": "02.webp",
+    "bytes": 176858
   },
   {
-    "ruta_bucket": "sitio/testimonios/testimonio-02.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/sitio/testimonios/testimonio-02.webp",
-    "seccion": "testimonios",
-    "archivo_original": "TESTIMONIO-02.webp",
-    "bytes": 6256
+    "ruta_bucket": "drive/cabana-01/03.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/cabana-01/03.webp",
+    "seccion": "otros",
+    "archivo_original": "03.webp",
+    "bytes": 315600
   },
   {
-    "ruta_bucket": "sitio/testimonios/testimonio-03.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/sitio/testimonios/testimonio-03.webp",
-    "seccion": "testimonios",
-    "archivo_original": "TESTIMONIO-03.webp",
-    "bytes": 6872
+    "ruta_bucket": "drive/cabana-01/04.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/cabana-01/04.webp",
+    "seccion": "otros",
+    "archivo_original": "04.webp",
+    "bytes": 169726
+  },
+  {
+    "ruta_bucket": "drive/cabana-01/05.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/cabana-01/05.webp",
+    "seccion": "otros",
+    "archivo_original": "05.webp",
+    "bytes": 231552
+  },
+  {
+    "ruta_bucket": "drive/cabana-01/06.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/cabana-01/06.webp",
+    "seccion": "otros",
+    "archivo_original": "06.webp",
+    "bytes": 385548
+  },
+  {
+    "ruta_bucket": "drive/cabana-01/portada.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/cabana-01/portada.webp",
+    "seccion": "otros",
+    "archivo_original": "portada.webp",
+    "bytes": 93432
+  },
+  {
+    "ruta_bucket": "drive/cabana-02/01.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/cabana-02/01.webp",
+    "seccion": "otros",
+    "archivo_original": "01.webp",
+    "bytes": 241584
+  },
+  {
+    "ruta_bucket": "drive/cabana-02/02.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/cabana-02/02.webp",
+    "seccion": "otros",
+    "archivo_original": "02.webp",
+    "bytes": 148324
+  },
+  {
+    "ruta_bucket": "drive/cabana-02/03.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/cabana-02/03.webp",
+    "seccion": "otros",
+    "archivo_original": "03.webp",
+    "bytes": 221610
+  },
+  {
+    "ruta_bucket": "drive/cabana-02/04.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/cabana-02/04.webp",
+    "seccion": "otros",
+    "archivo_original": "04.webp",
+    "bytes": 439220
+  },
+  {
+    "ruta_bucket": "drive/cabana-02/05.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/cabana-02/05.webp",
+    "seccion": "otros",
+    "archivo_original": "05.webp",
+    "bytes": 397162
+  },
+  {
+    "ruta_bucket": "drive/cabana-02/portada.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/cabana-02/portada.webp",
+    "seccion": "otros",
+    "archivo_original": "portada.webp",
+    "bytes": 74292
+  },
+  {
+    "ruta_bucket": "drive/cabana-03/01.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/cabana-03/01.webp",
+    "seccion": "otros",
+    "archivo_original": "01.webp",
+    "bytes": 177178
+  },
+  {
+    "ruta_bucket": "drive/cabana-03/02.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/cabana-03/02.webp",
+    "seccion": "otros",
+    "archivo_original": "02.webp",
+    "bytes": 362890
+  },
+  {
+    "ruta_bucket": "drive/cabana-03/03.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/cabana-03/03.webp",
+    "seccion": "otros",
+    "archivo_original": "03.webp",
+    "bytes": 184216
+  },
+  {
+    "ruta_bucket": "drive/cabana-03/04.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/cabana-03/04.webp",
+    "seccion": "otros",
+    "archivo_original": "04.webp",
+    "bytes": 271430
+  },
+  {
+    "ruta_bucket": "drive/cabana-03/05.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/cabana-03/05.webp",
+    "seccion": "otros",
+    "archivo_original": "05.webp",
+    "bytes": 179212
+  },
+  {
+    "ruta_bucket": "drive/cabana-03/06.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/cabana-03/06.webp",
+    "seccion": "otros",
+    "archivo_original": "06.webp",
+    "bytes": 256916
+  },
+  {
+    "ruta_bucket": "drive/cabana-03/07.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/cabana-03/07.webp",
+    "seccion": "otros",
+    "archivo_original": "07.webp",
+    "bytes": 306056
+  },
+  {
+    "ruta_bucket": "drive/cabana-03/08.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/cabana-03/08.webp",
+    "seccion": "otros",
+    "archivo_original": "08.webp",
+    "bytes": 365700
+  },
+  {
+    "ruta_bucket": "drive/cabana-03/09.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/cabana-03/09.webp",
+    "seccion": "otros",
+    "archivo_original": "09.webp",
+    "bytes": 363538
+  },
+  {
+    "ruta_bucket": "drive/cabana-03/10.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/cabana-03/10.webp",
+    "seccion": "otros",
+    "archivo_original": "10.webp",
+    "bytes": 276526
+  },
+  {
+    "ruta_bucket": "drive/cabana-03/11.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/cabana-03/11.webp",
+    "seccion": "otros",
+    "archivo_original": "11.webp",
+    "bytes": 243490
+  },
+  {
+    "ruta_bucket": "drive/cabana-03/portada.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/cabana-03/portada.webp",
+    "seccion": "otros",
+    "archivo_original": "portada.webp",
+    "bytes": 82792
+  },
+  {
+    "ruta_bucket": "drive/cabana-04/01.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/cabana-04/01.webp",
+    "seccion": "otros",
+    "archivo_original": "01.webp",
+    "bytes": 176666
+  },
+  {
+    "ruta_bucket": "drive/cabana-04/02.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/cabana-04/02.webp",
+    "seccion": "otros",
+    "archivo_original": "02.webp",
+    "bytes": 258502
+  },
+  {
+    "ruta_bucket": "drive/cabana-04/03.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/cabana-04/03.webp",
+    "seccion": "otros",
+    "archivo_original": "03.webp",
+    "bytes": 181162
+  },
+  {
+    "ruta_bucket": "drive/cabana-04/04.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/cabana-04/04.webp",
+    "seccion": "otros",
+    "archivo_original": "04.webp",
+    "bytes": 274318
+  },
+  {
+    "ruta_bucket": "drive/cabana-04/05.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/cabana-04/05.webp",
+    "seccion": "otros",
+    "archivo_original": "05.webp",
+    "bytes": 383716
+  },
+  {
+    "ruta_bucket": "drive/cabana-04/06.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/cabana-04/06.webp",
+    "seccion": "otros",
+    "archivo_original": "06.webp",
+    "bytes": 257106
+  },
+  {
+    "ruta_bucket": "drive/cabana-04/07.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/cabana-04/07.webp",
+    "seccion": "otros",
+    "archivo_original": "07.webp",
+    "bytes": 306794
+  },
+  {
+    "ruta_bucket": "drive/cabana-04/08.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/cabana-04/08.webp",
+    "seccion": "otros",
+    "archivo_original": "08.webp",
+    "bytes": 241066
+  },
+  {
+    "ruta_bucket": "drive/cabana-04/09.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/cabana-04/09.webp",
+    "seccion": "otros",
+    "archivo_original": "09.webp",
+    "bytes": 238230
+  },
+  {
+    "ruta_bucket": "drive/cabana-04/10.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/cabana-04/10.webp",
+    "seccion": "otros",
+    "archivo_original": "10.webp",
+    "bytes": 365728
+  },
+  {
+    "ruta_bucket": "drive/cabana-04/11.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/cabana-04/11.webp",
+    "seccion": "otros",
+    "archivo_original": "11.webp",
+    "bytes": 363182
+  },
+  {
+    "ruta_bucket": "drive/cabana-04/portada.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/cabana-04/portada.webp",
+    "seccion": "otros",
+    "archivo_original": "portada.webp",
+    "bytes": 81734
+  },
+  {
+    "ruta_bucket": "drive/cabana-05/01.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/cabana-05/01.webp",
+    "seccion": "otros",
+    "archivo_original": "01.webp",
+    "bytes": 172752
+  },
+  {
+    "ruta_bucket": "drive/cabana-05/02.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/cabana-05/02.webp",
+    "seccion": "otros",
+    "archivo_original": "02.webp",
+    "bytes": 183128
+  },
+  {
+    "ruta_bucket": "drive/cabana-05/03.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/cabana-05/03.webp",
+    "seccion": "otros",
+    "archivo_original": "03.webp",
+    "bytes": 246672
+  },
+  {
+    "ruta_bucket": "drive/cabana-05/04.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/cabana-05/04.webp",
+    "seccion": "otros",
+    "archivo_original": "04.webp",
+    "bytes": 182916
+  },
+  {
+    "ruta_bucket": "drive/cabana-05/05.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/cabana-05/05.webp",
+    "seccion": "otros",
+    "archivo_original": "05.webp",
+    "bytes": 305944
+  },
+  {
+    "ruta_bucket": "drive/cabana-05/06.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/cabana-05/06.webp",
+    "seccion": "otros",
+    "archivo_original": "06.webp",
+    "bytes": 343814
+  },
+  {
+    "ruta_bucket": "drive/cabana-05/portada.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/cabana-05/portada.webp",
+    "seccion": "otros",
+    "archivo_original": "portada.webp",
+    "bytes": 80886
+  },
+  {
+    "ruta_bucket": "drive/zonas-comunes/01.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/zonas-comunes/01.webp",
+    "seccion": "otros",
+    "archivo_original": "01.webp",
+    "bytes": 1563836
+  },
+  {
+    "ruta_bucket": "drive/zonas-comunes/02.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/zonas-comunes/02.webp",
+    "seccion": "otros",
+    "archivo_original": "02.webp",
+    "bytes": 958762
+  },
+  {
+    "ruta_bucket": "drive/zonas-comunes/03.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/zonas-comunes/03.webp",
+    "seccion": "otros",
+    "archivo_original": "03.webp",
+    "bytes": 491348
+  },
+  {
+    "ruta_bucket": "drive/zonas-comunes/04.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/zonas-comunes/04.webp",
+    "seccion": "otros",
+    "archivo_original": "04.webp",
+    "bytes": 502610
+  },
+  {
+    "ruta_bucket": "drive/zonas-comunes/05.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/zonas-comunes/05.webp",
+    "seccion": "otros",
+    "archivo_original": "05.webp",
+    "bytes": 760638
+  },
+  {
+    "ruta_bucket": "drive/zonas-comunes/06.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/zonas-comunes/06.webp",
+    "seccion": "otros",
+    "archivo_original": "06.webp",
+    "bytes": 255842
+  },
+  {
+    "ruta_bucket": "drive/zonas-comunes/07.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/zonas-comunes/07.webp",
+    "seccion": "otros",
+    "archivo_original": "07.webp",
+    "bytes": 251344
+  },
+  {
+    "ruta_bucket": "drive/zonas-comunes/08.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/zonas-comunes/08.webp",
+    "seccion": "otros",
+    "archivo_original": "08.webp",
+    "bytes": 119600
+  },
+  {
+    "ruta_bucket": "drive/zonas-comunes/portada.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/drive/zonas-comunes/portada.webp",
+    "seccion": "otros",
+    "archivo_original": "portada.webp",
+    "bytes": 173646
+  },
+  {
+    "ruta_bucket": "sitio/social/tarjeta-og-1200x630.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/sitio/social/tarjeta-og-1200x630.webp",
+    "seccion": "otros",
+    "archivo_original": "tarjeta-og-1200x630.webp",
+    "bytes": 95330
+  },
+  {
+    "ruta_bucket": "web/cabana-01/01.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-01/01.webp",
+    "seccion": "otros",
+    "archivo_original": "01.webp",
+    "bytes": 138230
+  },
+  {
+    "ruta_bucket": "web/cabana-01/02.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-01/02.webp",
+    "seccion": "otros",
+    "archivo_original": "02.webp",
+    "bytes": 146950
+  },
+  {
+    "ruta_bucket": "web/cabana-01/03.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-01/03.webp",
+    "seccion": "otros",
+    "archivo_original": "03.webp",
+    "bytes": 272416
+  },
+  {
+    "ruta_bucket": "web/cabana-01/04.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-01/04.webp",
+    "seccion": "otros",
+    "archivo_original": "04.webp",
+    "bytes": 133062
+  },
+  {
+    "ruta_bucket": "web/cabana-01/05.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-01/05.webp",
+    "seccion": "otros",
+    "archivo_original": "05.webp",
+    "bytes": 174702
+  },
+  {
+    "ruta_bucket": "web/cabana-01/06.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-01/06.webp",
+    "seccion": "otros",
+    "archivo_original": "06.webp",
+    "bytes": 304660
+  },
+  {
+    "ruta_bucket": "web/cabana-02/01.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-02/01.webp",
+    "seccion": "otros",
+    "archivo_original": "01.webp",
+    "bytes": 187266
+  },
+  {
+    "ruta_bucket": "web/cabana-02/02.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-02/02.webp",
+    "seccion": "otros",
+    "archivo_original": "02.webp",
+    "bytes": 116508
+  },
+  {
+    "ruta_bucket": "web/cabana-02/03.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-02/03.webp",
+    "seccion": "otros",
+    "archivo_original": "03.webp",
+    "bytes": 190800
+  },
+  {
+    "ruta_bucket": "web/cabana-02/04.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-02/04.webp",
+    "seccion": "otros",
+    "archivo_original": "04.webp",
+    "bytes": 376302
+  },
+  {
+    "ruta_bucket": "web/cabana-02/05.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-02/05.webp",
+    "seccion": "otros",
+    "archivo_original": "05.webp",
+    "bytes": 323150
+  },
+  {
+    "ruta_bucket": "web/cabana-03/01.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-03/01.webp",
+    "seccion": "otros",
+    "archivo_original": "01.webp",
+    "bytes": 139586
+  },
+  {
+    "ruta_bucket": "web/cabana-03/02.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-03/02.webp",
+    "seccion": "otros",
+    "archivo_original": "02.webp",
+    "bytes": 310486
+  },
+  {
+    "ruta_bucket": "web/cabana-03/03.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-03/03.webp",
+    "seccion": "otros",
+    "archivo_original": "03.webp",
+    "bytes": 153104
+  },
+  {
+    "ruta_bucket": "web/cabana-03/04.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-03/04.webp",
+    "seccion": "otros",
+    "archivo_original": "04.webp",
+    "bytes": 215600
+  },
+  {
+    "ruta_bucket": "web/cabana-03/05.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-03/05.webp",
+    "seccion": "otros",
+    "archivo_original": "05.webp",
+    "bytes": 144746
+  },
+  {
+    "ruta_bucket": "web/cabana-03/06.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-03/06.webp",
+    "seccion": "otros",
+    "archivo_original": "06.webp",
+    "bytes": 201748
+  },
+  {
+    "ruta_bucket": "web/cabana-03/07.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-03/07.webp",
+    "seccion": "otros",
+    "archivo_original": "07.webp",
+    "bytes": 248346
+  },
+  {
+    "ruta_bucket": "web/cabana-03/08.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-03/08.webp",
+    "seccion": "otros",
+    "archivo_original": "08.webp",
+    "bytes": 302964
+  },
+  {
+    "ruta_bucket": "web/cabana-03/09.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-03/09.webp",
+    "seccion": "otros",
+    "archivo_original": "09.webp",
+    "bytes": 298036
+  },
+  {
+    "ruta_bucket": "web/cabana-03/10.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-03/10.webp",
+    "seccion": "otros",
+    "archivo_original": "10.webp",
+    "bytes": 248698
+  },
+  {
+    "ruta_bucket": "web/cabana-03/11.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-03/11.webp",
+    "seccion": "otros",
+    "archivo_original": "11.webp",
+    "bytes": 197226
+  },
+  {
+    "ruta_bucket": "web/cabana-04/01.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-04/01.webp",
+    "seccion": "otros",
+    "archivo_original": "01.webp",
+    "bytes": 140090
+  },
+  {
+    "ruta_bucket": "web/cabana-04/02.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-04/02.webp",
+    "seccion": "otros",
+    "archivo_original": "02.webp",
+    "bytes": 201380
+  },
+  {
+    "ruta_bucket": "web/cabana-04/03.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-04/03.webp",
+    "seccion": "otros",
+    "archivo_original": "03.webp",
+    "bytes": 136158
+  },
+  {
+    "ruta_bucket": "web/cabana-04/04.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-04/04.webp",
+    "seccion": "otros",
+    "archivo_original": "04.webp",
+    "bytes": 211590
+  },
+  {
+    "ruta_bucket": "web/cabana-04/05.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-04/05.webp",
+    "seccion": "otros",
+    "archivo_original": "05.webp",
+    "bytes": 314714
+  },
+  {
+    "ruta_bucket": "web/cabana-04/06.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-04/06.webp",
+    "seccion": "otros",
+    "archivo_original": "06.webp",
+    "bytes": 203392
+  },
+  {
+    "ruta_bucket": "web/cabana-04/07.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-04/07.webp",
+    "seccion": "otros",
+    "archivo_original": "07.webp",
+    "bytes": 248488
+  },
+  {
+    "ruta_bucket": "web/cabana-04/08.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-04/08.webp",
+    "seccion": "otros",
+    "archivo_original": "08.webp",
+    "bytes": 192688
+  },
+  {
+    "ruta_bucket": "web/cabana-04/09.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-04/09.webp",
+    "seccion": "otros",
+    "archivo_original": "09.webp",
+    "bytes": 194296
+  },
+  {
+    "ruta_bucket": "web/cabana-04/10.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-04/10.webp",
+    "seccion": "otros",
+    "archivo_original": "10.webp",
+    "bytes": 301346
+  },
+  {
+    "ruta_bucket": "web/cabana-04/11.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-04/11.webp",
+    "seccion": "otros",
+    "archivo_original": "11.webp",
+    "bytes": 295576
+  },
+  {
+    "ruta_bucket": "web/cabana-05/01.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-05/01.webp",
+    "seccion": "otros",
+    "archivo_original": "01.webp",
+    "bytes": 134948
+  },
+  {
+    "ruta_bucket": "web/cabana-05/02.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-05/02.webp",
+    "seccion": "otros",
+    "archivo_original": "02.webp",
+    "bytes": 131480
+  },
+  {
+    "ruta_bucket": "web/cabana-05/03.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-05/03.webp",
+    "seccion": "otros",
+    "archivo_original": "03.webp",
+    "bytes": 204466
+  },
+  {
+    "ruta_bucket": "web/cabana-05/04.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-05/04.webp",
+    "seccion": "otros",
+    "archivo_original": "04.webp",
+    "bytes": 143842
+  },
+  {
+    "ruta_bucket": "web/cabana-05/05.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-05/05.webp",
+    "seccion": "otros",
+    "archivo_original": "05.webp",
+    "bytes": 237374
+  },
+  {
+    "ruta_bucket": "web/cabana-05/06.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-05/06.webp",
+    "seccion": "otros",
+    "archivo_original": "06.webp",
+    "bytes": 265026
+  },
+  {
+    "ruta_bucket": "web/zonas-comunes/01.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/01.webp",
+    "seccion": "otros",
+    "archivo_original": "01.webp",
+    "bytes": 1354648
+  },
+  {
+    "ruta_bucket": "web/zonas-comunes/02.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/02.webp",
+    "seccion": "otros",
+    "archivo_original": "02.webp",
+    "bytes": 781854
+  },
+  {
+    "ruta_bucket": "web/zonas-comunes/03.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/03.webp",
+    "seccion": "otros",
+    "archivo_original": "03.webp",
+    "bytes": 410706
+  },
+  {
+    "ruta_bucket": "web/zonas-comunes/04.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/04.webp",
+    "seccion": "otros",
+    "archivo_original": "04.webp",
+    "bytes": 408938
+  },
+  {
+    "ruta_bucket": "web/zonas-comunes/05.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/05.webp",
+    "seccion": "otros",
+    "archivo_original": "05.webp",
+    "bytes": 583328
+  },
+  {
+    "ruta_bucket": "web/zonas-comunes/06.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/06.webp",
+    "seccion": "otros",
+    "archivo_original": "06.webp",
+    "bytes": 195242
+  },
+  {
+    "ruta_bucket": "web/zonas-comunes/07.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/07.webp",
+    "seccion": "otros",
+    "archivo_original": "07.webp",
+    "bytes": 196008
+  },
+  {
+    "ruta_bucket": "web/zonas-comunes/08.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/08.webp",
+    "seccion": "otros",
+    "archivo_original": "08.webp",
+    "bytes": 88114
   }
 ]

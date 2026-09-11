@@ -11,7 +11,12 @@
     "db:verificar": "node scripts/aplicar-migraciones.mjs --solo-verificar",
     "imagenes:subir": "node scripts/subir-imagenes.mjs",
     "imagenes:manifiesto": "node scripts/generar-manifiesto-imagenes.mjs",
-    "imagenes:importar-drive": "node scripts/importar-fotos-drive.mjs"
+    "imagenes:importar-drive": "node scripts/importar-fotos-drive.mjs",
+    "imagenes:social": "node scripts/generar-imagen-social.mjs",
+    "imagenes:limpiar": "node scripts/limpiar-bucket.mjs",
+    "seed:contenido": "node scripts/generar-seed-contenido.mjs",
+    "imagenes:recortar": "node scripts/recortar-fotos-web.mjs",
+    "marca:patron": "node scripts/generar-patron-marca.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.5",
