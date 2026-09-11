@@ -102,7 +102,7 @@ export const BASE_MEDIOS = `${URL_SUPABASE}/storage/v1/object/public/imagenes`;
 
 /**
  * Dirección pública de una foto del bucket:
- * `medio("sitio/home/banner-img-1075-baja-2.webp")`.
+ * `medio("web/zonas-comunes/02.webp")`.
  *
  * Todas las fotos del sitio viven en Supabase Storage y no en `/public`, para
  * que el panel pueda reemplazarlas sin volver a desplegar. En `/public` solo
