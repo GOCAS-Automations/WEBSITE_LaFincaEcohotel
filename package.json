@@ -10,7 +10,8 @@
     "db:aplicar": "node scripts/aplicar-migraciones.mjs",
     "db:verificar": "node scripts/aplicar-migraciones.mjs --solo-verificar",
     "imagenes:subir": "node scripts/subir-imagenes.mjs",
-    "imagenes:manifiesto": "node scripts/generar-manifiesto-imagenes.mjs"
+    "imagenes:manifiesto": "node scripts/generar-manifiesto-imagenes.mjs",
+    "imagenes:importar-drive": "node scripts/importar-fotos-drive.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.5",
@@ -31,6 +32,7 @@
     "eslint": "^9",
     "eslint-config-next": "15.5.25",
     "pg": "^8.23.0",
+    "sharp": "^0.35.4",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
