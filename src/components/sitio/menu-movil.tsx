@@ -90,7 +90,9 @@ export function MenuMovil({ enlaces, ctaTexto, ctaHref }: PropsMenu) {
         onClick={() => setAbierto(true)}
         aria-expanded={abierto}
         aria-label="Abrir el menú de navegación"
-        className="flex size-11 items-center justify-center rounded-full text-petroleo-900 transition-colors duration-200 hover:bg-petroleo-50 lg:hidden"
+        /* Vive dentro de la cápsula de petróleo, así que va en claro. La
+           superficie táctil sigue siendo de 44 px aunque el icono mida 24. */
+        className="flex size-10 items-center justify-center rounded-full text-brote-100 transition-colors duration-200 hover:bg-white/12 lg:hidden"
       >
         <svg
           viewBox="0 0 24 24"
@@ -119,12 +121,17 @@ export function MenuMovil({ enlaces, ctaTexto, ctaHref }: PropsMenu) {
             className="absolute inset-0 h-full w-full cursor-default bg-crema-950/40 backdrop-blur-sm"
           />
 
+          {/*
+            El panel FLOTA como la cápsula: separado de los tres bordes y con el
+            mismo radio de píldora en las esquinas. Pegado a los bordes, el menú
+            desmentía en un gesto todo lo que promete la barra flotante.
+          */}
           <div
             ref={panelRef}
-            className="absolute inset-x-0 top-0 rounded-b-[var(--radius-generoso)] bg-crema-50 pt-5 pb-8 shadow-[var(--shadow-elevada)]"
+            className="absolute inset-x-3 top-3 rounded-[28px] bg-crema-50 px-5 pt-4 pb-7 shadow-[var(--shadow-elevada)] ring-1 ring-crema-200/80"
           >
-            <div className="contenedor flex items-center justify-between">
-              <p className="font-titulo text-sm font-semibold tracking-[0.16em] text-dorado-600 uppercase">
+            <div className="flex items-center justify-between">
+              <p className="pl-1 font-titulo text-xs font-semibold tracking-[0.2em] text-oliva-600 uppercase">
                 Menú
               </p>
               <button
@@ -150,7 +157,7 @@ export function MenuMovil({ enlaces, ctaTexto, ctaHref }: PropsMenu) {
               </button>
             </div>
 
-            <nav className="contenedor mt-4">
+            <nav className="mt-3">
               <ul className="flex flex-col">
                 {enlaces.map((enlace) => {
                   const activo =

@@ -1,74 +1,113 @@
 import Image from "next/image";
 import Link from "next/link";
 
-import { Boton } from "@/components/ui/boton";
-import { NAVEGACION, SITIO } from "@/lib/sitio";
+import { clasesBoton } from "@/components/ui/boton";
+import { NAVEGACION } from "@/lib/sitio";
 
+import { CapsulaNav } from "./capsula-nav";
 import { MenuMovil } from "./menu-movil";
 import { NavEscritorio } from "./nav-escritorio";
 
 /**
- * Encabezado fijo y translúcido.
+ * Navegación principal: una cápsula flotante, no una barra.
  *
- * Se queda pegado arriba con `backdrop-blur`: sobre la fotografía del hero se
- * lee como el cristal esmerilado de iOS, y en el resto del sitio deja ver el
- * contenido que pasa por debajo. El borde inferior es casi invisible; su
- * trabajo es que el header no se confunda con la sección de arriba cuando el
- * fondo también es crema.
+ * ---------------------------------------------------------------------------
+ * POR QUÉ CAMBIÓ
+ * ---------------------------------------------------------------------------
+ * Antes era un rectángulo crema de lado a lado, pegado al borde superior. Es la
+ * forma más común que existe y, sobre una fotografía de bosque a pantalla
+ * completa, la peor: corta el hero en dos con una línea horizontal y le pone un
+ * techo de oficina a lo primero que ve el visitante.
  *
- * El botón "Reservar" NO entra en la lista de navegación: es la acción del
- * sitio y va destacado, siempre visible, también en móvil (§10: el camino a la
- * reserva debe ser evidente desde la primera pantalla).
+ * Ahora **flota**: se separa de los tres bordes, tiene esquinas de píldora y es
+ * petróleo translúcido con desenfoque. La fotografía pasa POR DEBAJO y se
+ * sigue viendo entera; la cápsula se lee como un control de iOS apoyado
+ * encima, no como el marco de la página.
  *
- * **Y va grande.** Antes era del mismo tamaño que un enlace del menú y se
- * perdía entre las siete secciones; ahora tiene el cuerpo de un botón de
- * acción y una sombra propia en petróleo. La barra creció de 64 a 72 px (80 en
- * escritorio) para que quepa sin apretar: un botón grande metido a la fuerza
- * en una barra estrecha se ve peor que uno pequeño.
+ * ---------------------------------------------------------------------------
+ * POR QUÉ PETRÓLEO Y NO CRISTAL BLANCO
+ * ---------------------------------------------------------------------------
+ * Un cristal blanco translúcido funciona sobre una foto oscura y se vuelve
+ * ilegible sobre una clara: el texto oscuro pierde contraste contra el blanco
+ * lavado. El petróleo al 55 % es el color de la marca, se mantiene oscuro
+ * SIEMPRE y deja el texto claro por encima de 7:1 sobre cualquier foto. De
+ * paso, el menú entra en la paleta oficial en vez de ser un elemento neutro
+ * pegado encima.
  *
- * El isotipo de La Finca no trae texto, así que el nombre se compone al lado
- * con la tipografía de marca.
+ * El botón «Reservar» va en verde claro de marca sobre el petróleo: es el
+ * contraste más alto de la cápsula (12:1) y el único elemento lleno, así que no
+ * hay duda de cuál es la acción del sitio (§10 del plan). Está a la vista en
+ * TODAS las anchuras, también en el teléfono.
+ *
+ * El logo oficial no trae texto, así que el wordmark se compone al lado con la
+ * tipografía de marca, espaciado como en el manual. En pantallas muy estrechas
+ * se queda solo el isotipo: antes que apretar el botón de reservar, se recorta
+ * la firma.
  */
 export function Encabezado() {
   return (
-    <header className="sticky top-0 z-50 border-b border-crema-200/70 bg-crema-50/80 backdrop-blur-xl backdrop-saturate-150">
-      <div className="contenedor flex h-[4.5rem] items-center justify-between gap-4 sm:h-20">
-        <Link
-          href="/"
-          className="group flex shrink-0 items-center gap-2.5"
-          aria-label={`${SITIO.nombre} — ir al inicio`}
-        >
-          <Image
-            src="/marca/logo-principal.png"
-            alt=""
-            width={513}
-            height={513}
-            priority
-            className="size-9 object-contain transition-transform duration-300 ease-out group-hover:scale-105 sm:size-10"
-          />
-          <span className="flex flex-col leading-none">
-            <span className="font-titulo text-[1.05rem] font-extrabold tracking-tight text-petroleo-800 sm:text-[1.15rem]">
-              La Finca
-            </span>
-            <span className="mt-0.5 font-titulo text-[0.62rem] font-semibold tracking-[0.22em] text-oliva-600 uppercase">
-              Eco Hotel
-            </span>
+    <CapsulaNav>
+      {/*
+        SIN `aria-label`. Lo llevaba («La Finca Eco Hotel — ir al inicio») y era
+        peor que no ponerlo: el nombre accesible sustituye al texto visible, y
+        como el visible es «La Finca / Eco · Hotel», los dos no coincidían.
+        Quien navega por voz dice lo que LEE, y el comando no encontraba el
+        enlace (regla `label-content-name-mismatch`). El texto de al lado ya
+        nombra el enlace perfectamente.
+      */}
+      <Link
+        href="/"
+        className="group flex shrink-0 items-center gap-2.5 rounded-full pl-1"
+      >
+        <Image
+          src="/marca/icono.png"
+          alt=""
+          /* 96, no 513: se pinta a 36–40 px y con las medidas del archivo Next
+             pedía la variante de 1080 px —siete kilobytes en prioridad alta
+             para un icono de cuatro—. `sizes` remata el cálculo. */
+          width={96}
+          height={96}
+          sizes="40px"
+          priority
+          /* `brightness-0 invert` pinta el isotipo de blanco sin necesitar un
+             segundo archivo: el PNG oficial es petróleo sólido con alfa, así
+             que llevarlo a negro y voltearlo da exactamente la silueta blanca.
+             Cuando llegue el vectorial (Santiago), este es el único punto que
+             hay que tocar. */
+          className="size-9 shrink-0 object-contain brightness-0 invert transition-transform duration-300 ease-out group-hover:scale-105 sm:size-10"
+        />
+        {/*
+          El wordmark se ve SIEMPRE, también a 390 px. Estaba oculto por debajo
+          de 380 px para ganar sitio, y eso dejaba al enlace del logo sin nombre
+          accesible en el móvil más estrecho (la imagen es decorativa). Cabe:
+          isotipo, firma, «Reservar» y el menú suman menos que el ancho de la
+          cápsula.
+        */}
+        <span className="flex flex-col leading-none">
+          <span className="font-titulo text-[0.95rem] font-bold tracking-[0.26em] text-brote-100 uppercase sm:text-[1.02rem]">
+            La Finca
           </span>
+          {/* Sin transparencia: a 0,55 rem y al 75 % se quedaba en 3,5:1 sobre
+              la cápsula (lo cazó Lighthouse en la ficha de una cabaña). En
+              sólido pasa AA sin dejar de ser el trazo fino del manual. */}
+          <span className="mt-1 font-titulo text-[0.55rem] font-medium tracking-[0.34em] text-brote-200 uppercase">
+            Eco · Hotel
+          </span>
+        </span>
+      </Link>
+
+      <NavEscritorio enlaces={NAVEGACION} />
+
+      <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
+        <Link href="/reservar" className={clasesBoton("marca", "nav")}>
+          Reservar
         </Link>
-
-        <NavEscritorio enlaces={NAVEGACION} />
-
-        <div className="flex items-center gap-1 sm:gap-2">
-          <Boton href="/reservar" tamano="nav">
-            Reservar
-          </Boton>
-          <MenuMovil
-            enlaces={NAVEGACION}
-            ctaTexto="Reservar ahora"
-            ctaHref="/reservar"
-          />
-        </div>
+        <MenuMovil
+          enlaces={NAVEGACION}
+          ctaTexto="Reservar ahora"
+          ctaHref="/reservar"
+        />
       </div>
-    </header>
+    </CapsulaNav>
   );
 }

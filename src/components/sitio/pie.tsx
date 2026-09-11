@@ -54,24 +54,27 @@ export async function Pie() {
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr]">
           {/* Marca y contacto */}
           <div className="flex flex-col gap-5">
-            <Link
-              href="/"
-              className="flex items-center gap-3"
-              aria-label={`${SITIO.nombre} — ir al inicio`}
-            >
+            {/*
+              Sin `aria-label`: el nombre accesible SUSTITUYE al texto visible,
+              y el que llevaba («La Finca Eco Hotel — ir al inicio») no coincidía
+              con lo que se lee al lado. Quien navega por voz dice lo que ve, y
+              el comando no encontraba el enlace. El wordmark ya lo nombra.
+            */}
+            <Link href="/" className="flex items-center gap-3">
               <Image
                 src="/marca/icono.png"
                 alt=""
-                width={513}
-                height={513}
+                width={96}
+                height={96}
+                sizes="44px"
                 className="size-11 object-contain brightness-0 invert"
               />
               <span className="flex flex-col leading-none">
-                <span className="font-titulo text-lg font-extrabold tracking-tight text-white">
+                <span className="font-titulo text-lg font-extrabold tracking-[0.24em] text-brote-100 uppercase">
                   La Finca
                 </span>
-                <span className="mt-1 font-titulo text-[0.62rem] font-semibold tracking-[0.22em] text-crema-300 uppercase">
-                  Eco Hotel
+                <span className="mt-1.5 font-titulo text-[0.58rem] font-medium tracking-[0.32em] text-brote-200 uppercase">
+                  Eco · Hotel
                 </span>
               </span>
             </Link>
@@ -83,15 +86,15 @@ export async function Pie() {
 
             <ul className="flex flex-col gap-3 text-sm text-crema-200/90">
               <li className="flex gap-3">
-                <IconoUbicacion className="mt-0.5 size-4.5 shrink-0 text-dorado-300" />
+                <IconoUbicacion className="mt-0.5 size-4.5 shrink-0 text-brote-200" />
                 <span>{contacto.direccion_completa}</span>
               </li>
               <li className="flex gap-3">
-                <IconoReloj className="mt-0.5 size-4.5 shrink-0 text-dorado-300" />
+                <IconoReloj className="mt-0.5 size-4.5 shrink-0 text-brote-200" />
                 <span>Restaurante: {contacto.horario_restaurante}</span>
               </li>
               <li className="flex gap-3">
-                <IconoWhatsapp className="mt-0.5 size-4.5 shrink-0 text-dorado-300" />
+                <IconoWhatsapp className="mt-0.5 size-4.5 shrink-0 text-brote-200" />
                 <a
                   href={enlaceWhatsapp(
                     contacto.mensaje_whatsapp,
@@ -109,7 +112,7 @@ export async function Pie() {
 
           {/* Navegación */}
           <nav aria-label="Secciones del sitio">
-            <h2 className="font-titulo text-xs font-semibold tracking-[0.18em] text-dorado-300 uppercase">
+            <h2 className="font-titulo text-xs font-semibold tracking-[0.18em] text-brote-200 uppercase">
               El sitio
             </h2>
             <ul className="mt-4 flex flex-col gap-2.5 text-sm">
@@ -138,7 +141,7 @@ export async function Pie() {
 
           {/* Legales */}
           <nav aria-label="Información legal">
-            <h2 className="font-titulo text-xs font-semibold tracking-[0.18em] text-dorado-300 uppercase">
+            <h2 className="font-titulo text-xs font-semibold tracking-[0.18em] text-brote-200 uppercase">
               Legal
             </h2>
             <ul className="mt-4 flex flex-col gap-2.5 text-sm">
@@ -156,7 +159,7 @@ export async function Pie() {
 
             {redes.length > 0 ? (
               <>
-                <h2 className="mt-8 font-titulo text-xs font-semibold tracking-[0.18em] text-dorado-300 uppercase">
+                <h2 className="mt-8 font-titulo text-xs font-semibold tracking-[0.18em] text-brote-200 uppercase">
                   Síguenos
                 </h2>
                 <ul className="mt-4 flex items-center gap-2">
