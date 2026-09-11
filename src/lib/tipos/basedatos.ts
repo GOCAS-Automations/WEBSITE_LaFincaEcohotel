@@ -13,6 +13,14 @@ export type OrigenReserva = "web" | "whatsapp" | "telefono" | "manual";
 
 export type TipoExtra = "experiencia" | "adicional";
 
+/**
+ * Las dos formas de vender de La Finca:
+ *   · `hospedaje` — noche en una cabaña. El precio sale de `tarifas`.
+ *   · `dia`       — visita de día sin hospedaje («Día de Calma»). No se
+ *                   reserva por cabaña: el precio sale de `planes.precio_base`.
+ */
+export type TipoPlan = "hospedaje" | "dia";
+
 export interface Alojamiento {
   id: string;
   nombre: string;
@@ -30,6 +38,24 @@ export interface Plan {
   nombre: string;
   descripcion: string | null;
   incluye: string[] | null;
+  /** Hospedaje (precio por cabaña) o día sin hospedaje (precio propio). */
+  tipo: TipoPlan;
+  /**
+   * Días ISO (1 = lunes … 7 = domingo) en los que se puede reservar el plan.
+   * `null` = todos los días. Entre Semana `[1,2,3,4]`; Estándar y Premium
+   * `[5,6,7]` (viernes a domingo y festivos); Día de Calma `null`.
+   */
+  dias_aplica: number[] | null;
+  /**
+   * Franja horaria en texto («10:00 a. m. – 5:00 p. m.»), solo en los planes
+   * de tipo `dia`. `null` en los de hospedaje.
+   */
+  horario: string | null;
+  /**
+   * Precio en COP entero de los planes que no se reservan por cabaña.
+   * `null` en los de hospedaje, cuyo precio vive en `tarifas`.
+   */
+  precio_base: number | null;
   orden: number;
   activo: boolean;
 }
@@ -40,6 +66,12 @@ export interface Tarifa {
   plan_id: string;
   /** Precio por noche en pesos colombianos, entero. */
   precio_noche: number;
+  /**
+   * Precio por noche cuando viaja una sola persona. `null` = no hay precio
+   * distinto y se cobra `precio_noche`. Hoy solo lo usa el plan Entre Semana
+   * ($200.000 en vez de $350.000).
+   */
+  precio_noche_1_persona: number | null;
   /** `daterange` de Postgres; `null` = tarifa base todo el año. */
   vigencia: string | null;
   /** Días ISO (1 = lunes … 7 = domingo) en los que aplica la tarifa. */
