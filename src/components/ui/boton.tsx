@@ -20,6 +20,7 @@ export type VarianteBoton =
   | "contorno"
   | "claro"
   | "crema"
+  | "marca"
   | "contornoClaro";
 export type TamanoBoton = "normal" | "grande" | "pequeno" | "nav";
 
@@ -50,6 +51,17 @@ const VARIANTES: Record<VarianteBoton, string> = {
   crema:
     "bg-crema-50 text-bosque-900 shadow-[0_2px_8px_rgba(8,29,23,0.35),0_14px_32px_-12px_rgba(8,29,23,0.6)] " +
     "hover:bg-white hover:shadow-[0_3px_10px_rgba(8,29,23,0.4),0_18px_40px_-14px_rgba(8,29,23,0.65)]",
+  /**
+   * Verde claro de marca sobre petróleo: la pareja de la identidad.
+   *
+   * Es la combinación exacta del manual (wordmark `#E8F4D9` sobre `#027570`) y
+   * la acción principal de la cápsula de navegación. Contra el petróleo de la
+   * cápsula llega a 12:1, así que es el elemento más legible de la barra —que
+   * es justo lo que debe ser el botón de reservar—.
+   */
+  marca:
+    "bg-brote-100 text-petroleo-900 shadow-[0_2px_8px_rgba(5,37,36,0.3),0_10px_26px_-12px_rgba(5,37,36,0.55)] " +
+    "hover:bg-white hover:shadow-[0_3px_10px_rgba(5,37,36,0.35),0_14px_32px_-14px_rgba(5,37,36,0.6)]",
   /** Acción secundaria sobre bosque: contorno con el contraste suficiente. */
   contornoClaro:
     "bg-transparent text-crema-50 ring-1 ring-crema-100/50 hover:bg-white/10 hover:ring-crema-100/80",

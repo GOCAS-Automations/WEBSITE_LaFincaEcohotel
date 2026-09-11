@@ -7,30 +7,32 @@
    sombras de varias capas casi imperceptibles, jerarquía tipográfica clara y
    transiciones cortas (150–300 ms). Nada parpadea ni gira.
 
-   La paleta sale del isotipo y del sitio actual (`docs/MARCA.md`):
-     · petróleo #027570 — primario (viene del propio logo)
-     · oliva    #5e6033 — secundario (la otra variante real del logo); es el
-                          MUSGO de la paleta: el verde tierra de la montaña
-     · dorado   #9f6301 — acento: precios y detalles premium
-     · crema    #fefbf7 — fondo cálido (el sitio actual nunca usa blanco puro)
-
-   Las escalas se generaron alrededor de esos cuatro colores exactos: el tono
-   600 de cada familia ES el color de marca, sin retocar.
-
-   EVOLUCIÓN "BOSQUE NUBLADO" (sesión de diseño)
+   LA PALETA ES LA DEL MANUAL DE MARCA, Y SON TRES COLORES
    ---------------------------------------------------------------------------
-   Las cuatro familias de arriba NO se tocaron: las usa también el panel
-   administrativo y cambiarlas de tono lo habría teñido entero. En su lugar se
-   AÑADIERON dos familias que faltaban para contar el lugar:
+   `IV LA FINCA.pdf` (páginas 8 y 9) los declara con su Pantone y no admite un
+   cuarto:
 
-     · bosque — verdes profundos de bosque de niebla. Son los fondos oscuros
-                que dan ritmo y drama al sitio (sección de planes, cierres,
-                superposiciones sobre fotografía).
-     · niebla — grises verdosos de neblina. Fondos intermedios, divisores
-                orgánicos y las capas de bruma a la deriva.
+     · petróleo    #027570 — PANTONE 3272 C — primario. Es el color del isotipo.
+     · oliva       #5e6033 — PANTONE 7763 C — secundario, el verde tierra.
+     · verde claro #e8f4d9 —                 — fondo y acento claro. Aquí vive
+                                               como familia `brote`.
 
-   El sitio alterna ahora crema → blanco → BOSQUE → crema: la respiración
-   clara/oscura es lo que le quita el aire de plantilla cuadriculada.
+   El `dorado #9f6301` que usaba el sitio venía del WordPress viejo, NO del
+   manual. Se retiró de todo el sitio público (queda definido solo para el
+   panel `/admin`). Donde había dorado —precios, antetítulos, comillas de los
+   testimonios, el subrayado del menú— ahora hay `brote` sobre oscuro y
+   `oliva`/`petróleo` sobre claro.
+
+   Familias de apoyo, derivadas y no oficiales, para poder contar el lugar:
+
+     · bosque — verdes profundos de bosque de niebla: los fondos oscuros que
+                dan ritmo y drama (planes, cierres, capas sobre fotografía).
+     · niebla — grises verdosos de neblina: fondos intermedios y divisores.
+     · crema  — neutros cálidos de fondo y texto (el sitio nunca usa blanco
+                puro para el papel).
+
+   El sitio alterna crema → blanco → BOSQUE (con foto real y bruma) → crema: la
+   respiración clara/oscura es lo que le quita el aire de plantilla.
    =========================================================================== */
 
 @theme {
@@ -67,7 +69,32 @@
   --color-oliva-900: #343524;
   --color-oliva-950: #1b1c11;
 
-  /* --- Dorado (acento: precios, detalles) ------------------------------- */
+  /* --- Brote (verde claro oficial #E8F4D9) ------------------------------
+     El TERCER color del manual de marca, y el que faltaba. En el manual es el
+     fondo claro de la mitad de las piezas y el color del wordmark sobre
+     petróleo. El tono 100 ES el color exacto del Pantone; el resto de la
+     escala se generó alrededor de él para tener acentos y textos legibles.
+
+     Es también el reemplazo del dorado en el sitio público: el manual dice
+     explícitamente que la paleta son TRES colores y el dorado no está. */
+  --color-brote-50: #f6fbef;
+  --color-brote-100: #e8f4d9;
+  --color-brote-200: #d7ebc0;
+  --color-brote-300: #bedb9b;
+  --color-brote-400: #a1c472;
+  --color-brote-500: #85a951;
+  --color-brote-600: #6a8a3d;
+  --color-brote-700: #546c32;
+  --color-brote-800: #45572d;
+  --color-brote-900: #3a4928;
+  --color-brote-950: #1d2712;
+
+  /* --- Dorado — SOLO PANEL ADMINISTRATIVO -------------------------------
+     El `#9f6301` salió del WordPress viejo, no del manual de marca. Con la
+     identidad oficial en la mano (petróleo, oliva y verde claro, y nada más)
+     se RETIRÓ del sitio público: donde había dorado ahora hay `brote` o
+     `oliva`. La familia sigue definida porque el panel `/admin` la usa para
+     estados y avisos, y teñirlo entero no aportaba nada al cliente. */
   --color-dorado-50: #fdf8ed;
   --color-dorado-100: #f8eccd;
   --color-dorado-200: #f0d698;
@@ -113,7 +140,13 @@
   --color-crema-300: #e5d9c4;
   --color-crema-400: #c8b9a0;
   --color-crema-500: #a1927b;
-  --color-crema-600: #7d7060;
+  /* Se oscureció de #7d7060 a #726555 (septiembre de 2026). Es el tono del
+     texto secundario —«por noche · 2 personas», las etiquetas de las cifras,
+     los pies de tarjeta— y contra los fondos claros del sitio se quedaba entre
+     4,1:1 y 4,7:1: pasaba sobre crema y NO pasaba sobre niebla ni sobre el
+     verde claro de marca, que es donde más se usa. Con este valor va de 4,9:1
+     a 5,7:1 en los cuatro fondos. A ojo no se distingue del anterior. */
+  --color-crema-600: #726555;
   --color-crema-700: #5d5449;
   --color-crema-800: #403a33;
   --color-crema-900: #292521;
@@ -154,8 +187,9 @@
 :root {
   color-scheme: light;
   scroll-behavior: smooth;
-  /* Compensa el header fijo cuando se navega a un ancla (#experiencias). */
-  scroll-padding-top: 5.5rem;
+  /* Compensa la cápsula flotante de navegación cuando se llega a un ancla
+     (#experiencias, #planes). Es su alto máximo más el margen superior. */
+  scroll-padding-top: 6.5rem;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -229,6 +263,28 @@ p {
 }
 
 /**
+ * Aire suficiente para que el contenido no quede debajo de la cápsula.
+ *
+ * La barra de navegación flota (`position: fixed`), así que no ocupa sitio en
+ * el flujo. Las páginas que abren con una fotografía a sangre lo aprovechan: la
+ * cápsula se apoya encima y la foto se ve entera. Las que abren con TEXTO
+ * —la ficha de una cabaña, los documentos legales, el 404— necesitan que
+ * alguien reserve ese espacio, y ese alguien es esta utilidad.
+ *
+ * Es una clase con nombre y no un `pt-24` suelto a propósito: el día que la
+ * cápsula cambie de alto, se corrige aquí y no en cinco archivos.
+ */
+@utility bajo-nav {
+  padding-top: 6.5rem;
+}
+
+@media (min-width: 640px) {
+  .bajo-nav {
+    padding-top: 7.5rem;
+  }
+}
+
+/**
  * Micro-aparición al hacer scroll.
  *
  * El estado inicial solo se aplica cuando el componente cliente `Revelar` ha
@@ -271,8 +327,15 @@ p {
 }
 
 /* ===========================================================================
-   ATMÓSFERA — neblina, colibríes y motas de luz
+   ATMÓSFERA — neblina, resplandor, patrón de colibríes y botánica
    ---------------------------------------------------------------------------
+   Todo lo de aquí sale del manual de marca (`IV LA FINCA.pdf`), no de la
+   imaginación: el degradado de luz en una esquina, el patrón de colibríes a
+   baja opacidad y la rama de línea fina son las TRES texturas con las que está
+   construida la identidad. Las «motas de luz» que había antes —puntitos
+   dorados flotando— no salían de ningún sitio y se leían como purpurina:
+   fuera. En su lugar hay fotografía real del bosque con bruma encima.
+
    La Finca es un bosque de niebla: el sitio tenía que respirar como uno. Todo
    lo de aquí es CSS y SVG puros —ni una librería, ni un solo `requestAnimation-
    Frame`— y solo anima `transform` y `opacity`, que el compositor resuelve sin
@@ -288,10 +351,10 @@ p {
    3. `prefers-reduced-motion` lo APAGA (`animation: none`), no lo acelera. Cada
       capa queda en su posición inicial, que ya está compuesta para verse bien
       quieta: quien pide menos movimiento ve una foto, no un fotograma raro.
-   4. **Sin `will-change`.** La portada acabó con quince capas de bruma y diez
-      motas; declarar `will-change: transform` en las veinticinco habría
-      reservado veinticinco capas de composición permanentes en memoria de GPU
-      —justo lo que hunde el desplazamiento en un teléfono de gama media—. No
+   4. **Sin `will-change`.** La portada tiene más de una docena de capas de
+      bruma; declarar `will-change: transform` en todas habría reservado otras
+      tantas capas de composición permanentes en memoria de GPU —justo lo que
+      hunde el desplazamiento en un teléfono de gama media—. No
       hace falta: una animación de `transform` que ya está corriendo la promueve
       el navegador solo. `will-change` sirve para avisar de un movimiento que
       todavía NO ocurre; aquí ocurre siempre.
@@ -393,138 +456,105 @@ p {
   }
 }
 
-/* --- Colibrí --------------------------------------------------------------
-   Flotación libre de 11 s por defecto, sin trayectoria evidente: sube, se
-   desplaza y vuelve, con un balanceo de tres grados. Las alas NO aletean a la
-   velocidad real (unos 50 golpes por segundo) porque a esa frecuencia solo se
-   vería un parpadeo desagradable; en su lugar respiran muy despacio y cambian
-   de opacidad, que es lo que insinúa vida sin pedir atención. */
+/* --- Resplandor de luz ----------------------------------------------------
+   El gesto MÁS reconocible del manual de marca: sobre el petróleo profundo
+   hay siempre un degradado suave de luz verde-crema entrando por una esquina.
+   No es un "glow" genérico: es literalmente la neblina del bosque iluminada
+   por el sol de la mañana, y aparece en casi todas las páginas del manual.
 
-.colibri {
-  animation: colibri-flotar 11s var(--ease-suave) infinite;
-}
+   Se pinta con un `radial-gradient` grande y muy difuso, en `screen`, para que
+   aclare la fotografía o el color de debajo en vez de taparlo. Es ESTÁTICO:
+   una luz que se mueve deja de ser luz y pasa a ser un efecto. */
 
-.colibri--lento {
-  animation-duration: 15s;
-  animation-delay: -4s;
-}
-
-.colibri--pausado {
-  animation-duration: 13s;
-  animation-delay: -7s;
-}
-
-/* El origen coincide con el hombro del dibujo (viewBox 0 0 100 66): si se
-   escala desde el centro del lienzo, las alas "resbalan" en vez de batir. */
-.colibri__ala {
-  transform-origin: 50px 34px;
-  animation: colibri-ala 3.6s ease-in-out infinite;
-}
-
-@keyframes colibri-flotar {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0) rotate(-2deg);
-  }
-  25% {
-    transform: translate3d(10px, -13px, 0) rotate(1.5deg);
-  }
-  50% {
-    transform: translate3d(-5px, -21px, 0) rotate(-3deg);
-  }
-  75% {
-    transform: translate3d(-12px, -7px, 0) rotate(0deg);
-  }
-}
-
-@keyframes colibri-ala {
-  0%,
-  100% {
-    transform: scaleY(1);
-    opacity: 0.9;
-  }
-  50% {
-    transform: scaleY(0.84);
-    opacity: 0.55;
-  }
-}
-
-/* --- Motas de luz ---------------------------------------------------------
-   Solo dentro de las secciones oscuras, donde leen como polen o polvo
-   atravesado por un rayo. Sobre fondo claro serían invisibles o, peor, sucias.
-   Cinco puntos, nada más: a partir de ahí parece nieve. */
-
-.motas {
+.resplandor {
   position: absolute;
   inset: 0;
-  overflow: hidden;
   pointer-events: none;
+  /* Sin `mix-blend-mode`. Lo llevaba, y sobre fondo oscuro la diferencia con un
+     degradado de alfa normal es imperceptible; el coste, no: una capa con
+     mezcla obliga a repintar todo lo que tiene debajo. */
+  background:
+    radial-gradient(
+      58% 52% at var(--resplandor-x, 88%) var(--resplandor-y, 6%),
+      rgba(232, 244, 217, 0.55),
+      rgba(232, 244, 217, 0.16) 42%,
+      transparent 72%
+    ),
+    radial-gradient(
+      46% 44% at calc(100% - var(--resplandor-x, 88%))
+        calc(100% - var(--resplandor-y, 6%)),
+      rgba(232, 244, 217, 0.32),
+      transparent 68%
+    );
 }
 
-.motas span {
+/** El resplandor entra por la izquierda (para alternar entre secciones). */
+.resplandor--izquierda {
+  --resplandor-x: 10%;
+  --resplandor-y: 14%;
+}
+
+/* --- Patrón de colibríes --------------------------------------------------
+   La página 12 del manual es, entera, un patrón de colibríes repetido a baja
+   opacidad. Aquí es un mosaico de fondo con el color y la opacidad ya
+   horneados, generado con `npm run marca:patron` a partir del PNG oficial del
+   isotipo (`scripts/generar-patron-marca.mjs`). El logo no se redibuja ni se
+   deforma: solo se tiñe y se repite, que es el uso que el propio manual hace.
+
+   POR QUÉ NO ES UNA MÁSCARA CSS
+   -----------------------------
+   Lo era: dos capas de `mask-image` desplazadas sobre un color plano. Se leía
+   precioso en el código y costaba **3,6 s de Style & Layout** en la portada,
+   medidos con Lighthouse: enmascarar superficies del tamaño de una sección,
+   por duplicado, hay que componerlo en cada pintado. Un mosaico de fondo se
+   copia y ya. Mismo resultado en pantalla, un tercio del trabajo.
+
+   Decorativo puro (`aria-hidden` en el componente) y SIN animación: un fondo
+   que se mueve detrás del texto es mareo, no atmósfera. */
+
+.patron-colibri {
   position: absolute;
-  display: block;
-  border-radius: 9999px;
-  background: rgba(240, 214, 152, 0.55);
-  box-shadow: 0 0 8px 2px rgba(240, 214, 152, 0.28);
-  animation: mota-flotar 26s linear infinite;
+  inset: 0;
+  pointer-events: none;
+  background-image: url("/marca/patron-oscuro.png");
+  background-repeat: repeat;
+  background-size: 230px 230px;
 }
 
-.motas span:nth-child(1) {
-  left: 12%;
-  top: 68%;
-  width: 3px;
-  height: 3px;
-  animation-duration: 31s;
-  animation-delay: -4s;
-}
-.motas span:nth-child(2) {
-  left: 34%;
-  top: 82%;
-  width: 2px;
-  height: 2px;
-  animation-duration: 24s;
-  animation-delay: -12s;
-}
-.motas span:nth-child(3) {
-  left: 58%;
-  top: 74%;
-  width: 4px;
-  height: 4px;
-  animation-duration: 38s;
-  animation-delay: -20s;
-}
-.motas span:nth-child(4) {
-  left: 76%;
-  top: 88%;
-  width: 2px;
-  height: 2px;
-  animation-duration: 29s;
-  animation-delay: -8s;
-}
-.motas span:nth-child(5) {
-  left: 90%;
-  top: 62%;
-  width: 3px;
-  height: 3px;
-  animation-duration: 34s;
-  animation-delay: -25s;
+/** Sobre crema o blanco: el mismo patrón en petróleo bajísimo. */
+.patron-colibri--claro {
+  background-image: url("/marca/patron-claro.png");
 }
 
-@keyframes mota-flotar {
-  0% {
-    transform: translate3d(0, 0, 0);
-    opacity: 0;
+@media (min-width: 768px) {
+  .patron-colibri {
+    background-size: 320px 320px;
   }
-  12% {
-    opacity: 0.75;
+}
+
+/* --- Trazo botánico -------------------------------------------------------
+   La rama de línea fina del manual (papelería, tazas, colgadores de puerta).
+   El dibujo vive en `atmosfera.tsx`; aquí solo su respiración: una oscilación
+   de poco más de un grado, lentísima (28 s), para que la rama parezca movida
+   por el aire y no impresa. El origen está en el nacimiento del tallo: así se
+   mueve la punta y la base se queda quieta, como en una rama de verdad. */
+
+.botanica {
+  transform-origin: 12% 88%;
+  animation: botanica-respirar 28s var(--ease-deriva) infinite alternate;
+}
+
+.botanica--lenta {
+  animation-duration: 37s;
+  animation-delay: -11s;
+}
+
+@keyframes botanica-respirar {
+  from {
+    transform: rotate(-1.2deg) translate3d(0, 0, 0);
   }
-  80% {
-    opacity: 0.4;
-  }
-  100% {
-    transform: translate3d(26px, -320px, 0);
-    opacity: 0;
+  to {
+    transform: rotate(1.3deg) translate3d(0, -6px, 0);
   }
 }
 
@@ -553,9 +583,7 @@ p {
 
 @media (prefers-reduced-motion: reduce) {
   .neblina__capa,
-  .colibri,
-  .colibri__ala,
-  .motas span {
+  .botanica {
     animation: none !important;
   }
 
@@ -563,11 +591,5 @@ p {
      mosaico en el fotograma inicial (invisible) si se anulara la animación. */
   .pagina-galeria {
     animation-duration: 0.001ms !important;
-  }
-
-  /* Sin recorrido, las motas se quedarían en `opacity: 0` del primer
-     fotograma; se dejan visibles y quietas, como el polvo de una foto. */
-  .motas span {
-    opacity: 0.5;
   }
 }

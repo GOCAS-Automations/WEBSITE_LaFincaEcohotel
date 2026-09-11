@@ -109,9 +109,11 @@ export function EncabezadoSeccion({
         <p
           className={[
             "font-titulo text-xs font-semibold tracking-[0.18em] uppercase",
-            /* Sobre el verde bosque el crema se apaga; el dorado 300 mantiene
-               el acento cálido de marca y pasa AA de sobra (más de 8:1). */
-            claro ? "text-dorado-300" : "text-dorado-600",
+            /* Sobre el verde bosque el crema se apaga y se confunde con el
+               titular; el verde claro de marca (`brote`) es el acento oficial
+               para ese fondo y pasa AA de sobra (más de 9:1). Sobre claro, el
+               oliva: el segundo color del manual. */
+            claro ? "text-brote-200" : "text-oliva-600",
           ].join(" ")}
         >
           {antetitulo}
