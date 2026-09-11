@@ -1,13 +1,17 @@
 import Image from "next/image";
+import Link from "next/link";
 
 import {
-  Colibri,
   DivisorOrganico,
-  Motas,
+  FondoBosque,
   Neblina,
+  PatronColibri,
+  RamaBotanica,
+  Resplandor,
 } from "@/components/sitio/atmosfera";
 import { IconoFlecha, IconoHoja } from "@/components/sitio/iconos";
 import { ModuloReserva } from "@/components/sitio/modulo-reserva";
+import { ResenasGoogle } from "@/components/sitio/resenas-google";
 import { TarjetaCabana } from "@/components/sitio/tarjeta-cabana";
 import { TarjetaPlan } from "@/components/sitio/tarjeta-plan";
 import { Boton } from "@/components/ui/boton";
@@ -15,8 +19,10 @@ import { Revelar } from "@/components/ui/revelar";
 import { EncabezadoSeccion, Seccion } from "@/components/ui/seccion";
 import {
   getAlojamientos,
+  getContacto,
   getCtaFinal,
   getEsencia,
+  getExperiencias,
   getHero,
   getIntro,
   getPlanesConPrecio,
@@ -25,12 +31,10 @@ import {
   getSeccionExperiencias,
   getSeccionPlanes,
   getTestimonios,
-  getExperiencias,
 } from "@/lib/contenido";
-import { hoyEnBogota } from "@/lib/utils/formato";
-import { formatearCOP } from "@/lib/utils/formato";
+import { getResenasGoogle } from "@/lib/resenas-google";
+import { formatearCOP, hoyEnBogota } from "@/lib/utils/formato";
 import { mensajeExperiencia, enlaceWhatsapp } from "@/lib/whatsapp";
-import { getContacto } from "@/lib/contenido";
 
 /**
  * Portada.
@@ -56,8 +60,8 @@ import { getContacto } from "@/lib/contenido";
  * y plano. Ahora la sección de planes —la que decide la venta— cae en verde
  * bosque profundo, y el cierre vuelve a la fotografía oscura. Ese golpe de
  * contraste en el medio es lo que convierte una lista de secciones en un
- * recorrido, y es también lo que hace que el precio en dorado se lea como una
- * pieza de joyería y no como una etiqueta más.
+ * recorrido, y es también lo que hace que el precio se lea como una pieza de
+ * joyería y no como una etiqueta más.
  *
  * Entre secciones ya no hay líneas rectas: hay laderas y bancos de niebla
  * (`DivisorOrganico`). Y hay bruma real moviéndose en el hero, en el bosque y
@@ -78,6 +82,7 @@ export async function PaginaInicio() {
     planes,
     experiencias,
     contacto,
+    resenas,
   ] = await Promise.all([
     getHero(),
     getIntro(),
@@ -92,9 +97,18 @@ export async function PaginaInicio() {
     getPlanesConPrecio(),
     getExperiencias(),
     getContacto(),
+    /* Puede devolver `null` (sin clave, Google caído, ninguna reseña de 4★ o
+       más). En ese caso la portada cae a los testimonios del CMS: el bloque de
+       confianza nunca desaparece del recorrido. */
+    getResenasGoogle(),
   ]);
 
-  const destacadas = alojamientos.slice(0, 3);
+  /*
+    LAS CINCO CABAÑAS, NO TRES.
+    Antes la portada mostraba tres y dejaba las otras dos para la página de
+    alojamientos. Con cinco cabañas en total, esconder el 40 % del catálogo en
+    la única pantalla que casi todo el mundo ve no tenía defensa.
+  */
   const opcionesCabana = alojamientos.map((alojamiento) => ({
     slug: alojamiento.slug,
     nombre: alojamiento.nombre,
@@ -103,7 +117,26 @@ export async function PaginaInicio() {
   return (
     <>
       {/* ---------------------------------------------------------------- 1 */}
-      <section className="relative isolate flex min-h-[82svh] flex-col justify-end overflow-hidden sm:min-h-[88svh]">
+      {/*
+        HERO CENTRADO, CON LA RESERVA DENTRO
+        -----------------------------------------------------------------
+        Antes el hero alineaba todo a la izquierda y el módulo de reserva
+        colgaba entre dos secciones, medio dentro de la foto y medio fuera. El
+        gesto era vistoso y costaba caro: en el teléfono el módulo tapaba el
+        pie del titular, y en escritorio la página empezaba con una composición
+        descentrada que no se repetía en ninguna otra parte del sitio.
+
+        Ahora el hero es una sola columna centrada —antetítulo, titular, frase
+        y el módulo de reserva— dentro de la misma fotografía. Es la
+        composición del manual de marca (todas sus portadas están centradas) y
+        deja el camino a reservar en el primer visor, sin desplazarse y sin
+        tapar nada.
+
+        El botón de reserva del módulo ES la acción principal, así que los dos
+        botones grandes de antes sobraban: se queda uno solo, secundario y
+        discreto, debajo.
+      */}
+      <section className="relative isolate flex min-h-svh flex-col items-center justify-center overflow-hidden">
         {/*
           Dirección de arte real: la foto horizontal recortada a una pantalla de
           teléfono pierde justo las cabañas, así que en móvil se sirve la
@@ -119,11 +152,22 @@ export async function PaginaInicio() {
           sizes="100vw"
           className="object-cover sm:hidden"
         />
+        {/*
+          La de escritorio NO lleva `priority`.
+          `priority` añade un `<link rel="preload">` que el navegador respeta
+          aunque la imagen esté en `display: none`, así que en un teléfono se
+          descargaban las DOS fotos del hero —130 kB de más— y competían entre
+          ellas por el ancho de banda del primer visor. Con `loading="eager"`
+          se sigue pidiendo de inmediato en escritorio, pero sin adelantarse a
+          la que de verdad se va a ver. La mayoría de los huéspedes llega desde
+          el celular (por Instagram y WhatsApp): si hay que elegir a quién
+          favorecer, es a ellos.
+        */}
         <Image
           src={hero.imagen}
           alt={hero.imagen_alt}
           fill
-          priority
+          loading="eager"
           quality={75}
           sizes="100vw"
           className="hidden object-cover sm:block"
@@ -142,70 +186,78 @@ export async function PaginaInicio() {
 
         {/*
           El degradado no es decoración: sin él, el titular blanco sobre una
-          foto clara no llega al 4.5:1 que exige AA. El tinte verde bosque de la
-          base (en vez del gris neutro de antes) es lo que ata la fotografía a
-          la paleta en lugar de dejarla flotando encima.
+          foto clara no llega al 4.5:1 que exige AA. Con el texto CENTRADO hay
+          que oscurecer también el medio, no solo la base: por eso ahora son
+          dos capas —una vertical para los bordes y una radial que apaga el
+          centro justo donde se apoyan el titular y el módulo—.
         */}
         <div
           aria-hidden="true"
-          className="absolute inset-0 bg-gradient-to-t from-bosque-950/90 via-bosque-950/45 to-bosque-950/20"
+          className="absolute inset-0 bg-gradient-to-b from-petroleo-950/70 via-petroleo-950/40 to-petroleo-950/85"
         />
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 bg-[radial-gradient(70%_58%_at_50%_46%,rgba(5,37,36,0.62),transparent_78%)]"
+        />
+
+        {/* El resplandor del manual, entrando por arriba a la derecha. */}
+        <Resplandor className="opacity-70" />
 
         {/*
-          Un solo colibrí en el hero, arriba a la derecha, donde no compite con
-          el titular ni con los botones. Se esconde por debajo de `sm`: en un
-          teléfono, el texto ya ocupa la mitad de la foto y añadir un ave
-          encima sería ruido.
+          Un colibrí a cada lado del titular, muy tenues y a ritmos distintos, y
+          una rama botánica en la esquina inferior: los tres motivos del manual,
+          colocados donde NO compiten con el texto. Se esconden por debajo de
+          `lg`: en un teléfono el contenido ya ocupa la foto entera y cualquier
+          añadido es ruido.
         */}
-        <Colibri
-          className="absolute top-[15%] right-[7%] hidden w-32 text-white/70 sm:block lg:right-[10%] lg:w-44"
-          ritmo="lento"
+        <RamaBotanica
+          className="absolute -bottom-6 left-[-2%] hidden w-44 text-brote-100/20 lg:block"
+          ritmo="lenta"
+        />
+        <RamaBotanica
+          className="absolute right-[-3%] bottom-[-8%] hidden w-52 text-brote-100/15 lg:block"
+          espejo
         />
 
-        <div className="contenedor relative z-10 pt-24 pb-28 sm:pb-32 lg:pb-36">
-          <div className="flex max-w-3xl flex-col items-start gap-5">
-            <p className="rounded-full bg-white/15 px-3.5 py-1.5 font-titulo text-xs font-semibold tracking-[0.16em] text-crema-100 uppercase ring-1 ring-white/25 backdrop-blur-md">
-              {hero.antetitulo}
-            </p>
+        <div className="contenedor relative z-10 flex flex-col items-center gap-6 pt-28 pb-16 text-center sm:gap-7 sm:pt-32 sm:pb-20">
+          <p className="rounded-full bg-white/12 px-4 py-1.5 font-titulo text-[0.68rem] font-semibold tracking-[0.22em] text-brote-100 uppercase ring-1 ring-white/25 backdrop-blur-md sm:text-xs">
+            {hero.antetitulo}
+          </p>
 
-            <h1 className="text-4xl leading-[1.08] font-extrabold text-white sm:text-5xl lg:text-6xl">
-              {hero.titulo}
-            </h1>
+          <h1 className="max-w-4xl text-[2.1rem] leading-[1.08] font-extrabold text-white sm:text-5xl lg:text-6xl">
+            {hero.titulo}
+          </h1>
 
-            <p className="max-w-xl text-lg leading-relaxed text-crema-100/95 sm:text-xl">
-              {hero.subtitulo}
-            </p>
+          <p className="max-w-2xl text-base leading-relaxed text-crema-100/95 sm:text-lg lg:text-xl">
+            {hero.subtitulo}
+          </p>
 
-            <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center">
-              <Boton href={hero.cta_href} tamano="grande">
-                {hero.cta_texto}
-              </Boton>
-              <Boton
-                href={hero.cta_secundario_href}
-                variante="claro"
-                tamano="grande"
-              >
-                {hero.cta_secundario_texto}
-              </Boton>
+          {/*
+            EL MÓDULO DE RESERVA, DENTRO DEL HERO.
+            No cabalga entre dos secciones ni se apoya en el borde: vive en la
+            misma columna centrada que el titular, como una pieza más de la
+            primera pantalla. Es lo que pide §10 del plan —el camino a reservar
+            evidente desde el primer visor— sin un solo gesto de desplazamiento.
+          */}
+          {opcionesCabana.length > 0 ? (
+            <div className="mt-2 w-full max-w-4xl text-left">
+              <ModuloReserva
+                cabanas={opcionesCabana}
+                hoy={hoyEnBogota()}
+                ctaTexto={hero.cta_texto}
+              />
             </div>
-          </div>
+          ) : null}
+
+          <Link
+            href={hero.cta_secundario_href}
+            className="group mt-1 inline-flex items-center gap-2 font-titulo text-sm font-semibold text-brote-100/90 underline-offset-[6px] transition-colors duration-200 hover:text-white hover:underline"
+          >
+            {hero.cta_secundario_texto}
+            <IconoFlecha className="size-4 transition-transform duration-300 ease-out group-hover:translate-x-1" />
+          </Link>
         </div>
       </section>
-
-      {/* --------------------------------------------------------------- 1b */}
-      {/*
-        El módulo de reserva CABALGA sobre el borde del hero: sube dentro de la
-        fotografía y baja sobre el crema. Es el gesto que rompe la rejilla —dos
-        secciones dejan de ser dos rectángulos apilados— y, a la vez, el que
-        pone la acción del sitio en el primer visor sin tapar el titular.
-      */}
-      {opcionesCabana.length > 0 ? (
-        <div className="relative z-20 -mt-20 sm:-mt-24 lg:-mt-28">
-          <div className="contenedor">
-            <ModuloReserva cabanas={opcionesCabana} hoy={hoyEnBogota()} />
-          </div>
-        </div>
-      ) : null}
 
       {/* ---------------------------------------------------------------- 2 */}
       <Seccion fondo="crema" className="relative overflow-hidden pt-16 sm:pt-20">
@@ -228,17 +280,28 @@ export async function PaginaInicio() {
               ))}
             </div>
 
+            {/*
+              Un `<dl>` solo admite `<dt>`, `<dd>` y `<div>` que los agrupen: el
+              `<p>` con la etiqueta que había aquí lo invalidaba (lo cazó
+              Lighthouse) y, de paso, obligaba a repetir el texto en un `<dt>`
+              oculto. Ahora el `<dt>` ES la etiqueta visible y va DEBAJO del
+              `<dd>` gracias a `flex-col-reverse`: el orden del documento es el
+              correcto —término y luego definición— y el visual es el que pide
+              el diseño, la cifra grande primero.
+            */}
             {intro.datos.length > 0 ? (
               <dl className="mt-2 grid grid-cols-3 gap-4 border-t border-crema-300/70 pt-6">
                 {intro.datos.map((dato) => (
-                  <div key={dato.etiqueta} className="flex flex-col gap-1">
-                    <dt className="sr-only">{dato.etiqueta}</dt>
+                  <div
+                    key={dato.etiqueta}
+                    className="flex flex-col-reverse gap-1"
+                  >
+                    <dt className="text-xs leading-snug text-crema-600 sm:text-sm">
+                      {dato.etiqueta}
+                    </dt>
                     <dd className="font-titulo text-2xl font-extrabold text-petroleo-700 sm:text-3xl">
                       {dato.valor}
                     </dd>
-                    <p className="text-xs leading-snug text-crema-600 sm:text-sm">
-                      {dato.etiqueta}
-                    </p>
                   </div>
                 ))}
               </dl>
@@ -267,44 +330,60 @@ export async function PaginaInicio() {
       </Seccion>
 
       {/* ---------------------------------------------------------------- 3 */}
-      {destacadas.length > 0 ? (
-        <Seccion fondo="blanco" id="cabanas">
-          <EncabezadoSeccion
-            antetitulo={seccionCabanas.antetitulo}
-            titulo={seccionCabanas.titulo}
-            descripcion={seccionCabanas.descripcion}
-          />
+      {alojamientos.length > 0 ? (
+        <Seccion fondo="blanco" id="cabanas" className="relative overflow-hidden">
+          {/* El patrón de colibríes del manual, a la opacidad más baja que
+              todavía se distingue. Da textura al blanco sin competir con las
+              fotos de las cabañas. */}
+          <PatronColibri tono="claro" className="opacity-90" />
 
-          {/*
-            La tarjeta del medio va medio escalón más abajo en escritorio: tres
-            tarjetas exactamente a la misma altura son una tabla; con el escalón
-            se leen como una composición. En móvil, donde van una debajo de
-            otra, el desfase no existe.
+          <div className="relative z-10">
+            <EncabezadoSeccion
+              antetitulo={seccionCabanas.antetitulo}
+              titulo={seccionCabanas.titulo}
+              descripcion={seccionCabanas.descripcion}
+            />
 
-            El `lg:pb-10` de la lista NO es decorativo: la tarjeta desplazada
-            lleva `h-full` MÁS un margen superior, así que se sale 40 px por
-            debajo de su fila de la rejilla (en CSS Grid, `height: 100%` se
-            resuelve contra el área de la celda y el margen se suma encima). Sin
-            ese relleno, el botón de abajo se le montaba encima.
-          */}
-          <ul className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 lg:pb-10">
-            {destacadas.map((alojamiento, indice) => (
-              <Revelar
-                key={alojamiento.id}
-                como="li"
-                retraso={indice * 90}
-                className={indice === 1 ? "h-full lg:mt-10" : "h-full"}
-              >
-                <TarjetaCabana alojamiento={alojamiento} />
-              </Revelar>
-            ))}
-          </ul>
+            {/*
+              REJILLA ALINEADA, NO ESCALONADA.
+              La versión anterior bajaba medio escalón la tarjeta del medio. La
+              idea era "composición en vez de tabla"; el resultado real era una
+              fila descuadrada que en cuanto una descripción tenía una línea más
+              se leía como un fallo de maquetación, y que obligaba a añadir
+              relleno inferior a la lista para que el botón no se montara.
 
-          <div className="mt-10 flex justify-center lg:mt-6">
-            <Boton href={seccionCabanas.cta_href} variante="contorno">
-              {seccionCabanas.cta_texto}
-              <IconoFlecha className="size-4" />
-            </Boton>
+              Cinco tarjetas iguales, del mismo alto, a la misma altura. La
+              variedad la ponen las fotos, no el desorden.
+
+              Es un FLEX con anchos calculados, no un `grid`: cinco elementos en
+              una rejilla de tres columnas dejan la última fila pegada a la
+              izquierda con un hueco a la derecha. Con flex y `justify-center`,
+              esas dos últimas tarjetas quedan centradas bajo las tres de
+              arriba, que es como se ve un catálogo y no un inventario a medio
+              llenar. Los `li` se estiran solos al alto de su línea.
+            */}
+            <ul className="mt-12 flex flex-wrap justify-center gap-6">
+              {alojamientos.map((alojamiento, indice) => (
+                <Revelar
+                  key={alojamiento.id}
+                  como="li"
+                  retraso={(indice % 3) * 90}
+                  className="w-full sm:w-[calc(50%-0.75rem)] lg:w-[calc(33.333%-1rem)]"
+                >
+                  {/* Sin `priority`: están por debajo del primer visor y
+                      competirían con la foto del hero por el ancho de banda
+                      inicial, que es justo lo que mide el LCP. */}
+                  <TarjetaCabana alojamiento={alojamiento} />
+                </Revelar>
+              ))}
+            </ul>
+
+            <div className="mt-10 flex justify-center">
+              <Boton href={seccionCabanas.cta_href} variante="contorno">
+                {seccionCabanas.cta_texto}
+                <IconoFlecha className="size-4" />
+              </Boton>
+            </div>
           </div>
         </Seccion>
       ) : null}
@@ -325,11 +404,16 @@ export async function PaginaInicio() {
           <Seccion
             fondo="bosque"
             id="planes"
-            className="relative overflow-hidden"
+            className="relative isolate overflow-hidden"
             espacio="amplio"
           >
-            <Neblina tono="bosque" />
-            <Motas />
+            {/*
+              Aquí estaba el verde plano. Ahora es una fotografía real de las
+              zonas comunes bajo el velo de petróleo, con la bruma encima y el
+              resplandor y el patrón de colibríes del manual. La sección que
+              decide la venta tiene que oler a bosque, no a rectángulo verde.
+            */}
+            <FondoBosque imagen={seccionPlanes.imagen_fondo} velo="denso" />
 
             <div className="relative z-10">
               <EncabezadoSeccion
@@ -339,17 +423,24 @@ export async function PaginaInicio() {
                 claro
               />
 
-              <ul className="mt-12 grid items-stretch gap-6 lg:grid-cols-3">
+              {/*
+                CUATRO planes, no tres: a los tres de hospedaje se suma el Día
+                de Calma, que no incluye noche. En `lg` van los cuatro en fila;
+                en tabletas, dos y dos. El destacado es el Estándar, que es el
+                que más se vende de viernes a domingo.
+              */}
+              <ul className="mt-12 grid items-stretch gap-5 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
                 {planes.map((entrada, indice) => (
                   <Revelar
                     key={entrada.plan.id}
                     como="li"
-                    retraso={indice * 90}
+                    retraso={(indice % 3) * 90}
                     className="h-full"
                   >
                     <TarjetaPlan
                       plan={entrada.plan}
                       precio={entrada.precio_minimo}
+                      precioUnaPersona={entrada.precio_1_persona}
                       desde={entrada.varia}
                       destacado={indice === 1}
                       sobreOscuro
@@ -388,11 +479,6 @@ export async function PaginaInicio() {
             del contenido (`-z-0`) y con muy poca opacidad: si se nota como
             "ilustración", sobra.
           */}
-          <Colibri
-            className="pointer-events-none absolute top-2 right-[4%] hidden w-28 text-oliva-500/45 lg:block"
-            ritmo="pausado"
-            mirando="derecha"
-          />
 
           <EncabezadoSeccion
             antetitulo={seccionExperiencias.antetitulo}
@@ -418,7 +504,7 @@ export async function PaginaInicio() {
                       {experiencia.descripcion}
                     </p>
                   ) : null}
-                  <p className="mt-auto pt-3 font-titulo text-lg font-bold text-dorado-600">
+                  <p className="mt-auto pt-3 font-titulo text-lg font-bold text-petroleo-700">
                     {formatearCOP(experiencia.precio)}
                     <span className="ml-1.5 text-sm font-medium text-crema-600">
                       por estadía
@@ -582,7 +668,40 @@ export async function PaginaInicio() {
       </Seccion>
 
       {/* ---------------------------------------------------------------- 8 */}
-      {testimonios.items.length > 0 ? (
+      {/*
+        RESEÑAS REALES DE GOOGLE.
+        Los testimonios del CMS eran texto copiado a mano: ciertos, pero sin
+        forma de comprobarlos y congelados el día que se transcribieron. Ahora
+        se leen en vivo de la ficha de Google Business (4,7 ★ con 50
+        calificaciones), con foto, enlace al perfil de quien escribe y la
+        atribución que exigen los términos de Google.
+
+        Si la API falla, si falta la clave o si no queda ninguna reseña de 4★ o
+        más, `getResenasGoogle()` devuelve `null` y la sección cae a los
+        testimonios del CMS de abajo. El bloque de confianza nunca desaparece.
+      */}
+      {resenas ? (
+        <Seccion fondo="niebla" className="relative overflow-hidden">
+          <Neblina tono="verde" className="opacity-60" />
+          <RamaBotanica
+            className="absolute right-[-4%] -bottom-10 hidden w-56 text-oliva-400/25 lg:block"
+            ritmo="lenta"
+            espejo
+          />
+
+          <div className="relative z-10">
+            <EncabezadoSeccion
+              antetitulo={testimonios.antetitulo}
+              titulo={testimonios.titulo}
+            />
+            <ResenasGoogle
+              resumen={resenas}
+              titulo={null}
+              className="mt-10"
+            />
+          </div>
+        </Seccion>
+      ) : testimonios.items.length > 0 ? (
         <Seccion fondo="niebla" className="relative overflow-hidden">
           <Neblina tono="verde" className="opacity-60" />
 
@@ -603,7 +722,7 @@ export async function PaginaInicio() {
                   <figure className="flex h-full flex-col gap-4 rounded-[var(--radius-generoso)] rounded-tl-[3rem] bg-white p-6 shadow-[var(--shadow-tenue)] ring-1 ring-niebla-200/80">
                     <span
                       aria-hidden="true"
-                      className="font-titulo text-4xl leading-none text-dorado-300"
+                      className="font-titulo text-4xl leading-none text-brote-200"
                     >
                       &ldquo;
                     </span>
@@ -661,10 +780,14 @@ export async function PaginaInicio() {
 
           <div
             aria-hidden="true"
-            className="absolute inset-0 bg-gradient-to-t from-bosque-950/92 via-bosque-950/65 to-bosque-950/35"
+            className="absolute inset-0 bg-gradient-to-t from-petroleo-950/94 via-petroleo-950/72 to-petroleo-950/45"
           />
 
-          <Motas />
+          {/* El resplandor del manual, esta vez entrando por la izquierda para
+              no repetir la misma esquina que el hero, y el patrón de colibríes
+              apenas insinuado sobre la foto. */}
+          <Resplandor desde="izquierda" className="opacity-60" />
+          <PatronColibri className="opacity-70" />
 
           <div className="absolute inset-0 z-10 flex items-center">
             <div className="contenedor">
@@ -675,7 +798,7 @@ export async function PaginaInicio() {
                 <p className="text-base leading-relaxed text-crema-100/95 sm:text-lg">
                   {ctaFinal.texto}
                 </p>
-                <Boton href={ctaFinal.cta_href} tamano="grande">
+                <Boton href={ctaFinal.cta_href} variante="marca" tamano="grande">
                   {ctaFinal.cta_texto}
                 </Boton>
               </Revelar>

@@ -9,8 +9,8 @@ import { IconoCheck } from "./iconos";
  *
  * La Finca cobra por PLAN, no por cabaña (§2.1 del plan de desarrollo): estas
  * tres tarjetas son, en la práctica, el catálogo del hotel. Por eso el precio
- * va grande y en dorado —el mismo acento que el sitio actual usa para el plan
- * Premium— y la lista de lo que incluye va completa, sin "ver más".
+ * va grande y en el color de marca —petróleo sobre claro, verde claro sobre
+ * bosque— y la lista de lo que incluye va completa, sin "ver más".
  *
  * `destacado` levanta visualmente uno de los tres. Se usa para el plan del
  * medio, que es el que el equipo quiere que se elija.
@@ -26,9 +26,30 @@ import { IconoCheck } from "./iconos";
  *   caja oscura; tres tarjetas blancas sobre verde, en cambio, habrían anulado
  *   el fondo entero y desperdiciado el único momento oscuro de la portada.
  */
+/** Días ISO (1 = lunes) en la frase más corta posible que siga siendo exacta. */
+function frasesDeDias(dias: number[] | null): string | null {
+  if (!dias || dias.length === 0 || dias.length === 7) return null;
+  const ordenados = [...dias].sort((a, b) => a - b);
+  const clave = ordenados.join(",");
+  /* Los dos únicos repartos que usa el hotel (§3 de DATOS_CLIENTE.md) se
+     escriben como los dice él, no como los deduciría un algoritmo. */
+  if (clave === "1,2,3,4") return "Lunes a jueves";
+  if (clave === "5,6,7") return "Viernes a domingo y festivos";
+
+  const nombres = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"];
+  const lista = ordenados.map((dia) => nombres[dia - 1]).filter(Boolean);
+  if (lista.length === 0) return null;
+  const texto =
+    lista.length === 1
+      ? lista[0]
+      : `${lista.slice(0, -1).join(", ")} y ${lista[lista.length - 1]}`;
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
+}
+
 export function TarjetaPlan({
   plan,
   precio,
+  precioUnaPersona = null,
   desde = false,
   destacado = false,
   sobreOscuro = false,
@@ -36,8 +57,10 @@ export function TarjetaPlan({
   ctaTexto = "Reservar este plan",
 }: {
   plan: Plan;
-  /** Precio por noche en COP enteros. `null` = tarifa por confirmar. */
+  /** Precio en COP enteros: por noche, o por el día si el plan es de día. */
   precio: number | null;
+  /** Precio para una sola persona, si el plan lo publica. */
+  precioUnaPersona?: number | null;
   /** `true` cuando el precio varía entre cabañas y se muestra el más bajo. */
   desde?: boolean;
   destacado?: boolean;
@@ -47,6 +70,16 @@ export function TarjetaPlan({
   ctaTexto?: string;
 }) {
   const incluye = plan.incluye ?? [];
+
+  /**
+   * Un plan de DÍA no se cobra por noche ni ocupa cabaña (el «Día de Calma»:
+   * 10:00 a. m. – 5:00 p. m., sin hospedaje). Escribir «por noche» debajo de su
+   * precio sería un error de hecho, no de estilo: quien lo lea creerá que
+   * duerme en La Finca.
+   */
+  const esDeDia = plan.tipo === "dia";
+  const unidad = esDeDia ? "por el día · 2 personas" : "por noche · 2 personas";
+  const cuando = esDeDia ? plan.horario : frasesDeDias(plan.dias_aplica);
 
   /**
    * `claro` = la tarjeta se pinta con fondo claro y texto oscuro.
@@ -77,8 +110,8 @@ export function TarjetaPlan({
           className={[
             "mb-3 self-start rounded-full px-3 py-1 font-titulo text-xs font-semibold tracking-wide uppercase",
             claro
-              ? "bg-dorado-100 text-dorado-800"
-              : "bg-dorado-500/20 text-dorado-200",
+              ? "bg-brote-100 text-oliva-700"
+              : "bg-brote-100/20 text-brote-100",
           ].join(" ")}
         >
           El más pedido
@@ -93,6 +126,23 @@ export function TarjetaPlan({
       >
         {plan.nombre}
       </h3>
+
+      {/*
+        Cuándo aplica el plan, justo debajo del nombre. Es el dato que más se
+        pregunta por WhatsApp —«¿el de $350.000 sirve para un sábado?»— y
+        esconderlo dentro de la lista de lo que incluye obligaba a leerla
+        entera para descubrir que ese plan no sirve para esa fecha.
+      */}
+      {cuando ? (
+        <p
+          className={[
+            "mt-2 font-titulo text-xs font-semibold tracking-wide",
+            claro ? "text-oliva-600" : "text-brote-200",
+          ].join(" ")}
+        >
+          {cuando}
+        </p>
+      ) : null}
 
       {plan.descripcion ? (
         <p
@@ -110,7 +160,7 @@ export function TarjetaPlan({
           <span
             className={[
               "font-titulo text-xl font-bold",
-              claro ? "text-dorado-600" : "text-dorado-200",
+              claro ? "text-petroleo-700" : "text-brote-200",
             ].join(" ")}
           >
             Consulta la tarifa
@@ -129,7 +179,7 @@ export function TarjetaPlan({
             <span
               className={[
                 "font-titulo text-3xl font-extrabold tracking-tight sm:text-4xl",
-                claro ? "text-dorado-600" : "text-dorado-300",
+                claro ? "text-petroleo-700" : "text-brote-100",
               ].join(" ")}
             >
               {formatearCOP(precio)}
@@ -139,11 +189,26 @@ export function TarjetaPlan({
                 claro ? "text-sm text-crema-600" : "text-sm text-crema-200/80"
               }
             >
-              por noche · 2 personas
+              {unidad}
             </span>
           </>
         )}
       </p>
+
+      {/* El precio de una sola persona (hoy, solo Entre Semana: $200.000). */}
+      {precio !== null && precioUnaPersona !== null ? (
+        <p
+          className={[
+            "mt-1.5 text-sm",
+            claro ? "text-crema-600" : "text-crema-200/80",
+          ].join(" ")}
+        >
+          <span className="font-titulo font-bold">
+            {formatearCOP(precioUnaPersona)}
+          </span>{" "}
+          si viaja una sola persona
+        </p>
+      ) : null}
 
       {incluye.length > 0 ? (
         <ul className="mt-6 flex flex-1 flex-col gap-2.5">

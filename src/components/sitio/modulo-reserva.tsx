@@ -114,7 +114,7 @@ export function ModuloReserva({
     >
       <div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5">
         <p className="flex items-center gap-2 font-titulo text-sm font-bold text-petroleo-900">
-          <IconoLlave className="size-4 text-dorado-600" />
+          <IconoLlave className="size-4 text-oliva-600" />
           Reserva directa con el hotel
         </p>
         <p
@@ -128,8 +128,15 @@ export function ModuloReserva({
         </p>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1.35fr_1fr_1fr_auto] lg:items-end lg:gap-4">
-        <label className="flex flex-col gap-1.5 sm:col-span-2 lg:col-span-1">
+      {/*
+        Dos columnas YA en móvil, no a partir de `sm`. El módulo vive dentro
+        del hero: con los cuatro campos apilados ocupaba 380 px y empujaba el
+        enlace secundario fuera de la primera pantalla de un teléfono. Llegada y
+        salida comparten fila —son la misma decisión— y la cabaña y el botón
+        ocupan las dos columnas.
+      */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-[1.35fr_1fr_1fr_auto] lg:items-end lg:gap-4">
+        <label className="col-span-2 flex flex-col gap-1.5 lg:col-span-1">
           <span className={CLASE_ETIQUETA}>Cabaña</span>
           <select
             name="cabana"
@@ -176,7 +183,7 @@ export function ModuloReserva({
             aria-describedby={fechasInvalidas ? idError : undefined}
             className={
               fechasInvalidas
-                ? `${CLASE_CAMPO} border-dorado-600 focus:border-dorado-600`
+                ? `${CLASE_CAMPO} border-red-600 focus:border-red-600`
                 : CLASE_CAMPO
             }
           />
@@ -187,7 +194,7 @@ export function ModuloReserva({
           className={clasesBoton(
             "primario",
             "normal",
-            "sm:col-span-2 lg:col-span-1 w-full lg:w-auto lg:px-8 py-3.5 whitespace-nowrap",
+            "col-span-2 lg:col-span-1 w-full lg:w-auto lg:px-8 py-3.5 whitespace-nowrap",
           )}
         >
           {ctaTexto}
@@ -196,7 +203,7 @@ export function ModuloReserva({
       </div>
 
       {fechasInvalidas ? (
-        <p id={idError} className="mt-3 text-sm font-medium text-dorado-700">
+        <p id={idError} className="mt-3 text-sm font-medium text-red-700">
           La fecha de salida debe ser posterior a la de llegada.
         </p>
       ) : null}

@@ -36,7 +36,10 @@ export function TarjetaCabana({
       href={`/alojamientos/${alojamiento.slug}`}
       className="group flex h-full flex-col overflow-hidden rounded-[var(--radius-generoso)] bg-white shadow-[var(--shadow-tarjeta)] ring-1 ring-crema-200/60 transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-[var(--shadow-elevada)]"
     >
-      <div className="relative aspect-4/3 overflow-hidden bg-crema-200">
+      {/* 3:2: las fotos publicadas son 4:3 recortadas, y una casilla algo más
+          apaisada hace que las tarjetas se lean como un catálogo y no como un
+          álbum. El recorte que sobra es mínimo. */}
+      <div className="relative aspect-3/2 overflow-hidden bg-crema-200">
         <Image
           src={foto.url}
           alt={foto.alt}
@@ -49,10 +52,10 @@ export function TarjetaCabana({
         {/*
           La etiqueta del precio lleva fondo OPACO, no translúcido: se apoya
           sobre la foto de la cabaña, que casi siempre es madera anaranjada, y
-          un blanco al 90 % se tiñe de naranja y hunde el contraste del dorado.
+          un blanco al 90 % se tiñe de naranja y hunde el contraste del texto.
         */}
         {alojamiento.precio_desde !== null ? (
-          <p className="absolute top-3 right-3 rounded-full bg-white px-3.5 py-1.5 font-titulo text-sm font-bold text-dorado-700 shadow-[var(--shadow-tarjeta)]">
+          <p className="absolute top-3 right-3 rounded-full bg-white px-3.5 py-1.5 font-titulo text-sm font-bold text-petroleo-700 shadow-[var(--shadow-tarjeta)]">
             desde {formatearCOP(alojamiento.precio_desde)}
           </p>
         ) : null}

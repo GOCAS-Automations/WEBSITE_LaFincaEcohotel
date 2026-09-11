@@ -260,14 +260,14 @@ export function SelectorReserva({ cabanas, planes, whatsapp, hoy }: Props) {
                 className={[
                   "rounded-[var(--radius-suave)] border bg-white px-4 py-3 text-sm text-petroleo-900 transition-colors duration-200",
                   fechasInvalidas
-                    ? "border-dorado-600"
+                    ? "border-red-600"
                     : "border-crema-300/80 focus:border-petroleo-500",
                 ].join(" ")}
               />
             </label>
           </div>
           {fechasInvalidas ? (
-            <p id="error-fechas" className="text-sm text-dorado-700">
+            <p id="error-fechas" className="text-sm text-red-700">
               La fecha de salida debe ser posterior a la de llegada.
             </p>
           ) : null}
@@ -334,7 +334,7 @@ export function SelectorReserva({ cabanas, planes, whatsapp, hoy }: Props) {
               <span className="font-titulo text-sm font-semibold text-crema-700">
                 Total estimado
               </span>
-              <span className="font-titulo text-2xl font-extrabold text-dorado-600">
+              <span className="font-titulo text-2xl font-extrabold text-petroleo-700">
                 {formatearCOP(total)}
               </span>
             </p>
