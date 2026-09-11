@@ -154,8 +154,20 @@ export async function guardarAlojamientoAction(
 }
 
 /**
- * Guarda las tarifas base de una cabaña (un precio por plan, sin vigencia).
- * Un campo vacío significa "esta cabaña no ofrece ese plan": se borra la fila.
+ * Guarda las tarifas base de una cabaña: una fila de `tarifas` por plan de
+ * hospedaje, sin vigencia.
+ *
+ * QUE EXISTA LA FILA ES LA DISPONIBILIDAD: no hay columna «se ofrece». Por eso
+ * el formulario trae un interruptor por plan (`ofrece_<planId>`):
+ *   · apagado → se borra la fila; esa cabaña deja de ofrecerse con ese plan.
+ *   · encendido → se crea o actualiza con el precio escrito.
+ *
+ * `precio_noche_1_persona` es opcional: `null` significa que se cobra el mismo
+ * precio venga una persona o dos (hoy solo Entre Semana tiene precio aparte).
+ *
+ * Los `dias_semana` de la tarifa se copian de `planes.dias_aplica`: la fuente
+ * de verdad es el plan, y así el motor de reservas puede leer la restricción
+ * sin una segunda consulta.
  */
 async function guardarTarifas(
   supabase: Awaited<ReturnType<typeof requireAdmin>>["supabase"],
@@ -163,14 +175,28 @@ async function guardarTarifas(
   formData: FormData,
 ) {
   const planes = formData.getAll("plan_id").map((valor) => String(valor));
+  if (planes.length === 0) return;
+
+  const { data: filasPlan, error: errorPlanes } = await supabase
+    .from("planes")
+    .select("id, nombre, dias_aplica, tipo")
+    .in("id", planes);
+  if (errorPlanes) throw new Error(errorPlanes.message);
+
+  const porId = new Map(
+    (filasPlan ?? []).map((fila) => [String(fila.id), fila]),
+  );
 
   for (const planId of planes) {
-    const precio = enteroOpcional(formData, `precio_${planId}`, "Precio por noche", {
-      min: 0,
-      max: 100_000_000,
-    });
+    const plan = porId.get(planId);
+    // Un id que no corresponde a ningún plan, o que corresponde a uno de día,
+    // se ignora: el formulario solo debería mandar planes de hospedaje.
+    if (!plan || plan.tipo !== "hospedaje") continue;
 
-    if (precio === null) {
+    const etiqueta = String(plan.nombre ?? "este plan");
+    const ofrece = casilla(formData, `ofrece_${planId}`);
+
+    if (!ofrece) {
       const { error } = await supabase
         .from("tarifas")
         .delete()
@@ -180,6 +206,32 @@ async function guardarTarifas(
       if (error) throw new Error(error.message);
       continue;
     }
+
+    const precio = enteroOpcional(
+      formData,
+      `precio_${planId}`,
+      `Precio por noche del plan ${etiqueta}`,
+      { min: 0, max: 100_000_000 },
+    );
+
+    if (precio === null) {
+      throw new ErrorDeValidacion(
+        `Le falta el precio por noche al plan «${etiqueta}». Escríbelo, o apaga el interruptor si esta cabaña no se ofrece con ese plan.`,
+      );
+    }
+
+    const precioUnaPersona = enteroOpcional(
+      formData,
+      `precio_1_${planId}`,
+      `Precio para 1 persona del plan ${etiqueta}`,
+      { min: 0, max: 100_000_000 },
+    );
+
+    const datos = {
+      precio_noche: precio,
+      precio_noche_1_persona: precioUnaPersona,
+      dias_semana: plan.dias_aplica ?? null,
+    };
 
     const { data: existente } = await supabase
       .from("tarifas")
@@ -192,15 +244,15 @@ async function guardarTarifas(
     if (existente) {
       const { error } = await supabase
         .from("tarifas")
-        .update({ precio_noche: precio })
+        .update(datos)
         .eq("id", existente.id);
       if (error) throw new Error(error.message);
     } else {
       const { error } = await supabase.from("tarifas").insert({
         alojamiento_id: alojamientoId,
         plan_id: planId,
-        precio_noche: precio,
         vigencia: null,
+        ...datos,
       });
       if (error) throw new Error(error.message);
     }

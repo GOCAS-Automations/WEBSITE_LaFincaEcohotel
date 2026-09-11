@@ -77,14 +77,31 @@ export async function opcionesAlojamiento(
   return (data ?? []) as OpcionAlojamiento[];
 }
 
+const COLUMNAS_PLAN =
+  "id, nombre, descripcion, incluye, tipo, dias_aplica, horario, precio_base, orden, activo";
+
 export async function listarPlanes(supabase: SupabaseClient): Promise<Plan[]> {
   const { data, error } = await supabase
     .from("planes")
-    .select("id, nombre, descripcion, incluye, orden, activo")
+    .select(COLUMNAS_PLAN)
     .order("orden", { ascending: true });
 
   if (error) throw new Error(error.message);
   return (data ?? []) as Plan[];
+}
+
+/**
+ * Solo los planes que se reservan por cabaña.
+ *
+ * Los de tipo `dia` no tienen tarifa por cabaña —su precio vive en el propio
+ * plan— así que no deben aparecer en la rejilla de precios de una cabaña: un
+ * campo de precio que no se usa es una invitación a llenarlo mal.
+ */
+export async function planesDeHospedaje(
+  supabase: SupabaseClient,
+): Promise<Plan[]> {
+  const planes = await listarPlanes(supabase);
+  return planes.filter((plan) => plan.tipo === "hospedaje");
 }
 
 export async function opcionesPlan(
@@ -100,7 +117,7 @@ export async function obtenerPlan(
 ): Promise<Plan | null> {
   const { data, error } = await supabase
     .from("planes")
-    .select("id, nombre, descripcion, incluye, orden, activo")
+    .select(COLUMNAS_PLAN)
     .eq("id", id)
     .maybeSingle();
 
@@ -173,25 +190,34 @@ export type TarifaAdmin = {
   id: string | null;
   plan_id: string;
   plan_nombre: string;
+  /**
+   * `true` si la cabaña se ofrece con ese plan, es decir si existe la fila de
+   * `tarifas`. El modelo no tiene una columna «disponible»: la existencia de
+   * la tarifa ES la disponibilidad.
+   */
+  ofrecido: boolean;
   precio_noche: number | null;
+  precio_noche_1_persona: number | null;
+  /** Días ISO en que se puede reservar el plan, para explicarlo en el panel. */
+  dias_aplica: number[] | null;
 };
 
 /**
- * Las tarifas base (sin vigencia) de una cabaña, UNA POR PLAN.
+ * Las tarifas base (sin vigencia) de una cabaña, UNA POR PLAN DE HOSPEDAJE.
  *
- * Siempre devuelve los tres planes activos, aunque alguno no tenga precio
- * todavía: el formulario debe mostrar los tres huecos, no esconder el que
- * falta.
+ * Siempre devuelve todos los planes de hospedaje, aunque alguno no tenga
+ * precio todavía: el formulario debe mostrar los huecos, no esconder el que
+ * falta. Los planes de día quedan fuera a propósito (no se venden por cabaña).
  */
 export async function tarifasDeAlojamiento(
   supabase: SupabaseClient,
   alojamientoId: string,
 ): Promise<TarifaAdmin[]> {
   const [planes, tarifas] = await Promise.all([
-    listarPlanes(supabase),
+    planesDeHospedaje(supabase),
     supabase
       .from("tarifas")
-      .select("id, plan_id, precio_noche, vigencia")
+      .select("id, plan_id, precio_noche, precio_noche_1_persona, vigencia")
       .eq("alojamiento_id", alojamientoId)
       .is("vigencia", null),
   ]);
@@ -208,7 +234,13 @@ export async function tarifasDeAlojamiento(
       id: fila ? String(fila.id) : null,
       plan_id: plan.id,
       plan_nombre: plan.nombre,
+      ofrecido: Boolean(fila),
       precio_noche: fila ? Number(fila.precio_noche) : null,
+      precio_noche_1_persona:
+        fila && fila.precio_noche_1_persona !== null
+          ? Number(fila.precio_noche_1_persona)
+          : null,
+      dias_aplica: plan.dias_aplica,
     };
   });
 }

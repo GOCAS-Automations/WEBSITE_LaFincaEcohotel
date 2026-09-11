@@ -16,7 +16,7 @@ import {
 } from "@/components/admin/ui";
 import type { TarifaAdmin } from "@/lib/admin/datos";
 import { slugificar } from "@/lib/admin/slug";
-import type { ImagenGaleriaAdmin } from "@/lib/admin/tipos";
+import { resumirDias, type ImagenGaleriaAdmin } from "@/lib/admin/tipos";
 import type { Alojamiento } from "@/lib/tipos/basedatos";
 
 const AMENIDADES_SUGERIDAS = [
@@ -31,6 +31,115 @@ const AMENIDADES_SUGERIDAS = [
   "Wifi",
   "Admite mascotas",
 ];
+
+/**
+ * Un plan de hospedaje dentro de la ficha de la cabaña.
+ *
+ * El interruptor NO es una columna de la base: encendido significa «existe la
+ * tarifa de esta cabaña para este plan», y apagarlo la borra. Se explica en
+ * pantalla porque es la diferencia entre pausar y dejar de vender.
+ */
+function FilaTarifa({ tarifa }: { tarifa: TarifaAdmin }) {
+  const [ofrecido, setOfrecido] = useState(tarifa.ofrecido);
+
+  return (
+    <div className="rounded-tarjeta bg-crema-900/[0.03] p-3.5">
+      <input type="hidden" name="plan_id" value={tarifa.plan_id} />
+
+      <label
+        htmlFor={`ofrece_${tarifa.plan_id}`}
+        className="flex cursor-pointer items-start gap-3"
+      >
+        <input
+          id={`ofrece_${tarifa.plan_id}`}
+          type="checkbox"
+          name={`ofrece_${tarifa.plan_id}`}
+          checked={ofrecido}
+          onChange={(evento) => setOfrecido(evento.target.checked)}
+          className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--color-petroleo-600)]"
+        />
+        <span className="min-w-0">
+          <span className="block text-[0.875rem] font-semibold text-crema-900">
+            Se ofrece con el plan {tarifa.plan_nombre}
+          </span>
+          <span className="mt-0.5 block text-[0.75rem] leading-relaxed text-crema-600">
+            {ofrecido
+              ? `Días en que aplica este plan: ${resumirDias(tarifa.dias_aplica).toLowerCase()}.`
+              : "Apagado: esta cabaña no aparece cuando el huésped elige este plan."}
+          </span>
+        </span>
+      </label>
+
+      {ofrecido && (
+        <div className="mt-3.5 grid gap-3 sm:grid-cols-2">
+          <div>
+            <label
+              htmlFor={`precio_${tarifa.plan_id}`}
+              className="mb-1.5 block text-[0.8125rem] font-semibold text-crema-900"
+            >
+              Precio por noche
+            </label>
+            <div className="relative">
+              <span
+                className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[0.9375rem] text-crema-500"
+                aria-hidden="true"
+              >
+                $
+              </span>
+              <input
+                id={`precio_${tarifa.plan_id}`}
+                name={`precio_${tarifa.plan_id}`}
+                type="text"
+                inputMode="numeric"
+                defaultValue={
+                  tarifa.precio_noche === null ? "" : tarifa.precio_noche
+                }
+                placeholder="480000"
+                className={`${CLASE_INPUT} pl-8`}
+              />
+            </div>
+            <p className="mt-1.5 text-[0.75rem] text-crema-600">
+              Lo que se cobra por noche cuando viajan dos personas.
+            </p>
+          </div>
+
+          <div>
+            <label
+              htmlFor={`precio_1_${tarifa.plan_id}`}
+              className="mb-1.5 block text-[0.8125rem] font-semibold text-crema-900"
+            >
+              Precio si viaja una sola persona
+            </label>
+            <div className="relative">
+              <span
+                className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[0.9375rem] text-crema-500"
+                aria-hidden="true"
+              >
+                $
+              </span>
+              <input
+                id={`precio_1_${tarifa.plan_id}`}
+                name={`precio_1_${tarifa.plan_id}`}
+                type="text"
+                inputMode="numeric"
+                defaultValue={
+                  tarifa.precio_noche_1_persona === null
+                    ? ""
+                    : tarifa.precio_noche_1_persona
+                }
+                placeholder="Opcional"
+                className={`${CLASE_INPUT} pl-8`}
+              />
+            </div>
+            <p className="mt-1.5 text-[0.75rem] text-crema-600">
+              Déjalo vacío si se cobra igual venga una persona o dos.
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function FormularioAlojamiento({
   alojamiento,
@@ -173,47 +282,34 @@ export function FormularioAlojamiento({
           </label>
         </div>
 
-        <Divisor titulo="Precios por noche" />
+        <Divisor titulo="Planes y precios por noche" />
 
         <div className="sm:col-span-2">
-          <p className="mb-3 text-[0.8125rem] leading-relaxed text-crema-700">
-            Un precio por cada plan. Deja el campo vacío si esta cabaña no
-            ofrece ese plan. Se escriben en pesos, sin centavos:{" "}
-            <span className="font-semibold">450000</span> o{" "}
-            <span className="font-semibold">450.000</span>, como prefieras.
+          <p className="mb-4 text-[0.8125rem] leading-relaxed text-crema-700">
+            Enciende los planes con los que se puede reservar esta cabaña y
+            ponle a cada uno su precio por noche.{" "}
+            <strong>Si apagas un plan, esta cabaña deja de ofrecerse con
+            ese plan</strong>: no aparecerá al reservar. Los precios se
+            escriben en pesos, sin centavos:{" "}
+            <span className="font-semibold">480000</span> o{" "}
+            <span className="font-semibold">480.000</span>, como prefieras.
           </p>
-          <div className="grid gap-3 sm:grid-cols-3">
-            {tarifas.map((tarifa) => (
-              <div key={tarifa.plan_id}>
-                <input type="hidden" name="plan_id" value={tarifa.plan_id} />
-                <label
-                  htmlFor={`precio_${tarifa.plan_id}`}
-                  className="mb-1.5 block text-[0.8125rem] font-semibold text-crema-900"
-                >
-                  {tarifa.plan_nombre}
-                </label>
-                <div className="relative">
-                  <span
-                    className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[0.9375rem] text-crema-500"
-                    aria-hidden="true"
-                  >
-                    $
-                  </span>
-                  <input
-                    id={`precio_${tarifa.plan_id}`}
-                    name={`precio_${tarifa.plan_id}`}
-                    type="text"
-                    inputMode="numeric"
-                    defaultValue={
-                      tarifa.precio_noche === null ? "" : tarifa.precio_noche
-                    }
-                    placeholder="450000"
-                    className={`${CLASE_INPUT} pl-8`}
-                  />
-                </div>
-              </div>
-            ))}
+          <div className="grid gap-3">
+            {tarifas.length === 0 ? (
+              <p className="rounded-tarjeta bg-crema-900/[0.03] p-3.5 text-[0.8125rem] leading-relaxed text-crema-700">
+                Todavía no hay planes de hospedaje. Créalos en «Planes» y
+                vuelve aquí para ponerles precio.
+              </p>
+            ) : (
+              tarifas.map((tarifa) => (
+                <FilaTarifa key={tarifa.plan_id} tarifa={tarifa} />
+              ))
+            )}
           </div>
+          <p className="mt-3 text-[0.75rem] leading-relaxed text-crema-600">
+            Los planes de día (los que no incluyen noche) no se listan aquí:
+            llevan un solo precio para todo el hotel, que se edita en «Planes».
+          </p>
         </div>
 
         <Divisor titulo="Fotos de la cabaña" />

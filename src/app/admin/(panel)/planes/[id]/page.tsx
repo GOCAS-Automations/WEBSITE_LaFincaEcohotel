@@ -35,7 +35,11 @@ export default async function PaginaEditarPlan({
     <>
       <EncabezadoPagina
         titulo={plan.nombre}
-        descripcion="El nombre, la descripción y lo que incluye este plan. El precio se pone por cabaña, en «Cabañas»."
+        descripcion={
+          plan.tipo === "dia"
+            ? "El nombre, lo que incluye, los días en que aplica, el horario y el precio de este plan de día."
+            : "El nombre, lo que incluye y los días en que aplica este plan. El precio se pone por cabaña, en «Cabañas»."
+        }
       />
 
       <Aviso ok={busqueda.ok} error={busqueda.error} />

@@ -4,11 +4,15 @@ import { redirect } from "next/navigation";
 
 import { requireAdmin } from "@/lib/admin/auth";
 import { refrescarPanel, revalidarSitioPublico } from "@/lib/admin/revalidar";
-import { estadoOk, type EstadoAccion } from "@/lib/admin/tipos";
+import { estadoOk, TIPOS_PLAN, type EstadoAccion } from "@/lib/admin/tipos";
 import {
+  ErrorDeValidacion,
   casilla,
   ejecutarAccion,
+  enteroOpcional,
   enteroRequerido,
+  enterosDeCasillas,
+  enumRequerido,
   listaTexto,
   textoOpcional,
   textoRequerido,
@@ -23,6 +27,8 @@ function refrescar(id?: string) {
 
 const CONTEXTO_ERRORES = {
   unico: "Ya existe otro plan con ese mismo nombre. Cámbialo por uno distinto.",
+  check:
+    "Los datos del plan no encajan entre sí: un plan de hospedaje no lleva horario ni precio propio (su precio va por cabaña), y uno de día sí necesita su precio.",
 };
 
 /**
@@ -44,10 +50,36 @@ export async function guardarPlanAction(
     const id = String(formData.get("id") ?? "").trim();
     const nombre = textoRequerido(formData, "nombre", "Nombre", 80);
 
+    const tipo = enumRequerido(formData, "tipo", "Tipo de plan", TIPOS_PLAN);
+    const esDeDia = tipo === "dia";
+
+    // `horario` y `precio_base` solo existen en los planes de día. En los de
+    // hospedaje se fuerzan a null aunque el navegador haya mandado algo: la
+    // base tiene la misma regla (`planes_coherencia_tipo`) y un precio
+    // fantasma compitiendo con el de `tarifas` sería un error caro.
+    const horario = esDeDia ? textoOpcional(formData, "horario", 120) : null;
+    const precioBase = esDeDia
+      ? enteroOpcional(formData, "precio_base", "Precio del plan", {
+          min: 0,
+          max: 100_000_000,
+        })
+      : null;
+
+    if (esDeDia && precioBase === null) {
+      throw new ErrorDeValidacion(
+        "Un plan de día se vende con un solo precio para todo el hotel: escribe «Precio del plan».",
+      );
+    }
+
     const datos = {
       nombre,
       descripcion: textoOpcional(formData, "descripcion", 2000),
       incluye: listaTexto(formData, "incluye"),
+      tipo,
+      // Sin días marcados = se puede reservar cualquier día.
+      dias_aplica: enterosDeCasillas(formData, "dias_aplica", { min: 1, max: 7 }),
+      horario,
+      precio_base: precioBase,
       orden: enteroRequerido(formData, "orden", "Orden", { min: 0, max: 9999 }),
       activo: casilla(formData, "activo"),
     };
@@ -56,9 +88,25 @@ export async function guardarPlanAction(
       const { error } = await supabase.from("planes").update(datos).eq("id", id);
       if (error) throw traducirErrorPostgres(error, CONTEXTO_ERRORES);
 
+      // Si el plan pasó a ser de día, sus precios por cabaña ya no significan
+      // nada: se retiran para que ninguna pantalla los siga sumando.
+      let aviso = "";
+      if (esDeDia) {
+        const { count, error: errorTarifas } = await supabase
+          .from("tarifas")
+          .delete({ count: "exact" })
+          .eq("plan_id", id)
+          .is("vigencia", null);
+        if (errorTarifas) throw new Error(errorTarifas.message);
+        if ((count ?? 0) > 0) {
+          aviso =
+            " Como ahora es un plan de día, se quitaron los precios que tenía por cabaña: se cobra el precio del plan.";
+        }
+      }
+
       refrescar(id);
       revalidarSitioPublico();
-      return estadoOk("Cambios guardados. El sitio ya los muestra.");
+      return estadoOk(`Cambios guardados. El sitio ya los muestra.${aviso}`);
     }
 
     const { data, error } = await supabase
@@ -72,7 +120,9 @@ export async function guardarPlanAction(
     revalidarSitioPublico();
     redirect(
       `${RUTA_LISTA}/${data.id}?ok=${encodeURIComponent(
-        `Plan «${nombre}» creado. Todavía no tiene precio en ninguna cabaña: entra a cada cabaña y asígnale su tarifa para este plan, o no podrá reservarse.`,
+        esDeDia
+          ? `Plan «${nombre}» creado. Se vende con el precio que le pusiste, sin cabaña: no hay que hacer nada más.`
+          : `Plan «${nombre}» creado. Todavía no tiene precio en ninguna cabaña: entra a cada cabaña y asígnale su tarifa para este plan, o no podrá reservarse.`,
       )}`,
     );
   });

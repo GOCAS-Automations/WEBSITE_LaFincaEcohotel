@@ -20,6 +20,8 @@ import {
 } from "@/components/admin/ui";
 import { requireAdmin } from "@/lib/admin/auth";
 import { listarPlanes, mapaDeTarifas } from "@/lib/admin/datos";
+import { ETIQUETA_CORTA_TIPO_PLAN, resumirDias } from "@/lib/admin/tipos";
+import { formatearCOP } from "@/lib/utils/formato";
 
 export const metadata: Metadata = { title: "Planes tarifarios" };
 export const dynamic = "force-dynamic";
@@ -46,7 +48,7 @@ export default async function PaginaPlanes({
     <>
       <EncabezadoPagina
         titulo="Planes tarifarios"
-        descripcion="Los planes que el huésped elige al reservar (Entre Semana, Estándar, Premium…): su nombre, su descripción y qué incluye cada uno. El precio de cada plan se pone por cabaña, en «Cabañas»."
+        descripcion="Los planes que el huésped elige al reservar (Entre Semana, Estándar, Premium, Día de Calma…): su nombre, qué incluye y en qué días se puede reservar. Los planes de hospedaje llevan su precio por cabaña, en «Cabañas»; los planes de día llevan un solo precio, aquí mismo."
         accion={<EnlaceBoton href="/admin/planes/nueva">Añadir plan</EnlaceBoton>}
       />
 
@@ -101,11 +103,20 @@ export default async function PaginaPlanes({
                         ) : (
                           <Pastilla tono="gris">Pausado</Pastilla>
                         )}
+                        {plan.tipo === "dia" && (
+                          <Pastilla tono="azul">
+                            {ETIQUETA_CORTA_TIPO_PLAN.dia}
+                          </Pastilla>
+                        )}
                       </div>
                       <p className="mt-0.5 text-[0.75rem] text-crema-600">
-                        {cabanas === 0
-                          ? "sin precio en ninguna cabaña"
-                          : `con precio en ${cabanas} ${cabanas === 1 ? "cabaña" : "cabañas"}`}
+                        {plan.tipo === "dia"
+                          ? `${plan.precio_base === null ? "sin precio" : formatearCOP(plan.precio_base)}${plan.horario ? ` · ${plan.horario}` : ""}`
+                          : cabanas === 0
+                            ? "sin precio en ninguna cabaña"
+                            : `con precio en ${cabanas} ${cabanas === 1 ? "cabaña" : "cabañas"}`}
+                        <span className="mx-1.5">·</span>
+                        {resumirDias(plan.dias_aplica)}
                         <span className="mx-1.5">·</span>
                         {incluye} {incluye === 1 ? "ítem incluido" : "ítems incluidos"}
                       </p>

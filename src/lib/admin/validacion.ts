@@ -90,6 +90,30 @@ export function enteroOpcional(
   return enteroRequerido(form, campo, etiqueta, rango);
 }
 
+/**
+ * Grupo de casillas que envían números (los días de la semana del plan).
+ *
+ * Devuelve la lista ordenada y sin repetidos, o `null` cuando no se marcó
+ * ninguna: en la base, `null` significa «todos los días», no «ninguno». Los
+ * valores que no estén dentro del rango se descartan en vez de aceptarlos:
+ * llegan del navegador y nada garantiza que sean los que pintamos.
+ */
+export function enterosDeCasillas(
+  form: FormData,
+  campo: string,
+  { min = 1, max = 7 }: { min?: number; max?: number } = {},
+): number[] | null {
+  const valores = form
+    .getAll(campo)
+    .map((valor) => Number(String(valor).trim()))
+    .filter(
+      (valor) => Number.isInteger(valor) && valor >= min && valor <= max,
+    );
+
+  if (valores.length === 0) return null;
+  return [...new Set(valores)].sort((a, b) => a - b);
+}
+
 /** Casilla de verificación o interruptor. */
 export function casilla(form: FormData, campo: string): boolean {
   const valor = form.get(campo);
@@ -362,6 +386,8 @@ export const VIOLACION_UNICA = "23505";
 export const VIOLACION_LLAVE_FORANEA = "23503";
 /** Restricción EXCLUDE: dos rangos de fechas se cruzan. */
 export const VIOLACION_EXCLUSION = "23P01";
+/** CHECK: la fila no cumple una regla del modelo (tipo de plan, precios…). */
+export const VIOLACION_CHECK = "23514";
 
 /**
  * Traduce al español los errores de Postgres que el usuario del panel puede
@@ -369,7 +395,12 @@ export const VIOLACION_EXCLUSION = "23P01";
  */
 export function traducirErrorPostgres(
   error: { code?: string; message: string },
-  contexto: { unico?: string; foranea?: string; exclusion?: string } = {},
+  contexto: {
+    unico?: string;
+    foranea?: string;
+    exclusion?: string;
+    check?: string;
+  } = {},
 ): Error {
   if (error.code === VIOLACION_UNICA) {
     return new ErrorDeValidacion(
@@ -387,6 +418,12 @@ export function traducirErrorPostgres(
     return new ErrorDeValidacion(
       contexto.exclusion ??
         "Esas fechas se cruzan con otra reserva activa de la misma cabaña.",
+    );
+  }
+  if (error.code === VIOLACION_CHECK) {
+    return new ErrorDeValidacion(
+      contexto.check ??
+        "Alguno de los datos no encaja con el resto: revisa lo que escribiste y vuelve a intentarlo.",
     );
   }
   return new Error(error.message);

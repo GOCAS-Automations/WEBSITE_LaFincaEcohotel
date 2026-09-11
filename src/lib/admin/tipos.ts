@@ -11,6 +11,7 @@ import type {
   EstadoReserva,
   OrigenReserva,
   TipoExtra,
+  TipoPlan,
 } from "@/lib/tipos/basedatos";
 
 /* ===========================================================================
@@ -156,6 +157,56 @@ export type OpcionPlan = {
   id: string;
   nombre: string;
 };
+
+/* ---------------------------------------------------------------------------
+ * Planes
+ * ------------------------------------------------------------------------- */
+
+export const TIPOS_PLAN = ["hospedaje", "dia"] as const;
+
+/**
+ * Cómo se le nombra cada tipo de plan al cliente. «Día sin hospedaje» y no
+ * «pasadía»: el hotel rechaza expresamente esa palabra.
+ */
+export const ETIQUETA_TIPO_PLAN: Record<TipoPlan, string> = {
+  hospedaje: "Hospedaje (noche en una cabaña)",
+  dia: "Día sin hospedaje",
+};
+
+export const AYUDA_TIPO_PLAN: Record<TipoPlan, string> = {
+  hospedaje:
+    "El huésped duerme en una cabaña. El precio se pone cabaña por cabaña, en «Cabañas».",
+  dia: "Visita de un día, sin noche ni cabaña. Lleva un horario y un solo precio para todo el hotel.",
+};
+
+/** Pastilla corta para los listados. */
+export const ETIQUETA_CORTA_TIPO_PLAN: Record<TipoPlan, string> = {
+  hospedaje: "Hospedaje",
+  dia: "Día sin hospedaje",
+};
+
+/** Los siete días de la semana en orden ISO (1 = lunes … 7 = domingo). */
+export const DIAS_SEMANA = [
+  { numero: 1, nombre: "Lunes", corto: "Lun" },
+  { numero: 2, nombre: "Martes", corto: "Mar" },
+  { numero: 3, nombre: "Miércoles", corto: "Mié" },
+  { numero: 4, nombre: "Jueves", corto: "Jue" },
+  { numero: 5, nombre: "Viernes", corto: "Vie" },
+  { numero: 6, nombre: "Sábado", corto: "Sáb" },
+  { numero: 7, nombre: "Domingo", corto: "Dom" },
+] as const;
+
+/**
+ * Resume `dias_aplica` en una frase para el panel. Vacío o `null` significa
+ * «todos los días», que es como lo entiende el motor de reservas.
+ */
+export function resumirDias(dias: number[] | null | undefined): string {
+  if (!dias || dias.length === 0) return "Todos los días";
+  if (dias.length === 7) return "Todos los días";
+  return DIAS_SEMANA.filter((dia) => dias.includes(dia.numero))
+    .map((dia) => dia.corto)
+    .join(", ");
+}
 
 export const TIPOS_EXTRA = ["experiencia", "adicional"] as const;
 
