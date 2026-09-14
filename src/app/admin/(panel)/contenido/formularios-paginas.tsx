@@ -224,7 +224,7 @@ export function FormularioFaq({ valor }: { valor: Valor }) {
 }
 
 /* ---------------------------------------------------------------------------
- * El lugar
+ * Conócenos
  * ------------------------------------------------------------------------- */
 
 export function FormularioLugar({ valor }: { valor: Valor }) {

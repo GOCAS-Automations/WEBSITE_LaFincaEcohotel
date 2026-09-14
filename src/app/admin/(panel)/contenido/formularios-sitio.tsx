@@ -160,15 +160,29 @@ export function FormularioContacto({ valor }: { valor: Valor }) {
         <Divisor titulo="Mapa" />
 
         <Campo
-          etiqueta="Enlace del botón «Cómo llegar»"
+          etiqueta="Enlace a la ficha en Google Maps"
           htmlFor="mapa_url"
           className="sm:col-span-2"
-          ayuda="Abre Google Maps con la ubicación del hotel."
+          ayuda="Abre la ficha del hotel en Google Maps, con su pin."
         >
           <Entrada
             id="mapa_url"
             name="mapa_url"
             defaultValue={texto(valor, "mapa_url")}
+            maxLength={800}
+          />
+        </Campo>
+
+        <Campo
+          etiqueta="Enlace del botón «Cómo llegar»"
+          htmlFor="mapa_como_llegar"
+          className="sm:col-span-2"
+          ayuda="Indicaciones desde Cali hasta el hotel. Si se deja vacío, el botón abre la ficha del mapa."
+        >
+          <Entrada
+            id="mapa_como_llegar"
+            name="mapa_como_llegar"
+            defaultValue={texto(valor, "mapa_como_llegar")}
             maxLength={800}
           />
         </Campo>

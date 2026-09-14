@@ -64,10 +64,10 @@ export const SECCIONES_CONTENIDO: SeccionContenido[] = [
   },
   {
     slug: "lugar",
-    titulo: "El lugar",
+    titulo: "Conócenos",
     descripcion:
       "La historia de La Finca, las instalaciones y las indicaciones para llegar.",
-    verEn: "/el-lugar",
+    verEn: "/conocenos",
     claves: ["lugar"],
   },
   {
@@ -110,7 +110,7 @@ export const SECCIONES_CONTENIDO: SeccionContenido[] = [
 export const PAGINAS_CON_CABECERA = [
   { clave: "alojamientos", nombre: "Cabañas", ruta: "/alojamientos" },
   { clave: "experiencias", nombre: "Experiencias", ruta: "/experiencias" },
-  { clave: "el_lugar", nombre: "El lugar", ruta: "/el-lugar" },
+  { clave: "conocenos", nombre: "Conócenos", ruta: "/conocenos" },
   { clave: "galeria", nombre: "Galería", ruta: "/galeria" },
   { clave: "faq", nombre: "Preguntas frecuentes", ruta: "/faq" },
   { clave: "contacto", nombre: "Contacto", ruta: "/contacto" },

@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import {
-  DivisorOrganico,
+  CorteOrganico,
   FondoBosque,
   Neblina,
   PatronColibri,
@@ -10,6 +10,7 @@ import {
   Resplandor,
 } from "@/components/sitio/atmosfera";
 import { IconoFlecha, IconoHoja } from "@/components/sitio/iconos";
+import { LectorResena } from "@/components/sitio/lector-resena";
 import { ModuloReserva } from "@/components/sitio/modulo-reserva";
 import { ResenasGoogle } from "@/components/sitio/resenas-google";
 import { TarjetaCabana } from "@/components/sitio/tarjeta-cabana";
@@ -33,6 +34,7 @@ import {
   getTestimonios,
 } from "@/lib/contenido";
 import { getResenasGoogle } from "@/lib/resenas-google";
+import { CLASE_FOTO_CON_FLAG } from "@/lib/fotos";
 import { formatearCOP, hoyEnBogota } from "@/lib/utils/formato";
 import { mensajeExperiencia, enlaceWhatsapp } from "@/lib/whatsapp";
 
@@ -45,11 +47,18 @@ import { mensajeExperiencia, enlaceWhatsapp } from "@/lib/whatsapp";
  *   1. ¿Qué es esto y dónde queda?  → hero
  *   1b. Quiero fechas YA.           → módulo de reserva directa
  *   2. ¿Cómo es de verdad?          → presentación con cifras
- *   3. ¿Dónde voy a dormir?         → cabañas
- *   4. ¿Cuánto cuesta?              → planes con precio real de la base
- *   5. ¿Y si es una ocasión especial? → experiencias
- *   6. ¿Puedo confiar?              → naturaleza, COP16 y testimonios reales
- *   7. Reservar.                    → cierre
+ *   3. ¿Puedo confiar?              → reseñas reales de Google
+ *   4. ¿Dónde voy a dormir?         → cabañas
+ *   5. ¿Cuánto cuesta?              → planes con precio real de la base
+ *   6. ¿Y si es una ocasión especial? → experiencias
+ *   7. ¿Quiénes son?                → esencia
+ *   8. ¿Alguien más lo avala?       → COP16, en video
+ *   9. Reservar.                    → cierre
+ *
+ * LAS RESEÑAS SUBIERON AL TERCER LUGAR. Estaban al final, después de todo el
+ * catálogo: quien llega desde Instagram sin conocer el hotel tenía que
+ * atravesar la página entera antes de encontrar una sola prueba de que el
+ * lugar es lo que dice ser. La confianza va antes del precio, no después.
  *
  * Cada sección tiene UN mensaje y un camino a la reserva a la vista (§10).
  *
@@ -310,19 +319,25 @@ export async function PaginaInicio() {
 
           <Revelar retraso={120}>
             {/*
-              Arco: la foto se corta en medio punto por arriba y en radio suave
-              por abajo. Es la forma de una ventana de cabaña y de una entrada
-              al bosque, y basta para que la imagen deje de ser "un rectángulo
-              con las esquinas redondeadas" como cualquier otra.
+              ARCO A LA IZQUIERDA, NO DE MEDIO PUNTO.
+              Era un arco completo (`rounded-t-[13rem]`) y se comía la esquina
+              superior derecha de la foto —justo donde TODAS las fotos del
+              hotel llevan impreso el sello de marca—: el logo aparecía partido
+              por la mitad. Ahora la curva grande abre por arriba a la izquierda
+              y se responde con otra abajo a la derecha: sigue sin ser un
+              rectángulo, y la esquina del sello queda intacta.
+              Ver `ZONA_FLAG` en `src/lib/fotos.ts`.
             */}
-            <div className="relative aspect-4/5 overflow-hidden rounded-t-[13rem] rounded-b-[var(--radius-generoso)] bg-crema-200 shadow-[var(--shadow-elevada)] sm:aspect-4/5">
+            <div className="relative aspect-4/5 overflow-hidden rounded-tl-[13rem] rounded-br-[7rem] rounded-tr-[var(--radius-tarjeta)] rounded-bl-[var(--radius-tarjeta)] bg-crema-200 shadow-[var(--shadow-elevada)]">
               <Image
                 src={intro.imagen}
                 alt={intro.imagen_alt}
                 fill
                 quality={75}
                 sizes="(min-width: 1024px) 45vw, 92vw"
-                className="object-cover"
+                /* El recorte se ancla arriba a la derecha: con el encuadre
+                   centrado, la caja 4/5 le cortaba un dedo al sello. */
+                className={CLASE_FOTO_CON_FLAG}
               />
             </div>
           </Revelar>
@@ -330,6 +345,101 @@ export async function PaginaInicio() {
       </Seccion>
 
       {/* ---------------------------------------------------------------- 3 */}
+      {/*
+        RESEÑAS REALES DE GOOGLE.
+        Los testimonios del CMS eran texto copiado a mano: ciertos, pero sin
+        forma de comprobarlos y congelados el día que se transcribieron. Ahora
+        se leen en vivo de la ficha de Google Business (4,7 ★ con 50
+        calificaciones), con foto, enlace al perfil de quien escribe y la
+        atribución que exigen los términos de Google.
+
+        Si la API falla, si falta la clave o si no queda ninguna reseña de 4★ o
+        más, `getResenasGoogle()` devuelve `null` y la sección cae a los
+        testimonios del CMS de abajo. El bloque de confianza nunca desaparece.
+      */}
+      {resenas ? (
+        <Seccion fondo="niebla" className="relative overflow-hidden">
+          <Neblina tono="verde" className="opacity-60" />
+          <RamaBotanica
+            className="absolute right-[-4%] -bottom-10 hidden w-56 text-oliva-400/25 lg:block"
+            ritmo="lenta"
+            espejo
+          />
+
+          <div className="relative z-10">
+            <EncabezadoSeccion
+              antetitulo={testimonios.antetitulo}
+              titulo={testimonios.titulo}
+            />
+            <ResenasGoogle
+              resumen={resenas}
+              titulo={null}
+              className="mt-10"
+            />
+          </div>
+        </Seccion>
+      ) : testimonios.items.length > 0 ? (
+        <Seccion fondo="niebla" className="relative overflow-hidden">
+          <Neblina tono="verde" className="opacity-60" />
+
+          <div className="relative z-10">
+            <EncabezadoSeccion
+              antetitulo={testimonios.antetitulo}
+              titulo={testimonios.titulo}
+            />
+
+            <ul className="mt-10 grid items-stretch gap-5 md:grid-cols-2 lg:grid-cols-3">
+              {testimonios.items.map((testimonio, indice) => (
+                <Revelar
+                  key={testimonio.autor}
+                  como="li"
+                  retraso={(indice % 3) * 90}
+                  className="h-full"
+                >
+                  <figure className="flex h-full flex-col gap-3 rounded-[var(--radius-generoso)] rounded-tl-[3rem] bg-white p-6 shadow-[var(--shadow-tenue)] ring-1 ring-niebla-200/80">
+                    <span
+                      aria-hidden="true"
+                      className="font-titulo text-4xl leading-none text-brote-200"
+                    >
+                      &ldquo;
+                    </span>
+                    {/* Recortado siempre a cinco líneas, como en el bloque de
+                        Google: es lo que mantiene todas las tarjetas al mismo
+                        alto. El texto completo se lee en la ventana. */}
+                    <blockquote className="flex-1 text-sm leading-relaxed text-crema-800 line-clamp-5">
+                      {testimonio.texto}
+                    </blockquote>
+                    <LectorResena
+                      autor={testimonio.autor}
+                      texto={testimonio.texto}
+                      meta="Reseña de Google"
+                    />
+                    <figcaption className="flex items-center gap-3 border-t border-niebla-200 pt-4">
+                      {/*
+                        Iniciales, no foto: las imágenes de testimonios que trae
+                        el sitio actual son retratos de archivo que NO
+                        corresponden a estas personas, y una cara falsa junto a
+                        un nombre real es engañosa.
+                      */}
+                      <span
+                        aria-hidden="true"
+                        className="flex size-10 shrink-0 items-center justify-center rounded-full bg-petroleo-100 font-titulo text-sm font-bold text-petroleo-700"
+                      >
+                        {iniciales(testimonio.autor)}
+                      </span>
+                      <span className="font-titulo text-sm font-semibold text-petroleo-900">
+                        {testimonio.autor}
+                      </span>
+                    </figcaption>
+                  </figure>
+                </Revelar>
+              ))}
+            </ul>
+          </div>
+        </Seccion>
+      ) : null}
+
+      {/* ---------------------------------------------------------------- 4 */}
       {alojamientos.length > 0 ? (
         <Seccion fondo="blanco" id="cabanas" className="relative overflow-hidden">
           {/* El patrón de colibríes del manual, a la opacidad más baja que
@@ -388,23 +498,25 @@ export async function PaginaInicio() {
         </Seccion>
       ) : null}
 
-      {/* ---------------------------------------------------------------- 4 */}
+      {/* ---------------------------------------------------------------- 5 */}
       {planes.length > 0 ? (
         <>
-          {/* La ladera con la que el bosque entra en escena. */}
-          <div className="relative bg-white">
-            <DivisorOrganico
-              perfil="cresta"
-              color="fill-bosque-900"
-              alto={110}
-              className="-mb-px"
-            />
-          </div>
-
           <Seccion
             fondo="bosque"
             id="planes"
-            className="relative isolate overflow-hidden"
+            /*
+              LAS DOS LADERAS VAN DENTRO, NO FUERA.
+              Antes se dibujaban en la sección blanca de arriba y de abajo,
+              rellenas de verde: se veía una franja de color plano con forma de
+              ladera y, pegado a ella, el borde RECTO de la fotografía del
+              fondo. Ahora la foto llega hasta el borde mismo de la sección y
+              las ondas se pintan encima en blanco, así que la que queda
+              recortada es la imagen. Ver `CorteOrganico`.
+
+              El relleno vertical extra es el hueco de las dos ondas (110 px
+              arriba, 96 abajo): sin él, el antetítulo y la nota se les montan.
+            */
+            className="relative isolate overflow-hidden pt-32 pb-28 sm:pt-40 sm:pb-36 lg:pt-44 lg:pb-40"
             espacio="amplio"
           >
             {/*
@@ -414,6 +526,20 @@ export async function PaginaInicio() {
               decide la venta tiene que oler a bosque, no a rectángulo verde.
             */}
             <FondoBosque imagen={seccionPlanes.imagen_fondo} velo="denso" />
+
+            <CorteOrganico
+              perfil="cresta"
+              color="fill-white"
+              borde="superior"
+              alto={110}
+            />
+            <CorteOrganico
+              perfil="loma"
+              color="fill-white"
+              borde="inferior"
+              alto={96}
+              espejo
+            />
 
             <div className="relative z-10">
               <EncabezadoSeccion
@@ -457,21 +583,10 @@ export async function PaginaInicio() {
               ) : null}
             </div>
           </Seccion>
-
-          {/* Y la ladera con la que vuelve la luz. */}
-          <div className="relative bg-bosque-900">
-            <DivisorOrganico
-              perfil="loma"
-              color="fill-white"
-              alto={96}
-              espejo
-              className="-mb-px"
-            />
-          </div>
         </>
       ) : null}
 
-      {/* ---------------------------------------------------------------- 5 */}
+      {/* ---------------------------------------------------------------- 6 */}
       {experiencias.length > 0 ? (
         <Seccion fondo="blanco" id="experiencias" className="relative">
           {/*
@@ -536,7 +651,7 @@ export async function PaginaInicio() {
         </Seccion>
       ) : null}
 
-      {/* ---------------------------------------------------------------- 6 */}
+      {/* ---------------------------------------------------------------- 7 */}
       <Seccion fondo="crema" className="relative overflow-hidden">
         <Neblina tono="verde" className="opacity-70" />
 
@@ -557,8 +672,8 @@ export async function PaginaInicio() {
                 </p>
               ))}
             </div>
-            <Boton href="/el-lugar" variante="contorno" className="self-start">
-              Conoce el lugar
+            <Boton href="/conocenos" variante="contorno" className="self-start">
+              Conócenos
               <IconoFlecha className="size-4" />
             </Boton>
           </Revelar>
@@ -584,14 +699,22 @@ export async function PaginaInicio() {
                     <div
                       className={[
                         "relative overflow-hidden bg-crema-200 shadow-[var(--shadow-tarjeta)]",
+                        /*
+                          NINGÚN RADIO GRANDE EN LA ESQUINA SUPERIOR DERECHA:
+                          es donde todas las fotos del hotel llevan el sello de
+                          marca, y la curva lo partía en diagonal (se veía en la
+                          tercera foto, la de la fogata). Las curvas abiertas se
+                          reparten entre la superior izquierda y las dos de
+                          abajo, que es donde no hay nada que cortar.
+                        */
                         indice === 0
-                          ? "aspect-16/10 rounded-[var(--radius-generoso)] rounded-tr-[6rem]"
+                          ? "aspect-16/10 rounded-[var(--radius-generoso)] rounded-tl-[6rem]"
                           : "aspect-3/4",
                         indice === 1
                           ? "rounded-[var(--radius-tarjeta)] rounded-bl-[4rem]"
                           : "",
                         indice === 2
-                          ? "rounded-[var(--radius-tarjeta)] rounded-tr-[4rem]"
+                          ? "rounded-[var(--radius-tarjeta)] rounded-br-[4rem]"
                           : "",
                       ]
                         .filter(Boolean)
@@ -618,25 +741,57 @@ export async function PaginaInicio() {
         </div>
       </Seccion>
 
-      {/* ---------------------------------------------------------------- 7 */}
+      {/* ---------------------------------------------------------------- 8 */}
       <Seccion fondo="blanco" className="overflow-hidden">
         <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
           <Revelar retraso={80} className="order-2 lg:order-1">
             {/*
-              La foto se sale del contenedor por la izquierda en escritorio: es
-              la única del sitio que sangra, y con una sola basta para que la
-              página deje de sentirse encajonada. El `overflow-hidden` de la
+              EL VIDEO DEL RECONOCIMIENTO, NO UNA FOTO.
+              Aquí había una fotografía de la ducha del bosque, que además
+              aparecía en otros cuatro puntos del sitio y no tenía nada que ver
+              con la COP16. Ahora va el clip que el propio hotel publicaba en
+              esta misma sección de su sitio anterior. Un reconocimiento
+              contado por quien lo recibió vale más que un párrafo.
+
+              Sangra por la izquierda en escritorio: es la única pieza del
+              sitio que se sale del contenedor, y con una basta para que la
+              página no se sienta encajonada. El `overflow-hidden` de la
               sección impide que empuje la barra horizontal.
             */}
             <div className="relative aspect-16/10 overflow-hidden rounded-[var(--radius-generoso)] rounded-bl-[7rem] bg-crema-200 shadow-[var(--shadow-elevada)] lg:-ml-[max(0px,calc((100vw-76rem)/2+2.5rem))] lg:rounded-l-none">
-              <Image
-                src={reconocimiento.imagen}
-                alt={reconocimiento.imagen_alt}
-                fill
-                quality={75}
-                sizes="(min-width: 1024px) 52vw, 92vw"
-                className="object-cover"
-              />
+              {reconocimiento.video ? (
+                /*
+                  `preload="metadata"`: en móvil no se descargan 7 MB antes de
+                  que nadie haya decidido mirarlo; lo que se ve mientras tanto
+                  es el póster, que pesa 39 kB.
+
+                  `controls` a propósito, aunque arranque silenciado: el clip
+                  NO es un plano de ambiente, es una persona hablando. Sin un
+                  control para subir el volumen, el visitante ve a alguien
+                  mover los labios y no se entera de nada.
+                */
+                <video
+                  src={reconocimiento.video}
+                  poster={reconocimiento.imagen}
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  controls
+                  preload="metadata"
+                  aria-label={`Video: ${reconocimiento.titulo}`}
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+              ) : (
+                <Image
+                  src={reconocimiento.imagen}
+                  alt={reconocimiento.imagen_alt}
+                  fill
+                  quality={75}
+                  sizes="(min-width: 1024px) 52vw, 92vw"
+                  className="object-cover"
+                />
+              )}
             </div>
           </Revelar>
 
@@ -667,103 +822,16 @@ export async function PaginaInicio() {
         </div>
       </Seccion>
 
-      {/* ---------------------------------------------------------------- 8 */}
-      {/*
-        RESEÑAS REALES DE GOOGLE.
-        Los testimonios del CMS eran texto copiado a mano: ciertos, pero sin
-        forma de comprobarlos y congelados el día que se transcribieron. Ahora
-        se leen en vivo de la ficha de Google Business (4,7 ★ con 50
-        calificaciones), con foto, enlace al perfil de quien escribe y la
-        atribución que exigen los términos de Google.
-
-        Si la API falla, si falta la clave o si no queda ninguna reseña de 4★ o
-        más, `getResenasGoogle()` devuelve `null` y la sección cae a los
-        testimonios del CMS de abajo. El bloque de confianza nunca desaparece.
-      */}
-      {resenas ? (
-        <Seccion fondo="niebla" className="relative overflow-hidden">
-          <Neblina tono="verde" className="opacity-60" />
-          <RamaBotanica
-            className="absolute right-[-4%] -bottom-10 hidden w-56 text-oliva-400/25 lg:block"
-            ritmo="lenta"
-            espejo
-          />
-
-          <div className="relative z-10">
-            <EncabezadoSeccion
-              antetitulo={testimonios.antetitulo}
-              titulo={testimonios.titulo}
-            />
-            <ResenasGoogle
-              resumen={resenas}
-              titulo={null}
-              className="mt-10"
-            />
-          </div>
-        </Seccion>
-      ) : testimonios.items.length > 0 ? (
-        <Seccion fondo="niebla" className="relative overflow-hidden">
-          <Neblina tono="verde" className="opacity-60" />
-
-          <div className="relative z-10">
-            <EncabezadoSeccion
-              antetitulo={testimonios.antetitulo}
-              titulo={testimonios.titulo}
-            />
-
-            <ul className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-              {testimonios.items.map((testimonio, indice) => (
-                <Revelar
-                  key={testimonio.autor}
-                  como="li"
-                  retraso={(indice % 3) * 90}
-                  className="h-full"
-                >
-                  <figure className="flex h-full flex-col gap-4 rounded-[var(--radius-generoso)] rounded-tl-[3rem] bg-white p-6 shadow-[var(--shadow-tenue)] ring-1 ring-niebla-200/80">
-                    <span
-                      aria-hidden="true"
-                      className="font-titulo text-4xl leading-none text-brote-200"
-                    >
-                      &ldquo;
-                    </span>
-                    <blockquote className="flex-1 text-sm leading-relaxed text-crema-800">
-                      {testimonio.texto}
-                    </blockquote>
-                    <figcaption className="flex items-center gap-3 border-t border-niebla-200 pt-4">
-                      {/*
-                        Iniciales, no foto: las imágenes de testimonios que trae
-                        el sitio actual son retratos de archivo que NO
-                        corresponden a estas personas, y una cara falsa junto a
-                        un nombre real es engañosa.
-                      */}
-                      <span
-                        aria-hidden="true"
-                        className="flex size-10 shrink-0 items-center justify-center rounded-full bg-petroleo-100 font-titulo text-sm font-bold text-petroleo-700"
-                      >
-                        {iniciales(testimonio.autor)}
-                      </span>
-                      <span className="font-titulo text-sm font-semibold text-petroleo-900">
-                        {testimonio.autor}
-                      </span>
-                    </figcaption>
-                  </figure>
-                </Revelar>
-              ))}
-            </ul>
-          </div>
-        </Seccion>
-      ) : null}
-
       {/* ---------------------------------------------------------------- 9 */}
       <section className="relative isolate overflow-hidden">
-        {/* Banco de niebla que hace de costura con la sección anterior. */}
-        <DivisorOrganico
+        {/* Banco de niebla que hace de costura con la sección anterior, que
+            desde el cambio de orden es la del video (fondo blanco). */}
+        <CorteOrganico
           perfil="bruma"
-          color="fill-niebla-100"
+          color="fill-white"
+          borde="superior"
           alto={72}
-          invertido
           espejo
-          className="absolute inset-x-0 top-0 z-20 -mt-px"
         />
 
         <div className="relative min-h-[62vh] w-full sm:min-h-[28rem]">

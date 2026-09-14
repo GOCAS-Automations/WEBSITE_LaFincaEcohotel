@@ -44,17 +44,47 @@ export const SITIO = {
       "9:00 a. m. – 8:00 p. m., todos los días · exclusivo para huéspedes",
   },
 
-  /** Coordenadas aproximadas del Km 18 (vía Cali–Buenaventura). */
+  /**
+   * Ficha del hotel en Google.
+   *
+   * El `place_id` es la identidad del negocio en Google Maps y es el mismo que
+   * usa `src/lib/resenas-google.ts` para leer las reseñas: mientras los dos
+   * salgan de aquí, el mapa y las opiniones no pueden apuntar a sitios
+   * distintos.
+   */
+  google: {
+    placeId: "ChIJeyNhUdivMI4Rk9zjFWJ_Hrk",
+  },
+
+  /** Coordenadas del pin de La Finca en el Km 18 (vía Cali–Buenaventura). */
   geo: {
     latitud: 3.5008,
     longitud: -76.6386,
   },
 
   mapa: {
-    url: "https://www.google.com/maps/search/?api=1&query=La+Finca+Eco+Hotel+Km+18+v%C3%ADa+Cali+Buenaventura",
-    /* Modo búsqueda pública: no necesita clave de API ni facturación. */
+    /*
+      EL MAPA MOSTRABA UNA RUTA A BUENAVENTURA.
+      La búsqueda anterior era la cadena «La Finca Eco Hotel Km 18 vía Cali
+      Buenaventura». Google leía «vía Cali Buenaventura» como una indicación de
+      trayecto y pintaba la carretera al puerto entera, con La Finca en algún
+      punto invisible del recorrido. Ahora se pide el LUGAR por su `place_id`,
+      que es un identificador exacto y no admite interpretación.
+    */
+    url: "https://www.google.com/maps/search/?api=1&query=La%20Finca%20Eco%20Hotel&query_place_id=ChIJeyNhUdivMI4Rk9zjFWJ_Hrk",
+    /* Modo búsqueda pública: no necesita clave de API ni facturación. El
+       parámetro `q=place_id:…` centra el mapa en la ficha y pone el pin. */
     embed:
-      "https://maps.google.com/maps?q=La%20Finca%20Eco%20Hotel%20Km%2018%20v%C3%ADa%20Cali%20Buenaventura&t=&z=13&ie=UTF8&iwloc=&output=embed",
+      "https://maps.google.com/maps?q=place_id:ChIJeyNhUdivMI4Rk9zjFWJ_Hrk&z=15&hl=es&ie=UTF8&output=embed",
+    /*
+      «Cómo llegar»: indicaciones DESDE CALI hasta el hotel. Sin `origin`,
+      Google usa la ubicación de quien mira —que casi nunca está en Cali— y el
+      resultado no se parece al viaje que el huésped va a hacer. Con el origen
+      fijado, el enlace cuenta lo que el hotel promete: 45 minutos desde la
+      ciudad.
+    */
+    comoLlegar:
+      "https://www.google.com/maps/dir/?api=1&origin=Cali,+Valle+del+Cauca&destination=La+Finca+Eco+Hotel&destination_place_id=ChIJeyNhUdivMI4Rk9zjFWJ_Hrk",
   },
 
   redes: {
@@ -101,6 +131,21 @@ const URL_SUPABASE =
 export const BASE_MEDIOS = `${URL_SUPABASE}/storage/v1/object/public/imagenes`;
 
 /**
+ * Bucket de VIDEOS (migración 007).
+ *
+ * Va aparte del de imágenes por tres motivos: su lista blanca de tipos es
+ * distinta (mp4/webm), su límite de tamaño es seis veces mayor, y la limpieza
+ * de huérfanos del panel recorre referencias de imágenes —mezclarlos haría que
+ * borrase un video por no encontrarlo donde busca fotos—.
+ */
+export const BASE_VIDEOS = `${URL_SUPABASE}/storage/v1/object/public/videos`;
+
+/** Dirección pública de un video: `video("sitio/cop16-la-finca.mp4")`. */
+export function video(ruta: string): string {
+  return `${BASE_VIDEOS}/${ruta.replace(/^\/+/, "")}`;
+}
+
+/**
  * Dirección pública de una foto del bucket:
  * `medio("web/zonas-comunes/02.webp")`.
  *
@@ -129,7 +174,7 @@ export type EnlaceNav = { href: string; etiqueta: string };
 export const NAVEGACION: readonly EnlaceNav[] = [
   { href: "/alojamientos", etiqueta: "Cabañas" },
   { href: "/experiencias", etiqueta: "Experiencias" },
-  { href: "/el-lugar", etiqueta: "El lugar" },
+  { href: "/conocenos", etiqueta: "Conócenos" },
   { href: "/galeria", etiqueta: "Galería" },
   { href: "/faq", etiqueta: "Preguntas" },
   { href: "/contacto", etiqueta: "Contacto" },

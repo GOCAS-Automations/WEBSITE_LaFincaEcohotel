@@ -36,7 +36,7 @@ import {
   GALERIA_GENERAL,
   ZONAS_COMUNES,
 } from "./fotos";
-import { IMAGEN_SOCIAL, SITIO } from "./sitio";
+import { IMAGEN_SOCIAL, SITIO, medio, video } from "./sitio";
 import type { Alojamiento, Extra, Plan } from "./tipos/basedatos";
 
 /* ===========================================================================
@@ -123,8 +123,20 @@ export type ReconocimientoInicio = {
   antetitulo: string;
   titulo: string;
   parrafos: string[];
+  /**
+   * Póster del video (o la foto, si no hay video). Es lo que se ve mientras el
+   * navegador decide si descarga el clip, y lo único que se ve en móvil si el
+   * visitante no lo reproduce.
+   */
   imagen: string;
   imagen_alt: string;
+  /**
+   * Dirección del VIDEO de la sección. Opcional: si va vacía, el bloque se
+   * pinta con `imagen` como hasta ahora. El clip de «Somos COP16» vive en el
+   * bucket `videos` (migración 007) y se puede reemplazar desde el panel
+   * pegando otra dirección.
+   */
+  video: string;
   cta_texto: string;
   cta_href: string;
 };
@@ -166,6 +178,8 @@ export type ContactoSitio = {
   tiktok_usuario: string;
   mapa_url: string;
   mapa_embed: string;
+  /** Indicaciones DESDE CALI hasta el hotel, para el botón «Cómo llegar». */
+  mapa_como_llegar: string;
 };
 
 export type SeoSitio = {
@@ -185,7 +199,7 @@ export type HeroListado = {
 export type HeroesListados = {
   alojamientos: HeroListado;
   experiencias: HeroListado;
-  el_lugar: HeroListado;
+  conocenos: HeroListado;
   galeria: HeroListado;
   faq: HeroListado;
   contacto: HeroListado;
@@ -284,8 +298,8 @@ const RESPALDO_HERO: HeroInicio = {
     "Te invitamos a respirar más despacio, a escuchar lo que el bosque quiere contarte y a dejar que la neblina te devuelva la calma.",
   cta_texto: "Reservar",
   cta_href: "/reservar",
-  cta_secundario_texto: "Conoce el lugar",
-  cta_secundario_href: "/el-lugar",
+  cta_secundario_texto: "Conócenos",
+  cta_secundario_href: "/conocenos",
   imagen: FOTO.heroEscritorio,
   imagen_movil: FOTO.heroMovil,
   imagen_alt:
@@ -349,10 +363,20 @@ const RESPALDO_ESENCIA: EsenciaInicio = {
     "Nuestra misión es crear espacios donde el descanso se vuelva un ritual natural, donde el confort moderno se mezcle con la tierra húmeda y la neblina que abraza las montañas.",
     "Soñamos con ser un refugio de bienestar y sostenibilidad, un símbolo del eco-lujo consciente, donde la comodidad y el respeto por la tierra caminen de la mano.",
   ],
+  /*
+    MAPA DE USO DE LAS FOTOS (revision de Cesar): la ducha del bosque
+    —`ZONAS_COMUNES[4]`— salia en CINCO sitios distintos: aqui, el hero de
+    preguntas, la seccion de COP16, las instalaciones de Conocenos y la
+    galeria. Se queda solo en las instalaciones, que es donde se explica lo
+    que es, y en la galeria. Aqui entra en su lugar el comedor del balcon de
+    la Cabana 03, que no estaba en ninguna otra parte de la portada.
+    La fogata se muda al hero de Contacto, y su hueco lo ocupa el deck del
+    restaurante, que quedo libre al cambiar el hero movil.
+  */
   imagenes: [
     ZONAS_COMUNES[3],
-    ZONAS_COMUNES[4],
-    ZONAS_COMUNES[7],
+    GALERIA_CABANA_03[2],
+    ZONAS_COMUNES[1],
   ],
 };
 
@@ -363,9 +387,19 @@ const RESPALDO_RECONOCIMIENTO: ReconocimientoInicio = {
     "Somos COP16 y, junto con la Cámara de Comercio de Cali, nos preparamos para este evento donde mostramos la mejor imagen de nuestra región al mundo entero.",
     "La reserva funciona con respaldo de paneles solares y los vehículos se quedan en el parqueadero externo: dentro de La Finca solo se entra a pie, para no alterar a las especies que viven aquí.",
   ],
-  imagen: FOTO.duchaBosque,
+  /*
+    Aquí había una FOTO (la ducha de madera del bosque), que además aparecía en
+    otros cuatro sitios del sitio. Ahora esta sección lleva el VIDEO que el
+    hotel publicaba en la misma sección de su sitio anterior: la dueña contando
+    el reconocimiento COP16, con planos del bosque, los colibríes y las
+    cabañas. Es material propio y es lo que hace creíble el reconocimiento.
+
+    `imagen` sigue existiendo y ya no es decorativa: es el PÓSTER del video.
+  */
+  imagen: medio("sitio/video/cop16-poster.webp"),
   imagen_alt:
-    "Ducha de madera al aire libre de La Finca Eco Hotel, en medio del bosque de niebla",
+    "Bebedero de colibríes de La Finca Eco Hotel entre la neblina, con las cabañas al fondo",
+  video: video("sitio/cop16-la-finca.mp4"),
   cta_texto: "Reservar ahora",
   cta_href: "/reservar",
 };
@@ -447,6 +481,7 @@ const RESPALDO_CONTACTO: ContactoSitio = {
   tiktok_usuario: SITIO.redes.tiktokUsuario,
   mapa_url: SITIO.mapa.url,
   mapa_embed: SITIO.mapa.embed,
+  mapa_como_llegar: SITIO.mapa.comoLlegar,
 };
 
 const RESPALDO_SEO: SeoSitio = {
@@ -483,8 +518,8 @@ const RESPALDO_HEROES: HeroesListados = {
     imagen: GALERIA_CABANA_05[0].url,
     imagen_alt: GALERIA_CABANA_05[0].alt,
   },
-  el_lugar: {
-    titulo: "El lugar",
+  conocenos: {
+    titulo: "Conócenos",
     subtitulo:
       "Una reserva natural en el Km 18, con jacuzzi, turco, piscina de agua fría, restaurante y senderos.",
     imagen: FOTO.piscina,
@@ -501,18 +536,20 @@ const RESPALDO_HEROES: HeroesListados = {
   faq: {
     titulo: "Preguntas frecuentes",
     subtitulo:
-      "Lo que más nos preguntan antes de llegar: cómo llegar, el clima, las mascotas, los niños y los pagos.",
-    imagen: FOTO.duchaBosque,
-    imagen_alt:
-      "Ducha de madera al aire libre de La Finca, en medio del bosque de niebla",
+      "Lo que más nos preguntan antes de llegar: cómo llegar, el clima, las mascotas, los pagos y las reglas de la casa.",
+    imagen: GALERIA_CABANA_01[2].url,
+    imagen_alt: GALERIA_CABANA_01[2].alt,
   },
   contacto: {
     titulo: "Contacto",
     subtitulo:
       "Escríbenos por WhatsApp: resolvemos dudas y confirmamos disponibilidad el mismo día.",
-    imagen: FOTO.deckComedor,
+    /* Estaba el deck techado y, recortado a una banda de cabecera, no se veía
+       más que el techo de guadua: una superficie marrón sin nada que mirar.
+       La fogata de noche cuenta en una imagen para qué se escribe al hotel. */
+    imagen: FOTO.fogata,
     imagen_alt:
-      "Deck techado de La Finca con comedor de vidrio y sillas, frente a las montañas",
+      "Pareja abrigada frente a la fogata encendida de La Finca Eco Hotel, de noche",
   },
   reservar: {
     titulo: "Reserva tu estadía",
@@ -757,7 +794,19 @@ const RESPALDO_RESERVAR: ContenidoReservar = {
         "Te respondemos con la disponibilidad y el total. Con el 50 % de anticipo queda confirmada; el resto se paga el día de la llegada por link.",
     },
   ],
-  nota: "En La Finca no hay datáfono ni manejamos efectivo, y nunca pedimos datos de tarjeta por WhatsApp. Muy pronto vas a poder reservar y pagar en línea desde esta misma página.",
+  /*
+    VACÍA A PROPÓSITO.
+    Aquí iba: «En La Finca no hay datáfono ni manejamos efectivo, y nunca
+    pedimos datos de tarjeta por WhatsApp. Muy pronto vas a poder reservar y
+    pagar en línea desde esta misma página.» Se retiró por indicación de Cesar:
+    la primera mitad ya está en las preguntas frecuentes y en los términos,
+    donde alguien la busca; la segunda prometía una fecha que nadie ha fijado.
+
+    La clave se conserva —el panel sigue teniendo su campo— para que el hotel
+    pueda publicar un aviso puntual sin esperar a un despliegue. Si está vacía,
+    el bloque no se pinta.
+  */
+  nota: "",
 };
 
 const RESPALDO_NO_ENCONTRADO: ContenidoNoEncontrado = {

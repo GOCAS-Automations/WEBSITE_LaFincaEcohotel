@@ -2,6 +2,8 @@ import Image from "next/image";
 
 import type { ResenaGoogle, ResumenGoogle } from "@/lib/resenas-google";
 
+import { LectorResena } from "./lector-resena";
+
 /**
  * Bloque de reseñas de Google.
  *
@@ -17,7 +19,9 @@ import type { ResenaGoogle, ResumenGoogle } from "@/lib/resenas-google";
  *   2. Si el bloque se montara en dos sitios, cada uno dispararía su propio
  *      fetch. Resolviéndolo arriba, la página decide una sola vez.
  *
- * Sin JavaScript de cliente: el "leer más" es `<details>` nativo.
+ * La ÚNICA pieza de cliente es el botón "Leer más" y su ventana
+ * (`LectorResena`): la tarjeta, el texto recortado y la rejilla se pintan en el
+ * servidor.
  *
  * ---------------------------------------------------------------------------
  * ATRIBUCIÓN OBLIGATORIA
@@ -36,11 +40,14 @@ const formatoPromedio = new Intl.NumberFormat("es-CO", {
 const formatoTotal = new Intl.NumberFormat("es-CO");
 
 /**
- * A partir de aquí la reseña se pliega tras un "Leer más". El corte no es
- * caprichoso: son unas cinco líneas en móvil, lo que cabe sin que la tarjeta
- * empuje al resto de la página fuera de la pantalla.
+ * Líneas de reseña que se ven en la tarjeta.
+ *
+ * Es lo que hace que TODAS las tarjetas midan exactamente lo mismo: cabecera
+ * fija + cinco líneas + botón. Cinco es el número que cabe en la pantalla de un
+ * teléfono junto a la cabecera sin que la tarjeta ocupe el visor entero, y el
+ * que deja ver de un vistazo tres tarjetas en escritorio.
  */
-const LARGO_PARA_PLEGAR = 300;
+const LINEAS_VISIBLES = "line-clamp-5";
 
 /* ===========================================================================
  * Estrellas
@@ -111,62 +118,6 @@ function Estrellas({
 }
 
 /* ===========================================================================
- * Texto de la reseña
- * ======================================================================== */
-
-/**
- * Texto plegable SIN JavaScript.
- *
- * `<details>` nativo + `line-clamp`: cerrado recorta a seis líneas, abierto las
- * suelta. El texto va dentro del `<summary>` porque es lo único que el
- * navegador muestra con el desplegable cerrado.
- *
- * El compromiso: el lector de pantalla anuncia el párrafo como nombre del
- * control. Se acepta SOLO en reseñas largas —donde la alternativa sería un
- * texto cortado sin manera de leerlo entero— y las cortas se pintan como un
- * párrafo normal, sin desplegable de por medio.
- */
-function TextoResena({
-  texto,
-  claro,
-}: {
-  texto: string;
-  claro: boolean;
-}) {
-  const cuerpo = claro ? "text-crema-100/85" : "text-crema-700";
-
-  if (texto.length <= LARGO_PARA_PLEGAR) {
-    return (
-      <p className={`mt-4 text-[0.9375rem] leading-relaxed ${cuerpo}`}>
-        {texto}
-      </p>
-    );
-  }
-
-  const enlace = claro
-    ? "text-bosque-200 hover:text-white"
-    : "text-petroleo-700 hover:text-petroleo-800";
-
-  return (
-    <details className="group mt-4">
-      <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden">
-        <span
-          className={`block text-[0.9375rem] leading-relaxed line-clamp-6 group-open:line-clamp-none ${cuerpo}`}
-        >
-          {texto}
-        </span>
-        <span
-          className={`mt-2 inline-block text-sm font-semibold underline-offset-4 transition-colors duration-200 hover:underline ${enlace}`}
-        >
-          <span className="group-open:hidden">Leer más</span>
-          <span className="hidden group-open:inline">Leer menos</span>
-        </span>
-      </summary>
-    </details>
-  );
-}
-
-/* ===========================================================================
  * Tarjeta de una reseña
  * ======================================================================== */
 
@@ -208,10 +159,12 @@ function TarjetaResena({
     </span>
   );
 
+  const cuerpo = claro ? "text-crema-100/85" : "text-crema-700";
+
   return (
     <article
       className={[
-        "mb-5 break-inside-avoid rounded-[var(--radius-generoso)] p-5 sm:p-6",
+        "flex h-full flex-col rounded-[var(--radius-generoso)] p-5 sm:p-6",
         marco,
       ].join(" ")}
     >
@@ -244,7 +197,23 @@ function TarjetaResena({
         </div>
       </div>
 
-      <TextoResena texto={resena.texto} claro={claro} />
+      {/*
+        SIEMPRE recortado al mismo número de líneas, aunque la reseña sea
+        corta: es lo que garantiza que todas las tarjetas de la rejilla midan
+        igual. Lo que no cabe se lee entero en la ventana del botón de abajo.
+      */}
+      <p
+        className={`mt-4 flex-1 text-[0.9375rem] leading-relaxed ${LINEAS_VISIBLES} ${cuerpo}`}
+      >
+        {resena.texto}
+      </p>
+
+      <LectorResena
+        autor={resena.autor}
+        texto={resena.texto}
+        meta={`${resena.calificacion} de 5 estrellas · ${resena.tiempoRelativo} · Reseña de Google`}
+        claro={claro}
+      />
     </article>
   );
 }
@@ -334,19 +303,34 @@ export function ResenasGoogle({
       ) : null}
 
       {/*
-        Columnas CSS en vez de `grid`: las reseñas tienen largos muy distintos y
-        una rejilla dejaría filas con huecos enormes. Con columnas cada tarjeta
-        ocupa lo que necesita y `break-inside-avoid` impide que se parta en dos.
+        REJILLA ALINEADA, NO COLUMNAS.
+        Antes esto eran columnas CSS (`columns-3`), con la idea de que cada
+        reseña ocupara lo que necesitase. El resultado real era un mosaico:
+        tarjetas de altos distintos, bordes que no cuadraban con nada y la
+        última columna a media asta. Ahora es una rejilla de verdad, con todas
+        las tarjetas del mismo alto —texto recortado a cinco líneas y botón
+        «Leer más» en todas— y filas que empiezan y terminan a la misma altura.
       */}
-      <div className={`${titulo ? "mt-6" : "mt-8"} columns-1 gap-5 sm:columns-2 lg:columns-3`}>
+      <ul
+        /*
+          FLEX con anchos calculados, no `grid-cols-3`. Google devuelve cinco
+          reseñas: en una rejilla de tres columnas, la segunda fila queda pegada
+          a la izquierda con un hueco a la derecha del tamaño de una tarjeta.
+          Con `flex-wrap` + `justify-center`, esas dos últimas quedan centradas
+          bajo las tres de arriba. Es el mismo recurso que la rejilla de cabañas
+          de la portada, por el mismo motivo.
+        */
+        className={`${titulo ? "mt-6" : "mt-8"} flex flex-wrap justify-center gap-5`}
+      >
         {resenas.map((resena) => (
-          <TarjetaResena
+          <li
             key={`${resena.autor}-${resena.publicadaEn}`}
-            resena={resena}
-            claro={claro}
-          />
+            className="w-full sm:w-[calc(50%-0.625rem)] lg:w-[calc(33.333%-0.834rem)]"
+          >
+            <TarjetaResena resena={resena} claro={claro} />
+          </li>
         ))}
-      </div>
+      </ul>
     </div>
   );
 }

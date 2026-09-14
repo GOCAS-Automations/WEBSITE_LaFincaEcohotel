@@ -89,16 +89,16 @@ export function TarjetaPlan({
 
   const marco = sobreOscuro
     ? destacado
-      ? "bg-crema-50 shadow-[var(--shadow-bosque)] ring-1 ring-white/70 lg:-my-4 lg:py-10"
+      ? "bg-crema-50 shadow-[var(--shadow-bosque)] ring-1 ring-white/70 lg:-my-2 lg:py-7"
       : "bg-bosque-800/55 ring-1 ring-bosque-600/50 backdrop-blur-sm transition-colors duration-300 hover:bg-bosque-800/75"
     : destacado
-      ? "bg-petroleo-800 text-crema-50 shadow-[var(--shadow-elevada)] ring-1 ring-petroleo-700 lg:-my-3 lg:py-10"
+      ? "bg-petroleo-800 text-crema-50 shadow-[var(--shadow-elevada)] ring-1 ring-petroleo-700 lg:-my-2 lg:py-7"
       : "bg-white shadow-[var(--shadow-tarjeta)] ring-1 ring-crema-200/70 hover:-translate-y-1 hover:shadow-[var(--shadow-elevada)]";
 
   return (
     <article
       className={[
-        "flex h-full flex-col rounded-[var(--radius-generoso)] p-6 transition-all duration-300 ease-out sm:p-7",
+        "flex h-full flex-col rounded-[var(--radius-generoso)] p-5 transition-all duration-300 ease-out sm:p-6",
         /* La esquina superior izquierda más abierta rompe el rectángulo sin
            tocar la legibilidad de nada de lo que hay dentro. */
         "rounded-tl-[3rem]",
@@ -108,7 +108,7 @@ export function TarjetaPlan({
       {destacado ? (
         <p
           className={[
-            "mb-3 self-start rounded-full px-3 py-1 font-titulo text-xs font-semibold tracking-wide uppercase",
+            "mb-2.5 self-start rounded-full px-2.5 py-0.5 font-titulo text-[0.7rem] font-semibold tracking-wide uppercase",
             claro
               ? "bg-brote-100 text-oliva-700"
               : "bg-brote-100/20 text-brote-100",
@@ -120,7 +120,7 @@ export function TarjetaPlan({
 
       <h3
         className={[
-          "font-titulo text-2xl font-bold",
+          "font-titulo text-xl font-bold sm:text-[1.375rem]",
           claro ? "text-petroleo-900" : "text-white",
         ].join(" ")}
       >
@@ -136,7 +136,7 @@ export function TarjetaPlan({
       {cuando ? (
         <p
           className={[
-            "mt-2 font-titulo text-xs font-semibold tracking-wide",
+            "mt-1.5 font-titulo text-xs font-semibold tracking-wide",
             claro ? "text-oliva-600" : "text-brote-200",
           ].join(" ")}
         >
@@ -147,7 +147,7 @@ export function TarjetaPlan({
       {plan.descripcion ? (
         <p
           className={[
-            "mt-2 text-sm leading-relaxed",
+            "mt-1.5 text-[0.8125rem] leading-snug",
             claro ? "text-crema-700" : "text-crema-200/90",
           ].join(" ")}
         >
@@ -155,7 +155,7 @@ export function TarjetaPlan({
         </p>
       ) : null}
 
-      <p className="mt-5 flex flex-wrap items-baseline gap-x-2">
+      <p className="mt-4 flex flex-wrap items-baseline gap-x-2">
         {precio === null ? (
           <span
             className={[
@@ -178,7 +178,7 @@ export function TarjetaPlan({
             ) : null}
             <span
               className={[
-                "font-titulo text-3xl font-extrabold tracking-tight sm:text-4xl",
+                "font-titulo text-[1.75rem] font-extrabold tracking-tight sm:text-3xl",
                 claro ? "text-petroleo-700" : "text-brote-100",
               ].join(" ")}
             >
@@ -199,7 +199,7 @@ export function TarjetaPlan({
       {precio !== null && precioUnaPersona !== null ? (
         <p
           className={[
-            "mt-1.5 text-sm",
+            "mt-1 text-[0.8125rem]",
             claro ? "text-crema-600" : "text-crema-200/80",
           ].join(" ")}
         >
@@ -211,12 +211,20 @@ export function TarjetaPlan({
       ) : null}
 
       {incluye.length > 0 ? (
-        <ul className="mt-6 flex flex-1 flex-col gap-2.5">
+        /*
+          LISTA DENSA, NO AIREADA.
+          Con `gap-2.5`, `text-sm` y `leading-relaxed`, los ocho puntos de
+          «Entre Semana» estiraban la tarjeta hasta que las cuatro no cabían en
+          una pantalla de escritorio y había que desplazarse para ver el botón
+          de reservar. La lista es una enumeración de servicios, no un texto de
+          lectura: se lee mejor apretada.
+        */
+        <ul className="mt-4 flex flex-1 flex-col gap-1.5">
           {incluye.map((item) => (
-            <li key={item} className="flex gap-2.5 text-sm leading-relaxed">
+            <li key={item} className="flex gap-2 text-[0.8125rem] leading-snug">
               <IconoCheck
                 className={[
-                  "mt-0.5 size-4 shrink-0",
+                  "mt-px size-3.5 shrink-0",
                   claro ? "text-petroleo-500" : "text-bosque-300",
                 ].join(" ")}
               />
@@ -242,7 +250,7 @@ export function TarjetaPlan({
       <Boton
         href={href}
         variante={claro ? "primario" : destacado ? "crema" : "contornoClaro"}
-        className="mt-7 w-full"
+        className="mt-5 w-full"
       >
         {ctaTexto}
       </Boton>

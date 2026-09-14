@@ -455,6 +455,8 @@ export async function guardarContactoAction(
         tiktok_usuario: textoOpcional(formData, "tiktok_usuario", 100) ?? "",
         mapa_url: textoOpcional(formData, "mapa_url", 800) ?? "",
         mapa_embed: textoOpcional(formData, "mapa_embed", 800) ?? "",
+        mapa_como_llegar:
+          textoOpcional(formData, "mapa_como_llegar", 800) ?? "",
       },
       "contacto",
     );

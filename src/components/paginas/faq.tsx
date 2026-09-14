@@ -1,4 +1,8 @@
-import { Neblina } from "@/components/sitio/atmosfera";
+import {
+  ColibriesSueltos,
+  Neblina,
+  RamaBotanica,
+} from "@/components/sitio/atmosfera";
 import { CierreReserva } from "@/components/sitio/cierre-reserva";
 import { HeroPagina } from "@/components/sitio/hero-pagina";
 import { IconoWhatsapp } from "@/components/sitio/iconos";
@@ -42,8 +46,28 @@ export async function PaginaFaq() {
         ]}
       />
 
-      <Seccion fondo="crema" className="relative overflow-hidden">
-        <Neblina tono="verde" className="opacity-50" />
+      {/*
+        LA PÁGINA TENÍA EL FONDO MÁS POBRE DEL SITIO: crema plano y una columna
+        de acordeones blancos, sin una sola señal de dónde está el visitante.
+        Ahora respira el verde claro de la marca (`brote-50`, el tercer color
+        oficial), con la rama botánica de la papelería en las dos esquinas y
+        tres colibríes muy tenues al fondo.
+
+        Todo va por DEBAJO del contenido (`z-10` en la columna) y a opacidades
+        de una cifra: una página de preguntas se lee, no se contempla. Si la
+        decoración se nota mientras se busca una respuesta, está mal puesta.
+      */}
+      <Seccion fondo="brote" className="relative overflow-hidden">
+        <Neblina tono="verde" className="opacity-40" />
+        <ColibriesSueltos tono="claro" className="opacity-70" />
+        <RamaBotanica
+          className="absolute top-[4%] left-[-5%] hidden w-56 text-oliva-500/25 lg:block"
+          ritmo="lenta"
+        />
+        <RamaBotanica
+          className="absolute right-[-6%] bottom-[2%] hidden w-64 text-oliva-500/20 lg:block"
+          espejo
+        />
 
         <div className="relative z-10 mx-auto max-w-3xl">
           <p className="mb-10 text-center text-base leading-relaxed text-crema-700 sm:text-lg">
@@ -109,7 +133,7 @@ export async function PaginaFaq() {
 
       <CierreReserva
         imagen={seccionPlanes.imagen_fondo}
-        fondoAnterior="bg-crema-50"
+        fondoAnterior="bg-brote-50"
         titulo="Ya sabes cómo es. Solo faltan las fechas."
         perfil="bruma"
       />

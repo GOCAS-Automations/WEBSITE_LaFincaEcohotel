@@ -583,7 +583,8 @@ p {
 
 @media (prefers-reduced-motion: reduce) {
   .neblina__capa,
-  .botanica {
+  .botanica,
+  .colibri-suelto::before {
     animation: none !important;
   }
 
@@ -591,5 +592,71 @@ p {
      mosaico en el fotograma inicial (invisible) si se anulara la animación. */
   .pagina-galeria {
     animation-duration: 0.001ms !important;
+  }
+}
+
+/* --- Colibríes sueltos ----------------------------------------------------
+   Las cinco aves que sustituyen al mosaico en las páginas largas (ver
+   `ColibriesSueltos` en `atmosfera.tsx`). Se pintan con `mask-image` sobre el
+   PNG oficial del isotipo: el logotipo no se redibuja ni se altera, solo se usa
+   su silueta para recortar un color plano.
+
+   El mosaico se hornea en un PNG porque enmascarar una superficie del tamaño de
+   una sección cuesta milisegundos de Style & Layout en cada pintado (ver la
+   sesión del 2026-09-11). Aquí no aplica: son cinco cuadrados de 4 a 6 rem, y
+   el coste es irrelevante.
+
+   La deriva va en el pseudoelemento y no en el elemento porque el giro de cada
+   ave ya ocupa el `transform` del contenedor. */
+
+.colibri-suelto {
+  position: absolute;
+}
+
+.colibri-suelto::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-color: var(--color-brote-100);
+  -webkit-mask-image: url("/marca/icono.png");
+  mask-image: url("/marca/icono.png");
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  animation: colibri-deriva 34s var(--ease-deriva) infinite alternate;
+}
+
+.colibri-suelto--claro::before {
+  background-color: var(--color-petroleo-700);
+}
+
+/* Cada ave arranca en un punto distinto de su propio ciclo: con el mismo
+   retraso, las cinco se moverían a la vez y volvería a leerse como patrón. */
+.colibri-suelto:nth-child(2)::before {
+  animation-duration: 41s;
+  animation-delay: -13s;
+}
+.colibri-suelto:nth-child(3)::before {
+  animation-duration: 29s;
+  animation-delay: -7s;
+}
+.colibri-suelto:nth-child(4)::before {
+  animation-duration: 47s;
+  animation-delay: -21s;
+}
+.colibri-suelto:nth-child(5)::before {
+  animation-duration: 37s;
+  animation-delay: -4s;
+}
+
+@keyframes colibri-deriva {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(1.25rem, -0.9rem, 0);
   }
 }

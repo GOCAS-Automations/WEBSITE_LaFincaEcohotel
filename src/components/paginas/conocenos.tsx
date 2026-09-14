@@ -15,14 +15,14 @@ import {
 } from "@/lib/contenido";
 
 /**
- * El lugar: quiénes somos, instalaciones y cómo llegar.
+ * Conócenos: quiénes somos, instalaciones y cómo llegar.
  *
  * El mapa va embebido en modo búsqueda pública de Google Maps: no necesita
  * clave de API ni facturación, y se carga con `loading="lazy"` para que un
  * iframe de un tercero no compita con el contenido por el ancho de banda del
  * primer visor.
  */
-export async function PaginaElLugar() {
+export async function PaginaConocenos() {
   const [heroes, lugar, contacto, seccionPlanes] = await Promise.all([
     getHeroesListados(),
     getLugar(),
@@ -33,10 +33,10 @@ export async function PaginaElLugar() {
   return (
     <>
       <HeroPagina
-        hero={heroes.el_lugar}
+        hero={heroes.conocenos}
         migas={[
           { nombre: "Inicio", ruta: "/" },
-          { nombre: "El lugar", ruta: "/el-lugar" },
+          { nombre: "Conócenos", ruta: "/conocenos" },
         ]}
       />
 
@@ -162,14 +162,18 @@ export async function PaginaElLugar() {
               </ul>
             ) : null}
 
-            <Boton
-              href={contacto.mapa_url}
-              variante="contorno"
-              externo
-              className="self-start"
-            >
-              Abrir en Google Maps
-            </Boton>
+            <div className="flex flex-wrap gap-3">
+              <Boton
+                href={contacto.mapa_como_llegar || contacto.mapa_url}
+                variante="contorno"
+                externo
+              >
+                Cómo llegar desde Cali
+              </Boton>
+              <Boton href={contacto.mapa_url} variante="secundario" externo>
+                Ver la ficha en Google Maps
+              </Boton>
+            </div>
           </Revelar>
 
           <Revelar retraso={110}>

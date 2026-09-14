@@ -19,7 +19,14 @@ type PropsSeccion = {
    * intermedio gris verdoso, cuando dos secciones claras seguidas necesitan
    * separarse sin llegar al negro.
    */
-  fondo?: "blanco" | "crema" | "niebla" | "bosque" | "petroleo" | "oliva";
+  fondo?:
+    | "blanco"
+    | "crema"
+    | "niebla"
+    | "brote"
+    | "bosque"
+    | "petroleo"
+    | "oliva";
   /** Espaciado vertical. */
   espacio?: "normal" | "amplio" | "compacto" | "ninguno";
   id?: string;
@@ -34,6 +41,8 @@ const FONDOS: Record<NonNullable<PropsSeccion["fondo"]>, string> = {
   blanco: "bg-white",
   crema: "bg-crema-50",
   niebla: "bg-niebla-100",
+  /** El verde claro de marca, en su tono más pálido. */
+  brote: "bg-brote-50",
   bosque: "bg-bosque-900 text-crema-50",
   petroleo: "bg-petroleo-800 text-crema-50",
   oliva: "bg-oliva-700 text-crema-50",

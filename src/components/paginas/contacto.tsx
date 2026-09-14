@@ -17,7 +17,6 @@ import {
   getHeroesListados,
   getSeccionPlanes,
 } from "@/lib/contenido";
-import { SITIO } from "@/lib/sitio";
 import { enlaceWhatsapp } from "@/lib/whatsapp";
 
 /**
@@ -198,8 +197,14 @@ export async function PaginaContacto() {
                 className="h-full w-full border-0"
               />
             </div>
-            <Boton href={contacto.mapa_url} variante="contorno" externo>
-              Cómo llegar a {SITIO.nombre}
+            {/* «Cómo llegar» abre indicaciones DESDE CALI, no una búsqueda:
+                es el trayecto que va a hacer quien lo pulse. */}
+            <Boton
+              href={contacto.mapa_como_llegar || contacto.mapa_url}
+              variante="contorno"
+              externo
+            >
+              Cómo llegar desde Cali
             </Boton>
           </Revelar>
         </div>

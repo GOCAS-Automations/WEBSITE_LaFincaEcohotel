@@ -49,6 +49,24 @@ const nextConfig: NextConfig = {
      */
     minimumCacheTTL: 60 * 60 * 24 * 31,
   },
+
+  /**
+   * Redirecciones permanentes.
+   *
+   * `/el-lugar` existió y se indexó: la página se llama ahora «Conócenos» y
+   * vive en `/conocenos`. Un 301 —`permanent: true`— traslada el historial de
+   * la dirección vieja a la nueva y evita que quien llegue desde un enlace
+   * antiguo, desde Google o desde el WhatsApp del hotel se encuentre un 404.
+   */
+  async redirects() {
+    return [
+      {
+        source: "/el-lugar",
+        destination: "/conocenos",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

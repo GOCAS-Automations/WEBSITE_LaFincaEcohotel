@@ -178,7 +178,7 @@ export default async function PaginaSeccionContenido({
         )}
 
         {slug === "lugar" && (
-          <BloqueContenido titulo="El lugar">
+          <BloqueContenido titulo="Conócenos">
             <FormularioLugar valor={valor("lugar")} />
           </BloqueContenido>
         )}

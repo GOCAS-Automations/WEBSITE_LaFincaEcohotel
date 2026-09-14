@@ -3,7 +3,12 @@ import type { ReactNode } from "react";
 import { Boton } from "@/components/ui/boton";
 import { Seccion } from "@/components/ui/seccion";
 
-import { DivisorOrganico, FondoBosque, RamaBotanica } from "./atmosfera";
+import {
+  CorteOrganico,
+  FondoBosque,
+  RamaBotanica,
+  RELLENO_DE_FONDO,
+} from "./atmosfera";
 
 /**
  * Cierre de página: la ladera, el bosque y el camino a reservar.
@@ -12,16 +17,19 @@ import { DivisorOrganico, FondoBosque, RamaBotanica } from "./atmosfera";
  * `Seccion fondo="petroleo"` con un título, un párrafo y un botón—. Ahora ese
  * cierre es una pieza sola, y de paso hace tres cosas que antes no hacía:
  *
- *   1. **Entra por una ladera, no por una línea recta.** El divisor orgánico se
- *      dibuja dentro de la sección anterior con el color del bosque, así que la
- *      página no termina: se hunde.
+ *   1. **Entra por una ladera, no por una línea recta.** La ladera se dibuja
+ *      ENCIMA de la fotografía del cierre, con el color de la sección anterior:
+ *      así el corte recorta la propia imagen y la foto llega hasta el filo de
+ *      la onda. Dibujarla al revés —onda de color plano en la sección de
+ *      arriba— dejaba una franja verde con forma de ladera y, debajo, el borde
+ *      recto de la foto. Ver `CorteOrganico` en `atmosfera.tsx`.
  *   2. **Tiene atmósfera.** Bruma y motas de luz, como el resto de las zonas
  *      oscuras del sitio.
  *   3. **Usa el botón crema.** El petróleo sobre verde bosque no llega al 3:1
  *      que exige la norma para el contorno de un control (ver `boton.tsx`).
  *
- * `fondoAnterior` es obligatorio y no tiene valor por defecto a propósito: el
- * divisor se pinta ENCIMA de la sección anterior, y si su fondo no coincide se
+ * `fondoAnterior` es obligatorio y no tiene valor por defecto a propósito: la
+ * onda se rellena con ESE color, y si no coincide con la sección de arriba se
  * ve una franja de color equivocado. Que haya que decirlo obliga a mirarlo.
  */
 export function CierreReserva({
@@ -50,24 +58,26 @@ export function CierreReserva({
 }) {
   return (
     <>
-      <div className={`relative ${fondoAnterior}`}>
-        <DivisorOrganico
-          perfil={perfil}
-          color="fill-petroleo-950"
-          alto={88}
-          espejo={espejo}
-          className="-mb-px"
-        />
-      </div>
-
       <Seccion
         fondo="bosque"
         espacio="normal"
-        className="relative isolate overflow-hidden"
+        /* El aire de arriba lo marca la onda, que mide 88 px y se dibuja
+           dentro de la sección: sin este relleno el titular se le montaría. */
+        className="relative isolate overflow-hidden pt-28 sm:pt-32 lg:pt-36"
       >
         {/* Bosque de verdad bajo el velo de petróleo, con bruma, resplandor y
             patrón de colibríes. Ver `FondoBosque` en `atmosfera.tsx`. */}
         <FondoBosque imagen={imagen} velo="denso" resplandor="izquierda" />
+
+        {/* La ladera, ENCIMA de la foto y con el color de la sección anterior:
+            es lo que recorta la imagen en vez de taparla. */}
+        <CorteOrganico
+          perfil={perfil}
+          color={RELLENO_DE_FONDO[fondoAnterior] ?? "fill-crema-50"}
+          borde="superior"
+          alto={88}
+          espejo={espejo}
+        />
         <RamaBotanica
           className="absolute bottom-[-12%] left-[-3%] hidden w-48 text-brote-100/20 lg:block"
           ritmo="lenta"

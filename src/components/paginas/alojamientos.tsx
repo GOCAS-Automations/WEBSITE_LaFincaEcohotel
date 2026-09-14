@@ -1,7 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
 
-import { Neblina, PatronColibri, RamaBotanica } from "@/components/sitio/atmosfera";
+import {
+  ColibriesSueltos,
+  Neblina,
+  RamaBotanica,
+} from "@/components/sitio/atmosfera";
 import { CierreReserva } from "@/components/sitio/cierre-reserva";
 import { HeroPagina } from "@/components/sitio/hero-pagina";
 import { IconoCheck, IconoFlecha, IconoPersonas } from "@/components/sitio/iconos";
@@ -63,7 +67,15 @@ export async function PaginaAlojamientos() {
 
       <Seccion fondo="crema" className="relative overflow-hidden">
         <Neblina tono="verde" className="opacity-55" />
-        <PatronColibri tono="claro" />
+        {/*
+          CINCO AVES, NO UN MOSAICO.
+          Aquí estaba `PatronColibri`, que repite el isotipo cada 320 px. En una
+          sección corta es una textura; en esta página, que mide cinco
+          pantallas, se leía como una cuadrícula de logotipos. Ahora son cinco
+          colibríes colocados a mano, sin dos a la misma altura ni del mismo
+          tamaño.
+        */}
+        <ColibriesSueltos tono="claro" />
         <RamaBotanica
           className="absolute top-[12%] right-[-4%] hidden w-52 text-oliva-400/25 lg:block"
           ritmo="lenta"

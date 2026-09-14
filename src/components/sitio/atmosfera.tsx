@@ -404,3 +404,211 @@ export function DivisorOrganico({
     </div>
   );
 }
+
+/* ===========================================================================
+ * Corte orgánico sobre una sección con FOTOGRAFÍA de fondo
+ * ======================================================================== */
+
+/**
+ * El borde ondulado de una sección que tiene una imagen de fondo.
+ *
+ * ---------------------------------------------------------------------------
+ * EL FALLO QUE ESTO ARREGLA
+ * ---------------------------------------------------------------------------
+ * `DivisorOrganico` dibuja la onda DENTRO de la sección anterior, rellena con
+ * el color de la siguiente. Funciona perfecto cuando la siguiente sección es un
+ * color plano. Cuando la siguiente sección es una FOTO —la de planes, la de
+ * cierre, cualquiera con `FondoBosque`— el resultado es el fallo que se veía en
+ * el sitio: primero una franja de verde plano con forma de ladera, y debajo el
+ * borde recto de la fotografía. La onda y la foto eran dos cosas distintas
+ * pegadas una encima de la otra, y se notaba.
+ *
+ * ---------------------------------------------------------------------------
+ * LA SOLUCIÓN
+ * ---------------------------------------------------------------------------
+ * Se le da la vuelta al problema. La sección con foto empieza donde tiene que
+ * empezar —su fotografía llega hasta el borde mismo— y la onda se dibuja ENCIMA
+ * de ella, rellena con el color de la sección VECINA. El resultado es que la
+ * imagen de fondo queda recortada por la forma: la foto se ve hasta el filo de
+ * la onda, y no hay ni un píxel de color plano donde debería haber fotografía.
+ *
+ * Es el mismo resultado que un `clip-path`, sin sus dos costes: no crea un
+ * contexto de recorte que obligue a recomponer la sección entera en cada
+ * pintado, y el alto de la onda se mide en píxeles fijos en vez de escalar con
+ * el alto de la sección (con `clipPathUnits="objectBoundingBox"` una sección
+ * alta se lleva una ola gigante y una corta, un rizo).
+ *
+ * `color` es, por tanto, el color de la sección VECINA, no el de esta —al
+ * revés que en `DivisorOrganico`—. Y va siempre en pares: `borde="superior"`
+ * arriba y `borde="inferior"` abajo, para que la sección no tenga un extremo
+ * orgánico y el otro recto.
+ */
+export function CorteOrganico({
+  perfil = "cresta",
+  color,
+  borde,
+  espejo = false,
+  alto = 96,
+  className,
+}: {
+  perfil?: keyof typeof PERFILES;
+  /** Color de la sección VECINA (`fill-white`, `fill-crema-50`…). */
+  color: string;
+  borde: "superior" | "inferior";
+  espejo?: boolean;
+  alto?: number;
+  className?: string;
+}) {
+  /*
+    El posicionamiento va en un envoltorio y NO en el `className` del divisor.
+    `DivisorOrganico` ya trae `relative` escrito, y en Tailwind gana la clase
+    que el CSS generado escriba después, no la que se ponga al final del
+    atributo: `position: relative` se emite después de `absolute`, así que un
+    `absolute` pasado por `className` NO surte efecto. Se vio en la primera
+    captura —las dos ondas salieron dentro del contenedor, a media sección, en
+    vez de pegadas a sus bordes—.
+
+    El envoltorio va además a todo el ANCHO DE LA SECCIÓN: el contenedor de
+    lectura tiene 76 rem y márgenes, y una onda que respete ese ancho deja dos
+    franjas rectas a los lados.
+  */
+  return (
+    <div
+      aria-hidden="true"
+      className={[
+        "pointer-events-none absolute inset-x-0 z-20",
+        /* El píxel negativo evita la rendija que deja el redondeo del
+           navegador entre el borde de la sección y el de la onda. */
+        borde === "superior" ? "top-0 -mt-px" : "bottom-0 -mb-px",
+        className,
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      <DivisorOrganico
+        perfil={perfil}
+        color={color}
+        espejo={espejo}
+        /* Arriba hay que voltear el perfil: el relleno de las rutas está en la
+           mitad de ABAJO del `viewBox`, y en el borde superior lo que tiene que
+           quedar pintado es la mitad de arriba. */
+        invertido={borde === "superior"}
+        alto={alto}
+      />
+    </div>
+  );
+}
+
+/**
+ * Traducción de la clase de FONDO de una sección a su clase de RELLENO SVG.
+ *
+ * Las páginas declaran el fondo de la sección anterior como `bg-crema-50`
+ * —que es como se lee— y el corte necesita `fill-crema-50`. Escribir las dos
+ * clases literales aquí no es redundancia: Tailwind v4 solo genera el CSS de
+ * las clases que encuentra escritas en el código, así que una cadena compuesta
+ * en tiempo de ejecución (`fill-${tono}`) no existiría en la hoja de estilos.
+ */
+export const RELLENO_DE_FONDO: Record<string, string> = {
+  "bg-white": "fill-white",
+  "bg-crema-50": "fill-crema-50",
+  "bg-niebla-100": "fill-niebla-100",
+  "bg-brote-50": "fill-brote-50",
+};
+
+/* ===========================================================================
+ * Colibríes sueltos
+ * ======================================================================== */
+
+/**
+ * Unos pocos colibríes en vuelo, colocados a mano.
+ *
+ * ---------------------------------------------------------------------------
+ * POR QUÉ EXISTE, SI YA HAY `PatronColibri`
+ * ---------------------------------------------------------------------------
+ * El patrón es un mosaico: repite el isotipo cada 320 px, en tresbolillo, hasta
+ * llenar la superficie. Sobre una sección corta es una textura y funciona.
+ * Sobre una página larga —la de cabañas mide cinco pantallas— deja de leerse
+ * como textura y se lee como lo que es: una cuadrícula de logotipos. Cesar lo
+ * dijo con todas las letras: «hay demasiados colibríes y se nota el patrón».
+ *
+ * Aquí hay CINCO aves, con posiciones, tamaños, giros y opacidades escritos uno
+ * a uno. Ninguna comparte fila ni columna con otra, ninguna está a la misma
+ * altura que otra, y los tamaños no siguen progresión: es lo que hace que se
+ * lean como individuos en vuelo y no como un fondo generado.
+ *
+ * Van en porcentajes del alto de la sección, así que se reparten igual en una
+ * página corta y en una larga. Las dos últimas se esconden por debajo de `lg`:
+ * en un teléfono, con la mitad de ancho, cinco aves vuelven a parecer patrón.
+ */
+type AveSuelta = {
+  top: string;
+  left: string;
+  ancho: string;
+  giro: string;
+  opacidad: number;
+  /** Solo se pinta a partir de `lg`: en móvil cinco aves vuelven a ser patrón. */
+  soloAncho?: boolean;
+};
+
+const COLIBRIES_SUELTOS: AveSuelta[] = [
+  { top: "6%", left: "4%", ancho: "5.5rem", giro: "-14deg", opacidad: 0.1 },
+  { top: "23%", left: "88%", ancho: "4rem", giro: "22deg", opacidad: 0.08 },
+  {
+    top: "48%",
+    left: "10%",
+    ancho: "3.25rem",
+    giro: "8deg",
+    opacidad: 0.07,
+    soloAncho: true,
+  },
+  { top: "62%", left: "82%", ancho: "6.5rem", giro: "-6deg", opacidad: 0.09 },
+  {
+    top: "86%",
+    left: "22%",
+    ancho: "4.5rem",
+    giro: "17deg",
+    opacidad: 0.07,
+    soloAncho: true,
+  },
+];
+
+export function ColibriesSueltos({
+  tono = "claro",
+  className,
+}: {
+  /** `claro` = sobre fondo claro (el ave se pinta en petróleo). */
+  tono?: "claro" | "oscuro";
+  className?: string;
+}) {
+  return (
+    <div
+      aria-hidden="true"
+      className={["pointer-events-none absolute inset-0 overflow-hidden", className]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      {COLIBRIES_SUELTOS.map((ave) => (
+        <span
+          key={`${ave.top}-${ave.left}`}
+          className={[
+            "colibri-suelto absolute block aspect-square",
+            tono === "claro" ? "colibri-suelto--claro" : "",
+            ave.soloAncho ? "hidden lg:block" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+          style={{
+            top: ave.top,
+            left: ave.left,
+            width: ave.ancho,
+            opacity: ave.opacidad,
+            /* El giro va en el `transform` de este elemento y la deriva en el
+               de un pseudoelemento (ver `globals.css`): dos transformaciones en
+               la misma propiedad se pisan. */
+            transform: `rotate(${ave.giro})`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}

@@ -25,7 +25,7 @@ export function revalidarSitioPublico() {
   revalidatePath("/alojamientos");
   revalidatePath("/alojamientos/[slug]", "page");
   revalidatePath("/experiencias");
-  revalidatePath("/el-lugar");
+  revalidatePath("/conocenos");
   revalidatePath("/galeria");
   revalidatePath("/faq");
   revalidatePath("/contacto");
