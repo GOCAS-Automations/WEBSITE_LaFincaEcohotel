@@ -11,6 +11,27 @@ const origenSupabase = new URL(
 
 const nextConfig: NextConfig = {
   images: {
+    /**
+     * INTERRUPTOR DE EMERGENCIA PARA LA CUOTA DE VERCEL.
+     *
+     * El plan gratuito de Vercel incluye un número limitado de
+     * «transformaciones» de Image Optimization al mes. Cuando se agota, Vercel
+     * NO sirve la foto sin optimizar: devuelve un error, y el sitio se queda
+     * con los huecos de las imágenes vacíos. Es un fallo total de la portada
+     * por una cuota, no por un error de código.
+     *
+     * Con `IMAGENES_SIN_OPTIMIZAR=1` en las variables de entorno del proyecto
+     * (Vercel → Settings → Environment Variables) y un redespliegue, `next/image`
+     * deja de pasar por `/_next/image` y apunta directo a la URL del bucket.
+     * Se pierde el redimensionado por dispositivo, pero NO se pierde gran cosa:
+     * las fotos del bucket ya son WebP recortados a la medida a la que se
+     * publican. El sitio sigue en pie y no hay que tocar una línea de código.
+     *
+     * Se lee como `=== "1"` a propósito: cualquier otro valor —incluido
+     * `"false"`, `"0"` o la variable ausente— deja la optimización encendida,
+     * que es el estado normal.
+     */
+    unoptimized: process.env.IMAGENES_SIN_OPTIMIZAR === "1",
     remotePatterns: [
       {
         // Imágenes servidas desde Supabase Storage (bucket `imagenes`)
