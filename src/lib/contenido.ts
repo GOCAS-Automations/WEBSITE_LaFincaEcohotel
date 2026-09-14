@@ -32,8 +32,8 @@ import {
   FOTO,
   GALERIA_CABANA_01,
   GALERIA_CABANA_03,
-  GALERIA_CABANA_05,
   GALERIA_GENERAL,
+  HERO,
   ZONAS_COMUNES,
 } from "./fotos";
 import { IMAGEN_SOCIAL, SITIO, medio, video } from "./sitio";
@@ -139,6 +139,42 @@ export type ReconocimientoInicio = {
   video: string;
   cta_texto: string;
   cta_href: string;
+};
+
+/**
+ * La tira de Instagram de la portada.
+ *
+ * ---------------------------------------------------------------------------
+ * QUÉ NO ES
+ * ---------------------------------------------------------------------------
+ * NO es un widget que lea el perfil por API. La API de Instagram exige una app
+ * de Meta, un token que caduca cada sesenta días y una revisión que hay que
+ * renovar; y el día que Meta cambie algo, la portada del hotel se queda con un
+ * hueco. Aquí las fotos son fotos PROPIAS del bucket, elegidas desde el panel,
+ * que enlazan al perfil. Lo único que viene de Instagram es el reel embebido, y
+ * solo cuando el visitante lo pide.
+ *
+ * `perfil` y `usuario` tampoco viven aquí: salen de `sitio.contacto`
+ * (`instagram` e `instagram_usuario`), que ya se editan en el panel. Una
+ * dirección del perfil en dos filas distintas es una dirección que algún día
+ * va a discrepar consigo misma.
+ */
+export type InstagramInicio = {
+  antetitulo: string;
+  titulo: string;
+  descripcion: string;
+  cta_texto: string;
+  /**
+   * Enlace de la publicación que se muestra embebida. Se acepta cualquier
+   * permalink de Instagram (`/reel/…`, `/p/…`, `/tv/…`): el componente le añade
+   * `embed/` para armar la dirección del iframe. Si va vacío, la sección se
+   * pinta sin el reel y solo con la tira de fotos.
+   */
+  reel_url: string;
+  /** Texto alternativo del póster —la primera foto— cuando hace de portada del reel. */
+  reel_alt: string;
+  /** Las fotos de la tira. Se muestran las cuatro primeras. */
+  fotos: ImagenGaleria[];
 };
 
 export type Testimonio = { texto: string; autor: string };
@@ -300,8 +336,8 @@ const RESPALDO_HERO: HeroInicio = {
   cta_href: "/reservar",
   cta_secundario_texto: "Conócenos",
   cta_secundario_href: "/conocenos",
-  imagen: FOTO.heroEscritorio,
-  imagen_movil: FOTO.heroMovil,
+  imagen: HERO.portadaEscritorio,
+  imagen_movil: HERO.portadaMovil,
   imagen_alt:
     "Corredor techado de La Finca Eco Hotel abierto al bosque de niebla del Km 18, con jardineras y baranda de madera",
 };
@@ -380,6 +416,21 @@ const RESPALDO_ESENCIA: EsenciaInicio = {
   ],
 };
 
+/**
+ * «Somos COP16» — VIVE EN `/conocenos`, NO EN LA PORTADA.
+ *
+ * Estuvo en la portada hasta el 2026-09-14 y ahí competía consigo misma: un
+ * video de casi tres minutos, con locución, en una página cuyo trabajo es
+ * llevar a reservar en el primer visor. Cesar pidió moverlo, y el sitio que le
+ * corresponde es la página que cuenta quiénes somos: el reconocimiento va justo
+ * después de «Sobre nosotros» y antes de las instalaciones, que es el orden en
+ * que alguien se hace las preguntas.
+ *
+ * La clave del CMS se renombró con él (`home.reconocimiento` →
+ * `conocenos.reconocimiento`, migración 008). Dejarla con el prefijo `home.`
+ * habría sido una mentira pequeña que dentro de seis meses cuesta media hora de
+ * búsqueda.
+ */
 const RESPALDO_RECONOCIMIENTO: ReconocimientoInicio = {
   antetitulo: "Reconocimientos",
   titulo: "Somos COP16",
@@ -402,6 +453,44 @@ const RESPALDO_RECONOCIMIENTO: ReconocimientoInicio = {
   video: video("sitio/cop16-la-finca.mp4"),
   cta_texto: "Reservar ahora",
   cta_href: "/reservar",
+};
+
+/**
+ * La tira de Instagram de la portada — OCUPA EL HUECO QUE DEJÓ LA COP16.
+ *
+ * ---------------------------------------------------------------------------
+ * LAS CUATRO FOTOS NO SON NUEVAS: SON LAS QUE LIBERARON LOS HEROS
+ * ---------------------------------------------------------------------------
+ * Tres heros cambiaron de foto porque su material no llegaba al ancho de la
+ * pantalla (ver `RESPALDO_HEROES`). Las tres que salieron —la piscina entre la
+ * neblina, la fogata de noche y el balcón con hamaca— son justo las que mejor
+ * funcionan aquí: se ven en un cuadrado de 130 px, donde 941 px de ancho sobran,
+ * y son las que cualquiera reconocería del perfil del hotel. La cuarta, la
+ * ducha del bosque, completa la fila.
+ *
+ * LA PRIMERA ES ADEMÁS EL PÓSTER DEL REEL. Sale del panel como las otras tres,
+ * así que el día que el hotel cambie las fotos, el póster cambia con ellas y
+ * nadie tiene que acordarse de este archivo.
+ *
+ * El perfil (`@lafinca_cali`) NO se escribe aquí: sale de `sitio.contacto`.
+ */
+const RESPALDO_INSTAGRAM: InstagramInicio = {
+  antetitulo: "Instagram",
+  titulo: "La Finca, día a día",
+  descripcion:
+    "La neblina de las seis, la fogata de las nueve y los colibríes del bebedero. Así se ve esto cuando no hay nadie fotografiándolo para un folleto.",
+  cta_texto: "Síguenos en Instagram",
+  /* El reel que el hotel publicó en su perfil. Se carga SOLO al pulsar: ver
+     `src/components/sitio/reel-instagram.tsx`. */
+  reel_url: "https://www.instagram.com/reel/DbO8x0SxnFX/",
+  reel_alt:
+    "Reel de La Finca Eco Hotel en Instagram: el bosque de niebla desde el mirador",
+  fotos: [
+    ZONAS_COMUNES[7],
+    GALERIA_CABANA_01[2],
+    ZONAS_COMUNES[2],
+    ZONAS_COMUNES[4],
+  ],
 };
 
 /**
@@ -503,33 +592,59 @@ const RESPALDO_SEO: SeoSitio = {
   },
 };
 
+/**
+ * Las cabeceras de las siete páginas internas.
+ *
+ * ---------------------------------------------------------------------------
+ * TODAS APUNTAN A `web/heroes/`, NINGUNA A UNA FOTO DE GALERÍA
+ * ---------------------------------------------------------------------------
+ * Un hero se ve al ancho entero de la ventana. Una foto de 1086 px puesta ahí
+ * la estira el navegador hasta los 1440 de la pantalla —`next/image` no amplía,
+ * así que el archivo llega a su tamaño real y el estirón lo hace el navegador—,
+ * y eso es exactamente lo que Cesar veía borroso.
+ *
+ * Ahora cada hero tiene su propio archivo, cortado del original de `drive/` a
+ * calidad 90 (`npm run imagenes:hero`). Y **tres páginas cambiaron de foto**
+ * porque la suya no llegaba al ancho de un hero, no por gusto:
+ *
+ *   · Conócenos: la piscina medía 1086 px → la panorámica de la reserva, 1536.
+ *   · Preguntas: el balcón de la Cabaña 01 medía 1086 px → la terraza de la 02,
+ *     que es la misma escena (hamaca, hortensias y montañas) con 1448.
+ *   · Contacto: la fogata medía 941 px, el peor material del sitio → la
+ *     chimenea de la Cabaña 05, que cuenta lo mismo con 1448.
+ *
+ * Al mudarse esas tres fotos quedaron libres, y no se han perdido: la piscina,
+ * la fogata y el balcón con hamaca son ahora tres de las cuatro fotos de la
+ * tira de Instagram de la portada.
+ */
 const RESPALDO_HEROES: HeroesListados = {
   alojamientos: {
     titulo: "Nuestras cabañas",
     subtitulo:
       "Cinco cabañas independientes para dos, con cama doble, baño privado y vista al bosque de niebla.",
-    imagen: GALERIA_CABANA_03[0].url,
+    imagen: HERO.alojamientos,
     imagen_alt: GALERIA_CABANA_03[0].alt,
   },
   experiencias: {
     titulo: "Experiencias",
     subtitulo:
       "Aniversarios y cumpleaños listos al llegar, y los detalles que se añaden a tu reserva.",
-    imagen: GALERIA_CABANA_05[0].url,
-    imagen_alt: GALERIA_CABANA_05[0].alt,
+    imagen: HERO.experiencias,
+    imagen_alt:
+      "Jacuzzi privado de la Cabaña 02 bajo el árbol, rodeado de guadua, con toallas dobladas",
   },
   conocenos: {
     titulo: "Conócenos",
     subtitulo:
       "Una reserva natural en el Km 18, con jacuzzi, turco, piscina de agua fría, restaurante y senderos.",
-    imagen: FOTO.piscina,
+    imagen: HERO.conocenos,
     imagen_alt:
-      "Piscina de agua fría de La Finca Eco Hotel con su chorrera, frente a las montañas y las nubes",
+      "Las cabañas de techo azul de La Finca Eco Hotel sobre la ladera, con los senderos y los jardines",
   },
   galeria: {
     titulo: "Galería",
     subtitulo: "El bosque, las cabañas y los rincones de La Finca en imágenes.",
-    imagen: FOTO.atardecer,
+    imagen: HERO.galeria,
     imagen_alt:
       "Mesa y sillas de piedra bajo las farolas de La Finca, entre la neblina del atardecer",
   },
@@ -537,25 +652,27 @@ const RESPALDO_HEROES: HeroesListados = {
     titulo: "Preguntas frecuentes",
     subtitulo:
       "Lo que más nos preguntan antes de llegar: cómo llegar, el clima, las mascotas, los pagos y las reglas de la casa.",
-    imagen: GALERIA_CABANA_01[2].url,
-    imagen_alt: GALERIA_CABANA_01[2].alt,
+    imagen: HERO.faq,
+    imagen_alt:
+      "Terraza de la Cabaña 02 con hamaca, hortensias y vista a las montañas",
   },
   contacto: {
     titulo: "Contacto",
     subtitulo:
       "Escríbenos por WhatsApp: resolvemos dudas y confirmamos disponibilidad el mismo día.",
-    /* Estaba el deck techado y, recortado a una banda de cabecera, no se veía
-       más que el techo de guadua: una superficie marrón sin nada que mirar.
-       La fogata de noche cuenta en una imagen para qué se escribe al hotel. */
-    imagen: FOTO.fogata,
+    /* La fogata de noche era la imagen exacta para esta página —cuenta en una
+       foto para qué se le escribe al hotel—, pero medía 941 px de ancho y en
+       una banda de cabecera se veía blanda. La chimenea de la Cabaña 05 dice lo
+       mismo (calor, noche, compañía) y mide 1448. */
+    imagen: HERO.contacto,
     imagen_alt:
-      "Pareja abrigada frente a la fogata encendida de La Finca Eco Hotel, de noche",
+      "Chimenea encendida de la Cabaña 05 de La Finca Eco Hotel, con cojines y juegos de mesa",
   },
   reservar: {
     titulo: "Reserva tu estadía",
     subtitulo:
       "Elige cabaña y plan, y confirmamos tu fecha por WhatsApp en pocos minutos.",
-    imagen: GALERIA_CABANA_01[0].url,
+    imagen: HERO.reservar,
     imagen_alt: GALERIA_CABANA_01[0].alt,
   },
 };
@@ -694,9 +811,13 @@ const RESPALDO_LUGAR: ContenidoLugar = {
     "El lugar se pensó al revés de un hotel grande: cinco cabañas, mucho bosque y un equipo pequeño. Nicolás, nuestro anfitrión, recibe a cada pareja, coordina los turnos de jacuzzi y turco y resuelve lo que haga falta.",
     "Cuidar la reserva es parte del plan. La energía tiene respaldo de paneles solares, los vehículos se quedan en el parqueadero externo y el bosque solo se recorre por los senderos habilitados. Somos COP16, en alianza con la Cámara de Comercio de Cali.",
   ],
-  imagen: FOTO.panoramica,
-  imagen_alt:
-    "Las cabañas de techo azul de La Finca Eco Hotel sobre la ladera, con los senderos y los jardines",
+  /* La panorámica de la reserva se subió al HERO de esta misma página (era la
+     única foto de más de 1440 px que no estaba ya en las instalaciones de
+     abajo), así que aquí habría salido dos veces en la misma pantalla. Entra
+     el corredor techado abierto al valle, que además es la foto más grande del
+     hotel —2400 px— y en este hueco de media columna se ve impecable. */
+  imagen: ZONAS_COMUNES[0].url,
+  imagen_alt: ZONAS_COMUNES[0].alt,
   instalaciones_titulo: "Zonas comunes",
   instalaciones_descripcion:
     "Todo esto está incluido con tu estadía, además de la cabaña.",
@@ -834,13 +955,14 @@ export const CLAVES_CONTENIDO = [
   "home.planes",
   "home.experiencias",
   "home.esencia",
-  "home.reconocimiento",
+  "home.instagram",
   "home.testimonios",
   "home.cta_final",
   "heroes.listados",
   "experiencias",
   "faq",
   "lugar",
+  "conocenos.reconocimiento",
   "galeria",
   "reservar",
   "no_encontrado",
@@ -872,13 +994,14 @@ export const RESPALDOS: Record<ClaveContenido, Record<string, unknown>> = {
   "home.planes": RESPALDO_PLANES,
   "home.experiencias": RESPALDO_EXPERIENCIAS,
   "home.esencia": RESPALDO_ESENCIA,
-  "home.reconocimiento": RESPALDO_RECONOCIMIENTO,
+  "home.instagram": RESPALDO_INSTAGRAM,
   "home.testimonios": RESPALDO_TESTIMONIOS,
   "home.cta_final": RESPALDO_CTA_FINAL,
   "heroes.listados": RESPALDO_HEROES,
   experiencias: RESPALDO_EXPERIENCIAS_PAGINA,
   faq: RESPALDO_FAQ,
   lugar: RESPALDO_LUGAR,
+  "conocenos.reconocimiento": RESPALDO_RECONOCIMIENTO,
   galeria: RESPALDO_GALERIA,
   reservar: RESPALDO_RESERVAR,
   no_encontrado: RESPALDO_NO_ENCONTRADO,
@@ -1011,8 +1134,12 @@ export const getSeccionExperiencias = cache(() =>
   obtener("home.experiencias", RESPALDO_EXPERIENCIAS),
 );
 export const getEsencia = cache(() => obtener("home.esencia", RESPALDO_ESENCIA));
+export const getInstagram = cache(() =>
+  obtener("home.instagram", RESPALDO_INSTAGRAM),
+);
+/** Vive en `/conocenos` desde el 2026-09-14, no en la portada. */
 export const getReconocimiento = cache(() =>
-  obtener("home.reconocimiento", RESPALDO_RECONOCIMIENTO),
+  obtener("conocenos.reconocimiento", RESPALDO_RECONOCIMIENTO),
 );
 export const getTestimonios = cache(() =>
   obtener("home.testimonios", RESPALDO_TESTIMONIOS),

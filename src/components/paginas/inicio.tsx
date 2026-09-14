@@ -9,13 +9,17 @@ import {
   RamaBotanica,
   Resplandor,
 } from "@/components/sitio/atmosfera";
-import { IconoFlecha, IconoHoja } from "@/components/sitio/iconos";
+import {
+  IconoFlecha,
+  IconoHoja,
+  IconoInstagram,
+} from "@/components/sitio/iconos";
 import { LectorResena } from "@/components/sitio/lector-resena";
 import { ModuloReserva } from "@/components/sitio/modulo-reserva";
+import { ReelInstagram } from "@/components/sitio/reel-instagram";
 import { ResenasGoogle } from "@/components/sitio/resenas-google";
 import { TarjetaCabana } from "@/components/sitio/tarjeta-cabana";
 import { TarjetaPlan } from "@/components/sitio/tarjeta-plan";
-import { VideoSeccion } from "@/components/sitio/video-seccion";
 import { Boton } from "@/components/ui/boton";
 import { Revelar } from "@/components/ui/revelar";
 import { EncabezadoSeccion, RITMO, Seccion } from "@/components/ui/seccion";
@@ -26,9 +30,9 @@ import {
   getEsencia,
   getExperiencias,
   getHero,
+  getInstagram,
   getIntro,
   getPlanesConPrecio,
-  getReconocimiento,
   getSeccionCabanas,
   getSeccionExperiencias,
   getSeccionPlanes,
@@ -53,8 +57,14 @@ import { mensajeExperiencia, enlaceWhatsapp } from "@/lib/whatsapp";
  *   5. ¿Cuánto cuesta?              → planes con precio real de la base
  *   6. ¿Y si es una ocasión especial? → experiencias
  *   7. ¿Quiénes son?                → esencia
- *   8. ¿Alguien más lo avala?       → COP16, en video
+ *   8. ¿Cómo es esto de verdad?     → Instagram: fotos y el reel del hotel
  *   9. Reservar.                    → cierre
+ *
+ * EL RECONOCIMIENTO DE LA COP16 YA NO ESTÁ AQUÍ. Era la octava sección y se
+ * mudó a `/conocenos`: un video de dos minutos y cincuenta con locución pide
+ * una atención que la portada no puede gastar, y encaja mucho mejor en la
+ * página que cuenta quiénes somos. Su hueco lo ocupa Instagram, que es de donde
+ * llega la mayoría de los huéspedes y lo que de verdad enseña el lugar.
  *
  * LAS RESEÑAS SUBIERON AL TERCER LUGAR. Estaban al final, después de todo el
  * catálogo: quien llega desde Instagram sin conocer el hotel tenía que
@@ -85,7 +95,7 @@ export async function PaginaInicio() {
     seccionPlanes,
     seccionExperiencias,
     esencia,
-    reconocimiento,
+    instagram,
     testimonios,
     ctaFinal,
     alojamientos,
@@ -100,7 +110,7 @@ export async function PaginaInicio() {
     getSeccionPlanes(),
     getSeccionExperiencias(),
     getEsencia(),
-    getReconocimiento(),
+    getInstagram(),
     getTestimonios(),
     getCtaFinal(),
     getAlojamientos(),
@@ -123,6 +133,16 @@ export async function PaginaInicio() {
     slug: alojamiento.slug,
     nombre: alojamiento.nombre,
   }));
+
+  /*
+    CUATRO FOTOS, NI UNA MÁS. Dos filas de dos en el teléfono, una fila de
+    cuatro desde `sm`: con cinco o seis quedaría un hueco impar en alguna de
+    las dos formas. La PRIMERA hace además de portada del reel, así que el
+    póster sale del panel como el resto y no hay que acordarse de cambiarlo
+    aparte.
+  */
+  const fotosInstagram = instagram.fotos.slice(0, 4);
+  const posterInstagram = fotosInstagram[0];
 
   return (
     <>
@@ -167,10 +187,20 @@ export async function PaginaInicio() {
           alt={hero.imagen_alt}
           fill
           priority
-          /* 68 y no 75: es la foto más pesada del sitio —ocupa la pantalla
-             entera de un teléfono— y a este tamaño la diferencia no se ve.
-             Son unos 50 kB menos en el primer visor, que es donde se mide. */
-          quality={68}
+          /*
+            90, NO 68.
+
+            La calidad 68 se puso para ahorrar 50 kB en el primer visor y se
+            veía: a pantalla completa en un teléfono, sobre una foto que ya
+            venía comprimida de Instagram, la tercera pasada de WebP dejaba el
+            follaje pastoso. Es lo primero que se ve del sitio y es lo que Cesar
+            reportó como borroso.
+
+            El archivo de origen también cambió: ahora es `web/heroes/`, cortado
+            del original de `drive/` a calidad 90, en vez de heredar la copia de
+            `web/` que ya venía a 82. Una generación de pérdida menos.
+          */
+          quality={90}
           sizes="100vw"
           className="object-cover sm:hidden"
         />
@@ -195,7 +225,7 @@ export async function PaginaInicio() {
           alt={hero.imagen_alt}
           fill
           loading="lazy"
-          quality={68}
+          quality={90}
           sizes="100vw"
           className="hidden object-cover sm:block"
         />
@@ -761,73 +791,113 @@ export async function PaginaInicio() {
       </Seccion>
 
       {/* ---------------------------------------------------------------- 8 */}
-      <Seccion fondo="blanco" className="overflow-hidden">
-        <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
-          <Revelar retraso={80} className="order-2 lg:order-1">
-            {/*
-              EL VIDEO DEL RECONOCIMIENTO, NO UNA FOTO.
-              Aquí había una fotografía de la ducha del bosque, que además
-              aparecía en otros cuatro puntos del sitio y no tenía nada que ver
-              con la COP16. Ahora va el clip que el propio hotel publicaba en
-              esta misma sección de su sitio anterior. Un reconocimiento
-              contado por quien lo recibió vale más que un párrafo.
+      {/*
+        INSTAGRAM — DONDE ESTABA LA COP16.
 
-              Sangra por la izquierda en escritorio: es la única pieza del
-              sitio que se sale del contenedor, y con una basta para que la
-              página no se sienta encajonada. El `overflow-hidden` de la
-              sección impide que empuje la barra horizontal.
-            */}
-            <div className="relative aspect-16/10 overflow-hidden rounded-[var(--radius-generoso)] rounded-bl-[7rem] bg-crema-200 shadow-[var(--shadow-elevada)] lg:-ml-[max(0px,calc((100vw-76rem)/2+2.5rem))] lg:rounded-l-none">
-              {reconocimiento.video ? (
-                /*
-                  Arranca solo, silenciado y en bucle, pero NO en la carga
-                  inicial: espera a estar en pantalla. Ver `VideoSeccion` —un
-                  `autoplay` a secas descargaba los 3,3 MB del clip nada más
-                  abrir la portada, con el video siete pantallas más abajo.
-                */
-                <VideoSeccion
-                  src={reconocimiento.video}
-                  poster={reconocimiento.imagen}
-                  etiqueta={`Video: ${reconocimiento.titulo}`}
-                  className="absolute inset-0 h-full w-full object-cover"
-                />
-              ) : (
-                <Image
-                  src={reconocimiento.imagen}
-                  alt={reconocimiento.imagen_alt}
-                  fill
-                  quality={75}
-                  sizes="(min-width: 1024px) 52vw, 92vw"
-                  className="object-cover"
-                />
-              )}
-            </div>
-          </Revelar>
+        El reconocimiento de la COP16 se mudó a `/conocenos` (§ «Somos COP16»):
+        es un video de casi tres minutos con locución, y la portada no es el
+        sitio para pedirle tres minutos a nadie. En su hueco entra lo que el
+        hotel publica de verdad, que además es de donde llega la mayoría de sus
+        huéspedes.
 
-          <Revelar className="order-1 flex flex-col gap-6 lg:order-2">
+        EL PATRÓN ES EL DE LA MAIMA, EL DISEÑO NO. De allí se copia la lógica
+        —fotos propias del bucket enlazadas al perfil, más el reel cargado bajo
+        demanda con una fachada— porque ya está probada y evita la API de Meta,
+        el token que caduca cada sesenta días y el widget de terceros que se
+        rompe sin avisar. La forma es de La Finca: verde, con el patrón de
+        colibríes y las curvas abiertas del resto del sitio.
+
+        LAS CUATRO FOTOS NO SON NUEVAS. Son las que dejaron libres los heros al
+        cambiar de fotografía —la piscina en la neblina, la fogata de noche y el
+        balcón con hamaca eran las tres que no llegaban al ancho de una
+        cabecera— más la ducha del bosque. En un cuadrado de 130 px sus 941 px
+        de ancho sobran; en una banda a pantalla completa, no llegaban.
+      */}
+      <Seccion fondo="blanco" className="relative overflow-hidden">
+        <PatronColibri tono="claro" />
+
+        <div className="relative z-10 grid items-center gap-10 lg:grid-cols-12 lg:gap-14">
+          <Revelar className="flex flex-col gap-6 lg:col-span-6">
             <EncabezadoSeccion
-              antetitulo={reconocimiento.antetitulo}
-              titulo={reconocimiento.titulo}
+              antetitulo={instagram.antetitulo}
+              titulo={instagram.titulo}
               alineacion="izquierda"
             />
-            <div className="flex flex-col gap-4">
-              {reconocimiento.parrafos.map((parrafo) => (
-                <p
-                  key={parrafo.slice(0, 40)}
-                  className="text-base leading-relaxed text-crema-700 sm:text-lg"
+            <p className="max-w-lg text-base leading-relaxed text-crema-700 sm:text-lg">
+              {instagram.descripcion}
+            </p>
+
+            {fotosInstagram.length > 0 ? (
+              <>
+                {/*
+                  Cuadrados perfectos: dos filas de dos en el teléfono, una fila
+                  de cuatro desde `sm`. Nunca queda un hueco impar.
+
+                  Cada foto es un enlace al perfil, no un `lightbox`: quien pulsa
+                  una foto de Instagram espera ir a Instagram. Y llevan
+                  `object-right-top` porque el sello de marca vive en esa esquina
+                  y un cuadrado recorta mucho: así se ve entero o no se ve, nunca
+                  partido (ver `CLASE_FOTO_CON_FLAG`).
+                */}
+                <ul
+                  aria-label="Fotos de La Finca en Instagram"
+                  className="grid grid-cols-2 gap-3 sm:grid-cols-4"
                 >
-                  {parrafo}
-                </p>
-              ))}
-            </div>
-            <Boton
-              href={reconocimiento.cta_href}
-              variante="contorno"
-              className="self-start"
-            >
-              {reconocimiento.cta_texto}
-            </Boton>
+                  {fotosInstagram.map((foto) => (
+                    <li key={foto.url}>
+                      <a
+                        href={contacto.instagram}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group relative block aspect-square overflow-hidden rounded-[var(--radius-tarjeta)] bg-crema-200 ring-1 ring-crema-200/70 transition-shadow duration-300 hover:shadow-[var(--shadow-tarjeta)]"
+                      >
+                        <Image
+                          src={foto.url}
+                          alt={foto.alt}
+                          fill
+                          quality={68}
+                          sizes="(min-width: 1024px) 140px, (min-width: 640px) 22vw, 45vw"
+                          fetchPriority="low"
+                          className={`${CLASE_FOTO_CON_FLAG} transition-transform duration-500 group-hover:scale-[1.04]`}
+                        />
+                        <span
+                          aria-hidden="true"
+                          className="absolute inset-0 flex items-center justify-center bg-petroleo-900/45 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+                        >
+                          <IconoInstagram className="size-5 text-white" />
+                        </span>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-5">
+                  <Boton href={contacto.instagram} variante="primario" externo>
+                    {instagram.cta_texto}
+                  </Boton>
+                  {contacto.instagram_usuario ? (
+                    <p className="font-titulo text-sm font-semibold tracking-[0.14em] text-crema-600 uppercase">
+                      {contacto.instagram_usuario}
+                    </p>
+                  ) : null}
+                </div>
+              </>
+            ) : null}
           </Revelar>
+
+          {/*
+            El reel, en su marco. No pide un solo byte a Instagram hasta que
+            alguien lo pulsa: ver `ReelInstagram`.
+          */}
+          {posterInstagram ? (
+            <Revelar retraso={110} className="lg:col-span-5 lg:col-start-8">
+              <ReelInstagram
+                permalink={instagram.reel_url}
+                poster={posterInstagram.url}
+                posterAlt={instagram.reel_alt || posterInstagram.alt}
+              />
+            </Revelar>
+          ) : null}
         </div>
       </Seccion>
 

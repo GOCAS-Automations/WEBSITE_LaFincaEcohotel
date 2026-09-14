@@ -24,7 +24,7 @@ export const SECCIONES_CONTENIDO: SeccionContenido[] = [
     slug: "portada",
     titulo: "Portada",
     descripcion:
-      "Todo lo que se ve en la página de inicio: la primera pantalla, la bienvenida, los encabezados de cada bloque, la naturaleza, el reconocimiento COP16, los testimonios y el cierre.",
+      "Todo lo que se ve en la página de inicio: la primera pantalla, la bienvenida, los encabezados de cada bloque, la naturaleza, la tira de Instagram con el reel, los testimonios y el cierre.",
     verEn: "/",
     claves: [
       "home.hero",
@@ -33,7 +33,7 @@ export const SECCIONES_CONTENIDO: SeccionContenido[] = [
       "home.planes",
       "home.experiencias",
       "home.esencia",
-      "home.reconocimiento",
+      "home.instagram",
       "home.testimonios",
       "home.cta_final",
     ],
@@ -66,9 +66,9 @@ export const SECCIONES_CONTENIDO: SeccionContenido[] = [
     slug: "lugar",
     titulo: "Conócenos",
     descripcion:
-      "La historia de La Finca, las instalaciones y las indicaciones para llegar.",
+      "La historia de La Finca, el reconocimiento de la COP16 con su video, las instalaciones y las indicaciones para llegar.",
     verEn: "/conocenos",
-    claves: ["lugar"],
+    claves: ["lugar", "conocenos.reconocimiento"],
   },
   {
     slug: "galeria",

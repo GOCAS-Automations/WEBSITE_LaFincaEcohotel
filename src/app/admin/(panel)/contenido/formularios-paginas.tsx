@@ -7,6 +7,7 @@ import {
   guardarLugarAction,
   guardarNoEncontradoAction,
   guardarPaginaExperienciasAction,
+  guardarReconocimientoAction,
   guardarReservarAction,
 } from "./acciones";
 import { comoTextarea, galeria, objeto, objetos, texto, textos } from "./lectura";
@@ -360,6 +361,101 @@ export function FormularioLugar({ valor }: { valor: Valor }) {
             name="llegar_indicaciones"
             inicial={textos(valor, "llegar_indicaciones")}
             marcador="Parqueadero externo vigilado 24 horas"
+          />
+        </Campo>
+      </div>
+    </FormularioAccion>
+  );
+}
+
+/* ---------------------------------------------------------------------------
+ * Reconocimiento (COP16)
+ * ------------------------------------------------------------------------- */
+
+export function FormularioReconocimiento({ valor }: { valor: Valor }) {
+  return (
+    <FormularioAccion
+      accion={guardarReconocimientoAction}
+      etiquetaEnviar="Guardar"
+    >
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Campo etiqueta="Texto pequeño de arriba" htmlFor="recon_ante">
+          <Entrada
+            id="recon_ante"
+            name="antetitulo"
+            defaultValue={texto(valor, "antetitulo")}
+            maxLength={120}
+          />
+        </Campo>
+        <Campo etiqueta="Titular" htmlFor="recon_titulo" obligatorio>
+          <Entrada
+            id="recon_titulo"
+            name="titulo"
+            defaultValue={texto(valor, "titulo")}
+            required
+            maxLength={200}
+          />
+        </Campo>
+        <Campo
+          etiqueta="Párrafos"
+          htmlFor="recon_parrafos"
+          className="sm:col-span-2"
+          ayuda="Deja una línea en blanco entre un párrafo y el siguiente."
+        >
+          <AreaTexto
+            id="recon_parrafos"
+            name="parrafos"
+            defaultValue={comoTextarea(textos(valor, "parrafos"))}
+            rows={4}
+          />
+        </Campo>
+        <Campo
+          etiqueta="Foto"
+          ayuda="Si hay video, esta foto es la que se ve antes de reproducirlo."
+        >
+          <CampoImagen
+            name="imagen"
+            urlInicial={texto(valor, "imagen")}
+            proporcion="apaisada"
+          />
+        </Campo>
+        <Campo etiqueta="Descripción de la foto" htmlFor="recon_alt">
+          <Entrada
+            id="recon_alt"
+            name="imagen_alt"
+            defaultValue={texto(valor, "imagen_alt")}
+            maxLength={300}
+          />
+        </Campo>
+        <Campo
+          etiqueta="Video (opcional)"
+          htmlFor="recon_video"
+          className="sm:col-span-2"
+          ayuda="Dirección de un archivo .mp4 o .webm. Si la dejas vacía, la sección muestra la foto. El video se reproduce solo, silenciado y en bucle, con controles para subir el volumen."
+        >
+          <Entrada
+            id="recon_video"
+            name="video"
+            type="url"
+            defaultValue={texto(valor, "video")}
+            maxLength={500}
+            placeholder="https://…/videos/sitio/cop16-la-finca.mp4"
+          />
+        </Campo>
+        <Campo etiqueta="Botón — texto" htmlFor="recon_cta">
+          <Entrada
+            id="recon_cta"
+            name="cta_texto"
+            defaultValue={texto(valor, "cta_texto")}
+            maxLength={60}
+          />
+        </Campo>
+        <Campo etiqueta="Botón — a dónde lleva" htmlFor="recon_href">
+          <Entrada
+            id="recon_href"
+            name="cta_href"
+            defaultValue={texto(valor, "cta_href")}
+            maxLength={200}
           />
         </Campo>
       </div>

@@ -4,6 +4,7 @@ import { Neblina, PatronColibri, RamaBotanica } from "@/components/sitio/atmosfe
 import { CierreReserva } from "@/components/sitio/cierre-reserva";
 import { HeroPagina } from "@/components/sitio/hero-pagina";
 import { IconoUbicacion } from "@/components/sitio/iconos";
+import { VideoSeccion } from "@/components/sitio/video-seccion";
 import { Boton } from "@/components/ui/boton";
 import { Revelar } from "@/components/ui/revelar";
 import { EncabezadoSeccion, RITMO, Seccion } from "@/components/ui/seccion";
@@ -11,11 +12,13 @@ import {
   getContacto,
   getHeroesListados,
   getLugar,
+  getReconocimiento,
   getSeccionPlanes,
 } from "@/lib/contenido";
 
 /**
- * Conócenos: quiénes somos, instalaciones y cómo llegar.
+ * Conócenos: quiénes somos, el reconocimiento de la COP16, instalaciones y
+ * cómo llegar.
  *
  * El mapa va embebido en modo búsqueda pública de Google Maps: no necesita
  * clave de API ni facturación, y se carga con `loading="lazy"` para que un
@@ -23,12 +26,14 @@ import {
  * primer visor.
  */
 export async function PaginaConocenos() {
-  const [heroes, lugar, contacto, seccionPlanes] = await Promise.all([
-    getHeroesListados(),
-    getLugar(),
-    getContacto(),
-    getSeccionPlanes(),
-  ]);
+  const [heroes, lugar, contacto, reconocimiento, seccionPlanes] =
+    await Promise.all([
+      getHeroesListados(),
+      getLugar(),
+      getContacto(),
+      getReconocimiento(),
+      getSeccionPlanes(),
+    ]);
 
   return (
     <>
@@ -80,6 +85,90 @@ export async function PaginaConocenos() {
                 className="object-cover"
               />
             </div>
+          </Revelar>
+        </div>
+      </Seccion>
+
+
+      {/*
+        SOMOS COP16 — ESTABA EN LA PORTADA Y VIVE AQUÍ DESDE EL 2026-09-14.
+
+        En la portada era la octava sección: un video de dos minutos y cincuenta
+        segundos, con locución, en la única página cuyo trabajo es llevar a
+        reservar sin que nadie tenga que desplazarse tres pantallas. Cesar pidió
+        moverlo y el sitio natural es este: va justo después de «Sobre nosotros»
+        —quiénes somos— y antes de las instalaciones, que es el orden en que se
+        hacen las preguntas. Un reconocimiento contado por quien lo recibió vale
+        más que un párrafo, pero solo si quien lo escucha ya sabe de qué lugar le
+        están hablando.
+
+        Fondo `brote` (el verde claro de la paleta oficial) y no blanco: entre la
+        sección crema de arriba y la blanca de abajo, un blanco más habría
+        fundido las tres en una sola mancha clara.
+      */}
+      <Seccion fondo="brote" className="relative overflow-hidden">
+        <RamaBotanica
+          className="absolute bottom-[-6%] left-[-4%] hidden w-52 text-oliva-400/25 lg:block"
+          ritmo="lenta"
+        />
+
+        <div className="relative z-10 grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
+          <Revelar retraso={80} className="order-2 lg:order-1">
+            {/*
+              La curva grande abre ABAJO A LA IZQUIERDA: en la esquina superior
+              derecha no se toca nada, que es donde el material del hotel lleva
+              impreso el sello de marca.
+            */}
+            <div className="relative aspect-16/10 overflow-hidden rounded-[var(--radius-generoso)] rounded-bl-[7rem] bg-crema-200 shadow-[var(--shadow-elevada)]">
+              {reconocimiento.video ? (
+                /*
+                  Arranca solo, silenciado y en bucle, pero NO en la carga
+                  inicial: espera a estar en pantalla. Ver `VideoSeccion` —un
+                  `autoplay` a secas descargaba los 3,3 MB del clip nada más
+                  abrir la página, con el video dos pantallas más abajo.
+                */
+                <VideoSeccion
+                  src={reconocimiento.video}
+                  poster={reconocimiento.imagen}
+                  etiqueta={`Video: ${reconocimiento.titulo}`}
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+              ) : (
+                <Image
+                  src={reconocimiento.imagen}
+                  alt={reconocimiento.imagen_alt}
+                  fill
+                  quality={75}
+                  sizes="(min-width: 1024px) 45vw, 92vw"
+                  className="object-cover"
+                />
+              )}
+            </div>
+          </Revelar>
+
+          <Revelar className="order-1 flex flex-col gap-6 lg:order-2">
+            <EncabezadoSeccion
+              antetitulo={reconocimiento.antetitulo}
+              titulo={reconocimiento.titulo}
+              alineacion="izquierda"
+            />
+            <div className="flex flex-col gap-4">
+              {reconocimiento.parrafos.map((parrafo) => (
+                <p
+                  key={parrafo.slice(0, 40)}
+                  className="text-base leading-relaxed text-crema-700 sm:text-lg"
+                >
+                  {parrafo}
+                </p>
+              ))}
+            </div>
+            <Boton
+              href={reconocimiento.cta_href}
+              variante="contorno"
+              className="self-start"
+            >
+              {reconocimiento.cta_texto}
+            </Boton>
           </Revelar>
         </div>
       </Seccion>

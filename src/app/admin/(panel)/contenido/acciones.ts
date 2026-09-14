@@ -188,13 +188,21 @@ export async function guardarEsenciaAction(
   });
 }
 
+/**
+ * «Somos COP16».
+ *
+ * La clave dice `conocenos.` y no `home.` porque la sección se mudó de la
+ * portada a `/conocenos` el 2026-09-14 (migración 008, que renombra la fila
+ * existente para no perder lo que el hotel hubiera editado). Y por eso también
+ * revalida la pantalla `lugar` del panel, no la de portada.
+ */
 export async function guardarReconocimientoAction(
   _estado: EstadoAccion,
   formData: FormData,
 ): Promise<EstadoAccion> {
   return ejecutarAccion(async () => {
     await guardarContenido(
-      "home.reconocimiento",
+      "conocenos.reconocimiento",
       {
         antetitulo: textoOpcional(formData, "antetitulo", 120) ?? "",
         titulo: textoRequerido(formData, "titulo", "Titular", 200),
@@ -208,6 +216,40 @@ export async function guardarReconocimientoAction(
         video: textoOpcional(formData, "video", 500) ?? "",
         cta_texto: textoOpcional(formData, "cta_texto", 60) ?? "",
         cta_href: textoOpcional(formData, "cta_href", 200) ?? "",
+      },
+      "lugar",
+    );
+    return estadoOk(HECHO);
+  });
+}
+
+/**
+ * La tira de Instagram de la portada.
+ *
+ * `reel_url` se guarda como texto y NO se valida contra Instagram aquí: el
+ * sitio lo hace al pintarla (`direccionEmbebido()` en
+ * `src/components/sitio/reel-instagram.tsx` solo acepta un permalink de
+ * instagram.com y, si no lo es, no pinta el reel). Validarlo también en el
+ * panel obligaría a mantener la misma regla escrita en dos sitios, y la del
+ * sitio es la que manda porque es la que decide qué acaba en un `<iframe>`.
+ *
+ * El enlace del perfil y el arroba NO están aquí: viven en `sitio.contacto`.
+ */
+export async function guardarInstagramAction(
+  _estado: EstadoAccion,
+  formData: FormData,
+): Promise<EstadoAccion> {
+  return ejecutarAccion(async () => {
+    await guardarContenido(
+      "home.instagram",
+      {
+        antetitulo: textoOpcional(formData, "antetitulo", 120) ?? "",
+        titulo: textoRequerido(formData, "titulo", "Titular", 200),
+        descripcion: textoOpcional(formData, "descripcion", 600) ?? "",
+        cta_texto: textoOpcional(formData, "cta_texto", 60) ?? "",
+        reel_url: textoOpcional(formData, "reel_url", 500) ?? "",
+        reel_alt: textoOpcional(formData, "reel_alt", 300) ?? "",
+        fotos: listaGaleria(formData, "fotos"),
       },
       "portada",
     );

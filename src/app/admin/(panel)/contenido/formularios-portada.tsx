@@ -6,7 +6,7 @@ import {
   guardarHeroAction,
   guardarIntroAction,
   guardarPlanesAction,
-  guardarReconocimientoAction,
+  guardarInstagramAction,
   guardarSeccionSimpleAction,
   guardarTestimoniosAction,
 } from "./acciones";
@@ -442,27 +442,36 @@ export function FormularioEsencia({ valor }: { valor: Valor }) {
 }
 
 /* ---------------------------------------------------------------------------
- * Reconocimiento (COP16)
+ * Instagram
  * ------------------------------------------------------------------------- */
 
-export function FormularioReconocimiento({ valor }: { valor: Valor }) {
+/**
+ * La tira de Instagram de la portada.
+ *
+ * Dos avisos que hay que dejar escritos en la ayuda del formulario, porque
+ * quien lo edita no tiene por qué saberlos:
+ *
+ *   · las fotos NO se traen del perfil de Instagram (eso exigiría una app de
+ *     Meta y un token que caduca): son fotos del bucket, y la PRIMERA hace
+ *     además de portada del reel;
+ *   · el enlace del perfil y el arroba no se escriben aquí, salen de la
+ *     pantalla «Contacto, WhatsApp y redes».
+ */
+export function FormularioInstagram({ valor }: { valor: Valor }) {
   return (
-    <FormularioAccion
-      accion={guardarReconocimientoAction}
-      etiquetaEnviar="Guardar"
-    >
+    <FormularioAccion accion={guardarInstagramAction} etiquetaEnviar="Guardar">
       <div className="grid gap-5 sm:grid-cols-2">
-        <Campo etiqueta="Texto pequeño de arriba" htmlFor="recon_ante">
+        <Campo etiqueta="Texto pequeño de arriba" htmlFor="ig_ante">
           <Entrada
-            id="recon_ante"
+            id="ig_ante"
             name="antetitulo"
             defaultValue={texto(valor, "antetitulo")}
             maxLength={120}
           />
         </Campo>
-        <Campo etiqueta="Titular" htmlFor="recon_titulo" obligatorio>
+        <Campo etiqueta="Titular" htmlFor="ig_titulo" obligatorio>
           <Entrada
-            id="recon_titulo"
+            id="ig_titulo"
             name="titulo"
             defaultValue={texto(valor, "titulo")}
             required
@@ -470,65 +479,69 @@ export function FormularioReconocimiento({ valor }: { valor: Valor }) {
           />
         </Campo>
         <Campo
-          etiqueta="Párrafos"
-          htmlFor="recon_parrafos"
+          etiqueta="Descripción"
+          htmlFor="ig_desc"
           className="sm:col-span-2"
-          ayuda="Deja una línea en blanco entre un párrafo y el siguiente."
         >
           <AreaTexto
-            id="recon_parrafos"
-            name="parrafos"
-            defaultValue={comoTextarea(textos(valor, "parrafos"))}
-            rows={4}
+            id="ig_desc"
+            name="descripcion"
+            defaultValue={texto(valor, "descripcion")}
+            rows={3}
+            maxLength={600}
           />
         </Campo>
         <Campo
-          etiqueta="Foto"
-          ayuda="Si hay video, esta foto es la que se ve antes de reproducirlo."
+          etiqueta="Enlace del reel"
+          htmlFor="ig_reel"
+          className="sm:col-span-2"
+          ayuda="Pega la dirección de la publicación desde Instagram (por ejemplo https://www.instagram.com/reel/DbO8x0SxnFX/). El video NO se descarga hasta que el visitante lo toca. Si dejas esto vacío, la sección muestra solo las fotos."
         >
-          <CampoImagen
-            name="imagen"
-            urlInicial={texto(valor, "imagen")}
-            proporcion="apaisada"
+          <Entrada
+            id="ig_reel"
+            name="reel_url"
+            type="url"
+            defaultValue={texto(valor, "reel_url")}
+            maxLength={500}
+            placeholder="https://www.instagram.com/reel/…/"
           />
         </Campo>
-        <Campo etiqueta="Descripción de la foto" htmlFor="recon_alt">
+        <Campo
+          etiqueta="Descripción del video"
+          htmlFor="ig_reel_alt"
+          className="sm:col-span-2"
+          ayuda="Qué se ve en el video, para quien no puede verlo."
+        >
           <Entrada
-            id="recon_alt"
-            name="imagen_alt"
-            defaultValue={texto(valor, "imagen_alt")}
+            id="ig_reel_alt"
+            name="reel_alt"
+            defaultValue={texto(valor, "reel_alt")}
             maxLength={300}
           />
         </Campo>
         <Campo
-          etiqueta="Video (opcional)"
-          htmlFor="recon_video"
+          etiqueta="Fotos"
           className="sm:col-span-2"
-          ayuda="Dirección de un archivo .mp4 o .webm. Si la dejas vacía, la sección muestra la foto. El video se reproduce solo, silenciado y en bucle, con controles para subir el volumen."
+          ayuda="Se muestran las cuatro primeras, en cuadrado. La PRIMERA es además la portada del video. No se traen de Instagram: son fotos del hotel, y al tocarlas se abre el perfil."
         >
-          <Entrada
-            id="recon_video"
-            name="video"
-            type="url"
-            defaultValue={texto(valor, "video")}
-            maxLength={500}
-            placeholder="https://…/videos/sitio/cop16-la-finca.mp4"
+          <EditorGaleria
+            name="fotos"
+            inicial={galeria(valor, "fotos")}
+            carpeta="sitio"
+            conPortada={false}
           />
         </Campo>
-        <Campo etiqueta="Botón — texto" htmlFor="recon_cta">
+        <Campo
+          etiqueta="Botón — texto"
+          htmlFor="ig_cta"
+          className="sm:col-span-2"
+          ayuda="A dónde lleva el botón no se configura aquí: es el enlace de Instagram de la pantalla «Contacto, WhatsApp y redes»."
+        >
           <Entrada
-            id="recon_cta"
+            id="ig_cta"
             name="cta_texto"
             defaultValue={texto(valor, "cta_texto")}
             maxLength={60}
-          />
-        </Campo>
-        <Campo etiqueta="Botón — a dónde lleva" htmlFor="recon_href">
-          <Entrada
-            id="recon_href"
-            name="cta_href"
-            defaultValue={texto(valor, "cta_href")}
-            maxLength={200}
           />
         </Campo>
       </div>

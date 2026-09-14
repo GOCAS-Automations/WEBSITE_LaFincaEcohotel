@@ -7,9 +7,9 @@ import {
   FormularioCtaFinal,
   FormularioEsencia,
   FormularioHero,
+  FormularioInstagram,
   FormularioIntro,
   FormularioPlanes,
-  FormularioReconocimiento,
   FormularioSeccionSimple,
   FormularioTestimonios,
 } from "../formularios-portada";
@@ -20,6 +20,7 @@ import {
   FormularioLugar,
   FormularioNoEncontrado,
   FormularioPaginaExperiencias,
+  FormularioReconocimiento,
   FormularioReservar,
 } from "../formularios-paginas";
 import {
@@ -134,10 +135,10 @@ export default async function PaginaSeccionContenido({
             </BloqueContenido>
 
             <BloqueContenido
-              titulo="Reconocimientos"
-              descripcion="El bloque de la COP16."
+              titulo="Instagram"
+              descripcion="La tira de fotos y el reel del perfil, al final de la portada. El enlace del perfil se edita en «Contacto, WhatsApp y redes»."
             >
-              <FormularioReconocimiento valor={valor("home.reconocimiento")} />
+              <FormularioInstagram valor={valor("home.instagram")} />
             </BloqueContenido>
 
             <BloqueContenido
@@ -178,9 +179,22 @@ export default async function PaginaSeccionContenido({
         )}
 
         {slug === "lugar" && (
-          <BloqueContenido titulo="Conócenos">
-            <FormularioLugar valor={valor("lugar")} />
-          </BloqueContenido>
+          <>
+            <BloqueContenido titulo="Conócenos">
+              <FormularioLugar valor={valor("lugar")} />
+            </BloqueContenido>
+
+            {/* Estaba en la pantalla de la portada hasta el 2026-09-14, con la
+                sección. Se mudó con ella. */}
+            <BloqueContenido
+              titulo="Reconocimientos"
+              descripcion="El bloque de la COP16, con su video. Se ve en «Conócenos», entre la historia de La Finca y las instalaciones."
+            >
+              <FormularioReconocimiento
+                valor={valor("conocenos.reconocimiento")}
+              />
+            </BloqueContenido>
+          </>
         )}
 
         {slug === "galeria" && (

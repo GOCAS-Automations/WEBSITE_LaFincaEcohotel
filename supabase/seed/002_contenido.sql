@@ -74,8 +74,8 @@ insert into contenido (clave, valor) values
   "cta_href": "/reservar",
   "cta_secundario_texto": "Conócenos",
   "cta_secundario_href": "/conocenos",
-  "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/hero-escritorio.webp",
-  "imagen_movil": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/hero-movil.webp",
+  "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/heroes/portada-escritorio.webp",
+  "imagen_movil": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/heroes/portada-movil.webp",
   "imagen_alt": "Corredor techado de La Finca Eco Hotel abierto al bosque de niebla del Km 18, con jardineras y baranda de madera"
 }$json$::jsonb),
 
@@ -160,18 +160,39 @@ insert into contenido (clave, valor) values
   ]
 }$json$::jsonb),
 
-('home.reconocimiento', $json${
-  "antetitulo": "Reconocimientos",
-  "titulo": "Somos COP16",
-  "parrafos": [
-    "Somos COP16 y, junto con la Cámara de Comercio de Cali, nos preparamos para este evento donde mostramos la mejor imagen de nuestra región al mundo entero.",
-    "La reserva funciona con respaldo de paneles solares y los vehículos se quedan en el parqueadero externo: dentro de La Finca solo se entra a pie, para no alterar a las especies que viven aquí."
-  ],
-  "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/sitio/video/cop16-poster.webp",
-  "imagen_alt": "Bebedero de colibríes de La Finca Eco Hotel entre la neblina, con las cabañas al fondo",
-  "video": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/videos/sitio/cop16-la-finca.mp4",
-  "cta_texto": "Reservar ahora",
-  "cta_href": "/reservar"
+('home.instagram', $json${
+  "antetitulo": "Instagram",
+  "titulo": "La Finca, día a día",
+  "descripcion": "La neblina de las seis, la fogata de las nueve y los colibríes del bebedero. Así se ve esto cuando no hay nadie fotografiándolo para un folleto.",
+  "cta_texto": "Síguenos en Instagram",
+  "reel_url": "https://www.instagram.com/reel/DbO8x0SxnFX/",
+  "reel_alt": "Reel de La Finca Eco Hotel en Instagram: el bosque de niebla desde el mirador",
+  "fotos": [
+    {
+      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/08.webp",
+      "alt": "Pareja abrigada frente a la fogata encendida de La Finca, de noche",
+      "ancho": 941,
+      "alto": 1421
+    },
+    {
+      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-01/03.webp",
+      "alt": "Balcón de la Cabaña 01 con hamaca, mesa para dos y vista al bosque de niebla",
+      "ancho": 1086,
+      "alto": 1231
+    },
+    {
+      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/06.webp",
+      "alt": "Piscina de agua fría de La Finca con su chorrera, frente a las montañas y las nubes",
+      "ancho": 1086,
+      "alto": 1231
+    },
+    {
+      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/04.webp",
+      "alt": "Ducha de madera al aire libre de La Finca, en medio del bosque",
+      "ancho": 1086,
+      "alto": 1231
+    }
+  ]
 }$json$::jsonb),
 
 ('home.testimonios', $json${
@@ -218,43 +239,43 @@ insert into contenido (clave, valor) values
   "alojamientos": {
     "titulo": "Nuestras cabañas",
     "subtitulo": "Cinco cabañas independientes para dos, con cama doble, baño privado y vista al bosque de niebla.",
-    "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-03/02.webp",
+    "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/heroes/alojamientos.webp",
     "imagen_alt": "Balcón techado de la Cabaña 03 con hamaca y comedor, frente al bosque de niebla"
   },
   "experiencias": {
     "titulo": "Experiencias",
     "subtitulo": "Aniversarios y cumpleaños listos al llegar, y los detalles que se añaden a tu reserva.",
-    "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-05/05.webp",
-    "imagen_alt": "Chimenea encendida de la Cabaña 05, la única cabaña que tiene, con cojines y juegos de mesa"
+    "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/heroes/experiencias.webp",
+    "imagen_alt": "Jacuzzi privado de la Cabaña 02 bajo el árbol, rodeado de guadua, con toallas dobladas"
   },
   "conocenos": {
     "titulo": "Conócenos",
     "subtitulo": "Una reserva natural en el Km 18, con jacuzzi, turco, piscina de agua fría, restaurante y senderos.",
-    "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/06.webp",
-    "imagen_alt": "Piscina de agua fría de La Finca Eco Hotel con su chorrera, frente a las montañas y las nubes"
+    "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/heroes/conocenos.webp",
+    "imagen_alt": "Las cabañas de techo azul de La Finca Eco Hotel sobre la ladera, con los senderos y los jardines"
   },
   "galeria": {
     "titulo": "Galería",
     "subtitulo": "El bosque, las cabañas y los rincones de La Finca en imágenes.",
-    "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/07.webp",
+    "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/heroes/galeria.webp",
     "imagen_alt": "Mesa y sillas de piedra bajo las farolas de La Finca, entre la neblina del atardecer"
   },
   "faq": {
     "titulo": "Preguntas frecuentes",
     "subtitulo": "Lo que más nos preguntan antes de llegar: cómo llegar, el clima, las mascotas, los pagos y las reglas de la casa.",
-    "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-01/03.webp",
-    "imagen_alt": "Balcón de la Cabaña 01 con hamaca, mesa para dos y vista al bosque de niebla"
+    "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/heroes/faq.webp",
+    "imagen_alt": "Terraza de la Cabaña 02 con hamaca, hortensias y vista a las montañas"
   },
   "contacto": {
     "titulo": "Contacto",
     "subtitulo": "Escríbenos por WhatsApp: resolvemos dudas y confirmamos disponibilidad el mismo día.",
-    "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/08.webp",
-    "imagen_alt": "Pareja abrigada frente a la fogata encendida de La Finca Eco Hotel, de noche"
+    "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/heroes/contacto.webp",
+    "imagen_alt": "Chimenea encendida de la Cabaña 05 de La Finca Eco Hotel, con cojines y juegos de mesa"
   },
   "reservar": {
     "titulo": "Reserva tu estadía",
     "subtitulo": "Elige cabaña y plan, y confirmamos tu fecha por WhatsApp en pocos minutos.",
-    "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-01/01.webp",
+    "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/heroes/reservar.webp",
     "imagen_alt": "Habitación de la Cabaña 01 en el nivel superior, con cama doble bajo el techo de madera"
   }
 }$json$::jsonb),
@@ -348,8 +369,8 @@ insert into contenido (clave, valor) values
     "El lugar se pensó al revés de un hotel grande: cinco cabañas, mucho bosque y un equipo pequeño. Nicolás, nuestro anfitrión, recibe a cada pareja, coordina los turnos de jacuzzi y turco y resuelve lo que haga falta.",
     "Cuidar la reserva es parte del plan. La energía tiene respaldo de paneles solares, los vehículos se quedan en el parqueadero externo y el bosque solo se recorre por los senderos habilitados. Somos COP16, en alianza con la Cámara de Comercio de Cali."
   ],
-  "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/05.webp",
-  "imagen_alt": "Las cabañas de techo azul de La Finca Eco Hotel sobre la ladera, con los senderos y los jardines",
+  "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/02.webp",
+  "imagen_alt": "Corredor techado de La Finca con jardineras y baranda de madera, abierto al bosque de niebla del Km 18",
   "instalaciones_titulo": "Zonas comunes",
   "instalaciones_descripcion": "Todo esto está incluido con tu estadía, además de la cabaña.",
   "instalaciones": [
@@ -401,6 +422,20 @@ insert into contenido (clave, valor) values
     "Parqueadero externo vigilado 24 horas; los vehículos no ingresan a la reserva.",
     "El pin exacto y el video de llegada se envían al confirmar el pago."
   ]
+}$json$::jsonb),
+
+('conocenos.reconocimiento', $json${
+  "antetitulo": "Reconocimientos",
+  "titulo": "Somos COP16",
+  "parrafos": [
+    "Somos COP16 y, junto con la Cámara de Comercio de Cali, nos preparamos para este evento donde mostramos la mejor imagen de nuestra región al mundo entero.",
+    "La reserva funciona con respaldo de paneles solares y los vehículos se quedan en el parqueadero externo: dentro de La Finca solo se entra a pie, para no alterar a las especies que viven aquí."
+  ],
+  "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/sitio/video/cop16-poster.webp",
+  "imagen_alt": "Bebedero de colibríes de La Finca Eco Hotel entre la neblina, con las cabañas al fondo",
+  "video": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/videos/sitio/cop16-la-finca.mp4",
+  "cta_texto": "Reservar ahora",
+  "cta_href": "/reservar"
 }$json$::jsonb),
 
 ('galeria', $json${
