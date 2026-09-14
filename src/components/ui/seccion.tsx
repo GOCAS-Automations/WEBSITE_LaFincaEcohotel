@@ -24,6 +24,7 @@ type PropsSeccion = {
     | "crema"
     | "niebla"
     | "brote"
+    | "brote-banda"
     | "bosque"
     | "petroleo"
     | "oliva";
@@ -43,6 +44,15 @@ const FONDOS: Record<NonNullable<PropsSeccion["fondo"]>, string> = {
   niebla: "bg-niebla-100",
   /** El verde claro de marca, en su tono más pálido. */
   brote: "bg-brote-50",
+  /**
+   * El verde claro OFICIAL del manual, `#E8F4D9`, sin diluir.
+   *
+   * Es una banda, no un fondo de uso general: sirve para que una sección se
+   * despegue de sus vecinas cuando hay tres claras seguidas y el sitio se lee
+   * como una sola masa blanca. Usarla dos veces en la misma página la
+   * convierte en otro fondo más y deja de separar nada.
+   */
+  "brote-banda": "bg-brote-100",
   bosque: "bg-bosque-900 text-crema-50",
   petroleo: "bg-petroleo-800 text-crema-50",
   oliva: "bg-oliva-700 text-crema-50",

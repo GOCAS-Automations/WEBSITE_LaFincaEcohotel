@@ -4,8 +4,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState, type FormEvent } from "react";
 
 import { clasesBoton } from "@/components/ui/boton";
-import { validarEstadia } from "@/lib/reglas-reserva";
-import { contarNoches } from "@/lib/utils/formato";
+import { nochesDe, validarRango } from "@/lib/reserva/noches";
 
 import { CalendarioFechas } from "./calendario-fechas";
 import { IconoFlecha, IconoLlave } from "./iconos";
@@ -41,13 +40,14 @@ import { IconoFlecha, IconoLlave } from "./iconos";
  * · Elegir la llegada empuja la salida al día siguiente si había quedado antes.
  *   Corregirle la fecha al visitante en silencio es mejor que enseñarle un
  *   error que él no provocó.
- * · Las fechas YA NO son dos `input type="date"`. El campo nativo no sabe
- *   apagar días sueltos —solo entiende `min` y `max`— y La Finca necesita
- *   apagar los fines de semana o los días entre semana según el plan, y no
- *   dejar armar una estadía que mezcle los dos bloques. Ahora es
- *   `CalendarioFechas`, escrito a mano. De paso los dos campos pasan a ser
- *   UNO, que es lo que devuelve al módulo el alto que tenía antes: en el hero
- *   de un teléfono cada línea cuenta.
+ * · Las fechas NO son dos `input type="date"`. El campo nativo no sabe marcar
+ *   los festivos de Colombia ni distinguir las noches entre semana de las de
+ *   fin de semana, que es de lo que depende el precio. Es `CalendarioFechas`,
+ *   escrito a mano. De paso los dos campos pasan a ser UNO, que es lo que
+ *   devuelve al módulo el alto que tenía antes: en el hero de un teléfono cada
+ *   línea cuenta.
+ * · **Ningún día se apaga por culpa de un plan.** Aquí ni siquiera se pregunta
+ *   el plan: el plan sale de la noche (ver `src/lib/reserva/noches.ts`).
  */
 
 export type CabanaOpcion = { slug: string; nombre: string };
@@ -60,8 +60,9 @@ type Props = {
   ctaTexto?: string;
 };
 
+/* `min-h-11` = 44 px: el mínimo que se acierta con el pulgar sin ampliar. */
 const CLASE_CAMPO =
-  "w-full rounded-[var(--radius-suave)] border border-crema-300/90 bg-white px-3.5 py-3 " +
+  "w-full min-h-11 rounded-[var(--radius-suave)] border border-crema-300/90 bg-white px-3.5 py-3 " +
   "font-titulo text-[0.95rem] font-medium text-petroleo-900 shadow-[inset_0_1px_2px_rgba(41,37,33,0.04)] " +
   "transition-colors duration-200 outline-none focus:border-petroleo-500 hover:border-crema-400";
 
@@ -80,21 +81,21 @@ export function ModuloReserva({
   const [salida, setSalida] = useState("");
 
   /*
-    Aquí NO se pasa restricción de plan: en la portada todavía no se ha elegido
-    plan. El calendario sí impide, con plan o sin él, armar una estadía mixta
-    (jueves→sábado): esa regla no depende del plan, sino de que el hotel no
-    vende esas noches juntas en línea.
+    Aquí NO hay plan, y tampoco hace falta: el plan sale de las noches, no al
+    revés (§3 de `docs/DATOS_CLIENTE.md`). Lo único que se valida es el rango en
+    sí —que la salida sea posterior a la llegada—. Ninguna combinación de fechas
+    está prohibida, incluidas las estadías mixtas jueves→sábado.
   */
   const validacion = useMemo(() => {
     if (!entrada || !salida) return null;
-    return validarEstadia(entrada, salida);
+    return validarRango(entrada, salida);
   }, [entrada, salida]);
 
-  const fechasInvalidas = Boolean(validacion && !validacion.valida);
+  const fechasInvalidas = Boolean(validacion && !validacion.valido);
 
   const noches = useMemo(() => {
-    if (!entrada || !salida || fechasInvalidas) return 0;
-    return contarNoches(entrada, salida);
+    if (!entrada || !salida || fechasInvalidas) return [];
+    return nochesDe(entrada, salida);
   }, [entrada, salida, fechasInvalidas]);
 
   function enviar(evento: FormEvent<HTMLFormElement>) {
@@ -132,8 +133,12 @@ export function ModuloReserva({
           aria-live="polite"
           role="status"
         >
-          {noches > 0
-            ? `${noches} ${noches === 1 ? "noche" : "noches"}`
+          {/* Solo la cuenta, no el desglose por tipo de noche: este módulo vive
+              DENTRO del hero y tiene que caber en el primer visor de un
+              teléfono. El desglose entero lo enseña `/reservar`, que es adonde
+              lleva el botón. */}
+          {noches.length > 0
+            ? `${noches.length} ${noches.length === 1 ? "noche" : "noches"}`
             : "Sin intermediarios ni comisiones"}
         </p>
       </div>

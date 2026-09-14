@@ -58,12 +58,24 @@ export async function PaginaReservar() {
       getContacto(),
     ]);
 
+  /*
+    LO QUE NECESITA EL MOTOR DE PRECIOS.
+    No basta con el nombre del plan y un número: para saber qué noche cubre cada
+    tarifa hace falta `tipo` y `dias_aplica` del plan, y para cotizar a una sola
+    persona hace falta `precio_noche_1_persona`. Ver
+    `src/lib/reserva/cotizacion.ts`.
+  */
   const cabanas: CabanaSeleccionable[] = alojamientos.map((alojamiento) => ({
     slug: alojamiento.slug,
     nombre: alojamiento.nombre,
     tarifas: alojamiento.tarifas.map((tarifa) => ({
-      plan: tarifa.plan.nombre,
-      precio: tarifa.precio_noche,
+      plan: {
+        nombre: tarifa.plan.nombre,
+        tipo: tarifa.plan.tipo,
+        dias_aplica: tarifa.plan.dias_aplica,
+      },
+      precio_noche: tarifa.precio_noche,
+      precio_noche_1_persona: tarifa.precio_noche_1_persona,
     })),
   }));
 
@@ -94,9 +106,19 @@ export async function PaginaReservar() {
           espejo
         />
 
-        <div className="relative z-10 grid items-center gap-10 lg:grid-cols-[1fr_1.05fr] lg:gap-14">
-          <Revelar>
-            <div className="relative aspect-4/3 overflow-hidden rounded-[var(--radius-generoso)] rounded-tl-[8rem] bg-crema-200 shadow-[var(--shadow-elevada)] sm:aspect-16/10 lg:aspect-4/3">
+        {/*
+          LA FOTO Y LOS PASOS, A LA MISMA ALTURA.
+          Antes la foto tenía proporción fija (`aspect-4/3`) y la columna de los
+          tres pasos crecía con su texto: en escritorio quedaban descuadradas
+          arriba o abajo según lo que hubiera escrito el hotel en el panel.
+          Ahora la fila es `items-stretch` y la foto pierde su proporción a
+          partir de `lg`: su alto lo fija la columna de al lado, y `object-cover`
+          con `object-position: right top` recorta lo que sobre SIN tocar el
+          sello de marca de la esquina (ver `src/lib/fotos.ts`).
+        */}
+        <div className="relative z-10 grid items-center gap-10 lg:grid-cols-[1fr_1.05fr] lg:items-stretch lg:gap-14">
+          <Revelar className="lg:h-full">
+            <div className="relative aspect-4/3 overflow-hidden rounded-[var(--radius-generoso)] rounded-tl-[8rem] bg-crema-200 shadow-[var(--shadow-elevada)] sm:aspect-16/10 lg:aspect-auto lg:h-full lg:min-h-[24rem]">
               <Image
                 src={FOTO.panoramica}
                 alt="Las cabañas de techo azul de La Finca Eco Hotel sobre la ladera, entre el bosque de niebla"
@@ -109,7 +131,7 @@ export async function PaginaReservar() {
             </div>
           </Revelar>
 
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col justify-center gap-6">
             <p className="text-base leading-relaxed text-crema-700 sm:text-lg">
               {contenido.intro}
             </p>

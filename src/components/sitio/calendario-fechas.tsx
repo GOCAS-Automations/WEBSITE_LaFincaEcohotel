@@ -9,12 +9,14 @@ import {
   useState,
 } from "react";
 
-import { nombreDelFestivo, tipoDeNoche } from "@/lib/festivos-colombia";
 import {
-  nochePermitida,
-  validarEstadia,
-  type RestriccionPlan,
-} from "@/lib/reglas-reserva";
+  nochesDe,
+  resumenEnPalabras,
+  tipoDeNoche,
+  validarRango,
+  type TipoNoche,
+} from "@/lib/reserva/noches";
+import { nombreDelFestivo } from "@/lib/festivos-colombia";
 import { formatearFechaCorta } from "@/lib/utils/formato";
 
 import { IconoCalendario } from "./iconos";
@@ -25,14 +27,26 @@ import { IconoCalendario } from "./iconos";
  * ---------------------------------------------------------------------------
  * POR QUÉ NO ES UN `<input type="date">`
  * ---------------------------------------------------------------------------
- * El campo nativo es cómodo y aquí no sirve, por un motivo concreto: **no sabe
- * deshabilitar días sueltos**. Solo entiende `min`, `max` y `step`. La Finca
- * necesita apagar los viernes, sábados, domingos y festivos cuando el visitante
- * ha elegido el plan Entre Semana, y apagar los lunes a jueves cuando ha
- * elegido Estándar o Premium (§3 de `docs/DATOS_CLIENTE.md`). Con el campo
- * nativo, la única alternativa es dejar elegir cualquier día y rechazarlo
- * después: el visitante escoge un sábado, se ilusiona y recibe un error. Eso no
- * es validar, es tender una trampa.
+ * El campo nativo no sabe pintar información sobre los días: La Finca necesita
+ * marcar los festivos de Colombia y distinguir de un vistazo las noches entre
+ * semana de las de fin de semana, porque de eso depende el precio
+ * (§3 de `docs/DATOS_CLIENTE.md`). Con el campo nativo, el visitante elige a
+ * ciegas y descubre el precio después.
+ *
+ * ---------------------------------------------------------------------------
+ * ⚠️ AQUÍ NO SE APAGA NINGÚN DÍA POR CULPA DE UN PLAN
+ * ---------------------------------------------------------------------------
+ * La versión anterior deshabilitaba los viernes y sábados con el plan Entre
+ * Semana elegido, y limitaba la salida para que la estadía no mezclara los dos
+ * bloques. Eso producía el fallo que reportó Cesar: con ciertas fechas puestas
+ * ya no se podía cambiar de plan, porque plan y fechas se bloqueaban entre sí.
+ *
+ * El modelo real es el contrario (§3 de `docs/DATOS_CLIENTE.md`): **el plan es
+ * una consecuencia de la noche**. Cualquier rango de fechas es válido; el motor
+ * le pone a cada noche la tarifa que le toca. Lo único que sigue apagado es el
+ * pasado. Si llega una PREFERENCIA de tipo de noche —alguien que pulsó «Entre
+ * Semana» en la portada— se resalta, se explica y se puede quitar, pero nunca
+ * impide elegir.
  *
  * Tampoco entra una librería: un calendario de mes es una tabla de siete
  * columnas y aritmética de días. Lo caro de un calendario no es dibujarlo, es
@@ -50,9 +64,9 @@ import { IconoCalendario } from "./iconos";
  *   saltan semana, `Inicio`/`Fin` van al principio y al final de la semana,
  *   `RePág`/`AvPág` cambian de mes. Es el patrón que espera quien navega con
  *   teclado, y evita que el tabulador tenga que pasar por 42 celdas.
- * · Cada día anuncia su fecha completa y, si está apagado, POR QUÉ
- *   (`aria-label`: «sábado 20 de septiembre — el plan Entre Semana no cubre
- *   noches de fin de semana»).
+ * · Cada día anuncia su fecha completa, si es festivo y qué tipo de noche es
+ *   (`aria-label`: «sábado 19 de septiembre — noche de fin de semana o
+ *   festivo»), que es justo lo que decide el precio.
  * · El foco NO se escapa del panel mientras está abierto, `Escape` lo cierra y
  *   devuelve el foco al botón.
  * · Un `aria-live="polite"` anuncia la selección y los errores.
@@ -165,10 +179,18 @@ export type PropsCalendario = {
   alCambiar: (entrada: string, salida: string) => void;
   /** Fecha mínima seleccionable (`AAAA-MM-DD`), calculada en el servidor. */
   hoy: string;
-  /** Restricción del plan elegido. `null` = todavía no hay plan. */
-  restriccion?: RestriccionPlan | null;
-  /** Nombre del plan, para explicar por qué un día está apagado. */
-  nombrePlan?: string | null;
+  /**
+   * PREFERENCIA de tipo de noche, no restricción.
+   *
+   * Quien llega desde la portada habiendo pulsado un plan trae una idea de qué
+   * noches busca. Se resaltan esos días para ayudarle a encontrarlos; los demás
+   * siguen siendo perfectamente elegibles.
+   */
+  preferencia?: TipoNoche | null;
+  /** Nombre del plan del que salió la preferencia, para poder nombrarlo. */
+  nombrePreferencia?: string | null;
+  /** Si se pasa, se muestra un enlace para quitar la preferencia. */
+  alQuitarPreferencia?: () => void;
   /** Nombres de los campos ocultos, para que el `<form>` funcione sin JS. */
   nombreEntrada?: string;
   nombreSalida?: string;
@@ -182,8 +204,9 @@ export function CalendarioFechas({
   salida,
   alCambiar,
   hoy,
-  restriccion = null,
-  nombrePlan = null,
+  preferencia = null,
+  nombrePreferencia = null,
+  alQuitarPreferencia,
   nombreEntrada = "entrada",
   nombreSalida = "salida",
   compacto = false,
@@ -234,61 +257,27 @@ export function CalendarioFechas({
   /* --- Reglas ----------------------------------------------------------- */
 
   /**
-   * Tope de la selección de salida.
+   * Qué se puede pulsar.
    *
-   * Todas las noches de una estadía tienen que ser del mismo tipo (no se venden
-   * estancias mixtas en línea, ver `reglas-reserva.ts`). Así que, una vez
-   * elegida la llegada, la salida puede llegar como mucho hasta la primera
-   * noche que cambie de tipo.
+   * Solo dos cosas apagan un día, y ninguna tiene que ver con el plan:
+   * **el pasado** y, mientras se elige la salida, **los días anteriores a la
+   * llegada**. Una estadía mixta (jueves→sábado) es perfectamente vendible: se
+   * desglosa noche por noche. Ver `src/lib/reserva/noches.ts`.
+   *
+   * El tope de un año evita que alguien arme por accidente una estadía absurda;
+   * `validarRango()` lo explica en español si llega a pasar.
    */
-  const topeSalida = useMemo(() => {
-    if (!entrada) return null;
-    const tipo = tipoDeNoche(entrada);
-    let cursor = entrada;
-    /* Un año de margen: nadie reserva más y evita un bucle infinito si algo
-       inesperado pasara con las fechas. */
-    for (let i = 0; i < 366; i++) {
-      const siguiente = sumarDias(cursor, 1);
-      if (tipoDeNoche(siguiente) !== tipo) return siguiente;
-      cursor = siguiente;
-    }
-    return sumarDias(entrada, 366);
-  }, [entrada]);
-
   const estadoDeDia = useCallback(
     (dia: string): { activable: boolean; motivo: string | null } => {
       if (dia < hoy) return { activable: false, motivo: "ya pasó" };
 
-      if (eligiendoSalida) {
-        if (dia <= entrada) {
-          return { activable: false, motivo: "es anterior a la llegada" };
-        }
-        if (topeSalida && dia > topeSalida) {
-          return {
-            activable: false,
-            motivo:
-              "la estadía mezclaría noches de entre semana con noches de fin de semana",
-          };
-        }
-        return { activable: true, motivo: null };
-      }
-
-      if (!nochePermitida(dia, restriccion)) {
-        const nombre = nombrePlan ? `el plan ${nombrePlan}` : "el plan elegido";
-        return {
-          activable: false,
-          motivo:
-            restriccion === "entre-semana"
-              ? `${nombre} solo cubre noches de lunes a jueves`
-              : restriccion === "sin-noches"
-                ? `${nombre} no incluye hospedaje`
-                : `${nombre} solo cubre noches de viernes a domingo y festivos`,
-        };
+      if (eligiendoSalida && dia <= entrada) {
+        return { activable: false, motivo: "es anterior a la llegada" };
       }
 
       return { activable: true, motivo: null };
     },
-    [hoy, eligiendoSalida, entrada, topeSalida, restriccion, nombrePlan],
+    [hoy, eligiendoSalida, entrada],
   );
 
   /* --- Selección -------------------------------------------------------- */
@@ -353,8 +342,15 @@ export function CalendarioFechas({
 
   const validacion = useMemo(() => {
     if (!entrada || !salida) return null;
-    return validarEstadia(entrada, salida, restriccion);
-  }, [entrada, salida, restriccion]);
+    return validarRango(entrada, salida);
+  }, [entrada, salida]);
+
+  /** «1 noche entre semana y 2 noches de fin de semana o festivo». */
+  const resumenNoches = useMemo(() => {
+    if (!entrada || !salida) return null;
+    const noches = nochesDe(entrada, salida);
+    return noches.length ? resumenEnPalabras(noches) : null;
+  }, [entrada, salida]);
 
   const resumen =
     entrada && salida
@@ -386,7 +382,8 @@ export function CalendarioFechas({
         aria-expanded={abierto}
         aria-controls={idPanel}
         className={[
-          "flex w-full items-center gap-2 rounded-[var(--radius-suave)] border border-crema-300/90 bg-white text-left",
+          /* `min-h-11` = 44 px, el mínimo táctil. */
+          "flex w-full min-h-11 items-center gap-2 rounded-[var(--radius-suave)] border border-crema-300/90 bg-white text-left",
           "font-titulo font-medium text-petroleo-900 shadow-[inset_0_1px_2px_rgba(41,37,33,0.04)]",
           "transition-colors duration-200 outline-none hover:border-crema-400 focus-visible:border-petroleo-500",
           compacto ? "px-3.5 py-3 text-[0.95rem]" : "px-4 py-3 text-sm",
@@ -398,14 +395,14 @@ export function CalendarioFechas({
 
       {/* Estado y errores, para lector de pantalla y para la vista. */}
       <p id={idAviso} aria-live="polite" className="sr-only">
-        {validacion && !validacion.valida
+        {validacion && !validacion.valido
           ? validacion.motivo
           : entrada && salida
-            ? `Del ${formatearFechaCorta(entrada)} al ${formatearFechaCorta(salida)}.`
+            ? `Del ${formatearFechaCorta(entrada)} al ${formatearFechaCorta(salida)}. ${resumenNoches ?? ""}`
             : ""}
       </p>
 
-      {validacion && !validacion.valida ? (
+      {validacion && !validacion.valido ? (
         <p className="mt-2 text-sm leading-relaxed font-medium text-red-700">
           {validacion.motivo}
         </p>
@@ -440,7 +437,7 @@ export function CalendarioFechas({
               type="button"
               onClick={() => setMes(sumarMeses(mes, -1))}
               disabled={!mesAnteriorPermitido}
-              className="rounded-full p-2 text-petroleo-700 transition-colors duration-200 hover:bg-crema-100 disabled:pointer-events-none disabled:opacity-35"
+              className="flex size-11 shrink-0 items-center justify-center rounded-full text-petroleo-700 transition-colors duration-200 hover:bg-crema-100 disabled:pointer-events-none disabled:opacity-35"
             >
               <span className="sr-only">Mes anterior</span>
               <Flecha className="size-4 rotate-180" />
@@ -454,7 +451,7 @@ export function CalendarioFechas({
             <button
               type="button"
               onClick={() => setMes(sumarMeses(mes, 1))}
-              className="rounded-full p-2 text-petroleo-700 transition-colors duration-200 hover:bg-crema-100"
+              className="flex size-11 shrink-0 items-center justify-center rounded-full text-petroleo-700 transition-colors duration-200 hover:bg-crema-100"
             >
               <span className="sr-only">Mes siguiente</span>
               <Flecha className="size-4" />
@@ -463,13 +460,37 @@ export function CalendarioFechas({
 
           <p className="mb-2 text-xs leading-snug text-crema-600">
             {eligiendoSalida
-              ? "Ahora elige el día de salida."
-              : restriccion === "entre-semana"
-                ? "Con este plan puedes dormir de lunes a jueves."
-                : restriccion === "fin-de-semana"
-                  ? "Con este plan puedes dormir de viernes a domingo y festivos."
-                  : "Elige el día de llegada."}
+              ? "Ahora elige el día de salida. Cuentan las noches, no los días: si sales el sábado, el sábado no se cobra."
+              : "Elige el día de llegada. Cualquier fecha vale: a cada noche le ponemos su tarifa."}
           </p>
+
+          {/*
+            LA PREFERENCIA SE EXPLICA Y SE PUEDE QUITAR.
+            Quien pulsó un plan en la portada trae una idea de qué noches busca
+            y aquí se le resaltan. Pero es una AYUDA, no una puerta: los demás
+            días siguen activos y el enlace la retira de un toque.
+          */}
+          {preferencia ? (
+            <p className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-[var(--radius-suave)] bg-brote-100/70 px-3 py-2 text-xs leading-snug text-oliva-800">
+              <span>
+                Te resaltamos las{" "}
+                {preferencia === "entre_semana"
+                  ? "noches de lunes a jueves"
+                  : "noches de viernes a domingo y festivos"}
+                {nombrePreferencia ? `, las del plan ${nombrePreferencia}` : ""}.
+                Puedes elegir cualquier otra.
+              </span>
+              {alQuitarPreferencia ? (
+                <button
+                  type="button"
+                  onClick={alQuitarPreferencia}
+                  className="font-titulo font-semibold text-petroleo-700 underline underline-offset-4"
+                >
+                  Quitar
+                </button>
+              ) : null}
+            </p>
+          ) : null}
 
           <table role="grid" className="w-full border-collapse">
             <thead>
@@ -502,6 +523,7 @@ export function CalendarioFechas({
                       salida={salida}
                       foco={foco}
                       estado={estadoDeDia(dia)}
+                      preferencia={preferencia}
                       alElegir={elegir}
                       refFoco={dia === foco ? celdaEnfocada : undefined}
                     />
@@ -511,6 +533,18 @@ export function CalendarioFechas({
             </tbody>
           </table>
 
+          {/*
+            LA CUENTA DE NOCHES, DENTRO DEL PANEL.
+            Es la información que decide el precio y antes había que cerrar el
+            calendario para verla. Aquí se lee mientras se elige: «1 noche entre
+            semana y 2 noches de fin de semana o festivo».
+          */}
+          {resumenNoches ? (
+            <p className="mt-3 rounded-[var(--radius-suave)] bg-petroleo-50 px-3 py-2 text-xs leading-snug font-medium text-petroleo-800">
+              {resumenNoches}
+            </p>
+          ) : null}
+
           <div className="mt-3 flex items-center justify-between gap-3 border-t border-crema-200 pt-3">
             <button
               type="button"
@@ -518,7 +552,7 @@ export function CalendarioFechas({
                 alCambiar("", "");
                 setFoco(hoy);
               }}
-              className="font-titulo text-xs font-semibold text-crema-600 underline-offset-4 hover:text-petroleo-800 hover:underline"
+              className="min-h-11 font-titulo text-xs font-semibold text-crema-600 underline-offset-4 hover:text-petroleo-800 hover:underline"
             >
               Borrar fechas
             </button>
@@ -528,7 +562,7 @@ export function CalendarioFechas({
                 setAbierto(false);
                 disparador.current?.focus();
               }}
-              className="font-titulo text-xs font-semibold text-petroleo-700 underline-offset-4 hover:underline"
+              className="min-h-11 px-3 font-titulo text-xs font-semibold text-petroleo-700 underline-offset-4 hover:underline"
             >
               Listo
             </button>
@@ -551,6 +585,7 @@ function Celda({
   salida,
   foco,
   estado,
+  preferencia,
   alElegir,
   refFoco,
 }: {
@@ -560,6 +595,7 @@ function Celda({
   salida: string;
   foco: string;
   estado: { activable: boolean; motivo: string | null };
+  preferencia: TipoNoche | null;
   alElegir: (dia: string) => void;
   refFoco?: React.RefObject<HTMLButtonElement | null>;
 }) {
@@ -570,10 +606,19 @@ function Celda({
     entrada && salida && dia > entrada && dia < salida,
   );
   const festivo = nombreDelFestivo(dia);
+  const tipo = tipoDeNoche(dia);
+  const seleccionado = esEntrada || esSalida;
+  /* La preferencia resalta, no apaga: el día sigue siendo pulsable. */
+  const preferido = preferencia !== null && tipo === preferencia;
 
   const etiqueta = [
     formateadorDiaLargo.format(aUTC(dia)),
     festivo ? `(${festivo})` : null,
+    estado.activable
+      ? tipo === "entre_semana"
+        ? "— noche entre semana"
+        : "— noche de fin de semana o festivo"
+      : null,
     estado.motivo ? `— ${estado.motivo}` : null,
   ]
     .filter(Boolean)
@@ -589,25 +634,28 @@ function Celda({
         tabIndex={dia === foco ? 0 : -1}
         disabled={!estado.activable}
         aria-label={etiqueta}
-        aria-current={esEntrada || esSalida ? "date" : undefined}
+        aria-current={seleccionado ? "date" : undefined}
         onClick={() => alElegir(dia)}
         className={[
-          "flex h-9 w-full items-center justify-center rounded-[10px] text-sm transition-colors duration-150",
+          /* 44 px de alto: es el mínimo que se acierta con el pulgar sin
+             ampliar, y el calendario se usa sobre todo desde el teléfono. */
+          "relative flex h-11 w-full items-center justify-center rounded-[10px] text-sm transition-colors duration-150",
           "disabled:cursor-not-allowed disabled:text-crema-400 disabled:line-through disabled:opacity-70",
           deOtroMes ? "text-crema-400" : "text-petroleo-900",
-          esEntrada || esSalida
+          seleccionado
             ? "bg-petroleo-600 font-bold text-white hover:bg-petroleo-700"
             : enRango
               ? "bg-petroleo-50 font-semibold text-petroleo-800"
-              : "hover:bg-crema-100",
-          /* El festivo se marca con un punto, no con color: el color ya está
-             ocupado por la selección y dos códigos en la misma casilla no se
-             distinguen. */
-          festivo && !esEntrada && !esSalida ? "relative" : "",
+              : preferido
+                ? "bg-brote-100 font-semibold hover:bg-brote-200"
+                : "hover:bg-crema-100",
         ].join(" ")}
       >
         {Number(dia.slice(8, 10))}
-        {festivo && !esEntrada && !esSalida ? (
+        {/* El festivo se marca con un punto, no con color: el color ya está
+            ocupado por la selección y dos códigos en la misma casilla no se
+            distinguen. */}
+        {festivo && !seleccionado ? (
           <span
             aria-hidden="true"
             className="absolute bottom-1 left-1/2 size-1 -translate-x-1/2 rounded-full bg-oliva-500"

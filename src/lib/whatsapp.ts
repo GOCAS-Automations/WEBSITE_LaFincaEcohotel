@@ -50,18 +50,39 @@ export function mensajePlan(nombre: string): string {
   return `¡Hola! Vengo del sitio web de La Finca Eco Hotel. Me interesa el plan ${nombre} y quisiera consultar disponibilidad y precio.`;
 }
 
+/** Una noche del desglose, ya con la fecha escrita en español. */
+export type NocheDelMensaje = {
+  /** Fecha ya formateada («12 de marzo de 2026»). */
+  fecha: string;
+  /** Plan que se le aplicó a esa noche. */
+  plan: string;
+  /** Precio de esa noche, entero COP. */
+  precio: number;
+  /** Nombre del festivo, si esa noche lo es. */
+  festivo?: string | null;
+};
+
 export type SolicitudReserva = {
   /** Nombre de la cabaña, si el visitante ya eligió una. */
   cabana?: string | null;
-  /** Nombre del plan, si ya eligió uno. */
+  /** Los planes que intervienen, ya juntados («Entre Semana + Estándar»). */
   plan?: string | null;
   /** Fechas `AAAA-MM-DD`, si las indicó. */
   entrada?: FechaISO | null;
   salida?: FechaISO | null;
-  /** Precio por noche del plan elegido, en COP enteros. */
-  precioNoche?: number | null;
   /** Cuántos adultos. Siempre adultos: La Finca no recibe menores de edad. */
   adultos?: number | null;
+  /**
+   * El desglose noche por noche que calculó el motor.
+   *
+   * Va ENTERO en el mensaje: en La Finca el precio cambia de una noche a otra
+   * —una estadía de jueves a domingo mezcla tarifa de entre semana con tarifa
+   * de fin de semana— y el equipo necesita ver de dónde sale el total para
+   * poder confirmarlo sin rehacer la cuenta.
+   */
+  desglose?: NocheDelMensaje[] | null;
+  /** Total estimado, entero COP. */
+  total?: number | null;
 };
 
 /**
@@ -71,14 +92,19 @@ export type SolicitudReserva = {
  * un mensaje que anuncia "del null al null" es peor que uno corto. Las fechas
  * van en formato largo ("12 de marzo de 2026") porque un "12/03" se lee
  * distinto según el país de quien escribe.
+ *
+ * El desglose va con saltos de línea de verdad (`\n`): `encodeURIComponent`
+ * los convierte en `%0A` y WhatsApp los respeta, así que el mensaje llega
+ * formateado como una lista y no como un párrafo corrido.
  */
 export function mensajeReserva({
   cabana,
   plan,
   entrada,
   salida,
-  precioNoche,
   adultos,
+  desglose,
+  total,
 }: SolicitudReserva): string {
   const partes: string[] = [
     "¡Hola! Vengo del sitio web de La Finca Eco Hotel y quiero reservar.",
@@ -98,10 +124,23 @@ export function mensajeReserva({
     partes.push(`Fecha de llegada: ${formatearFecha(entrada)}.`);
   }
 
-  if (typeof precioNoche === "number" && precioNoche > 0) {
-    partes.push(`Tarifa publicada: ${formatearCOP(precioNoche)} por noche.`);
+  const cabecera = partes.join(" ");
+  const bloques: string[] = [cabecera];
+
+  if (desglose && desglose.length > 0) {
+    const lineas = desglose.map((noche) => {
+      const cuando = noche.festivo
+        ? `${noche.fecha} (${noche.festivo})`
+        : noche.fecha;
+      return `• ${cuando} — ${noche.plan}: ${formatearCOP(noche.precio)}`;
+    });
+    bloques.push(["Noche por noche:", ...lineas].join("\n"));
   }
 
-  partes.push("¿Me confirman disponibilidad y cómo hago el pago?");
-  return partes.join(" ");
+  if (typeof total === "number" && total > 0) {
+    bloques.push(`Total estimado: ${formatearCOP(total)}.`);
+  }
+
+  bloques.push("¿Me confirman disponibilidad y cómo hago el pago?");
+  return bloques.join("\n\n");
 }

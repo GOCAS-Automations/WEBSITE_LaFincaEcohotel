@@ -582,9 +582,12 @@ export async function PaginaInicio() {
               borde="superior"
               alto={110}
             />
+            {/* El relleno es el color de la sección VECINA: la de experiencias
+                pasó de blanco a crema al desmontarse la masa blanca del final
+                de la portada. */}
             <CorteOrganico
               perfil="loma"
-              color="fill-white"
+              color="fill-crema-50"
               borde="inferior"
               alto={96}
               espejo
@@ -636,13 +639,40 @@ export async function PaginaInicio() {
       ) : null}
 
       {/* ---------------------------------------------------------------- 6 */}
+      {/*
+        LAS TRES ÚLTIMAS SECCIONES CLARAS, DESMONTADAS.
+
+        Experiencias, Nuestra esencia e Instagram se leían como una sola masa
+        blanca —y ni siquiera compartían el mismo blanco: dos eran `#ffffff` y
+        la del medio, crema—. Ahora cada una tiene identidad propia, con
+        recursos del manual y sin saturar:
+
+          · **Experiencias** — crema, el fondo cálido base del sitio, con la
+            rama botánica asomando por un lateral.
+          · **Nuestra esencia** — el verde claro oficial `#E8F4D9` sin diluir,
+            como una BANDA, con las dos ondas orgánicas que la separan de sus
+            vecinas. Es la única sección de la portada que lo usa: repetirlo lo
+            convertiría en otro fondo más.
+          · **Instagram** — blanco, con el patrón de colibríes que ya tenía.
+
+        Crema → verde de marca → blanco: tres tonos distintos, ninguno
+        estridente, y el ojo vuelve a distinguir dónde acaba una y empieza otra.
+      */}
       {experiencias.length > 0 ? (
-        <Seccion fondo="blanco" id="experiencias" className="relative">
-          {/*
-            Segundo colibrí, en el borde del bloque de experiencias. Va detrás
-            del contenido (`-z-0`) y con muy poca opacidad: si se nota como
-            "ilustración", sobra.
-          */}
+        <Seccion
+          fondo="crema"
+          id="experiencias"
+          className="relative overflow-hidden"
+          /* La rama es un elemento posicionado y, sin esto, pintaría POR ENCIMA
+             del contenido estático: al 15 % no se ve, pero está delante. */
+          claseContenedor="relative z-10"
+        >
+          {/* La rama del manual, asomando por la izquierda. Decorativa y a muy
+              baja opacidad: si se nota como «ilustración», sobra. */}
+          <RamaBotanica
+            className="absolute top-8 left-[-6%] hidden w-44 text-oliva-500/15 lg:block"
+            ritmo="lenta"
+          />
 
           <EncabezadoSeccion
             antetitulo={seccionExperiencias.antetitulo}
@@ -658,7 +688,7 @@ export async function PaginaInicio() {
                 retraso={indice * 90}
                 className="h-full"
               >
-                <article className="flex h-full flex-col gap-3 rounded-[var(--radius-generoso)] rounded-tl-[3.5rem] bg-crema-50 p-6 ring-1 ring-crema-200/70 transition-shadow duration-300 hover:shadow-[var(--shadow-tarjeta)] sm:p-7">
+                <article className="flex h-full flex-col gap-3 rounded-[var(--radius-generoso)] rounded-tl-[3.5rem] bg-white p-6 ring-1 ring-crema-200/70 transition-shadow duration-300 hover:shadow-[var(--shadow-tarjeta)] sm:p-7">
                   <IconoHoja className="size-6 text-oliva-500" />
                   <h3 className="font-titulo text-xl font-bold text-petroleo-900">
                     {experiencia.nombre}
@@ -701,8 +731,33 @@ export async function PaginaInicio() {
       ) : null}
 
       {/* ---------------------------------------------------------------- 7 */}
-      <Seccion fondo="crema" className="relative overflow-hidden">
-        <Neblina tono="verde" className="opacity-70" />
+      <Seccion
+        fondo="brote-banda"
+        espacio="amplio"
+        /*
+          LA BANDA VERDE, CON LAS DOS ONDAS DENTRO.
+          `CorteOrganico` se pinta ENCIMA de la sección con el color de la
+          VECINA (crema arriba, blanco abajo), así que el verde queda recortado
+          por la forma en vez de llevar un borde recto. El relleno vertical
+          extra es el hueco de las dos ondas: sin él, el antetítulo se les monta.
+        */
+        className="relative isolate overflow-hidden pt-28 pb-28 sm:pt-32 sm:pb-32 lg:pt-36 lg:pb-36"
+      >
+        <CorteOrganico
+          perfil="bruma"
+          color="fill-crema-50"
+          borde="superior"
+          alto={72}
+        />
+        <CorteOrganico
+          perfil="loma"
+          color="fill-white"
+          borde="inferior"
+          alto={72}
+          espejo
+        />
+
+        <Neblina tono="verde" className="opacity-50" />
 
         <div className="relative z-10 grid items-center gap-10 lg:grid-cols-[1fr_1.1fr] lg:gap-16">
           <Revelar className="flex flex-col gap-6">
@@ -730,20 +785,19 @@ export async function PaginaInicio() {
           {esencia.imagenes.length > 0 ? (
             <Revelar retraso={120}>
               {/*
-                Tres fotos con radios asimétricos y alturas distintas: la
-                primera manda, las otras dos se descuelgan una respecto de la
-                otra. La rejilla sigue existiendo, pero deja de verse.
+                TRES FOTOS ALINEADAS ARRIBA Y ABAJO.
+                Las dos de la fila inferior iban escalonadas (`mt-8` en la
+                tercera). El gesto se leía como un fallo de maquetación, no como
+                una decisión: Cesar lo señaló. Ahora comparten fila de rejilla y
+                `h-full`, así que empiezan y acaban exactamente a la misma
+                altura. La personalidad la ponen los radios asimétricos, que
+                siguen ahí y no descuadran nada.
               */}
-              <ul className="grid grid-cols-2 gap-4">
+              <ul className="grid grid-cols-2 items-stretch gap-4">
                 {esencia.imagenes.slice(0, 3).map((imagen, indice) => (
                   <li
                     key={imagen.url}
-                    className={[
-                      indice === 0 ? "col-span-2" : "",
-                      indice === 2 ? "mt-8" : "",
-                    ]
-                      .filter(Boolean)
-                      .join(" ")}
+                    className={indice === 0 ? "col-span-2" : ""}
                   >
                     <div
                       className={[
@@ -756,9 +810,12 @@ export async function PaginaInicio() {
                           reparten entre la superior izquierda y las dos de
                           abajo, que es donde no hay nada que cortar.
                         */
+                        /* `h-full` en las dos de abajo: comparten fila, así que
+                           la proporción fija las lleva al mismo alto y el
+                           `h-full` lo garantiza aunque una cambie de foto. */
                         indice === 0
                           ? "aspect-16/10 rounded-[var(--radius-generoso)] rounded-tl-[6rem]"
-                          : "aspect-3/4",
+                          : "aspect-3/4 h-full",
                         indice === 1
                           ? "rounded-[var(--radius-tarjeta)] rounded-bl-[4rem]"
                           : "",
@@ -779,7 +836,7 @@ export async function PaginaInicio() {
                             ? "(min-width: 1024px) 52vw, 92vw"
                             : "(min-width: 1024px) 26vw, 46vw"
                         }
-                        className="object-cover"
+                        className={CLASE_FOTO_CON_FLAG}
                       />
                     </div>
                   </li>
