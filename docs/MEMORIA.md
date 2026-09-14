@@ -7,7 +7,11 @@
 
 - **Fase actual:** 3 (motor de reservas). Fases 0, 1, **2 (sitio público)** y
   **5 (panel administrativo)** completadas el 2026-09-02. El **rediseño con los
-  datos y las fotos reales del cliente** se completó el 2026-09-11.
+  datos y las fotos reales del cliente** se completó el 2026-09-11, y la
+  **segunda ronda de ajustes de Cesar**, el 2026-09-14.
+- Del motor de reservas ya existe la parte que no depende de la base: el
+  calendario de festivos de Colombia, la regla plan ↔ noches y el calendario
+  propio que apaga los días que el plan no cubre. Falta la disponibilidad real.
 - **Decisión de alcance:** primero todo el sitio + panel administrativo; motor de reservas y pagos (Wompi) después.
 - **Repo remoto:** https://github.com/GOCAS-Automations/WEBSITE_LaFincaEcohotel.git (push pendiente de confirmación de Cesar; luego se conecta a Vercel).
 - ⚠️ **Existe un usuario temporal de pruebas del panel**
@@ -33,6 +37,11 @@
 | 2026-09-11 | **La paleta oficial son TRES colores** (manual, pp. 8–9): petróleo `#027570`, oliva `#5E6033` y verde claro `#E8F4D9` (familia `brote`). El **dorado `#9f6301` se retiró del sitio público** —venía del WordPress viejo, no del manual— y queda definido solo para el panel. |
 | 2026-09-11 | **El seed de contenido se genera desde el código** (`npm run seed:contenido`). Dos copias del mismo texto siempre divergen: ya había pasado con el horario del restaurante. |
 | 2026-09-11 | **El patrón de colibríes es un PNG horneado, no una máscara CSS.** Con `mask-image` por duplicado costaba 3,6 s de Style & Layout en la portada (Lighthouse 42). Con el mosaico de fondo, 275 ms (Lighthouse 96). |
+| 2026-09-14 | **El sello de marca de las fotos está en las 53, y no se corta.** Ninguna forma del sitio toca la esquina superior derecha; donde el contenedor recorta se ancla con `object-position: right top`; y el hero de la portada usa variantes recortadas SIN sello. Ver `ZONA_FLAG` en `src/lib/fotos.ts`. |
+| 2026-09-14 | **El corte orgánico se dibuja ENCIMA de la sección con foto, no antes de ella.** Rellenarlo con el color del vecino recorta la propia imagen; dibujarlo en la sección anterior dejaba una franja de color plano y, debajo, el borde recto de la fotografía. |
+| 2026-09-14 | **La regla plan ↔ noches sale de `planes.dias_aplica`, no del nombre del plan.** El nombre lo edita el cliente desde el panel: una regla escrita contra «Estándar» dejaría de aplicarse en silencio el día que lo renombre. |
+| 2026-09-14 | **Los festivos se CALCULAN, no se copian.** Una tabla escrita a mano caduca cada 31 de diciembre. Y no siempre son 18: hay años de 17 (2025, 2030, 2038, 2041, 2052, 2057), cuando dos celebraciones caen en el mismo lunes. |
+| 2026-09-14 | **El video de una sección nunca lleva `autoplay` a secas.** `autoplay` gana a `preload="metadata"` y descarga el clip entero en la carga inicial. Se arranca con `IntersectionObserver` (`VideoSeccion`). |
 | 2026-09-11 | **Las fotos publicadas viven en `web/`, recortadas**, sin la franja de check-in que traen los archivos del Drive. Los originales intactos se conservan en `drive/` y la limpieza del bucket los protege. |
 | 2026-09-02 | **Los textos legales viven en código** (`src/lib/legal.ts`), no en el CMS: son documentos jurídicos y deben versionarse con fecha de revisión (`LEGAL_ACTUALIZADO`), no editarse sin historial desde un panel. |
 | 2026-09-02 | **La página de contacto no lleva formulario.** El hotel no tiene hoy un buzón de correo publicado ni un destino verificado; un formulario que no llega a nadie es peor que no tenerlo. Se añade cuando el cliente confirme el correo. |
@@ -658,6 +667,271 @@ Ninguno en el texto publicado: todo lo que se ve en el sitio sale de
 de noches, NIT, fotos definitivas) está anotado como `TODO` en
 `supabase/seed/001_datos_iniciales.sql` y en `src/lib/sitio.ts`, y **no se
 publica en ninguna página**.
+
+### 2026-09-14 — Ajustes de la segunda ronda
+
+Cesar revisó el sitio rediseñado y dio diecinueve puntos de detalle fino. Esta
+sesión los cierra todos. No es una sesión de arquitectura: es de píxeles, de
+reglas de negocio que faltaban y de tres cosas que estaban mal y se veían.
+
+#### El sello de marca de las fotos («flag»)
+
+Las 53 fotos del Drive llevan pegado en el **borde superior derecho** un sello
+blanco con el isotipo y el wordmark. Se midió una por una
+(`npm run imagenes:flag`) y se anotó en los dos manifiestos un campo `flag` con
+su caja. **Están TODAS**: no existía la opción de «elegir una foto sin sello».
+La caja, en fracciones del archivo publicado, va de `x = 0,71` a `x = 1` y de
+`y = 0` a `y = 0,22`; `ZONA_FLAG` en `src/lib/fotos.ts` la redondea hacia fuera.
+
+El sello no molesta; lo que molestaba era **cortarlo**. Tres reglas:
+
+1. **Ninguna forma toca la esquina superior derecha.** El arco de «Bienvenidos»
+   (`rounded-t-[13rem]`) partía el logo por la mitad: ahora la curva grande abre
+   arriba a la IZQUIERDA y se responde con otra abajo a la derecha. Lo mismo en
+   la tercera foto de «Nuestra esencia», que tenía `rounded-tr-[4rem]`.
+2. **`object-position: right top`** (`CLASE_FOTO_CON_FLAG`) donde el contenedor
+   recorta: así la esquina se ve entera o no se ve, nunca a medias.
+3. **El hero de la portada va sin sello.** Es la única superficie donde la foto
+   se ve a pantalla completa, a dos dedos del logotipo real de la barra, y ahí
+   el sello se leía como una marca de agua de banco de imágenes. Se conserva la
+   misma foto y se cambia el ENCUADRE (`npm run imagenes:hero`): en escritorio
+   se va la franja superior y queda un panorámico 2400×1180 con el techo, las
+   jardineras, el bebedero de colibríes y el valle; en móvil no se puede
+   recortar por arriba —el techo de guadua ES la foto— así que se va la franja
+   derecha y queda un vertical 1750×2720.
+
+**Portada de la Cabaña 04.** Era la única de las cinco sin sello a la vista: su
+foto de portada era vertical y, metida en la caja 16/10 de la tarjeta y del
+zigzag, perdía justo esa franja. Ahora abre con su rincón de café, que es
+apaisada como las otras cuatro. De paso deja de abrir con el mismo balcón con
+hamaca que su gemela, la 03.
+
+#### Mapa de uso de las fotos
+
+La ducha del bosque (`zonas-comunes/04`) salía en **cinco** sitios. Ahora en
+dos. El reparto quedó así:
+
+| Foto | Dónde estaba | Dónde está |
+|---|---|---|
+| `zonas-comunes/02` corredor | hero escritorio + galería | galería (el hero usa su variante sin sello) |
+| `zonas-comunes/01` deck techado | hero móvil + hero de Contacto + galería | «Nuestra esencia» + galería |
+| `zonas-comunes/04` ducha | esencia + hero de FAQ + COP16 + Conócenos + galería | Conócenos + galería |
+| `zonas-comunes/08` fogata | esencia + Conócenos + galería | **hero de Contacto** + Conócenos + galería |
+| `cabana-03/10` comedor del balcón | solo en la ficha de la 03 | + «Nuestra esencia» |
+| `cabana-01/03` balcón con hamaca | ficha + galería | + **hero de FAQ** |
+| `cabana-04/09` rincón de café | galería | **portada de la Cabaña 04** + galería |
+
+El hero de Contacto era el deck techado y, recortado a una banda de cabecera,
+no se veía más que el techo de guadua: una superficie marrón sin nada que
+mirar. La fogata de noche cuenta en una imagen para qué se le escribe al hotel.
+
+#### Los cortes entre secciones (el fallo visual que más se notaba)
+
+`DivisorOrganico` dibujaba la onda DENTRO de la sección anterior, rellena con el
+color de la siguiente. Con un color plano al otro lado funciona. Con una FOTO
+—la sección de planes, todos los cierres— el resultado era el que Cesar
+describió: una franja de verde plano con forma de ladera y, pegado a ella, el
+borde RECTO de la fotografía.
+
+**`CorteOrganico`** le da la vuelta: la sección con foto empieza donde tiene que
+empezar y la onda se dibuja ENCIMA, rellena con el color del vecino. La imagen
+queda recortada por la forma y se ve hasta el filo de la onda. Es el mismo
+resultado que un `clip-path` sin sus dos costes: no crea un contexto de recorte
+que obligue a recomponer la sección en cada pintado, y el alto va en píxeles
+fijos en vez de escalar con el alto de la sección (con
+`clipPathUnits="objectBoundingBox"` una sección alta se lleva una ola gigante y
+una corta, un rizo). Está aplicado en los dos extremos de la sección de planes,
+del cierre de la portada y del cierre compartido de las páginas internas —
+incluido el corte hacia el pie de página, que antes era una línea recta.
+
+⚠️ **Trampa de Tailwind que costó una captura:** el posicionamiento NO puede ir
+en el `className` del divisor. `DivisorOrganico` ya trae `relative` escrito, y
+en Tailwind gana la clase que el CSS generado escriba después, no la que se
+ponga al final del atributo: `position: relative` se emite después de
+`absolute`. Las dos ondas salieron dentro del contenedor de lectura, a media
+sección. El `absolute` vive ahora en un envoltorio.
+
+#### Portada
+
+- **Tarjetas de plan compactas.** Con `gap-2.5`, `text-sm` y `leading-relaxed`,
+  los ocho puntos de «Entre Semana» estiraban la tarjeta hasta que las cuatro no
+  cabían en una pantalla y había que desplazarse para ver el botón de reservar.
+  La lista es una enumeración de servicios, no un texto de lectura: se lee mejor
+  apretada.
+- **La sección COP16 lleva VIDEO**, el mismo clip que el hotel publicaba en esa
+  sección de su sitio anterior. Ver más abajo.
+- **Las reseñas subieron al tercer lugar**, justo después de «Bienvenidos».
+  Estaban al final: quien llega desde Instagram tenía que atravesar la página
+  entera antes de encontrar una sola prueba de que el lugar es lo que dice ser.
+  La confianza va antes del precio.
+- **Reseñas en rejilla alineada.** Eran columnas CSS (`columns-3`) y se leían
+  como un mosaico: tarjetas de altos distintos y la última columna a media
+  asta. Ahora todas miden lo mismo —texto recortado a cinco líneas, cabecera
+  fija, botón abajo— y las cinco se reparten 3 + 2 centradas.
+- **«Leer más» en TODAS y de verdad.** Antes era un `<details>` que solo
+  aparecía en reseñas de más de 300 caracteres y que, al abrirse, descuadraba la
+  fila. Ahora abre un `<dialog>` nativo (`LectorResena`): el foco queda atrapado
+  dentro, Escape cierra, al cerrar el foco VUELVE al botón y la tarjeta nunca
+  cambia de alto.
+- **Se retiró** el aviso «En La Finca no hay datáfono… Muy pronto vas a poder
+  reservar y pagar en línea» de `reservar.nota` y del seed. La clave se conserva
+  vacía para avisos puntuales del hotel.
+
+#### El video de COP16
+
+Origen: el sitio anterior (WordPress), sección de reconocimiento. H.264
+848×480 a 30 fps, 2 min 49 s, 12,1 MB. **No existe versión en 1080p**: el
+material es vertical de Instagram reescalado; subirlo a 1080 añadiría peso sin
+añadir detalle. Recomprimido con ffmpeg en dos pasadas a 24 fps → **7,5 MB**,
+con el audio intacto porque el clip TIENE LOCUCIÓN (es una persona hablando, no
+un plano de ambiente). Por eso lleva `controls` aunque arranque silenciado.
+
+Migración **007**: bucket público `videos`, mp4 y webm, 60 MB por archivo. Va
+aparte del de imágenes porque su lista blanca de tipos es otra, su límite es
+seis veces mayor y la limpieza de huérfanos recorre referencias de fotos.
+
+⚠️ **`autoplay` gana a `preload="metadata"`.** Con el `<video autoplay>` de la
+primera versión, el clip se descargaba ENTERO al abrir la portada —3,3 MB, con
+el video siete pantallas más abajo— y Lighthouse móvil cayó de 96 a 82.
+`VideoSeccion` lo arranca con un `IntersectionObserver` y nace con
+`preload="none"`: no pide un byte hasta que se acerca. Respeta
+`prefers-reduced-motion` (no arranca solo) y sin JavaScript se ve el póster con
+sus controles.
+
+#### Páginas
+
+- **«El lugar» → «Conócenos»** (`/conocenos`), con **301** en `next.config.ts`.
+  Actualizados nav, pie, sitemap, migas, JSON-LD, enlaces internos, la clave
+  `heroes.listados.el_lugar` → `conocenos` y el panel.
+- **El mapa mostraba la carretera a Buenaventura.** La búsqueda era la cadena
+  «La Finca Eco Hotel Km 18 vía Cali Buenaventura» y Google leía «vía Cali
+  Buenaventura» como un TRAYECTO. El iframe va ahora por coordenadas con
+  etiqueta. Ojo: el embed gratuito **no entiende `q=place_id:…`** —se probó y
+  devolvía el mapamundi—; eso es del Embed API, que exige clave y facturación.
+  De paso se corrigieron las coordenadas de `SITIO.geo`, que eran una
+  estimación a mano y caían a más de un kilómetro del hotel; las nuevas salen
+  de la propia ficha. Y «Cómo llegar» abre indicaciones **desde Cali**.
+- **Galería en filas justificadas.** La mampostería con `columns` no recortaba
+  nada pero terminaba en escalera. Ahora cada fila tiene un alto común y los
+  anchos salen de la relación de aspecto: `flex-grow: r` + `aspect-ratio: r`
+  hace que, por aritmética, todas las de la fila acaben con el mismo alto. Las
+  filas se agrupan en `repartirEnFilas()` —de tres en tres, y si sobra UNA se
+  rehacen las dos últimas como 2 + 2— en vez de dejar que las corte
+  `flex-wrap`, que en la tercera página dejaba una foto estirada a todo el
+  ancho y cuatro veces más alta que las de arriba. La galería pasa de 32 a
+  **36 fotos**: tres páginas llenas de doce, sin una repetida.
+- **Preguntas frecuentes** pasa del crema plano al verde claro de marca
+  (`brote-50`), con la rama botánica en dos esquinas y tres colibríes muy
+  tenues. Era la página más pobre del sitio.
+- **`/reservar`** gana una fotografía junto a los tres pasos, el verde de marca
+  y —en el paso del plan— tarjetas con los días en que aplica cada plan, el
+  precio, lo que incluye y un enlace a la sección de planes de la portada. Los
+  precios ya no dicen «Consultar»: salen del mínimo del catálogo.
+- **`/alojamientos`**: el mosaico de colibríes (`PatronColibri`, que repite el
+  isotipo cada 320 px) se leía como una cuadrícula de logotipos en una página de
+  cinco pantallas. Lo sustituyen **cinco aves colocadas a mano**, sin dos a la
+  misma altura ni del mismo tamaño (`ColibriesSueltos`).
+
+#### Ritmo vertical
+
+El aire entre secciones ya lo decidía `ESPACIOS`; el aire DENTRO de una sección
+se decidía a ojo: `mt-10`, `mt-12` y `mt-14` para la misma relación. Ahora es
+`RITMO` en `seccion.tsx`, tres medidas y ninguna más.
+
+⚠️ **El `<legend>` queda fuera del flujo flex del `<fieldset>`.** Es parte del
+borde del fieldset, no un hijo normal, así que el `gap-4` del contenedor no lo
+separaba de la primera tarjeta: «1. Elige tu cabaña» quedaba pegado a la Cabaña
+01. Cada `legend` lleva ahora su propio `mb-4`.
+
+#### Motor de reservas: la regla plan ↔ noches
+
+**`src/lib/festivos-colombia.ts`** — módulo PURO, sin una importación del
+proyecto. Calcula los festivos de Colombia (Ley 51 de 1983, «Ley Emiliani»)
+desde el domingo de Pascua por el algoritmo de Butcher: seis fijos, dos de
+Semana Santa que no se trasladan y diez que se corren al lunes siguiente si no
+caen ya en lunes. Se calcula, no se copia una lista: una tabla escrita a mano
+caduca cada 31 de diciembre.
+
+Verificado contra los calendarios oficiales de **2026** (1 y 12 ene, 23 mar,
+2 y 3 abr, 1 y 18 may, 8, 15 y 29 jun, 20 jul, 7 y 17 ago, 12 oct, 2 y 16 nov,
+8 y 25 dic) y **2027** (1 y 11 ene, 22, 25 y 26 mar, 1 y 10 may, 31 may, 7 jun,
+5 y 20 jul, 7 y 16 ago, 18 oct, 1 y 15 nov, 8 y 25 dic), escritos a mano en la
+prueba: una prueba que compare la función consigo misma pasa siempre.
+
+**Hallazgo:** no siempre son 18. En **2025** fueron 17 porque el Sagrado Corazón
+y San Pedro y San Pablo cayeron los dos en el lunes 30 de junio. Vuelve a pasar
+en 2030, 2038, 2041, 2052 y 2057. Las entradas se fusionan en una sola con los
+dos nombres. **17 pruebas en Vitest** (`npm test`), que entra al proyecto en
+esta sesión solo para la lógica pura de `src/lib`.
+
+**`src/lib/reglas-reserva.ts`** aplica la regla del hotel. La restricción de
+cada plan sale de `planes.dias_aplica` y `planes.tipo`, **no del nombre**: el
+nombre lo edita el cliente desde el panel, y una regla escrita contra «Estándar»
+dejaría de aplicarse en silencio el día que lo renombre.
+
+**`CalendarioFechas`** sustituye a los `input type="date"`. El campo nativo no
+sabe deshabilitar días sueltos —solo entiende `min`, `max` y `step`— y la
+alternativa era dejar elegir un sábado y rechazarlo después, que no es validar
+sino tender una trampa. Es una `<table role="grid">` con tabulación itinerante
+(flechas, Inicio/Fin, RePág/AvPág), Escape, foco devuelto al botón y
+`aria-label` que dicen POR QUÉ un día está apagado. En móvil es una hoja
+inferior, no un desplegable: colgado del campo se salía de la pantalla.
+
+Verificado por CDP: con el plan Entre Semana solo quedan activos lunes a
+jueves; elegido el lunes 14 de septiembre, las salidas posibles son 15, 16, 17
+y **18** —el viernes, porque la última noche sigue siendo la del jueves— y el
+sábado 19 ya está apagado. En `/reservar`, además, los planes incompatibles con
+unas fechas ya elegidas se apagan y explican el motivo.
+
+**Estancias mixtas** (jueves→sábado) no se venden en línea: el hotel no ha
+decidido cómo se cobran. El mensaje lo dice en español y manda a WhatsApp.
+
+#### Menores de edad
+
+No se permiten, en ninguna cabaña. Corregidos la pregunta frecuente, los
+términos (§5 y §7 de `src/lib/legal.ts`), el selector de huéspedes del motor
+—uno o dos ADULTOS, en vez de un campo numérico libre— y la etiqueta del panel.
+Ni una mención de bebés, cunas ni sillas altas queda en el sitio.
+
+#### Verificación
+
+- `tsc --noEmit`, `npm run lint` y `npm run build` limpios. **17 pruebas en
+  verde.** Las 19 rutas públicas siguen estáticas/SSG con ISR de una hora;
+  `/conocenos` entre ellas.
+- Revisión por CDP a 1440 y 390 px de portada, `/alojamientos`, ficha de la
+  Cabaña 04, `/galeria` (las tres páginas), `/conocenos`, `/faq`, `/contacto`,
+  `/reservar` y el calendario abierto en los dos anchos.
+- **Lighthouse móvil** (build de producción, mediana de cinco pasadas):
+  portada **94–95** de rendimiento (venía de 82 con el video autoplay), galería
+  **95**, `/alojamientos` 91, `/reservar` 92. Escritorio: 100/100/100/100.
+- **Panel con sesión real**: las doce pantallas responden 200, sin errores de
+  consola; el campo «Video (opcional)» trae la dirección correcta, el de «Cómo
+  llegar» también, la sección se llama «Conócenos» y el campo de personas dice
+  «Cuántos adultos».
+- **Bucket**: 108 objetos en `imagenes` (28,9 MB) y 1 en `videos` (7,5 MB).
+  `npm run imagenes:limpiar` da **cero huérfanos**: las dos fotos que dejaron de
+  ser hero siguen usándose en la galería y en «Nuestra esencia», así que no
+  había nada que borrar.
+
+#### Lo que NO convence y hay que mirar
+
+- **El clip de COP16 es un plano hablado de 2 min 49 s.** Silenciado y en bucle
+  —que es como se pidió— no comunica nada: se ve a alguien mover los labios. Se
+  le dejaron controles para poder oírlo, pero lo que de verdad hace falta es
+  **un corte de 20–30 segundos solo de imágenes** (bosque, colibríes, cabañas),
+  o publicarlo con sonido a la espera de un clic. Preguntar a Juan Camilo si
+  existe el material en bruto.
+- **Lighthouse móvil marca 96 en accesibilidad** en la portada, por contraste.
+  Es un artefacto de la micro-aparición: axe muestrea la página mientras medio
+  sitio está a mitad del fundido y mide los colores mezclados con el fondo
+  (`#248783` es exactamente `#027570` al 86,6 %). En escritorio, donde la
+  animación termina antes de que axe corra, da **100** y el contraste pasa. En
+  reposo todos los pares medidos superan 5:1.
+- **La galería en móvil va a una foto por fila.** Con el alto objetivo actual,
+  dos apaisadas no caben en 390 px. Se ve bien —una foto grande por pantalla—
+  pero la página se hace larga: doce fotos son 5.700 px.
+- **El calendario todavía no consulta disponibilidad.** Apaga días por la regla
+  del plan, no por ocupación: eso llega con el motor.
 
 ## Pendientes de contenido/credenciales (pedir según se necesiten)
 
