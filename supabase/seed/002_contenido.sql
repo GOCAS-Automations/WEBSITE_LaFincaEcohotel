@@ -474,7 +474,7 @@ insert into contenido (clave, valor) values
     },
     {
       "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-04/09.webp",
-      "alt": "Rincón de estar y estación de café de la Cabaña 04, con vista al bosque",
+      "alt": "Rincón de estar y estación de café de la Cabaña 04, con ventana al bosque de niebla",
       "ancho": 1448,
       "alto": 923
     },
@@ -597,6 +597,30 @@ insert into contenido (clave, valor) values
       "alt": "Habitación de la Cabaña 03 con cama doble y ventanal al balcón",
       "ancho": 1448,
       "alto": 923
+    },
+    {
+      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-01/04.webp",
+      "alt": "Baño privado de la Cabaña 01, con azulejos azules y hortensias",
+      "ancho": 1448,
+      "alto": 923
+    },
+    {
+      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-03/03.webp",
+      "alt": "Interior de la Cabaña 03 con mininevera, estación de café y ventana al bosque",
+      "ancho": 1086,
+      "alto": 1231
+    },
+    {
+      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-02/02.webp",
+      "alt": "Baño privado de la Cabaña 02 con ducha, lavamanos y espejo",
+      "ancho": 1448,
+      "alto": 923
+    },
+    {
+      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-05/02.webp",
+      "alt": "Baño privado de la Cabaña 05 con ducha, lavamanos y plantas",
+      "ancho": 1122,
+      "alto": 1192
     }
   ]
 }$json$::jsonb),
@@ -692,12 +716,12 @@ from (values
   ('cabana-03', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-03/01.webp', 'Estación de café de la Cabaña 03, con cafetera, jarra y vasos', 9),
   ('cabana-03', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-03/08.webp', 'Fachada blanca y techo azul de la Cabaña 03, con jardineras de flores', 10),
   ('cabana-03', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-03/05.webp', 'Baño privado de la Cabaña 03 con ducha, lavamanos y espejo', 11),
-  ('cabana-04', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-04/05.webp', 'Balcón de la Cabaña 04 con hamaca, comedor redondo y vista al bosque de niebla', 1),
-  ('cabana-04', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-04/04.webp', 'Habitación de la Cabaña 04 con cama doble y ventanal al balcón', 2),
-  ('cabana-04', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-04/11.webp', 'Jacuzzi exterior de las cabañas 03 y 04, rodeado de guadua, con toallas', 3),
-  ('cabana-04', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-04/06.webp', 'Zona social techada de las cabañas 03 y 04, con cocina de isla y comedor', 4),
-  ('cabana-04', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-04/07.webp', 'Sala compartida de las cabañas 03 y 04, con sillones de madera y ventanales al bosque', 5),
-  ('cabana-04', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-04/09.webp', 'Rincón de estar y estación de café de la Cabaña 04, con vista al bosque', 6),
+  ('cabana-04', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-04/09.webp', 'Rincón de estar y estación de café de la Cabaña 04, con ventana al bosque de niebla', 1),
+  ('cabana-04', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-04/05.webp', 'Balcón de la Cabaña 04 con hamaca, comedor redondo y vista al bosque de niebla', 2),
+  ('cabana-04', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-04/04.webp', 'Habitación de la Cabaña 04 con cama doble y ventanal al balcón', 3),
+  ('cabana-04', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-04/11.webp', 'Jacuzzi exterior de las cabañas 03 y 04, rodeado de guadua, con toallas', 4),
+  ('cabana-04', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-04/06.webp', 'Zona social techada de las cabañas 03 y 04, con cocina de isla y comedor', 5),
+  ('cabana-04', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-04/07.webp', 'Sala compartida de las cabañas 03 y 04, con sillones de madera y ventanales al bosque', 6),
   ('cabana-04', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-04/02.webp', 'Rincón de la Cabaña 04 con cojines y mesa baja junto a la ventana', 7),
   ('cabana-04', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-04/08.webp', 'Batas térmicas y lámpara junto al ventanal de la Cabaña 04', 8),
   ('cabana-04', 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-04/01.webp', 'Estación de café de la Cabaña 04, con cafetera, jarra y vasos', 9),

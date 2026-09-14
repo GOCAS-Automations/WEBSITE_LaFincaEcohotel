@@ -352,35 +352,47 @@ function MosaicoUniforme({
 }
 
 /* ===========================================================================
- * Mosaico editorial — mampostería que RESPETA la proporción de cada foto
+ * Mosaico editorial — FILAS JUSTIFICADAS
  * ---------------------------------------------------------------------------
- * QUÉ HABÍA ANTES Y POR QUÉ SE CAMBIÓ
+ * LAS DOS VERSIONES ANTERIORES Y POR QUÉ NINGUNA SERVÍA
  * ---------------------------------------------------------------------------
- * Había una rejilla de doce casillas de tamaños distintos que teselaba
- * perfectamente en los tres anchos. Sobre el papel estaba muy bien resuelta;
- * en la pantalla tenía un problema que ninguna cuenta arregla: cada casilla
- * imponía su proporción a la foto con `object-cover`. Una vertical de 3:4
- * metida en una casilla apaisada de 2:1 perdía la mitad de la imagen, y en
- * estas fotos lo que se perdía era justo lo que se quería enseñar —el bosque
- * sobre el deck, el valle bajo la hamaca, la altura de la ducha entre los
- * árboles—.
+ * 1. Una rejilla de doce casillas de tamaños distintos. Teselaba perfecto, y
+ *    cada casilla imponía su proporción a la foto con `object-cover`: una
+ *    vertical metida en una casilla apaisada perdía la mitad de la imagen.
+ * 2. Mampostería con `columns` de CSS. Ya no recortaba nada, pero las columnas
+ *    terminaban a alturas distintas: el bloque empezaba recto y acababa en
+ *    escalera, y ninguna fila cuadraba con la de al lado. Es lo que Cesar vio:
+ *    «conserva las proporciones, pero todas las filas deben quedar alineadas
+ *    arriba y abajo, también la última».
  *
- * Ahora las fotos se reparten en columnas y CADA UNA conserva su proporción
- * original: no se recorta ni un píxel. Los «tamaños variados» que pedía el
- * diseño siguen ahí, pero ya no los inventa una rejilla: los pone la
- * fotografía, que es de donde tienen que salir.
+ * ---------------------------------------------------------------------------
+ * FILAS JUSTIFICADAS (lo que hacen Flickr y Google Fotos)
+ * ---------------------------------------------------------------------------
+ * Cada fila tiene un ALTO COMÚN y los anchos se reparten según la relación de
+ * aspecto de cada foto. Nada se recorta —el ancho sale de la proporción, no al
+ * revés— y todas las fotos de una fila empiezan y terminan a la misma altura.
  *
- * CÓMO
- * ----
- * `columns` de CSS (2 en teléfono, 3 en tableta, 4 en escritorio) con
- * `break-inside: avoid` en cada pieza. Es la única forma de conseguir
- * mampostería sin JavaScript, sin medir nada en el cliente y sin un segundo
- * repintado al cargar. Las columnas se equilibran solas.
+ * Cada foto lleva dos declaraciones:
  *
- * La contrapartida de `columns` es que el orden visual baja por columnas en
- * vez de avanzar por filas. En una galería de fotos no importa —no hay una
- * secuencia que leer— y se compensa con las páginas de doce: cada página es un
- * bloque corto y coherente.
+ *   · `flex-grow: proporción` — el ancho de la fila se reparte en proporción a
+ *     la relación de aspecto de cada foto…
+ *   · `aspect-ratio: proporción` — …y por tanto todas las de la fila acaban con
+ *     el mismo alto. Es aritmética, no un ajuste a ojo: si a cada foto le toca
+ *     un ancho r·k, su alto es k para todas.
+ *
+ * LAS FILAS SE AGRUPAN AQUÍ, NO LAS DECIDE EL NAVEGADOR
+ * -----------------------------------------------------
+ * La primera versión de esto dejaba que `flex-wrap` cortara las filas solo,
+ * con `flex-basis` proporcional. Funciona de maravilla… hasta que a la última
+ * fila le toca UNA sola foto: entonces esa foto se estira a todo el ancho y se
+ * ve cuatro veces más alta que las de arriba. Pasaba en la tercera página.
+ *
+ * Ahora las filas se arman en `repartirEnFilas()` —de tres en tres, con la
+ * regla de que ninguna se quede con una sola— y a partir de `md` la fila va en
+ * `flex-nowrap`: no puede partirse, pase lo que pase con las proporciones. Por
+ * debajo de `md` sí se permite que una fila de tres se rompa en dos líneas
+ * (tres fotos en 390 px serían sellos de correos); cada línea sigue llenando el
+ * ancho, así que tampoco ahí queda hueco.
  *
  * CERO SALTO DE MAQUETACIÓN
  * -------------------------
@@ -404,6 +416,29 @@ function proporcion(imagen: ImagenGaleria): number {
   return 4 / 3;
 }
 
+/**
+ * Reparte las fotos en filas para las pantallas anchas.
+ *
+ * Tres por fila, que es lo que deja ver la foto a un tamaño decente en 1440 px
+ * sin que la página se vuelva un rollo infinito. La única excepción es el
+ * resto: si sobra UNA foto, las dos últimas filas se rehacen como 2 + 2 en vez
+ * de 3 + 1. Una fila de una sola foto a todo el ancho rompe el ritmo de la
+ * página entera, y es justo lo que había que arreglar.
+ */
+function repartirEnFilas<T>(elementos: T[], porFila = 3): T[][] {
+  const filas: T[][] = [];
+  for (let i = 0; i < elementos.length; i += porFila) {
+    filas.push(elementos.slice(i, i + porFila));
+  }
+  const ultima = filas.at(-1);
+  if (filas.length > 1 && ultima && ultima.length === 1) {
+    const penultima = filas[filas.length - 2];
+    /* 3 + 1 → 2 + 2: se baja la última foto de la penúltima fila. */
+    ultima.unshift(penultima.pop() as T);
+  }
+  return filas;
+}
+
 function MosaicoEditorial({
   imagenes,
   desplazamiento,
@@ -411,22 +446,37 @@ function MosaicoEditorial({
   alAbrir,
   registrar,
 }: PropsMosaico & { desplazamiento: number }) {
+  /* La posición dentro de la página se conserva al agrupar: es la que usan el
+     visor y la devolución del foco. */
+  const filas = repartirEnFilas(
+    imagenes.map((imagen, posicion) => ({ imagen, posicion })),
+  );
+
   return (
-    <div className="pagina-galeria columns-2 gap-3 sm:gap-4 md:columns-3 lg:columns-4">
-      {imagenes.map((imagen, posicion) => (
+    <ul className="pagina-galeria flex flex-col gap-3 sm:gap-4">
+      {filas.map((fila) => (
+        <li
+          key={fila[0].imagen.url}
+          className="flex flex-wrap gap-3 sm:gap-4 md:flex-nowrap [--alto-fila:11rem] sm:[--alto-fila:13rem]"
+        >
+          {fila.map(({ imagen, posicion }) => {
+            const relacion = proporcion(imagen);
+            return (
         <div
           key={`${imagen.url}-${posicion}`}
-          /* `break-inside-avoid` impide que una foto se parta entre dos
-             columnas; `mb-*` hace de separación vertical, porque `gap` en
-             `columns` solo separa en horizontal. */
-          className="mb-3 break-inside-avoid sm:mb-4"
+          className="min-w-0"
+          style={{
+            flexGrow: relacion,
+            flexShrink: 1,
+            flexBasis: `calc(${relacion} * var(--alto-fila))`,
+          }}
         >
           <button
             type="button"
             ref={(elemento) => registrar(posicion, elemento)}
             onClick={() => alAbrir(desplazamiento + posicion)}
-            className={CLASES_MINIATURA}
-            style={{ aspectRatio: proporcion(imagen) }}
+            className={`${CLASES_MINIATURA} h-full`}
+            style={{ aspectRatio: relacion }}
             aria-label={`Ampliar: ${imagen.alt}`}
           >
             <Image
@@ -453,8 +503,11 @@ function MosaicoEditorial({
             />
           </button>
         </div>
+            );
+          })}
+        </li>
       ))}
-    </div>
+    </ul>
   );
 }
 

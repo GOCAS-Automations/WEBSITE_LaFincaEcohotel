@@ -364,6 +364,23 @@ export const GALERIA_CABANA_03: ImagenGaleria[] = [
 ];
 
 export const GALERIA_CABANA_04: ImagenGaleria[] = [
+  /*
+    LA PORTADA ES LA HORIZONTAL, NO EL BALCÓN.
+    Las otras cuatro cabañas abren con una foto APAISADA y muestran el sello de
+    marca de la esquina superior derecha; esta abría con una vertical y, metida
+    en la caja 16/10 de la tarjeta y del zigzag, perdía justo esa franja: era la
+    única de las cinco portadas sin sello, y se notaba puestas en fila.
+
+    De paso resuelve otro problema: la 03 y la 04 son gemelas y las dos abrían
+    con el mismo balcón con hamaca. Ahora la 03 abre con su balcón y la 04 con
+    su rincón de café, que es la misma cabaña contada por otro lado.
+  */
+  {
+    url: foto("cabana-04/09"),
+    alt: "Rincón de estar y estación de café de la Cabaña 04, con ventana al bosque de niebla",
+    ancho: 1448,
+    alto: 923,
+  },
   {
     url: foto("cabana-04/05"),
     alt: "Balcón de la Cabaña 04 con hamaca, comedor redondo y vista al bosque de niebla",
@@ -393,12 +410,6 @@ export const GALERIA_CABANA_04: ImagenGaleria[] = [
     alt: "Sala compartida de las cabañas 03 y 04, con sillones de madera y ventanales al bosque",
     ancho: 1086,
     alto: 1231,
-  },
-  {
-    url: foto("cabana-04/09"),
-    alt: "Rincón de estar y estación de café de la Cabaña 04, con vista al bosque",
-    ancho: 1448,
-    alto: 923,
   },
   {
     url: foto("cabana-04/02"),
@@ -517,6 +528,12 @@ export const FOTOS_EXPERIENCIAS: Record<string, string> = {
  *
  * El orden alterna zonas comunes y cabañas para que al recorrerla se entienda
  * que La Finca es un lugar entero, no un catálogo de habitaciones.
+ *
+ * SON 36, Y ESO NO ES CASUAL: la galería pagina de doce en doce, así que 36 son
+ * TRES PÁGINAS LLENAS. Con 32 la última página traía ocho fotos y su última
+ * fila quedaba coja. Las cuatro que se añadieron son las únicas que faltaban
+ * sin repetir escena: el baño de la 01, el rincón de la mininevera de la 03, el
+ * baño de la 02 y el de la 05.
  */
 export const GALERIA_GENERAL: ImagenGaleria[] = [
   ZONAS_COMUNES[0],
@@ -531,13 +548,13 @@ export const GALERIA_GENERAL: ImagenGaleria[] = [
   GALERIA_CABANA_01[2],
   ZONAS_COMUNES[6],
   /*
-    De la Cabaña 04 NO entra su portada, aunque sea la mejor foto que tiene.
-    Es gemela de la 03 y su balcón con hamaca es, a ojos de quien mira, la
-    misma escena que la de la 03 desde dos metros más cerca. En la ficha de
-    cada cabaña las dos tienen que estar —es lo que cada huésped va a tener—,
-    pero en la galería general habrían parecido una foto repetida.
+    De la Cabaña 04 entra su portada —el rincón de café— y NO su balcón. Es
+    gemela de la 03 y su balcón con hamaca es, a ojos de quien mira, la misma
+    escena que la de la 03 desde dos metros más cerca. En la ficha de cada
+    cabaña las dos tienen que estar —es lo que cada huésped va a tener—, pero
+    en la galería general habrían parecido una foto repetida.
   */
-  GALERIA_CABANA_04[5],
+  GALERIA_CABANA_04[0],
 
   ZONAS_COMUNES[4],
   GALERIA_CABANA_05[1],
@@ -560,4 +577,10 @@ export const GALERIA_GENERAL: ImagenGaleria[] = [
   GALERIA_CABANA_03[6],
   GALERIA_CABANA_02[3],
   GALERIA_CABANA_03[1],
+
+  /* Las cuatro que completan la tercera página. */
+  GALERIA_CABANA_01[5],
+  GALERIA_CABANA_03[7],
+  GALERIA_CABANA_02[4],
+  GALERIA_CABANA_05[5],
 ];
