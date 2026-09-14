@@ -5,7 +5,7 @@
 > público las lee desde `src/lib/contenido.ts`. Si aquí no está, el sitio no lo
 > pinta.
 >
-> Última revisión: 2026-09-02 · 18 claves.
+> Última revisión: 2026-09-14 · 19 claves.
 
 ---
 
@@ -70,13 +70,14 @@ correctamente para lectores de pantalla ni para Google.
 | `home.planes` | Portada, encabezado de planes | `getSeccionPlanes()` |
 | `home.experiencias` | Portada, encabezado de experiencias | `getSeccionExperiencias()` |
 | `home.esencia` | Portada, naturaleza | `getEsencia()` |
-| `home.reconocimiento` | Portada, COP16 | `getReconocimiento()` |
+| `home.instagram` | Portada, tira de Instagram y reel | `getInstagram()` |
 | `home.testimonios` | Portada, testimonios | `getTestimonios()` |
 | `home.cta_final` | Portada, cierre | `getCtaFinal()` |
 | `heroes.listados` | Cabecera de las 7 páginas internas | `getHeroesListados()` |
 | `experiencias` | `/experiencias` | `getContenidoExperiencias()` |
 | `faq` | `/faq` (y el JSON-LD `FAQPage`) | `getFaq()` |
 | `lugar` | `/conocenos` | `getLugar()` |
+| `conocenos.reconocimiento` | `/conocenos`, COP16 | `getReconocimiento()` |
 | `galeria` | `/galeria` | `getGaleria()` |
 | `reservar` | `/reservar` | `getReservar()` |
 | `no_encontrado` | Página 404 | `getNoEncontrado()` |
@@ -259,31 +260,43 @@ planes de día, de `planes.precio_base`.
 }
 ```
 
-## `home.reconocimiento`
+## `home.instagram`
+
+La tira de Instagram de la portada, **donde estaba la COP16**. Es lo último
+antes del cierre.
 
 ```jsonc
 {
-  "antetitulo": "Reconocimientos",
-  "titulo": "Somos COP16",
-  "parrafos": ["…", "…"],
-  "imagen": "https://…",       // PÓSTER del video (o la foto, si no hay video)
-  "imagen_alt": "…",
-  "video": "https://…/videos/sitio/cop16-la-finca.mp4",   // opcional
-  "cta_texto": "Reservar ahora",
-  "cta_href": "/reservar"
+  "antetitulo": "Instagram",
+  "titulo": "La Finca, día a día",
+  "descripcion": "…",
+  "cta_texto": "Síguenos en Instagram",
+  "reel_url": "https://www.instagram.com/reel/DbO8x0SxnFX/",   // permalink de la publicación
+  "reel_alt": "…",                                             // qué se ve en el video
+  "fotos": [                                                   // se muestran las 4 primeras
+    { "url": "https://…", "alt": "…" }
+  ]
 }
 ```
 
-- `video` es la novedad de esta fila. Si trae una dirección, la sección pinta un
-  `<video>` que arranca solo, silenciado y en bucle, con controles para subir el
-  volumen —el clip de COP16 es una persona hablando, no un plano de ambiente—.
-  Si va vacía, se pinta `imagen` como siempre.
-- Los videos viven en un bucket aparte, `videos` (migración 007): mp4 y webm,
-  hasta 60 MB. El campo del panel es de texto y NO sube archivos; la subida se
-  hace con `npm run video:cop16 -- --origen <ruta> --subir` o desde Supabase.
-- `imagen` deja de ser decorativa cuando hay video: es lo que se ve mientras el
-  navegador decide si lo descarga, y en móvil (con `preload="metadata"`) puede
-  ser lo único que se vea.
+- **Las fotos NO se traen de Instagram.** Son fotos del bucket. Un widget que
+  lea el perfil de verdad exige una app de Meta y un token que caduca cada
+  sesenta días: el día que caduque, la portada del hotel se queda con un hueco.
+  Aquí las fotos son nuestras y lo único que enlaza al perfil es el `href`.
+- **La primera foto es además el póster del reel.** Sale de este mismo arreglo
+  para que, al cambiar las fotos desde el panel, el póster cambie con ellas.
+- **El enlace del perfil y el arroba no están aquí**: salen de
+  `sitio.contacto.instagram` e `instagram_usuario`.
+- `reel_url` acepta cualquier forma del enlace que se copie desde la app
+  (`/reel/…`, `/p/…`, `/tv/…`, con `?hl=es` o sin él). El sitio le quita los
+  parámetros y le añade `embed/`. Si lo pegado **no** es una dirección de
+  `instagram.com`, el reel no se pinta: un campo mal escrito no puede dejar un
+  `<iframe>` apuntando a cualquier sitio.
+- **El video no se descarga hasta que alguien lo toca.** Lo que se ve de entrada
+  es la fotografía con un botón; al pulsarlo se inserta el `<iframe>` de
+  Instagram. Con la portada recién abierta no hay ni una petición a
+  `instagram.com` (verificado por CDP). Ver
+  `src/components/sitio/reel-instagram.tsx`.
 
 ## `home.testimonios`
 
@@ -336,6 +349,15 @@ que no está en esta lista, se ignora.
 
 El `titulo` de cada uno es el `<h1>` de esa página. Es una decisión de SEO, no
 solo de diseño: cambiarlo cambia el encabezado principal que lee Google.
+
+**La foto tiene que medir al menos 1440 px de ancho.** Un hero ocupa el ancho
+entero de la ventana y `next/image` **no amplía**: si el archivo mide menos, se
+envía a su tamaño real y es el navegador el que lo estira. Es exactamente lo que
+se veía borroso hasta el 2026-09-14, cuando tres cabeceras usaban fotos de
+1086 px y una de 941. Las siete apuntan ahora a `web/heroes/…`, cortadas del
+original a calidad 90 con `npm run imagenes:hero`. Al pegar una foto desde el
+panel, mirar sus medidas antes: por debajo de 1440 px se va a ver blanda, y no
+hay ajuste que lo arregle.
 
 ---
 
@@ -413,6 +435,42 @@ cual en el buscador.
 
 El mapa embebido de esta página **no** se configura aquí: sale de
 `sitio.contacto.mapa_embed`, para que exista en un solo sitio.
+
+---
+
+## `conocenos.reconocimiento`
+
+**Se ve en `/conocenos`, no en la portada.** Estuvo en la portada hasta el
+2026-09-14: un video de 2 min 49 s con locución no puede competir con el camino
+a reservar en la única pantalla que todo el mundo ve. La clave se renombró con
+la sección (migración `008`, que hace `update` sobre la fila existente para no
+perder lo que el hotel hubiera editado desde el panel).
+
+En el panel se edita en **«Conócenos»**, debajo del bloque de la historia.
+
+```jsonc
+{
+  "antetitulo": "Reconocimientos",
+  "titulo": "Somos COP16",
+  "parrafos": ["…", "…"],
+  "imagen": "https://…",       // PÓSTER del video (o la foto, si no hay video)
+  "imagen_alt": "…",
+  "video": "https://…/videos/sitio/cop16-la-finca.mp4",   // opcional
+  "cta_texto": "Reservar ahora",
+  "cta_href": "/reservar"
+}
+```
+
+- `video` es la novedad de esta fila. Si trae una dirección, la sección pinta un
+  `<video>` que arranca solo, silenciado y en bucle, con controles para subir el
+  volumen —el clip de COP16 es una persona hablando, no un plano de ambiente—.
+  Si va vacía, se pinta `imagen` como siempre.
+- Los videos viven en un bucket aparte, `videos` (migración 007): mp4 y webm,
+  hasta 60 MB. El campo del panel es de texto y NO sube archivos; la subida se
+  hace con `npm run video:cop16 -- --origen <ruta> --subir` o desde Supabase.
+- `imagen` deja de ser decorativa cuando hay video: es lo que se ve mientras el
+  navegador decide si lo descarga, y en móvil (con `preload="metadata"`) puede
+  ser lo único que se vea.
 
 ---
 

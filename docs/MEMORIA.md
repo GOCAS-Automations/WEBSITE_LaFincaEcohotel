@@ -8,7 +8,9 @@
 - **Fase actual:** 3 (motor de reservas). Fases 0, 1, **2 (sitio público)** y
   **5 (panel administrativo)** completadas el 2026-09-02. El **rediseño con los
   datos y las fotos reales del cliente** se completó el 2026-09-11, y la
-  **segunda ronda de ajustes de Cesar**, el 2026-09-14.
+  **segunda ronda de ajustes de Cesar**, el 2026-09-14. Ese mismo día, una
+  **tercera ronda**: Instagram en la portada, la COP16 en Conócenos y los
+  heros regenerados a calidad 90.
 - Del motor de reservas ya existe la parte que no depende de la base: el
   calendario de festivos de Colombia, la regla plan ↔ noches y el calendario
   propio que apaga los días que el plan no cubre. Falta la disponibilidad real.
@@ -37,6 +39,12 @@
 | 2026-09-11 | **La paleta oficial son TRES colores** (manual, pp. 8–9): petróleo `#027570`, oliva `#5E6033` y verde claro `#E8F4D9` (familia `brote`). El **dorado `#9f6301` se retiró del sitio público** —venía del WordPress viejo, no del manual— y queda definido solo para el panel. |
 | 2026-09-11 | **El seed de contenido se genera desde el código** (`npm run seed:contenido`). Dos copias del mismo texto siempre divergen: ya había pasado con el horario del restaurante. |
 | 2026-09-11 | **El patrón de colibríes es un PNG horneado, no una máscara CSS.** Con `mask-image` por duplicado costaba 3,6 s de Style & Layout en la portada (Lighthouse 42). Con el mosaico de fondo, 275 ms (Lighthouse 96). |
+| 2026-09-14 | **Ninguna foto de menos de 1440 px de ancho puede ser un hero.** `next/image` no amplía (`withoutEnlargement: true`), así que el archivo llega a su tamaño real y es el NAVEGADOR el que lo estira. Tres cabeceras usaban fotos de 1086 y 941 px: por eso se veían borrosas. |
+| 2026-09-14 | **Los heros salen de `drive/`, no de `web/`.** `web/` ya viene a calidad 82; volver a comprimir encima con `next/image` eran tres generaciones de pérdida. Las variantes de `web/heroes/` se cortan del original a 90 y se sirven a 90. |
+| 2026-09-14 | **La COP16 se va de la portada a `/conocenos`,** y su clave del CMS se renombra con ella (`home.reconocimiento` → `conocenos.reconocimiento`). Un prefijo `home.` en un bloque que se pinta en otra página es una pista falsa. |
+| 2026-09-14 | **El reel de Instagram se embebe con un `<iframe>` propio, no con `embed.js`,** y no se carga hasta que alguien lo pulsa. Cero peticiones a Meta al abrir la portada, y el marco lleva su proporción fija desde el primer pintado para que al pulsar no se mueva nada. |
+| 2026-09-14 | **Las fotos de la tira de Instagram son del bucket, no del perfil.** Un widget real exige una app de Meta y un token que caduca cada sesenta días; el día que caduque, la portada del hotel se queda con un hueco. |
+| 2026-09-14 | **`IMAGENES_SIN_OPTIMIZAR=1` apaga la optimización de imágenes sin tocar código.** Cuando se agota la cuota de Vercel, Image Optimization no degrada: devuelve un error y el sitio se queda sin fotos. |
 | 2026-09-14 | **El sello de marca de las fotos está en las 53, y no se corta.** Ninguna forma del sitio toca la esquina superior derecha; donde el contenedor recorta se ancla con `object-position: right top`; y el hero de la portada usa variantes recortadas SIN sello. Ver `ZONA_FLAG` en `src/lib/fotos.ts`. |
 | 2026-09-14 | **El corte orgánico se dibuja ENCIMA de la sección con foto, no antes de ella.** Rellenarlo con el color del vecino recorta la propia imagen; dibujarlo en la sección anterior dejaba una franja de color plano y, debajo, el borde recto de la fotografía. |
 | 2026-09-14 | **La regla plan ↔ noches sale de `planes.dias_aplica`, no del nombre del plan.** El nombre lo edita el cliente desde el panel: una regla escrita contra «Estándar» dejaría de aplicarse en silencio el día que lo renombre. |
@@ -932,6 +940,185 @@ Ni una mención de bebés, cunas ni sillas altas queda en el sitio.
   pero la página se hace larga: doce fotos son 5.700 px.
 - **El calendario todavía no consulta disponibilidad.** Apaga días por la regla
   del plan, no por ocupación: eso llega con el motor.
+
+### 2026-09-14 — Tercera ronda: Instagram en la portada, COP16 en Conócenos y heros nítidos
+
+Tres encargos de Cesar: mover la COP16 y poner Instagram en su lugar, arreglar
+los heros que se veían borrosos y dejar un interruptor para cuando se agote la
+cuota de imágenes de Vercel.
+
+#### Por qué los heros se veían borrosos (y no era solo el `quality`)
+
+Eran tres causas sumadas, y la principal no tiene arreglo por código:
+
+1. **El material es pequeño.** Las 53 fotos del Drive son exportaciones de
+   Instagram: la mayoría mide **1448 px de ancho**, tres de las que estaban en
+   heros medían **1086** y la de Contacto, **941**. Un hero ocupa el ancho de la
+   ventana: 1440 px en escritorio.
+2. **`next/image` NO amplía.** Su `sharp.resize()` lleva
+   `withoutEnlargement: true` (comprobado en
+   `node_modules/next/dist/server/image-optimizer.js`), así que devuelve el
+   archivo a su tamaño real y **es el navegador quien lo estira**. Una foto de
+   941 px se estiraba un 53 % sin que nada en el HTML lo delatara.
+3. **Triple compresión.** `web/` se genera de `drive/` a `webp({ quality: 82 })`
+   y encima `next/image` recomprimía a 75 —y a **68** en el hero de la portada,
+   que se había bajado para ahorrar 50 kB—. Tres generaciones de pérdida sobre
+   un WebP que ya venía comprimido de Instagram.
+
+**Qué se hizo.** `npm run imagenes:hero` (ahora `scripts/generar-heros.mjs`,
+que sustituye a `generar-hero-sin-flag.mjs`) genera las **nueve** variantes en
+`web/heroes/`, cortadas del original de `drive/` con `webp({ quality: 90 })` y
+**sin un solo `resize()`**: si un día hiciera falta un hero más grande que su
+origen, la respuesta es pedir los archivos de cámara, no interpolar píxeles que
+no existen. En el sitio van con `quality={90}`, `sizes="100vw"` y `priority`.
+
+**Regla nueva, escrita en `fotos.ts` y en `CMS_CLAVES.md`: ninguna foto de menos
+de 1440 px de ancho puede ser un hero.** Tres páginas cambiaron de foto por eso.
+
+| Página | Antes (origen) | Después (origen) | Ancho de origen |
+|---|---|---|---|
+| Portada, escritorio | `zonas-comunes/02`, q82 → next q68 | `heroes/portada-escritorio`, q90 → next q90 | 2400 (igual) |
+| Portada, móvil | `zonas-comunes/01`, q82 → next q68 | `heroes/portada-movil`, q90 → next q90 | 1750 (igual) |
+| `/alojamientos` | `cabana-03/02` | `heroes/alojamientos` (misma foto) | 1448 |
+| `/experiencias` | `cabana-05/05` chimenea | `heroes/experiencias` ← `cabana-02/05` jacuzzi bajo el árbol | 1448 |
+| `/conocenos` | `zonas-comunes/06` piscina | `heroes/conocenos` ← `zonas-comunes/05` panorámica | **1086 → 1536** |
+| `/galeria` | `zonas-comunes/07` | `heroes/galeria` (misma foto) | 1448 |
+| `/faq` | `cabana-01/03` balcón | `heroes/faq` ← `cabana-02/04` terraza con hamaca | **1086 → 1448** |
+| `/contacto` | `zonas-comunes/08` fogata | `heroes/contacto` ← `cabana-05/05` chimenea | **941 → 1448** |
+| `/reservar` | `cabana-01/01` | `heroes/reservar` (misma foto) | 1448 |
+
+La foto de la portada **no cambió** —le gusta a Cesar—; cambió de dónde sale el
+archivo y con qué calidad. Y el hero de `/conocenos` no es la panorámica entera
+sino una banda de 1536×1000 recortada sobre las cabañas: la foto es muy vertical
+(1536×2048) y servirla completa era descargar tres veces los píxeles que se ven.
+
+Las **tres fotos que salieron de los heros no se perdieron**: la fogata, el
+balcón con hamaca y la piscina son ahora tres de las cuatro de la tira de
+Instagram, donde sus 941–1086 px sobran de largo.
+
+`lugar.imagen` («Sobre nosotros») pasa de la panorámica —que subió al hero de esa
+misma página— al **corredor techado** (`zonas-comunes/02`, 2400 px), para que la
+misma foto no saliera dos veces en la misma pantalla.
+
+⚠️ **Comparado a 1:1 el tubo completo** (bucket → `next/image` → navegador,
+simulado con sharp sobre los mismos recortes): con el material viejo el follaje
+se deshacía; con el nuevo se ven las hojas. No era una impresión de Cesar.
+
+#### La COP16 se muda a `/conocenos`
+
+Era la octava sección de la portada: un clip de 2 min 49 s **con locución** en la
+única página cuyo trabajo es llevar a reservar sin desplazarse. Ahora vive en
+`/conocenos`, entre «Sobre nosotros» y las instalaciones, que es el orden en que
+alguien se hace las preguntas. Fondo `brote` (el verde claro del manual) y no
+blanco: entre la sección crema de arriba y la blanca de abajo, un blanco más
+habría fundido las tres en una sola mancha.
+
+**La clave del CMS se renombró con la sección**: `home.reconocimiento` →
+`conocenos.reconocimiento`. La **migración 008** lo hace con un `update` sobre la
+fila existente, no con `insert` + `delete`: la fila puede traer texto que el
+hotel editó desde el panel, y recrearla lo habría devuelto al respaldo del código
+en silencio. En el panel, el bloque «Reconocimientos» se mudó de la pantalla
+«Portada» a la de «Conócenos».
+
+#### Instagram en la portada
+
+Patrón de **La Maima** (`src/components/home/instagram-reel.tsx` y `meet-us.tsx`),
+diseño de La Finca: fotos propias del bucket enlazadas al perfil, más el reel
+cargado bajo demanda. Clave nueva **`home.instagram`**, editable desde el panel;
+el enlace del perfil y el arroba **no** viven ahí, salen de `sitio.contacto`.
+
+- **Cero peticiones a Meta antes del clic.** Verificado por CDP interceptando
+  todo lo que huela a `instagram.com` / `cdninstagram` / `facebook`: **0** con la
+  portada abierta y recorrida entera; **44** después de pulsar. Lo que se pinta
+  de entrada es una fachada con una foto del bucket.
+- **`<iframe>` a `.../embed/`, no `embed.js`.** El embebido «oficial» es un
+  `<blockquote>` más un script de Instagram que acaba inyectando este mismo
+  iframe. `https://www.instagram.com/reel/DbO8x0SxnFX/embed/` responde **200 sin
+  `X-Frame-Options` y sin `frame-ancestors`** (comprobado con `curl -I` y
+  renderizado en Chrome), así que se puede embeber directo.
+- **Clic y no `IntersectionObserver`.** Al entrar en pantalla también sería
+  barato, pero lo pagaría todo el que pasa de largo —casi todo el mundo— y
+  metería el iframe después del primer pintado.
+- **Desplazamiento de diseño cero.** El marco lleva `aspect-[88/165]` desde el
+  primer pintado: es la altura exacta que ocupa la tarjeta del embebido a 352 px
+  de ancho, medida en Chrome. Al pulsar, el iframe cae en el hueco que ya ocupaba
+  la foto y no se mueve un píxel. CLS medido: **0,002**.
+- **Dos redes por si Meta lo bloquea algún día.** Un iframe de otro origen no se
+  puede inspeccionar: si dejara de renderizar, la caja se quedaría en blanco sin
+  avisar. Hay un temporizador de 8 s que vuelve a la fachada con un aviso, y el
+  enlace «Ver el reel en Instagram» está **siempre** debajo del marco.
+- `direccionEmbebido()` valida el permalink: solo `https://` de `instagram.com`
+  con camino `/reel|reels|p|tv/<id>`, y **descarta los parámetros** del enlace
+  que se copia de la app (`?hl=es`, `?igsh=…`, que es un identificador de quien
+  comparte y no tiene por qué viajar). Si lo pegado en el panel no es de
+  Instagram, la sección se pinta sin reel: un campo mal escrito no puede acabar
+  en un `<iframe>` apuntando a cualquier sitio.
+- Las cuatro fotos van en cuadrado con `object-right-top`, y el póster del reel
+  también: el marco es mucho más alto que ancho y recorta por los lados, justo
+  donde vive el sello de marca. Centrado, quedaba partido por el borde.
+
+**No hizo falta tocar ninguna `Content-Security-Policy`**: el proyecto no define
+cabeceras de seguridad (no hay `headers()` en `next.config.ts` ni middleware que
+las ponga). Tampoco `remotePatterns`: el reel entra por un `<iframe>`, no por
+`next/image`. Si algún día se añade una CSP —y convendría—, necesitará
+`frame-src https://www.instagram.com`.
+
+#### Interruptor de la cuota de imágenes de Vercel
+
+`images.unoptimized = process.env.IMAGENES_SIN_OPTIMIZAR === "1"` en
+`next.config.ts`, documentado en `.env.example`. El plan gratuito de Vercel trae
+un número limitado de transformaciones de Image Optimization al mes y, cuando se
+agota, **no sirve la foto sin optimizar: devuelve un error** y el sitio se queda
+con los huecos de las imágenes vacíos. Con la variable en `1` y un redespliegue,
+`next/image` apunta directo al bucket.
+
+Verificado: con `IMAGENES_SIN_OPTIMIZAR=1` el build pasa y en `/`, `/conocenos` y
+`/faq` **no aparece ni una ruta `/_next/image`**; el `src` es la URL del bucket
+tal cual. Sin la variable, vuelven las `srcset` de `/_next/image` con `q=90` en
+los heros.
+
+⚠️ **En ese modo se sirven los archivos del bucket tal cual**, y el hero móvil
+pesa 1,2 MB. Es un interruptor de emergencia, no un modo de operación: mientras
+esté encendido, el rendimiento en móvil se resiente.
+
+#### Verificación
+
+- `tsc --noEmit`, `npm run lint` y `npm run build` limpios. **17 pruebas en
+  verde.** Las 19 rutas públicas siguen estáticas con ISR de una hora.
+- Capturas por CDP a **1440 y 390 px** de la portada, `/conocenos` y las siete
+  páginas con cabecera; más la sección de Instagram antes y después de pulsar el
+  reel, en los dos anchos. El embebido **renderiza** en los dos.
+- **Lighthouse móvil de la portada**, cinco pasadas contra el build de
+  producción: 80 · 95 · 95 · 95 · 82 → **mediana 95**. Las dos bajas son la
+  primera petición de cada variante nueva de imagen, que el optimizador genera en
+  ese momento (LCP 5,0 s y 4,8 s frente a 2,9 s en caliente); en Vercel eso pasa
+  una vez por variante y por despliegue. Accesibilidad 96, el mismo
+  `color-contrast` de siempre (artefacto de la micro-aparición, ver la ronda
+  anterior). Prácticas recomendadas 100, SEO 100.
+- **Panel con sesión real**: la pantalla «Portada» ya no tiene el bloque de
+  Reconocimientos y sí el de Instagram (con el enlace del reel y el editor de
+  fotos); la de «Conócenos» tiene el de la COP16 con su video. Se **guardó de
+  verdad** en las dos —«Guardado. El sitio ya muestra el cambio.»— y después se
+  restauró el seed. Las siete cabeceras apuntan a `web/heroes/…`. Sin errores de
+  consola.
+- **Bucket**: 115 objetos. Se borraron los dos heros viejos que dejaron de usarse
+  (`web/zonas-comunes/hero-escritorio.webp` y `hero-movil.webp`, 1,6 MB) y
+  `npm run imagenes:limpiar` vuelve a dar **cero huérfanos** (regla 11).
+
+#### Lo que sigue limitado por el material
+
+- **Ninguna foto del hotel pasa de 2400 px, y solo dos llegan.** Los heros de
+  `/alojamientos`, `/experiencias`, `/galeria`, `/faq`, `/contacto` y
+  `/reservar` van con **1448 px** de origen: justo para una pantalla de 1440 a
+  1×, **corto para una pantalla retina o un monitor de 1920**, donde el navegador
+  vuelve a estirar. Se ve bien, no perfecto. Para que lo estuviera hacen falta
+  los **archivos de cámara** de esas fotos; las que hay son exportaciones de
+  Instagram. **Pedírselos a Juan Camilo.**
+- Las fichas de cabaña y la galería no tienen este problema: ahí las fotos se ven
+  a media columna o menos y 1086 px sobran.
+- Sigue en pie lo de la ronda anterior: **el clip de COP16 es un plano hablado de
+  2 min 49 s**. Movido a `/conocenos` molesta menos, pero sigue haciendo falta un
+  corte de 20–30 s solo de imágenes.
 
 ## Pendientes de contenido/credenciales (pedir según se necesiten)
 
