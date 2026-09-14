@@ -29,7 +29,7 @@
  * Si no se pasa `--origen` y el archivo ya recomprimido existe en la carpeta
  * de trabajo, se usa ese.
  */
-import { readFile, writeFile, stat } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { basename } from "node:path";
 import process from "node:process";
 import { config } from "dotenv";
@@ -84,9 +84,12 @@ if (video.length > 8 * 1024 * 1024) {
    en móvil puede ser lo único que se vea. */
 let poster = null;
 if (origenPoster) {
+  /* 960 px y calidad 58: el póster solo se ve mientras el video no arranca, y
+     a pantalla completa de un teléfono 960 px sobran. Pasó de 39 kB a 25 kB, que
+     en el primer visor de la portada es lo que se estaba midiendo. */
   poster = await sharp(await readFile(origenPoster))
-    .resize(1280)
-    .webp({ quality: 72 })
+    .resize(960)
+    .webp({ quality: 58 })
     .toBuffer();
   console.log(`poster ${(poster.length / 1024) | 0} kB`);
 }

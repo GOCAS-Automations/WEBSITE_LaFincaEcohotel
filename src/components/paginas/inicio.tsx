@@ -15,6 +15,7 @@ import { ModuloReserva } from "@/components/sitio/modulo-reserva";
 import { ResenasGoogle } from "@/components/sitio/resenas-google";
 import { TarjetaCabana } from "@/components/sitio/tarjeta-cabana";
 import { TarjetaPlan } from "@/components/sitio/tarjeta-plan";
+import { VideoSeccion } from "@/components/sitio/video-seccion";
 import { Boton } from "@/components/ui/boton";
 import { Revelar } from "@/components/ui/revelar";
 import { EncabezadoSeccion, RITMO, Seccion } from "@/components/ui/seccion";
@@ -166,27 +167,35 @@ export async function PaginaInicio() {
           alt={hero.imagen_alt}
           fill
           priority
-          quality={75}
+          /* 68 y no 75: es la foto más pesada del sitio —ocupa la pantalla
+             entera de un teléfono— y a este tamaño la diferencia no se ve.
+             Son unos 50 kB menos en el primer visor, que es donde se mide. */
+          quality={68}
           sizes="100vw"
           className="object-cover sm:hidden"
         />
         {/*
-          La de escritorio NO lleva `priority`.
-          `priority` añade un `<link rel="preload">` que el navegador respeta
-          aunque la imagen esté en `display: none`, así que en un teléfono se
-          descargaban las DOS fotos del hero —130 kB de más— y competían entre
-          ellas por el ancho de banda del primer visor. Con `loading="eager"`
-          se sigue pidiendo de inmediato en escritorio, pero sin adelantarse a
-          la que de verdad se va a ver. La mayoría de los huéspedes llega desde
-          el celular (por Instagram y WhatsApp): si hay que elegir a quién
-          favorecer, es a ellos.
+          La de escritorio va en `lazy`, no en `eager` ni en `priority`.
+
+          Con `priority` se añade un `<link rel="preload">` que el navegador
+          respeta aunque la imagen esté en `display: none`. Con `eager` pasa lo
+          mismo: se descarga igual. Medido con Lighthouse móvil, eran 60 kB de
+          una foto que en un teléfono NO SE VE NUNCA, compitiendo por el ancho
+          de banda con la que sí se ve.
+
+          En `lazy`, el navegador no la pide mientras esté oculta —un elemento
+          en `display: none` no llega a intersecar nunca— y en escritorio, donde
+          sí es visible desde el primer momento, la pide en la primera pasada
+          de maquetación. La mayoría de los huéspedes llega desde el celular
+          (por Instagram y WhatsApp): si hay que elegir a quién favorecer, es a
+          ellos.
         */}
         <Image
           src={hero.imagen}
           alt={hero.imagen_alt}
           fill
-          loading="eager"
-          quality={75}
+          loading="lazy"
+          quality={68}
           sizes="100vw"
           className="hidden object-cover sm:block"
         />
@@ -771,25 +780,15 @@ export async function PaginaInicio() {
             <div className="relative aspect-16/10 overflow-hidden rounded-[var(--radius-generoso)] rounded-bl-[7rem] bg-crema-200 shadow-[var(--shadow-elevada)] lg:-ml-[max(0px,calc((100vw-76rem)/2+2.5rem))] lg:rounded-l-none">
               {reconocimiento.video ? (
                 /*
-                  `preload="metadata"`: en móvil no se descargan 7 MB antes de
-                  que nadie haya decidido mirarlo; lo que se ve mientras tanto
-                  es el póster, que pesa 39 kB.
-
-                  `controls` a propósito, aunque arranque silenciado: el clip
-                  NO es un plano de ambiente, es una persona hablando. Sin un
-                  control para subir el volumen, el visitante ve a alguien
-                  mover los labios y no se entera de nada.
+                  Arranca solo, silenciado y en bucle, pero NO en la carga
+                  inicial: espera a estar en pantalla. Ver `VideoSeccion` —un
+                  `autoplay` a secas descargaba los 3,3 MB del clip nada más
+                  abrir la portada, con el video siete pantallas más abajo.
                 */
-                <video
+                <VideoSeccion
                   src={reconocimiento.video}
                   poster={reconocimiento.imagen}
-                  autoPlay
-                  muted
-                  loop
-                  playsInline
-                  controls
-                  preload="metadata"
-                  aria-label={`Video: ${reconocimiento.titulo}`}
+                  etiqueta={`Video: ${reconocimiento.titulo}`}
                   className="absolute inset-0 h-full w-full object-cover"
                 />
               ) : (
