@@ -56,10 +56,18 @@ export const SITIO = {
     placeId: "ChIJeyNhUdivMI4Rk9zjFWJ_Hrk",
   },
 
-  /** Coordenadas del pin de La Finca en el Km 18 (vía Cali–Buenaventura). */
+  /**
+   * Coordenadas REALES del pin del hotel, leídas de su ficha de Google con el
+   * `place_id` de arriba (Places API, campo `location`).
+   *
+   * Las anteriores —3.5008 / −76.6386— eran una estimación del Km 18 escrita a
+   * mano y caían a algo más de un kilómetro del hotel. Las publica el JSON-LD
+   * (`LodgingBusiness.geo`), así que un error aquí es un error en la ficha que
+   * Google muestra en los resultados.
+   */
   geo: {
-    latitud: 3.5008,
-    longitud: -76.6386,
+    latitud: 3.5068719,
+    longitud: -76.6267478,
   },
 
   mapa: {
@@ -72,10 +80,17 @@ export const SITIO = {
       que es un identificador exacto y no admite interpretación.
     */
     url: "https://www.google.com/maps/search/?api=1&query=La%20Finca%20Eco%20Hotel&query_place_id=ChIJeyNhUdivMI4Rk9zjFWJ_Hrk",
-    /* Modo búsqueda pública: no necesita clave de API ni facturación. El
-       parámetro `q=place_id:…` centra el mapa en la ficha y pone el pin. */
+    /*
+      El iframe va por COORDENADAS con etiqueta, no por `place_id`.
+      El embed gratuito (`maps.google.com/maps?q=…&output=embed`) no entiende
+      `q=place_id:…`: se probó y devolvía el mapamundi entero. Sí entiende
+      `q=lat,lng(Etiqueta)`, que centra el mapa, pone el pin y lo rotula con el
+      nombre del hotel. Las coordenadas son las de la propia ficha de Google
+      (ver `geo`), así que el pin cae donde cae el hotel.
+      El Embed API con `place_id` existe, pero exige clave y facturación.
+    */
     embed:
-      "https://maps.google.com/maps?q=place_id:ChIJeyNhUdivMI4Rk9zjFWJ_Hrk&z=15&hl=es&ie=UTF8&output=embed",
+      "https://maps.google.com/maps?q=3.5068719,-76.6267478(La+Finca+Eco+Hotel)&z=15&hl=es&ie=UTF8&output=embed",
     /*
       «Cómo llegar»: indicaciones DESDE CALI hasta el hotel. Sin `origin`,
       Google usa la ubicación de quien mira —que casi nunca está en Cali— y el

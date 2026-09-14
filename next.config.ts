@@ -54,16 +54,22 @@ const nextConfig: NextConfig = {
    * Redirecciones permanentes.
    *
    * `/el-lugar` existió y se indexó: la página se llama ahora «Conócenos» y
-   * vive en `/conocenos`. Un 301 —`permanent: true`— traslada el historial de
-   * la dirección vieja a la nueva y evita que quien llegue desde un enlace
-   * antiguo, desde Google o desde el WhatsApp del hotel se encuentre un 404.
+   * vive en `/conocenos`. El 301 traslada el historial de la dirección vieja a
+   * la nueva y evita que quien llegue desde un enlace antiguo, desde Google o
+   * desde el WhatsApp del hotel se encuentre un 404.
+   *
+   * Se fija `statusCode: 301` a mano. `permanent: true` habría devuelto un
+   * **308**, que para Google significa exactamente lo mismo y además conserva
+   * el método HTTP; pero el 301 es el código que entiende cualquier
+   * herramienta de SEO sin discusión y aquí solo hay peticiones GET, así que
+   * no se gana nada con el 308 y sí se pierde claridad.
    */
   async redirects() {
     return [
       {
         source: "/el-lugar",
         destination: "/conocenos",
-        permanent: true,
+        statusCode: 301,
       },
     ];
   },

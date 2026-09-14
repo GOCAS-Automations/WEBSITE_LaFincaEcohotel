@@ -43,7 +43,7 @@ insert into contenido (clave, valor) values
   "tiktok": "https://www.tiktok.com/@lafincacali",
   "tiktok_usuario": "@lafincacali",
   "mapa_url": "https://www.google.com/maps/search/?api=1&query=La%20Finca%20Eco%20Hotel&query_place_id=ChIJeyNhUdivMI4Rk9zjFWJ_Hrk",
-  "mapa_embed": "https://maps.google.com/maps?q=place_id:ChIJeyNhUdivMI4Rk9zjFWJ_Hrk&z=15&hl=es&ie=UTF8&output=embed",
+  "mapa_embed": "https://maps.google.com/maps?q=3.5068719,-76.6267478(La+Finca+Eco+Hotel)&z=15&hl=es&ie=UTF8&output=embed",
   "mapa_como_llegar": "https://www.google.com/maps/dir/?api=1&origin=Cali,+Valle+del+Cauca&destination=La+Finca+Eco+Hotel&destination_place_id=ChIJeyNhUdivMI4Rk9zjFWJ_Hrk"
 }$json$::jsonb),
 

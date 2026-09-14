@@ -513,6 +513,7 @@ export const RELLENO_DE_FONDO: Record<string, string> = {
   "bg-crema-50": "fill-crema-50",
   "bg-niebla-100": "fill-niebla-100",
   "bg-brote-50": "fill-brote-50",
+  "bg-petroleo-900": "fill-petroleo-900",
 };
 
 /* ===========================================================================

@@ -76,7 +76,7 @@ correctamente para lectores de pantalla ni para Google.
 | `heroes.listados` | Cabecera de las 7 páginas internas | `getHeroesListados()` |
 | `experiencias` | `/experiencias` | `getContenidoExperiencias()` |
 | `faq` | `/faq` (y el JSON-LD `FAQPage`) | `getFaq()` |
-| `lugar` | `/el-lugar` | `getLugar()` |
+| `lugar` | `/conocenos` | `getLugar()` |
 | `galeria` | `/galeria` | `getGaleria()` |
 | `reservar` | `/reservar` | `getReservar()` |
 | `no_encontrado` | Página 404 | `getNoEncontrado()` |
@@ -114,8 +114,9 @@ respaldo).
   "facebook": "https://www.facebook.com/…",
   "tiktok": "https://www.tiktok.com/@lafincacali",
   "tiktok_usuario": "@lafincacali",
-  "mapa_url": "https://www.google.com/maps/search/?api=1&query=…",   // botón "Cómo llegar"
-  "mapa_embed": "https://maps.google.com/maps?q=…&output=embed"      // iframe del mapa
+  "mapa_url": "https://www.google.com/maps/search/?api=1&query=…&query_place_id=…",  // ficha en Maps
+  "mapa_embed": "https://maps.google.com/maps?q=place_id:…&output=embed",            // iframe del mapa
+  "mapa_como_llegar": "https://www.google.com/maps/dir/?api=1&origin=Cali…"          // botón "Cómo llegar"
 }
 ```
 
@@ -126,7 +127,14 @@ Notas para el formulario del panel:
 - Una red social vacía **desaparece** del pie y de la página de contacto; no
   deja un icono roto.
 - `mapa_embed` tiene que ser una URL de Google Maps en modo `output=embed`
-  (no necesita clave de API).
+  (no necesita clave de API). **Usa `q=place_id:…`, no una búsqueda por texto.**
+  Con la cadena «La Finca Eco Hotel Km 18 vía Cali Buenaventura», Google leía
+  «vía Cali Buenaventura» como un trayecto y pintaba la carretera al puerto
+  entera en vez del hotel. El `place_id` del hotel es
+  `ChIJeyNhUdivMI4Rk9zjFWJ_Hrk` y es el mismo que usan las reseñas.
+- `mapa_como_llegar` son las indicaciones **desde Cali**, no una búsqueda: sin
+  `origin`, Google usa la ubicación de quien mira, que casi nunca está en Cali.
+  Si se deja vacía, el botón cae a `mapa_url`.
 
 ---
 
@@ -163,7 +171,7 @@ dedicado 1200×630.
   "cta_texto": "Reservar ahora",
   "cta_href": "/reservar",
   "cta_secundario_texto": "Descubre nuestro paraíso",
-  "cta_secundario_href": "/el-lugar",
+  "cta_secundario_href": "/conocenos",
   "imagen": "https://…",        // HORIZONTAL, para escritorio (ideal ≥1920×1080)
   "imagen_movil": "https://…",  // VERTICAL, para teléfono (ideal ≥1080×1920)
   "imagen_alt": "…"             // el mismo alt sirve para las dos
@@ -258,12 +266,24 @@ planes de día, de `planes.precio_base`.
   "antetitulo": "Reconocimientos",
   "titulo": "Somos COP16",
   "parrafos": ["…", "…"],
-  "imagen": "https://…",
+  "imagen": "https://…",       // PÓSTER del video (o la foto, si no hay video)
   "imagen_alt": "…",
+  "video": "https://…/videos/sitio/cop16-la-finca.mp4",   // opcional
   "cta_texto": "Reservar ahora",
   "cta_href": "/reservar"
 }
 ```
+
+- `video` es la novedad de esta fila. Si trae una dirección, la sección pinta un
+  `<video>` que arranca solo, silenciado y en bucle, con controles para subir el
+  volumen —el clip de COP16 es una persona hablando, no un plano de ambiente—.
+  Si va vacía, se pinta `imagen` como siempre.
+- Los videos viven en un bucket aparte, `videos` (migración 007): mp4 y webm,
+  hasta 60 MB. El campo del panel es de texto y NO sube archivos; la subida se
+  hace con `npm run video:cop16 -- --origen <ruta> --subir` o desde Supabase.
+- `imagen` deja de ser decorativa cuando hay video: es lo que se ve mientras el
+  navegador decide si lo descarga, y en móvil (con `preload="metadata"`) puede
+  ser lo único que se vea.
 
 ## `home.testimonios`
 
@@ -306,7 +326,7 @@ que no está en esta lista, se ignora.
 {
   "alojamientos": { "titulo": "…", "subtitulo": "…", "imagen": "https://…", "imagen_alt": "…" },
   "experiencias": { … },
-  "el_lugar":     { … },
+  "conocenos":    { … },   // era "el_lugar" hasta el renombrado de la página
   "galeria":      { … },
   "faq":          { … },
   "contacto":     { … },
@@ -461,12 +481,16 @@ Página puente mientras no exista el motor de reservas.
   "pasos": [
     { "titulo": "1. Elige tu cabaña", "texto": "…" }
   ],
-  "nota": "Muy pronto vas a poder reservar y pagar en línea desde esta misma página."
+  "nota": ""
 }
 ```
 
-Cuando el motor entre en producción, esta fila se conserva pero `nota` debería
-vaciarse (poner un espacio no sirve: hay que cambiar el respaldo en código).
+`nota` va **vacía**. Contenía «En La Finca no hay datáfono ni manejamos efectivo,
+y nunca pedimos datos de tarjeta por WhatsApp. Muy pronto vas a poder reservar y
+pagar en línea desde esta misma página», y Cesar pidió retirarla: la primera
+mitad ya está en las preguntas frecuentes y en los términos, y la segunda
+prometía una fecha que nadie ha fijado. El campo se conserva para que el hotel
+pueda publicar un aviso puntual desde el panel; vacío, el bloque no se pinta.
 
 ---
 

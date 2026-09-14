@@ -63,7 +63,7 @@ export function CierreReserva({
         espacio="normal"
         /* El aire de arriba lo marca la onda, que mide 88 px y se dibuja
            dentro de la sección: sin este relleno el titular se le montaría. */
-        className="relative isolate overflow-hidden pt-28 sm:pt-32 lg:pt-36"
+        className="relative isolate overflow-hidden pt-28 pb-24 sm:pt-32 sm:pb-28 lg:pt-36 lg:pb-28"
       >
         {/* Bosque de verdad bajo el velo de petróleo, con bruma, resplandor y
             patrón de colibríes. Ver `FondoBosque` en `atmosfera.tsx`. */}
@@ -77,6 +77,14 @@ export function CierreReserva({
           borde="superior"
           alto={88}
           espejo={espejo}
+        />
+        {/* El corte de abajo, hacia el pie de página. */}
+        <CorteOrganico
+          perfil="loma"
+          color="fill-petroleo-900"
+          borde="inferior"
+          alto={64}
+          espejo={!espejo}
         />
         <RamaBotanica
           className="absolute bottom-[-12%] left-[-3%] hidden w-48 text-brote-100/20 lg:block"
