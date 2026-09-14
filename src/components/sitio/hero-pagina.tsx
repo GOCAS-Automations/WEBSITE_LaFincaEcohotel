@@ -34,12 +34,28 @@ export function HeroPagina({ hero, migas, prioridad = true }: PropsHero) {
   return (
     <div className="relative isolate overflow-hidden">
       <div className="relative h-[46vh] min-h-72 w-full sm:h-[52vh] sm:min-h-88 lg:min-h-[26rem]">
+        {/*
+          CALIDAD 90, NO 75.
+
+          Esta foto se ve al ancho entero de la ventana: es, con el hero de la
+          portada, la única superficie del sitio donde se aprecia la compresión.
+          Y el material del hotel ya viene comprimido de Instagram, así que cada
+          pasada de WebP encima se nota. A 75 los heros se veían blandos —es lo
+          que reportó Cesar—; a 90, y partiendo de los archivos de
+          `web/heroes/` (cortados del original a calidad 90 en vez de heredar la
+          copia de `web/`, ver `src/lib/fotos.ts`), la foto llega con una sola
+          generación de pérdida.
+
+          El coste en bytes es real pero acotado: son unos 40-60 kB más en una
+          imagen que ya estaba en el primer visor. No entra ninguna petición
+          nueva.
+        */}
         <Image
           src={hero.imagen}
           alt={hero.imagen_alt}
           fill
           priority={prioridad}
-          quality={75}
+          quality={90}
           sizes="100vw"
           className="object-cover"
         />

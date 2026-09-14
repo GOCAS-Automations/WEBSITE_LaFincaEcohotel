@@ -162,26 +162,6 @@ export const ZONAS_COMUNES: ImagenGaleria[] = [
  * es el respaldo en código, no la única fuente.
  */
 export const FOTO = {
-  /**
-   * Hero de escritorio: el corredor abierto al valle, la foto que mejor cuenta
-   * «bosque de niebla» de un vistazo.
-   *
-   * Es una VARIANTE de `zonas-comunes/02` recortada por arriba para dejar el
-   * sello de marca fuera (`npm run imagenes:hero`): a pantalla completa, y a
-   * dos dedos del logotipo real de la barra de navegación, el sello se leía
-   * como una marca de agua de banco de imágenes. Queda un panorámico
-   * 2400×1180 que conserva el techo, las jardineras, el bebedero de colibríes
-   * y el valle entero.
-   */
-  heroEscritorio: foto("zonas-comunes/hero-escritorio"),
-  /**
-   * Hero de móvil: el deck techado, en vertical. La apaisada, metida en una
-   * pantalla de teléfono, se queda en un trozo de baranda.
-   *
-   * También sin sello: aquí no se puede recortar por arriba —el techo de
-   * guadua ES la foto— así que se fue la franja derecha. 1750×2720.
-   */
-  heroMovil: foto("zonas-comunes/hero-movil"),
   /** Fondo de las secciones oscuras: el deck suspendido entre los árboles.
    *  Es la más verde y la más cerrada, que es lo que hace falta detrás de un
    *  velo de petróleo: una foto con cielo se convierte en una mancha clara. */
@@ -198,6 +178,74 @@ export const FOTO = {
   duchaBosque: foto("zonas-comunes/04"),
   /** Deck techado con comedor. */
   deckComedor: foto("zonas-comunes/01"),
+} as const;
+
+/* ===========================================================================
+ * LOS HEROS
+ * ---------------------------------------------------------------------------
+ * Un hero ocupa el ancho entero de la ventana, así que es la única superficie
+ * del sitio donde se ve el tamaño REAL del archivo. Y el material del hotel es
+ * pequeño: las fotos del Drive son exportaciones de Instagram de 1448 px de
+ * ancho, con algunas de 1086 y una de 941.
+ *
+ * `next/image` NO amplía (su `sharp.resize()` lleva `withoutEnlargement: true`),
+ * de modo que una foto de 941 px llega al navegador con 941 px y es él quien la
+ * estira hasta los 1440 de la ventana. De ahí que Cesar viera borrosos justo
+ * tres heros —Conócenos, Preguntas y Contacto—: eran los tres que no llegaban
+ * al ancho de la pantalla.
+ *
+ * DE AHÍ LAS DOS REGLAS:
+ *
+ *   1. **Ninguna foto de menos de ~1440 px de ancho puede ser un hero.** No es
+ *      una preferencia: por debajo de eso, el navegador amplía. Las tres que no
+ *      llegaban cambiaron de foto (ver `scripts/generar-heros.mjs`, que es la
+ *      lista razonada de qué foto usa cada página).
+ *   2. **El archivo del hero se corta del original de `drive/`**, no de la copia
+ *      de `web/`, y se guarda con `webp({ quality: 90 })`. Así hay UNA
+ *      generación de pérdida antes de `next/image` en vez de dos. En el sitio
+ *      van además con `quality={90}` y `sizes="100vw"`.
+ *
+ * Se regeneran con `npm run imagenes:hero -- --subir`. Como todo lo demás, esto
+ * es el RESPALDO: en el sitio publicado cada hero es editable desde el panel.
+ * ======================================================================== */
+
+/** Dirección de una variante de hero: `hero("faq")`. */
+function hero(nombre: string): string {
+  return medio(`web/heroes/${nombre}.webp`);
+}
+
+export const HERO = {
+  /**
+   * Portada, escritorio: el corredor abierto al valle (2400×1180).
+   *
+   * La foto no cambia —le gusta al cliente—, pero el archivo sí: sale del
+   * original de 2400 px y va a calidad 90. Sigue recortado por arriba para
+   * dejar fuera el sello de marca: a pantalla completa, y a dos dedos del
+   * logotipo real de la barra, se leía como una marca de agua de banco de
+   * imágenes.
+   */
+  portadaEscritorio: hero("portada-escritorio"),
+  /**
+   * Portada, móvil: el deck techado, en vertical (1750×2720). La apaisada,
+   * metida en una pantalla de teléfono, se queda en un trozo de baranda.
+   * También sin sello, recortando por la derecha: aquí no se puede recortar por
+   * arriba, porque el techo de guadua ES la foto.
+   */
+  portadaMovil: hero("portada-movil"),
+  /** `/alojamientos` — balcón techado de la Cabaña 03 (1448×923). Sin cambio. */
+  alojamientos: hero("alojamientos"),
+  /** `/experiencias` — jacuzzi bajo el árbol de la Cabaña 02 (1448×923). */
+  experiencias: hero("experiencias"),
+  /** `/conocenos` — las cabañas sobre la ladera, banda de 1536×1000. */
+  conocenos: hero("conocenos"),
+  /** `/galeria` — la neblina del atardecer con las farolas (1448×923). */
+  galeria: hero("galeria"),
+  /** `/faq` — terraza con hamaca de la Cabaña 02 (1448×923). */
+  faq: hero("faq"),
+  /** `/contacto` — la chimenea de la Cabaña 05 (1448×923). */
+  contacto: hero("contacto"),
+  /** `/reservar` — habitación del nivel superior de la Cabaña 01 (1448×923). */
+  reservar: hero("reservar"),
 } as const;
 
 /* ===========================================================================
