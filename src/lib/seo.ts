@@ -20,6 +20,14 @@ import type { Metadata } from "next";
 
 import { IMAGEN_SOCIAL, SITIO, urlAbsoluta } from "./sitio";
 
+/**
+ * El sitio se declara "publicado" (el dominio real ya apunta a Vercel) solo
+ * cuando esta variable vale exactamente `"1"`. Ver `.env.example` para el
+ * porqué. Mientras no lo esté, TODA página lleva `noindex, nofollow` sin
+ * excepción, sin importar lo que pida `noIndexar` más abajo.
+ */
+const sitioPublicado = process.env.SITIO_PUBLICADO === "1";
+
 export type ImagenSeo = {
   url: string;
   alt: string;
@@ -69,11 +77,17 @@ export function metadatosPagina({
     alto: IMAGEN_SOCIAL.alto,
   };
 
+  const robots = !sitioPublicado
+    ? { index: false, follow: false }
+    : noIndexar
+      ? { index: false, follow: true }
+      : undefined;
+
   return {
     title: tituloAbsoluto ? { absolute: titulo } : titulo,
     description: descripcion,
     alternates: { canonical: ruta },
-    ...(noIndexar ? { robots: { index: false, follow: true } } : {}),
+    ...(robots ? { robots } : {}),
     openGraph: {
       // Estas tres se repiten en cada página A PROPÓSITO: no se heredan.
       type: "website",
