@@ -1,0 +1,23 @@
+{
+  "video": {
+    "bucket": "videos",
+    "ruta": "sitio/cop16-la-finca.mp4",
+    "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/videos/sitio/cop16-la-finca.mp4",
+    "bytes": 7821620
+  },
+  "poster": {
+    "bucket": "imagenes",
+    "ruta": "sitio/video/cop16-poster.webp",
+    "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/sitio/video/cop16-poster.webp",
+    "bytes": 40686
+  },
+  "origen": "sitio anterior (WordPress) — sección de reconocimiento COP16",
+  "original": {
+    "codec": "h264",
+    "ancho": 848,
+    "alto": 480,
+    "fps": 30,
+    "duracion_s": 168.9,
+    "bytes": 12079493
+  }
+}
