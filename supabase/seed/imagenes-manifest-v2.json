@@ -10,7 +10,18 @@
     "relacion": 0.8,
     "bytes": 93432,
     "archivo_original": "0. PORTADA CABAÑA 1.jpeg",
-    "id_drive": "1o6flgouww9cfYkLxG5fJOUxXbNSiAk85"
+    "id_drive": "1o6flgouww9cfYkLxG5fJOUxXbNSiAk85",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.745,
+        "x1": 0.945,
+        "y0": 0,
+        "y1": 0.15
+      }
+    }
   },
   {
     "ruta_bucket": "drive/cabana-01/01.webp",
@@ -23,7 +34,18 @@
     "relacion": 1.333,
     "bytes": 170338,
     "archivo_original": "1.png",
-    "id_drive": "1Y3p_UHxzFqxC_cFPXnmaChOB76a8bfnu"
+    "id_drive": "1Y3p_UHxzFqxC_cFPXnmaChOB76a8bfnu",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.785,
+        "x1": 0.93,
+        "y0": 0,
+        "y1": 0.173
+      }
+    }
   },
   {
     "ruta_bucket": "drive/cabana-01/02.webp",
@@ -36,7 +58,18 @@
     "relacion": 1.333,
     "bytes": 176858,
     "archivo_original": "2.png",
-    "id_drive": "17h3_tPkQrS1hcb1jrkrbFxkYRTSBBjhF"
+    "id_drive": "17h3_tPkQrS1hcb1jrkrbFxkYRTSBBjhF",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.785,
+        "x1": 0.932,
+        "y0": 0,
+        "y1": 0.157
+      }
+    }
   },
   {
     "ruta_bucket": "drive/cabana-01/03.webp",
@@ -49,7 +82,18 @@
     "relacion": 0.75,
     "bytes": 315600,
     "archivo_original": "3.png",
-    "id_drive": "1YQ-7wLK3YtDbFU9zLBeGEX2zuZr0c9Cj"
+    "id_drive": "1YQ-7wLK3YtDbFU9zLBeGEX2zuZr0c9Cj",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.713,
+        "x1": 0.907,
+        "y0": 0,
+        "y1": 0.131
+      }
+    }
   },
   {
     "ruta_bucket": "drive/cabana-01/04.webp",
@@ -62,7 +106,18 @@
     "relacion": 1.333,
     "bytes": 169726,
     "archivo_original": "4.png",
-    "id_drive": "1GeYaI7o0w-y1IqzvWMLdaX90YG1_2pgD"
+    "id_drive": "1GeYaI7o0w-y1IqzvWMLdaX90YG1_2pgD",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.795,
+        "x1": 0.94,
+        "y0": 0,
+        "y1": 0.173
+      }
+    }
   },
   {
     "ruta_bucket": "drive/cabana-01/05.webp",
@@ -75,7 +130,18 @@
     "relacion": 1.333,
     "bytes": 231552,
     "archivo_original": "5.png",
-    "id_drive": "1Z8kyN17Tyya2iULTN8ZNXLE5jP1aW7Dj"
+    "id_drive": "1Z8kyN17Tyya2iULTN8ZNXLE5jP1aW7Dj",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.787,
+        "x1": 0.932,
+        "y0": 0,
+        "y1": 0.173
+      }
+    }
   },
   {
     "ruta_bucket": "drive/cabana-01/06.webp",
@@ -88,7 +154,18 @@
     "relacion": 1.333,
     "bytes": 385548,
     "archivo_original": "6.png",
-    "id_drive": "1KOECYQt4LxgvutdpDejk4Z7wyO7HQQvO"
+    "id_drive": "1KOECYQt4LxgvutdpDejk4Z7wyO7HQQvO",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.792,
+        "x1": 0.94,
+        "y0": 0,
+        "y1": 0.173
+      }
+    }
   },
   {
     "ruta_bucket": "drive/cabana-02/portada.webp",
@@ -101,7 +178,18 @@
     "relacion": 0.8,
     "bytes": 74292,
     "archivo_original": "0. PORTADA CABAÑA 2.jpeg",
-    "id_drive": "1nlFBs51JpN6i4t2T3XlNPRCIPk8vxslc"
+    "id_drive": "1nlFBs51JpN6i4t2T3XlNPRCIPk8vxslc",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.745,
+        "x1": 0.945,
+        "y0": 0,
+        "y1": 0.15
+      }
+    }
   },
   {
     "ruta_bucket": "drive/cabana-02/01.webp",
@@ -114,7 +202,18 @@
     "relacion": 1.333,
     "bytes": 241584,
     "archivo_original": "1.png",
-    "id_drive": "119lZQIm7iBlm2ipWTaNjiODc7dDARm-C"
+    "id_drive": "119lZQIm7iBlm2ipWTaNjiODc7dDARm-C",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.782,
+        "x1": 0.927,
+        "y0": 0,
+        "y1": 0.173
+      }
+    }
   },
   {
     "ruta_bucket": "drive/cabana-02/02.webp",
@@ -127,7 +226,18 @@
     "relacion": 1.333,
     "bytes": 148324,
     "archivo_original": "2.png",
-    "id_drive": "1HX3lvwytje3uczTYTDhaY9eFVyRn07Ri"
+    "id_drive": "1HX3lvwytje3uczTYTDhaY9eFVyRn07Ri",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.782,
+        "x1": 0.93,
+        "y0": 0,
+        "y1": 0.173
+      }
+    }
   },
   {
     "ruta_bucket": "drive/cabana-02/03.webp",
@@ -140,7 +250,18 @@
     "relacion": 0.75,
     "bytes": 221610,
     "archivo_original": "3.png",
-    "id_drive": "1Xnwn4N_Lp5UndeOpMCIPbZJWTsXOCWGk"
+    "id_drive": "1Xnwn4N_Lp5UndeOpMCIPbZJWTsXOCWGk",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "consenso",
+      "caja": {
+        "x0": 0.74,
+        "x1": 0.95,
+        "y0": 0,
+        "y1": 0.15
+      }
+    }
   },
   {
     "ruta_bucket": "drive/cabana-02/04.webp",
@@ -153,7 +274,18 @@
     "relacion": 1.333,
     "bytes": 439220,
     "archivo_original": "4.png",
-    "id_drive": "189xretBz3IyjMq3GH8bSPWURfiXubGLK"
+    "id_drive": "189xretBz3IyjMq3GH8bSPWURfiXubGLK",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.792,
+        "x1": 0.938,
+        "y0": 0,
+        "y1": 0.173
+      }
+    }
   },
   {
     "ruta_bucket": "drive/cabana-02/05.webp",
@@ -166,7 +298,18 @@
     "relacion": 1.333,
     "bytes": 397162,
     "archivo_original": "5.png",
-    "id_drive": "19zKItlUII5bk5tOixovlDUTTxiyKsrCu"
+    "id_drive": "19zKItlUII5bk5tOixovlDUTTxiyKsrCu",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.785,
+        "x1": 0.93,
+        "y0": 0,
+        "y1": 0.157
+      }
+    }
   },
   {
     "ruta_bucket": "drive/cabana-03/portada.webp",
@@ -179,7 +322,18 @@
     "relacion": 0.8,
     "bytes": 82792,
     "archivo_original": "0. PORTADA CABAÑA 3.jpeg",
-    "id_drive": "1ijJjFozgW26xhsLaekiN4ctw2wQ-vVHd"
+    "id_drive": "1ijJjFozgW26xhsLaekiN4ctw2wQ-vVHd",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.745,
+        "x1": 0.945,
+        "y0": 0,
+        "y1": 0.15
+      }
+    }
   },
   {
     "ruta_bucket": "drive/cabana-03/01.webp",
@@ -192,7 +346,18 @@
     "relacion": 0.751,
     "bytes": 177178,
     "archivo_original": "1.png",
-    "id_drive": "1jhy0s9xYdBedKpeHpGdBWANvHTVahjqg"
+    "id_drive": "1jhy0s9xYdBedKpeHpGdBWANvHTVahjqg",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.73,
+        "x1": 0.925,
+        "y0": 0,
+        "y1": 0.115
+      }
+    }
   },
   {
     "ruta_bucket": "drive/cabana-03/02.webp",
@@ -205,7 +370,18 @@
     "relacion": 1.333,
     "bytes": 362890,
     "archivo_original": "2.png",
-    "id_drive": "1X6H69MpAxVJcvmp9myrKjmP4XPjYvcWD"
+    "id_drive": "1X6H69MpAxVJcvmp9myrKjmP4XPjYvcWD",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.802,
+        "x1": 0.95,
+        "y0": 0,
+        "y1": 0.173
+      }
+    }
   },
   {
     "ruta_bucket": "drive/cabana-03/03.webp",
@@ -218,7 +394,18 @@
     "relacion": 0.75,
     "bytes": 184216,
     "archivo_original": "3.png",
-    "id_drive": "1wDXrQrY0hSfm4guvcJ5wB8ajQqsvNoNI"
+    "id_drive": "1wDXrQrY0hSfm4guvcJ5wB8ajQqsvNoNI",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.71,
+        "x1": 0.905,
+        "y0": 0,
+        "y1": 0.131
+      }
+    }
   },
   {
     "ruta_bucket": "drive/cabana-03/04.webp",
@@ -231,7 +418,18 @@
     "relacion": 0.75,
     "bytes": 271430,
     "archivo_original": "4.png",
-    "id_drive": "18hYNE0SHO-jtRXkKSq3dlmqZradwX9X_"
+    "id_drive": "18hYNE0SHO-jtRXkKSq3dlmqZradwX9X_",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.718,
+        "x1": 0.912,
+        "y0": 0,
+        "y1": 0.131
+      }
+    }
   },
   {
     "ruta_bucket": "drive/cabana-03/05.webp",
@@ -244,7 +442,18 @@
     "relacion": 0.75,
     "bytes": 179212,
     "archivo_original": "5.png",
-    "id_drive": "1ZsfosVt1UqWY_YRm70tQj25Dk-pXJoCi"
+    "id_drive": "1ZsfosVt1UqWY_YRm70tQj25Dk-pXJoCi",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.728,
+        "x1": 0.925,
+        "y0": 0,
+        "y1": 0.131
+      }
+    }
   },
   {
     "ruta_bucket": "drive/cabana-03/06.webp",
@@ -257,7 +466,18 @@
     "relacion": 0.75,
     "bytes": 256916,
     "archivo_original": "6.png",
-    "id_drive": "1siUaYeTfS3erbiVMqOA78uFg33rnJIk-"
+    "id_drive": "1siUaYeTfS3erbiVMqOA78uFg33rnJIk-",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.738,
+        "x1": 0.935,
+        "y0": 0,
+        "y1": 0.131
+      }
+    }
   },
   {
     "ruta_bucket": "drive/cabana-03/07.webp",
@@ -270,7 +490,18 @@
     "relacion": 0.75,
     "bytes": 306056,
     "archivo_original": "7.png",
-    "id_drive": "1-QRuDKrRRu6mHjeNYIoWz7sqR8S1ROPS"
+    "id_drive": "1-QRuDKrRRu6mHjeNYIoWz7sqR8S1ROPS",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.728,
+        "x1": 0.925,
+        "y0": 0,
+        "y1": 0.131
+      }
+    }
   },
   {
     "ruta_bucket": "drive/cabana-03/08.webp",
@@ -283,7 +514,18 @@
     "relacion": 0.8,
     "bytes": 365700,
     "archivo_original": "8.png",
-    "id_drive": "16ojJ-wFNBKuMbNdbGG8x_-XzA1U87VKt"
+    "id_drive": "16ojJ-wFNBKuMbNdbGG8x_-XzA1U87VKt",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.757,
+        "x1": 0.948,
+        "y0": 0,
+        "y1": 0.134
+      }
+    }
   },
   {
     "ruta_bucket": "drive/cabana-03/09.webp",
@@ -296,7 +538,18 @@
     "relacion": 0.75,
     "bytes": 363538,
     "archivo_original": "9.png",
-    "id_drive": "1FAKeCvUpFRgWy0JaFxSOl-tO97xkVFmV"
+    "id_drive": "1FAKeCvUpFRgWy0JaFxSOl-tO97xkVFmV",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.735,
+        "x1": 0.932,
+        "y0": 0,
+        "y1": 0.131
+      }
+    }
   },
   {
     "ruta_bucket": "drive/cabana-03/10.webp",
@@ -309,7 +562,18 @@
     "relacion": 0.75,
     "bytes": 276526,
     "archivo_original": "10.png",
-    "id_drive": "1zCi5szLjj1iTpMKn01NYF9_LkCNB034E"
+    "id_drive": "1zCi5szLjj1iTpMKn01NYF9_LkCNB034E",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.735,
+        "x1": 0.932,
+        "y0": 0,
+        "y1": 0.131
+      }
+    }
   },
   {
     "ruta_bucket": "drive/cabana-03/11.webp",
@@ -322,7 +586,18 @@
     "relacion": 1.333,
     "bytes": 243490,
     "archivo_original": "11.png",
-    "id_drive": "1uwtVFmrNEFAfKnaHc5n35bA4eAM17dqq"
+    "id_drive": "1uwtVFmrNEFAfKnaHc5n35bA4eAM17dqq",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.795,
+        "x1": 0.94,
+        "y0": 0,
+        "y1": 0.173
+      }
+    }
   },
   {
     "ruta_bucket": "drive/cabana-04/portada.webp",
@@ -335,7 +610,18 @@
     "relacion": 0.8,
     "bytes": 81734,
     "archivo_original": "0. PORTADA CABAÑA 4.jpeg",
-    "id_drive": "1X5wthWWA1vwo34N6nHcXDQcajc3tingP"
+    "id_drive": "1X5wthWWA1vwo34N6nHcXDQcajc3tingP",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.745,
+        "x1": 0.945,
+        "y0": 0,
+        "y1": 0.15
+      }
+    }
   },
   {
     "ruta_bucket": "drive/cabana-04/01.webp",
@@ -348,7 +634,18 @@
     "relacion": 0.751,
     "bytes": 176666,
     "archivo_original": "1.png",
-    "id_drive": "1ihY9S16jeUS5aZb0Zowsr6_w8N22pUel"
+    "id_drive": "1ihY9S16jeUS5aZb0Zowsr6_w8N22pUel",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.75,
+        "x1": 0.945,
+        "y0": 0,
+        "y1": 0.132
+      }
+    }
   },
   {
     "ruta_bucket": "drive/cabana-04/02.webp",
@@ -361,7 +658,18 @@
     "relacion": 0.75,
     "bytes": 258502,
     "archivo_original": "2.png",
-    "id_drive": "1RCCcmshSHsSx_CZz28FcF2wbQGXxnaiL"
+    "id_drive": "1RCCcmshSHsSx_CZz28FcF2wbQGXxnaiL",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.74,
+        "x1": 0.935,
+        "y0": 0,
+        "y1": 0.131
+      }
+    }
   },
   {
     "ruta_bucket": "drive/cabana-04/03.webp",
@@ -374,7 +682,18 @@
     "relacion": 0.75,
     "bytes": 181162,
     "archivo_original": "3.png",
-    "id_drive": "1KR2XtBgy0woKhhf6_TaDF6Hc-6woJWeE"
+    "id_drive": "1KR2XtBgy0woKhhf6_TaDF6Hc-6woJWeE",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.75,
+        "x1": 0.945,
+        "y0": 0,
+        "y1": 0.131
+      }
+    }
   },
   {
     "ruta_bucket": "drive/cabana-04/04.webp",
@@ -387,7 +706,18 @@
     "relacion": 0.75,
     "bytes": 274318,
     "archivo_original": "4.png",
-    "id_drive": "1C3XqANQiIEX1eZnd3Tiw-xJ6qjgsC8BZ"
+    "id_drive": "1C3XqANQiIEX1eZnd3Tiw-xJ6qjgsC8BZ",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.748,
+        "x1": 0.943,
+        "y0": 0,
+        "y1": 0.131
+      }
+    }
   },
   {
     "ruta_bucket": "drive/cabana-04/05.webp",
@@ -400,7 +730,18 @@
     "relacion": 0.75,
     "bytes": 383716,
     "archivo_original": "5.png",
-    "id_drive": "1ymTAU2pXtiszVnqYl075l51sGkSm21PW"
+    "id_drive": "1ymTAU2pXtiszVnqYl075l51sGkSm21PW",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.755,
+        "x1": 0.95,
+        "y0": 0,
+        "y1": 0.131
+      }
+    }
   },
   {
     "ruta_bucket": "drive/cabana-04/06.webp",
@@ -413,7 +754,18 @@
     "relacion": 0.75,
     "bytes": 257106,
     "archivo_original": "6.png",
-    "id_drive": "1-OErUm_-zpnCLYg33mDMhPUp8-YlVRpp"
+    "id_drive": "1-OErUm_-zpnCLYg33mDMhPUp8-YlVRpp",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.752,
+        "x1": 0.948,
+        "y0": 0,
+        "y1": 0.131
+      }
+    }
   },
   {
     "ruta_bucket": "drive/cabana-04/07.webp",
@@ -426,7 +778,18 @@
     "relacion": 0.75,
     "bytes": 306794,
     "archivo_original": "7.png",
-    "id_drive": "1MIKp7wKUVq-lBjQRqcl0Y3YKEpLinzPM"
+    "id_drive": "1MIKp7wKUVq-lBjQRqcl0Y3YKEpLinzPM",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.755,
+        "x1": 0.953,
+        "y0": 0,
+        "y1": 0.131
+      }
+    }
   },
   {
     "ruta_bucket": "drive/cabana-04/08.webp",
@@ -439,7 +802,18 @@
     "relacion": 0.75,
     "bytes": 241066,
     "archivo_original": "8.png",
-    "id_drive": "1xGiM9xOHYpcEdLKrVzHFrXag9ZwhrcN0"
+    "id_drive": "1xGiM9xOHYpcEdLKrVzHFrXag9ZwhrcN0",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.755,
+        "x1": 0.953,
+        "y0": 0,
+        "y1": 0.131
+      }
+    }
   },
   {
     "ruta_bucket": "drive/cabana-04/09.webp",
@@ -452,7 +826,18 @@
     "relacion": 1.333,
     "bytes": 238230,
     "archivo_original": "9.png",
-    "id_drive": "150E7rleq_-egX5ygMVCBtIJl_PwZYsz6"
+    "id_drive": "150E7rleq_-egX5ygMVCBtIJl_PwZYsz6",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.8,
+        "x1": 0.948,
+        "y0": 0,
+        "y1": 0.173
+      }
+    }
   },
   {
     "ruta_bucket": "drive/cabana-04/10.webp",
@@ -465,7 +850,18 @@
     "relacion": 0.8,
     "bytes": 365728,
     "archivo_original": "10.png",
-    "id_drive": "1osMyFI5NRvw2vWcNewN3GYWBxghXk0A8"
+    "id_drive": "1osMyFI5NRvw2vWcNewN3GYWBxghXk0A8",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.752,
+        "x1": 0.94,
+        "y0": 0,
+        "y1": 0.136
+      }
+    }
   },
   {
     "ruta_bucket": "drive/cabana-04/11.webp",
@@ -478,7 +874,18 @@
     "relacion": 0.75,
     "bytes": 363182,
     "archivo_original": "11.png",
-    "id_drive": "1x8PEYXdKqBbKNvPMwMYczRvJvPEN87BF"
+    "id_drive": "1x8PEYXdKqBbKNvPMwMYczRvJvPEN87BF",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.74,
+        "x1": 0.935,
+        "y0": 0,
+        "y1": 0.131
+      }
+    }
   },
   {
     "ruta_bucket": "drive/cabana-05/portada.webp",
@@ -491,7 +898,18 @@
     "relacion": 0.8,
     "bytes": 80886,
     "archivo_original": "0. PORTADA CABAÑA 5.jpeg",
-    "id_drive": "1KxMkkSOHdGZW0iO48V0pUaUKlhgPNxEq"
+    "id_drive": "1KxMkkSOHdGZW0iO48V0pUaUKlhgPNxEq",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.745,
+        "x1": 0.945,
+        "y0": 0,
+        "y1": 0.15
+      }
+    }
   },
   {
     "ruta_bucket": "drive/cabana-05/01.webp",
@@ -504,7 +922,18 @@
     "relacion": 0.676,
     "bytes": 172752,
     "archivo_original": "1.png",
-    "id_drive": "1ehAS0nJp2c-OaKK0rwN2MHaMIbZt7HBC"
+    "id_drive": "1ehAS0nJp2c-OaKK0rwN2MHaMIbZt7HBC",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.71,
+        "x1": 0.917,
+        "y0": 0,
+        "y1": 0.125
+      }
+    }
   },
   {
     "ruta_bucket": "drive/cabana-05/02.webp",
@@ -517,7 +946,18 @@
     "relacion": 0.8,
     "bytes": 183128,
     "archivo_original": "2.png",
-    "id_drive": "1MMjVA4L_3Pa1jr_jwBCUoJN36xaRXd91"
+    "id_drive": "1MMjVA4L_3Pa1jr_jwBCUoJN36xaRXd91",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "consenso",
+      "caja": {
+        "x0": 0.74,
+        "x1": 0.95,
+        "y0": 0,
+        "y1": 0.15
+      }
+    }
   },
   {
     "ruta_bucket": "drive/cabana-05/03.webp",
@@ -530,7 +970,18 @@
     "relacion": 0.8,
     "bytes": 246672,
     "archivo_original": "3.png",
-    "id_drive": "1zVksF1cazX9yM9zmOy3K0oEKHk1lJaqf"
+    "id_drive": "1zVksF1cazX9yM9zmOy3K0oEKHk1lJaqf",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.74,
+        "x1": 0.93,
+        "y0": 0,
+        "y1": 0.136
+      }
+    }
   },
   {
     "ruta_bucket": "drive/cabana-05/04.webp",
@@ -543,7 +994,18 @@
     "relacion": 0.8,
     "bytes": 182916,
     "archivo_original": "4.png",
-    "id_drive": "12Ms8EuEH_LSBS_WoZg18ZYezQw8o2MuT"
+    "id_drive": "12Ms8EuEH_LSBS_WoZg18ZYezQw8o2MuT",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.72,
+        "x1": 0.91,
+        "y0": 0,
+        "y1": 0.136
+      }
+    }
   },
   {
     "ruta_bucket": "drive/cabana-05/05.webp",
@@ -556,7 +1018,18 @@
     "relacion": 1.333,
     "bytes": 305944,
     "archivo_original": "5.png",
-    "id_drive": "1GRvrx13s7GoHlLitu-4n0zJ-EPTIoEH7"
+    "id_drive": "1GRvrx13s7GoHlLitu-4n0zJ-EPTIoEH7",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.785,
+        "x1": 0.93,
+        "y0": 0,
+        "y1": 0.173
+      }
+    }
   },
   {
     "ruta_bucket": "drive/cabana-05/06.webp",
@@ -569,7 +1042,18 @@
     "relacion": 0.75,
     "bytes": 343814,
     "archivo_original": "6.png",
-    "id_drive": "1GY3l0PD9LQuv_v4lWUhHAbDqdXeOiFpk"
+    "id_drive": "1GY3l0PD9LQuv_v4lWUhHAbDqdXeOiFpk",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.743,
+        "x1": 0.94,
+        "y0": 0,
+        "y1": 0.131
+      }
+    }
   },
   {
     "ruta_bucket": "drive/zonas-comunes/portada.webp",
@@ -582,7 +1066,18 @@
     "relacion": 0.666,
     "bytes": 173646,
     "archivo_original": "0. PORTADA ZONAS COMUNES.png",
-    "id_drive": "1uVjRoPZ00GOHeUhE7DjcxHQRARk9YZtX"
+    "id_drive": "1uVjRoPZ00GOHeUhE7DjcxHQRARk9YZtX",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.762,
+        "x1": 0.97,
+        "y0": 0,
+        "y1": 0.135
+      }
+    }
   },
   {
     "ruta_bucket": "drive/zonas-comunes/01.webp",
@@ -595,7 +1090,18 @@
     "relacion": 0.75,
     "bytes": 1563836,
     "archivo_original": "1.png",
-    "id_drive": "1BmCVp_10TvjxGNe772vUv8uuhBUevRHR"
+    "id_drive": "1BmCVp_10TvjxGNe772vUv8uuhBUevRHR",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.733,
+        "x1": 0.943,
+        "y0": 0,
+        "y1": 0.141
+      }
+    }
   },
   {
     "ruta_bucket": "drive/zonas-comunes/02.webp",
@@ -608,7 +1114,18 @@
     "relacion": 1.333,
     "bytes": 958762,
     "archivo_original": "2.png",
-    "id_drive": "1pibXMLlPypPTmBc2G7F5_AfJyBYBbNEO"
+    "id_drive": "1pibXMLlPypPTmBc2G7F5_AfJyBYBbNEO",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.795,
+        "x1": 0.953,
+        "y0": 0,
+        "y1": 0.187
+      }
+    }
   },
   {
     "ruta_bucket": "drive/zonas-comunes/03.webp",
@@ -621,7 +1138,18 @@
     "relacion": 0.75,
     "bytes": 491348,
     "archivo_original": "3.png",
-    "id_drive": "1fCkL0z8jPpZKp6XJwKR-UVlhqYd0ZlA9"
+    "id_drive": "1fCkL0z8jPpZKp6XJwKR-UVlhqYd0ZlA9",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.733,
+        "x1": 0.927,
+        "y0": 0,
+        "y1": 0.131
+      }
+    }
   },
   {
     "ruta_bucket": "drive/zonas-comunes/04.webp",
@@ -634,7 +1162,18 @@
     "relacion": 0.75,
     "bytes": 502610,
     "archivo_original": "4.png",
-    "id_drive": "1FbQ4dRneOdiNUCIDXXEHUEPT5y1hw3DT"
+    "id_drive": "1FbQ4dRneOdiNUCIDXXEHUEPT5y1hw3DT",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.73,
+        "x1": 0.927,
+        "y0": 0,
+        "y1": 0.131
+      }
+    }
   },
   {
     "ruta_bucket": "drive/zonas-comunes/05.webp",
@@ -647,7 +1186,18 @@
     "relacion": 0.75,
     "bytes": 760638,
     "archivo_original": "5.png",
-    "id_drive": "1jUWnqJ_NVt3EuSOGnTiCWE9c2NtVHb00"
+    "id_drive": "1jUWnqJ_NVt3EuSOGnTiCWE9c2NtVHb00",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.725,
+        "x1": 1,
+        "y0": 0,
+        "y1": 0.156
+      }
+    }
   },
   {
     "ruta_bucket": "drive/zonas-comunes/06.webp",
@@ -660,7 +1210,18 @@
     "relacion": 0.75,
     "bytes": 255842,
     "archivo_original": "6.png",
-    "id_drive": "1qxkwctel-1TdQAPd8ps6MbuDxBFSbUDa"
+    "id_drive": "1qxkwctel-1TdQAPd8ps6MbuDxBFSbUDa",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.743,
+        "x1": 0.938,
+        "y0": 0,
+        "y1": 0.131
+      }
+    }
   },
   {
     "ruta_bucket": "drive/zonas-comunes/07.webp",
@@ -673,7 +1234,18 @@
     "relacion": 1.333,
     "bytes": 251344,
     "archivo_original": "7.png",
-    "id_drive": "1UAOrgmucrVEvqo8T2itUXKhCIKtbuvT6"
+    "id_drive": "1UAOrgmucrVEvqo8T2itUXKhCIKtbuvT6",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.8,
+        "x1": 0.948,
+        "y0": 0,
+        "y1": 0.173
+      }
+    }
   },
   {
     "ruta_bucket": "drive/zonas-comunes/08.webp",
@@ -686,6 +1258,17 @@
     "relacion": 0.563,
     "bytes": 119600,
     "archivo_original": "8.png",
-    "id_drive": "1XE3BQIQu8TWRnQsrw7zPRDlv8dNSocml"
+    "id_drive": "1XE3BQIQu8TWRnQsrw7zPRDlv8dNSocml",
+    "flag": {
+      "presente": true,
+      "posicion": "superior-derecha",
+      "medida": "directa",
+      "caja": {
+        "x0": 0.73,
+        "x1": 0.958,
+        "y0": 0,
+        "y1": 0.114
+      }
+    }
   }
 ]

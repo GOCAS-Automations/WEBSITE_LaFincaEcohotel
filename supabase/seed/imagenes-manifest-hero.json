@@ -1,0 +1,26 @@
+[
+  {
+    "ruta_bucket": "web/zonas-comunes/hero-escritorio.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/hero-escritorio.webp",
+    "origen": "drive/zonas-comunes/02.webp",
+    "ancho": 2400,
+    "alto": 1180,
+    "bytes": 666076,
+    "flag": {
+      "presente": false,
+      "nota": "recortada para dejar el sello fuera"
+    }
+  },
+  {
+    "ruta_bucket": "web/zonas-comunes/hero-movil.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/hero-movil.webp",
+    "origen": "drive/zonas-comunes/01.webp",
+    "ancho": 1750,
+    "alto": 2720,
+    "bytes": 1022528,
+    "flag": {
+      "presente": false,
+      "nota": "recortada para dejar el sello fuera"
+    }
+  }
+]

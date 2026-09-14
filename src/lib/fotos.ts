@@ -60,6 +60,45 @@ export function foto(ruta: string): string {
 }
 
 /* ===========================================================================
+ * EL SELLO DE MARCA («flag») DE LAS FOTOS
+ * ---------------------------------------------------------------------------
+ * Las 53 fotos del Drive llevan pegado en el BORDE SUPERIOR DERECHO un sello
+ * blanco con el isotipo y el wordmark «LA FINCA · Eco-Hotel»: una pestaña de
+ * esquinas redondeadas que cuelga del borde de arriba. Está en TODAS —se midió
+ * una por una con `npm run imagenes:flag`, que anota el campo `flag` en los dos
+ * manifiestos—, así que no existe la opción de «elegir una foto sin sello».
+ *
+ * El sello en sí queda bien: es la marca del hotel. Lo que queda mal es
+ * CORTARLO. En cuanto la foto entra en un contenedor con forma —un arco, un
+ * radio muy grande, un recorte orgánico— la forma muerde justo esa esquina y el
+ * sello aparece partido por la mitad. Es lo que pasaba en «Bienvenidos».
+ *
+ * DE AHÍ LAS TRES REGLAS QUE SIGUE EL SITIO:
+ *
+ *   1. Un contenedor con forma NO puede tocar la esquina superior derecha. Los
+ *      arcos y los radios grandes se llevan a la esquina superior IZQUIERDA o a
+ *      las de abajo.
+ *   2. Cuando el contenedor recorta por `object-cover`, se ancla el encuadre
+ *      con `object-position: right top` (`CLASE_FOTO_CON_FLAG`): así la esquina
+ *      del sello se ve ENTERA, nunca a medias.
+ *   3. Para el hero de la portada —la única superficie donde la foto se ve a
+ *      pantalla completa— hay variantes recortadas SIN sello
+ *      (`npm run imagenes:hero`).
+ *
+ * `ZONA_FLAG` es la caja del sello en fracciones del archivo publicado
+ * (`web/`, que ya perdió el 15 % inferior). El extremo medido en las 47 fotos
+ * es x0 = 0,71 y y1 = 0,22; se redondea hacia fuera con margen.
+ * ======================================================================== */
+
+export const ZONA_FLAG = { x0: 0.68, x1: 1, y0: 0, y1: 0.24 } as const;
+
+/**
+ * Clases para una foto con sello dentro de un contenedor que recorta: ancla el
+ * encuadre en la esquina superior derecha, que es donde vive el sello.
+ */
+export const CLASE_FOTO_CON_FLAG = "object-cover object-right-top";
+
+/* ===========================================================================
  * Zonas comunes
  * ======================================================================== */
 
@@ -123,13 +162,26 @@ export const ZONAS_COMUNES: ImagenGaleria[] = [
  * es el respaldo en código, no la única fuente.
  */
 export const FOTO = {
-  /** Hero de escritorio: el corredor abierto al valle. Es la foto que mejor
-   *  cuenta «bosque de niebla» de un vistazo y la única apaisada de verdad
-   *  (2400×1530 ya recortada), así que no se deforma a lo ancho de la pantalla. */
-  heroEscritorio: foto("zonas-comunes/02"),
-  /** Hero de móvil: vertical de origen (2400×2720 ya recortada). La apaisada,
-   *  metida en una pantalla de teléfono, se queda en un trozo de baranda. */
-  heroMovil: foto("zonas-comunes/01"),
+  /**
+   * Hero de escritorio: el corredor abierto al valle, la foto que mejor cuenta
+   * «bosque de niebla» de un vistazo.
+   *
+   * Es una VARIANTE de `zonas-comunes/02` recortada por arriba para dejar el
+   * sello de marca fuera (`npm run imagenes:hero`): a pantalla completa, y a
+   * dos dedos del logotipo real de la barra de navegación, el sello se leía
+   * como una marca de agua de banco de imágenes. Queda un panorámico
+   * 2400×1180 que conserva el techo, las jardineras, el bebedero de colibríes
+   * y el valle entero.
+   */
+  heroEscritorio: foto("zonas-comunes/hero-escritorio"),
+  /**
+   * Hero de móvil: el deck techado, en vertical. La apaisada, metida en una
+   * pantalla de teléfono, se queda en un trozo de baranda.
+   *
+   * También sin sello: aquí no se puede recortar por arriba —el techo de
+   * guadua ES la foto— así que se fue la franja derecha. 1750×2720.
+   */
+  heroMovil: foto("zonas-comunes/hero-movil"),
   /** Fondo de las secciones oscuras: el deck suspendido entre los árboles.
    *  Es la más verde y la más cerrada, que es lo que hace falta detrás de un
    *  velo de petróleo: una foto con cielo se convierte en una mancha clara. */

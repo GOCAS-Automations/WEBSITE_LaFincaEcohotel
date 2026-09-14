@@ -16,7 +16,10 @@
     "imagenes:limpiar": "node scripts/limpiar-bucket.mjs",
     "seed:contenido": "node scripts/generar-seed-contenido.mjs",
     "imagenes:recortar": "node scripts/recortar-fotos-web.mjs",
-    "marca:patron": "node scripts/generar-patron-marca.mjs"
+    "marca:patron": "node scripts/generar-patron-marca.mjs",
+    "imagenes:flag": "node scripts/inventariar-flag.mjs",
+    "imagenes:hero": "node scripts/generar-hero-sin-flag.mjs",
+    "video:cop16": "node scripts/subir-video-cop16.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.5",
