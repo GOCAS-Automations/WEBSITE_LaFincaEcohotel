@@ -64,6 +64,19 @@ Tarifas referenciales de temporada baja; pueden variar en festivos y alta demand
 Correcciones sobre el seed provisional: Premium era $650.000 → **$680.000**; Estándar $450.000 →
 **$480.000**; falta la tarifa de 1 persona en Entre Semana y el plan Día de Calma.
 
+**Regla plan ↔ noches (para el calendario del motor de reservas):**
+- Una noche se identifica por la fecha de su check-in. Noche «entre semana» = lunes a jueves.
+  Noche «fin de semana o festivo» = viernes, sábado, domingo, cualquier **festivo de Colombia**
+  (Ley 51 de 1983 / «Ley Emiliani»: fijos, móviles según Pascua y traslado a lunes) y `TODO` la
+  **víspera** de un festivo entre semana (por confirmar con el cliente).
+- Plan Entre Semana solo admite noches entre semana; Estándar y Premium solo noches de fin de
+  semana o festivo. **Estancias mixtas** (ej. jueves→sábado) no se permiten en línea por ahora:
+  `TODO` preguntar al cliente cómo se cobran.
+- Día de Calma no ocupa cabaña ni noche (10 a.m.–5 p.m.); su venta en línea se modela en la Fase 3.
+
+**Nombre de la página «El lugar»:** se renombra a **«Conócenos»** (`/conocenos`, con redirección desde
+`/el-lugar`). Alternativas consideradas: «Nuestro bosque», «El refugio», «Descubre La Finca».
+
 ## 4. Experiencias y adicionales (valor por estadía, adicional al plan)
 
 | Nombre | Precio | Detalle |
@@ -88,8 +101,9 @@ Correcciones sobre el seed provisional: Premium era $650.000 → **$680.000**; E
 - **Mínimo de noches:** no hay (se puede una sola noche). `TODO` confirmar si aplica mínimo en
   fines de semana o festivos.
 - **Mascotas:** bienvenidas en todas las áreas, con cuidado responsable. Segunda mascota $50.000.
-- **Niños:** experiencia diseñada para parejas adultas. Bebés hasta 10 meses (duermen con la mamá)
-  sin costo. No hay cuna ni silla alta.
+- **Menores de edad: NO se permiten en la finca, en ninguna cabaña** (indicación directa de Cesar,
+  2026-09-14; manda sobre el documento del bot, que hablaba de bebés hasta 10 meses). Experiencia
+  exclusiva para adultos. `TODO` confirmar con Amapola la redacción exacta para FAQ y términos.
 - **Vehículos:** parqueadero externo vigilado 24 h en la entrada; los vehículos **no ingresan** a la
   reserva natural. Vía sin pavimentar pero apta para cualquier carro.
 - **Movilidad reducida:** terreno no plano; no recomendado.
