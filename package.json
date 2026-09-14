@@ -18,7 +18,7 @@
     "imagenes:recortar": "node scripts/recortar-fotos-web.mjs",
     "marca:patron": "node scripts/generar-patron-marca.mjs",
     "imagenes:flag": "node scripts/inventariar-flag.mjs",
-    "imagenes:hero": "node scripts/generar-hero-sin-flag.mjs",
+    "imagenes:hero": "node scripts/generar-heros.mjs",
     "video:cop16": "node scripts/subir-video-cop16.mjs",
     "test": "vitest run",
     "test:mirar": "vitest"

@@ -1,26 +1,110 @@
 [
   {
-    "ruta_bucket": "web/zonas-comunes/hero-escritorio.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/hero-escritorio.webp",
+    "ruta_bucket": "web/heroes/portada-escritorio.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/heroes/portada-escritorio.webp",
     "origen": "drive/zonas-comunes/02.webp",
+    "origen_ancho": 2400,
+    "origen_alto": 1800,
     "ancho": 2400,
     "alto": 1180,
-    "bytes": 666076,
-    "flag": {
-      "presente": false,
-      "nota": "recortada para dejar el sello fuera"
-    }
+    "bytes": 912094,
+    "calidad": 90,
+    "nota": "Corredor techado abierto al valle. Sin sello: se va la franja superior."
   },
   {
-    "ruta_bucket": "web/zonas-comunes/hero-movil.webp",
-    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/hero-movil.webp",
+    "ruta_bucket": "web/heroes/portada-movil.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/heroes/portada-movil.webp",
     "origen": "drive/zonas-comunes/01.webp",
+    "origen_ancho": 2400,
+    "origen_alto": 3200,
     "ancho": 1750,
     "alto": 2720,
-    "bytes": 1022528,
-    "flag": {
-      "presente": false,
-      "nota": "recortada para dejar el sello fuera"
-    }
+    "bytes": 1245450,
+    "calidad": 90,
+    "nota": "Deck techado, vertical. Sin sello: aquí no se puede recortar por arriba (el techo de guadua ES la foto), así que se va la franja derecha."
+  },
+  {
+    "ruta_bucket": "web/heroes/alojamientos.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/heroes/alojamientos.webp",
+    "origen": "drive/cabana-03/02.webp",
+    "origen_ancho": 1448,
+    "origen_alto": 1086,
+    "ancho": 1448,
+    "alto": 923,
+    "bytes": 374780,
+    "calidad": 90,
+    "nota": "Balcón techado de la Cabaña 03. Se mantiene: 1448 px bastan."
+  },
+  {
+    "ruta_bucket": "web/heroes/experiencias.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/heroes/experiencias.webp",
+    "origen": "drive/cabana-02/05.webp",
+    "origen_ancho": 1448,
+    "origen_alto": 1086,
+    "ancho": 1448,
+    "alto": 923,
+    "bytes": 392904,
+    "calidad": 90,
+    "nota": "CAMBIA: la chimenea de la 05 se muda al hero de Contacto y aquí entra el jacuzzi bajo el árbol, que es la imagen que mejor dice «experiencia»."
+  },
+  {
+    "ruta_bucket": "web/heroes/conocenos.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/heroes/conocenos.webp",
+    "origen": "drive/zonas-comunes/05.webp",
+    "origen_ancho": 1536,
+    "origen_alto": 2048,
+    "ancho": 1536,
+    "alto": 1000,
+    "bytes": 490386,
+    "calidad": 90,
+    "nota": "CAMBIA: la piscina medía 1086 px. Entra la panorámica de la reserva, 1536 px, recortada a la banda de las cabañas."
+  },
+  {
+    "ruta_bucket": "web/heroes/galeria.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/heroes/galeria.webp",
+    "origen": "drive/zonas-comunes/07.webp",
+    "origen_ancho": 1448,
+    "origen_alto": 1086,
+    "ancho": 1448,
+    "alto": 923,
+    "bytes": 242330,
+    "calidad": 90,
+    "nota": "Mesa y sillas de piedra en la neblina del atardecer. Se mantiene."
+  },
+  {
+    "ruta_bucket": "web/heroes/faq.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/heroes/faq.webp",
+    "origen": "drive/cabana-02/04.webp",
+    "origen_ancho": 1448,
+    "origen_alto": 1086,
+    "ancho": 1448,
+    "alto": 923,
+    "bytes": 449390,
+    "calidad": 90,
+    "nota": "CAMBIA: el balcón de la Cabaña 01 medía 1086 px. Entra la terraza de la 02, la misma escena (hamaca y montañas) con 1448 px."
+  },
+  {
+    "ruta_bucket": "web/heroes/contacto.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/heroes/contacto.webp",
+    "origen": "drive/cabana-05/05.webp",
+    "origen_ancho": 1448,
+    "origen_alto": 1086,
+    "ancho": 1448,
+    "alto": 923,
+    "bytes": 295198,
+    "calidad": 90,
+    "nota": "CAMBIA: la fogata medía 941 px, el peor material del sitio. Entra la chimenea de la Cabaña 05, que cuenta lo mismo —calor, noche, compañía— con 1448 px."
+  },
+  {
+    "ruta_bucket": "web/heroes/reservar.webp",
+    "url_publica": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/heroes/reservar.webp",
+    "origen": "drive/cabana-01/01.webp",
+    "origen_ancho": 1448,
+    "origen_alto": 1086,
+    "ancho": 1448,
+    "alto": 923,
+    "bytes": 182362,
+    "calidad": 90,
+    "nota": "Habitación del nivel superior de la Cabaña 01. Se mantiene."
   }
 ]
