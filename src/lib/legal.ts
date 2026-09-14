@@ -230,7 +230,7 @@ export function documentosLegales(
               "El restaurante atiende todos los días en el horario publicado en el sitio y es de uso exclusivo para huéspedes. El desayuno está incluido en los tres planes de hospedaje.",
             ),
             p(
-              "La experiencia está diseñada para parejas adultas. Recibimos bebés de hasta diez (10) meses, que se alojan con su madre y no generan costo; no disponemos de cuna ni de silla alta.",
+              "La Finca es un establecimiento para adultos. No se permite el ingreso ni el alojamiento de menores de edad en ninguna de las cabañas ni en las zonas comunes, sin excepción. La reserva se entiende hecha para huéspedes mayores de dieciocho (18) años, y el incumplimiento de esta condición faculta al hotel para no prestar el servicio, sin derecho a reembolso.",
             ),
           ],
         },
@@ -257,7 +257,7 @@ export function documentosLegales(
               "Respondemos por la correcta prestación de los servicios contratados. No respondemos por los objetos de valor que dejes sin custodia, ni por los daños derivados del incumplimiento de las normas de seguridad y de la reserva natural, ni por hechos de fuerza mayor o caso fortuito, como cierres de vía, fenómenos climáticos o cortes prolongados de servicios públicos.",
             ),
             p(
-              "El uso de la piscina, el jacuzzi, el turco y los senderos es bajo tu propia responsabilidad. Los menores de edad deben estar siempre acompañados por un adulto.",
+              "El uso de la piscina, el jacuzzi, el turco y los senderos es bajo tu propia responsabilidad.",
             ),
           ],
         },

@@ -19,7 +19,9 @@
     "marca:patron": "node scripts/generar-patron-marca.mjs",
     "imagenes:flag": "node scripts/inventariar-flag.mjs",
     "imagenes:hero": "node scripts/generar-hero-sin-flag.mjs",
-    "video:cop16": "node scripts/subir-video-cop16.mjs"
+    "video:cop16": "node scripts/subir-video-cop16.mjs",
+    "test": "vitest run",
+    "test:mirar": "vitest"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.5",
@@ -42,6 +44,7 @@
     "pg": "^8.23.0",
     "sharp": "^0.35.4",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.2.7"
   }
 }

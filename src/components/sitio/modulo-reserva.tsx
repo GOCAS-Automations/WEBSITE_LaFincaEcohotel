@@ -1,12 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useId, useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 
 import { clasesBoton } from "@/components/ui/boton";
-import { contarNoches, sumarDias } from "@/lib/utils/formato";
+import { validarEstadia } from "@/lib/reglas-reserva";
+import { contarNoches } from "@/lib/utils/formato";
 
-import { IconoCalendario, IconoFlecha, IconoLlave } from "./iconos";
+import { CalendarioFechas } from "./calendario-fechas";
+import { IconoFlecha, IconoLlave } from "./iconos";
 
 /**
  * Módulo de reserva directa de la portada.
@@ -39,9 +41,13 @@ import { IconoCalendario, IconoFlecha, IconoLlave } from "./iconos";
  * · Elegir la llegada empuja la salida al día siguiente si había quedado antes.
  *   Corregirle la fecha al visitante en silencio es mejor que enseñarle un
  *   error que él no provocó.
- * · Las fechas son `input type="date"` nativos: en el celular abren el
- *   calendario del sistema, que es el que el visitante ya sabe usar. Un
- *   calendario propio aquí sería kilobytes y errores a cambio de nada.
+ * · Las fechas YA NO son dos `input type="date"`. El campo nativo no sabe
+ *   apagar días sueltos —solo entiende `min` y `max`— y La Finca necesita
+ *   apagar los fines de semana o los días entre semana según el plan, y no
+ *   dejar armar una estadía que mezcle los dos bloques. Ahora es
+ *   `CalendarioFechas`, escrito a mano. De paso los dos campos pasan a ser
+ *   UNO, que es lo que devuelve al módulo el alto que tenía antes: en el hero
+ *   de un teléfono cada línea cuenta.
  */
 
 export type CabanaOpcion = { slug: string; nombre: string };
@@ -68,24 +74,28 @@ export function ModuloReserva({
   ctaTexto = "Reservar",
 }: Props) {
   const router = useRouter();
-  const idError = useId();
 
   const [cabana, setCabana] = useState("");
   const [entrada, setEntrada] = useState("");
   const [salida, setSalida] = useState("");
 
-  const fechasInvalidas = Boolean(entrada && salida && salida <= entrada);
+  /*
+    Aquí NO se pasa restricción de plan: en la portada todavía no se ha elegido
+    plan. El calendario sí impide, con plan o sin él, armar una estadía mixta
+    (jueves→sábado): esa regla no depende del plan, sino de que el hotel no
+    vende esas noches juntas en línea.
+  */
+  const validacion = useMemo(() => {
+    if (!entrada || !salida) return null;
+    return validarEstadia(entrada, salida);
+  }, [entrada, salida]);
+
+  const fechasInvalidas = Boolean(validacion && !validacion.valida);
 
   const noches = useMemo(() => {
     if (!entrada || !salida || fechasInvalidas) return 0;
     return contarNoches(entrada, salida);
   }, [entrada, salida, fechasInvalidas]);
-
-  /** Al mover la llegada, la salida nunca puede quedarse detrás. */
-  function cambiarEntrada(valor: string) {
-    setEntrada(valor);
-    if (valor && salida && salida <= valor) setSalida(sumarDias(valor, 1));
-  }
 
   function enviar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
@@ -135,8 +145,8 @@ export function ModuloReserva({
         salida comparten fila —son la misma decisión— y la cabaña y el botón
         ocupan las dos columnas.
       */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-[1.35fr_1fr_1fr_auto] lg:items-end lg:gap-4">
-        <label className="col-span-2 flex flex-col gap-1.5 lg:col-span-1">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.2fr_1.4fr_auto] lg:items-end lg:gap-4">
+        <label className="flex flex-col gap-1.5">
           <span className={CLASE_ETIQUETA}>Cabaña</span>
           <select
             name="cabana"
@@ -153,48 +163,26 @@ export function ModuloReserva({
           </select>
         </label>
 
-        <label className="flex flex-col gap-1.5">
-          <span className={CLASE_ETIQUETA}>
-            <IconoCalendario className="size-3.5" />
-            Llegada
-          </span>
-          <input
-            type="date"
-            name="entrada"
-            value={entrada}
-            min={hoy}
-            onChange={(evento) => cambiarEntrada(evento.target.value)}
-            className={CLASE_CAMPO}
+        <div className="flex flex-col gap-1.5">
+          <span className={CLASE_ETIQUETA}>Llegada y salida</span>
+          <CalendarioFechas
+            entrada={entrada}
+            salida={salida}
+            alCambiar={(nuevaEntrada, nuevaSalida) => {
+              setEntrada(nuevaEntrada);
+              setSalida(nuevaSalida);
+            }}
+            hoy={hoy}
+            compacto
           />
-        </label>
-
-        <label className="flex flex-col gap-1.5">
-          <span className={CLASE_ETIQUETA}>
-            <IconoCalendario className="size-3.5" />
-            Salida
-          </span>
-          <input
-            type="date"
-            name="salida"
-            value={salida}
-            min={entrada ? sumarDias(entrada, 1) : hoy}
-            onChange={(evento) => setSalida(evento.target.value)}
-            aria-invalid={fechasInvalidas}
-            aria-describedby={fechasInvalidas ? idError : undefined}
-            className={
-              fechasInvalidas
-                ? `${CLASE_CAMPO} border-red-600 focus:border-red-600`
-                : CLASE_CAMPO
-            }
-          />
-        </label>
+        </div>
 
         <button
           type="submit"
           className={clasesBoton(
             "primario",
             "normal",
-            "col-span-2 lg:col-span-1 w-full lg:w-auto lg:px-8 py-3.5 whitespace-nowrap",
+            "w-full lg:w-auto lg:px-8 py-3.5 whitespace-nowrap",
           )}
         >
           {ctaTexto}
@@ -202,11 +190,8 @@ export function ModuloReserva({
         </button>
       </div>
 
-      {fechasInvalidas ? (
-        <p id={idError} className="mt-3 text-sm font-medium text-red-700">
-          La fecha de salida debe ser posterior a la de llegada.
-        </p>
-      ) : null}
+      {/* El mensaje de error lo pinta el propio calendario, justo debajo del
+          campo: repetirlo aquí abajo lo alejaría de donde se comete el fallo. */}
     </form>
   );
 }

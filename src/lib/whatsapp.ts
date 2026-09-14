@@ -60,6 +60,8 @@ export type SolicitudReserva = {
   salida?: FechaISO | null;
   /** Precio por noche del plan elegido, en COP enteros. */
   precioNoche?: number | null;
+  /** Cuántos adultos. Siempre adultos: La Finca no recibe menores de edad. */
+  adultos?: number | null;
 };
 
 /**
@@ -76,6 +78,7 @@ export function mensajeReserva({
   entrada,
   salida,
   precioNoche,
+  adultos,
 }: SolicitudReserva): string {
   const partes: string[] = [
     "¡Hola! Vengo del sitio web de La Finca Eco Hotel y quiero reservar.",
@@ -83,6 +86,11 @@ export function mensajeReserva({
 
   if (cabana) partes.push(`Cabaña: ${cabana}.`);
   if (plan) partes.push(`Plan: ${plan}.`);
+  if (typeof adultos === "number" && adultos > 0) {
+    partes.push(
+      adultos === 1 ? "Somos 1 adulto." : `Somos ${adultos} adultos.`,
+    );
+  }
 
   if (entrada && salida) {
     partes.push(`Fechas: del ${formatearFecha(entrada)} al ${formatearFecha(salida)}.`);

@@ -258,9 +258,10 @@ export function FormularioReserva({
         </Campo>
 
         <Campo
-          etiqueta="Cuántas personas"
+          etiqueta="Cuántos adultos"
           htmlFor="num_personas"
           obligatorio
+          ayuda="Las cabañas son para dos personas y La Finca no recibe menores de edad."
         >
           <Entrada
             id="num_personas"

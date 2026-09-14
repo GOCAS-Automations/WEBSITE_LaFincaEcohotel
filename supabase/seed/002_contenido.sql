@@ -306,8 +306,8 @@ insert into contenido (clave, valor) values
       "respuesta": "¡Claro! Las mascotas son bienvenidas en todas nuestras áreas, con cuidado responsable de sus acompañantes. La primera no tiene costo; a partir de la segunda hay un valor de $50.000 por estadía."
     },
     {
-      "pregunta": "¿Pueden ir niños?",
-      "respuesta": "La experiencia está diseñada para parejas adultas. Recibimos bebés de hasta 10 meses, que duermen con la mamá y no tienen costo. No contamos con cuna ni silla alta."
+      "pregunta": "¿Pueden ir menores de edad?",
+      "respuesta": "No. La Finca es una experiencia exclusiva para adultos: no recibimos menores de edad en ninguna de las cabañas ni en las zonas comunes. Las cabañas son para dos personas y todo el lugar —el silencio, la zona de hidroterapia, los senderos— está pensado para parejas que vienen a desconectarse."
     },
     {
       "pregunta": "¿Cuentan con restaurante?",

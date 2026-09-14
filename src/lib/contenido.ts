@@ -590,8 +590,9 @@ const RESPALDO_EXPERIENCIAS_PAGINA: ContenidoExperiencias = {
  * tres errores que costaban reservas: decían «6 cabañas» (son cinco), daban el
  * restaurante de 8:00 a. m. a 11:00 p. m. (es de 9:00 a. m. a 8:00 p. m. y solo
  * para huéspedes) y afirmaban que no había pasadía (existe el Día de Calma).
- * También decían que los niños son bienvenidos sin matizar, cuando la
- * experiencia está diseñada para parejas adultas.
+ * También decían que los niños son bienvenidos sin matizar. Desde el
+ * 2026-09-14 la regla del hotel es más tajante y está en §5 de
+ * `DATOS_CLIENTE.md`: NO se permiten menores de edad, en ninguna cabaña.
  */
 const RESPALDO_FAQ: ContenidoFaq = {
   intro:
@@ -643,9 +644,9 @@ const RESPALDO_FAQ: ContenidoFaq = {
         "¡Claro! Las mascotas son bienvenidas en todas nuestras áreas, con cuidado responsable de sus acompañantes. La primera no tiene costo; a partir de la segunda hay un valor de $50.000 por estadía.",
     },
     {
-      pregunta: "¿Pueden ir niños?",
+      pregunta: "¿Pueden ir menores de edad?",
       respuesta:
-        "La experiencia está diseñada para parejas adultas. Recibimos bebés de hasta 10 meses, que duermen con la mamá y no tienen costo. No contamos con cuna ni silla alta.",
+        "No. La Finca es una experiencia exclusiva para adultos: no recibimos menores de edad en ninguna de las cabañas ni en las zonas comunes. Las cabañas son para dos personas y todo el lugar —el silencio, la zona de hidroterapia, los senderos— está pensado para parejas que vienen a desconectarse.",
     },
     {
       pregunta: "¿Cuentan con restaurante?",
