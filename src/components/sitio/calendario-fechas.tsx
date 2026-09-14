@@ -412,12 +412,29 @@ export function CalendarioFechas({
       ) : null}
 
       {abierto ? (
-        <div
-          id={idPanel}
-          role="group"
-          aria-label="Calendario de llegada y salida"
-          className="absolute top-[calc(100%+0.5rem)] left-0 z-50 w-[min(20.5rem,calc(100vw-2.5rem))] rounded-[var(--radius-generoso)] bg-white p-4 shadow-[var(--shadow-elevada)] ring-1 ring-crema-200"
-        >
+        <>
+          {/*
+            EN MÓVIL ES UNA HOJA, NO UN DESPLEGABLE.
+            El calendario mide unos 400 px: colgado del campo, en una pantalla
+            de teléfono se sale por abajo, y el hero de la portada —que es donde
+            vive este módulo— tiene `overflow-hidden` para recortar la bruma, así
+            que lo que se salga se pierde. Anclado al borde inferior de la
+            pantalla cabe siempre y además queda al alcance del pulgar.
+
+            `position: fixed` escapa del recorte del hero; el velo cierra al
+            tocar fuera, que en un teléfono es el gesto que todo el mundo hace.
+          */}
+          <div
+            aria-hidden="true"
+            onClick={() => setAbierto(false)}
+            className="fixed inset-0 z-40 bg-petroleo-950/45 sm:hidden"
+          />
+          <div
+            id={idPanel}
+            role="group"
+            aria-label="Calendario de llegada y salida"
+            className="fixed inset-x-3 bottom-3 z-50 rounded-[var(--radius-generoso)] bg-white p-4 shadow-[var(--shadow-elevada)] ring-1 ring-crema-200 sm:absolute sm:inset-x-auto sm:bottom-auto sm:top-[calc(100%+0.5rem)] sm:left-0 sm:w-[20.5rem]"
+          >
           <div className="mb-3 flex items-center justify-between gap-2">
             <button
               type="button"
@@ -516,7 +533,8 @@ export function CalendarioFechas({
               Listo
             </button>
           </div>
-        </div>
+          </div>
+        </>
       ) : null}
     </div>
   );

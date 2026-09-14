@@ -6,7 +6,7 @@ import { HeroPagina } from "@/components/sitio/hero-pagina";
 import { IconoWhatsapp } from "@/components/sitio/iconos";
 import { Boton } from "@/components/ui/boton";
 import { Revelar } from "@/components/ui/revelar";
-import { EncabezadoSeccion, Seccion } from "@/components/ui/seccion";
+import { EncabezadoSeccion, RITMO, Seccion } from "@/components/ui/seccion";
 import {
   getContacto,
   getContenidoExperiencias,
@@ -55,7 +55,7 @@ export async function PaginaExperiencias() {
         </p>
 
         {experiencias.length > 0 ? (
-          <ul className="relative z-10 mx-auto mt-12 grid max-w-5xl gap-6 sm:grid-cols-2">
+          <ul className={`relative z-10 mx-auto ${RITMO.trasTitulo} grid max-w-5xl gap-6 sm:grid-cols-2`}>
             {experiencias.map((experiencia, indice) => (
               <Revelar
                 key={experiencia.id}
@@ -127,7 +127,7 @@ export async function PaginaExperiencias() {
             descripcion="Se piden al reservar o al llegar, y se cobran una sola vez por estadía."
           />
 
-          <ul className="mx-auto mt-10 flex max-w-3xl flex-col gap-3">
+          <ul className={`mx-auto ${RITMO.trasTitulo} flex max-w-3xl flex-col gap-3`}>
             {adicionales.map((adicional, indice) => (
               <Revelar key={adicional.id} como="li" retraso={indice * 80}>
                 <article className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 rounded-[var(--radius-generoso)] bg-crema-50 px-5 py-4 ring-1 ring-crema-200/70 sm:px-7 sm:py-5">
@@ -159,7 +159,7 @@ export async function PaginaExperiencias() {
             descripcion={contenido.adicionales_descripcion}
           />
 
-          <ul className="mx-auto mt-12 grid max-w-5xl gap-6 sm:grid-cols-2">
+          <ul className={`mx-auto ${RITMO.trasTitulo} grid max-w-5xl gap-6 sm:grid-cols-2`}>
             {contenido.adicionales.map((adicional, indice) => (
               <Revelar
                 key={adicional.nombre}

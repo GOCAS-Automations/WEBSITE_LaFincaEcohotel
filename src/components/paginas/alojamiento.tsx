@@ -13,7 +13,7 @@ import { TarjetaPlan } from "@/components/sitio/tarjeta-plan";
 import { Boton } from "@/components/ui/boton";
 import { Galeria } from "@/components/ui/galeria";
 import { Revelar } from "@/components/ui/revelar";
-import { EncabezadoSeccion, Seccion } from "@/components/ui/seccion";
+import { EncabezadoSeccion, RITMO, Seccion } from "@/components/ui/seccion";
 import {
   getAlojamientos,
   getContacto,
@@ -180,7 +180,7 @@ export async function PaginaAlojamiento({
             descripcion="El precio depende del plan, no de la cabaña: elige el nivel de servicio que quieres."
           />
 
-          <ul className="mt-12 grid items-stretch gap-6 lg:grid-cols-3">
+          <ul className={`${RITMO.trasTitulo} grid items-stretch gap-6 lg:grid-cols-3`}>
             {alojamiento.tarifas.map((tarifa, indice) => (
               <Revelar
                 key={tarifa.plan.id}
@@ -222,7 +222,7 @@ export async function PaginaAlojamiento({
             alineacion="izquierda"
           />
 
-          <ul className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className={`${RITMO.trasTitulo} grid gap-6 sm:grid-cols-2 lg:grid-cols-3`}>
             {otras.map((otra, indice) => (
               <Revelar
                 key={otra.id}
@@ -235,7 +235,7 @@ export async function PaginaAlojamiento({
             ))}
           </ul>
 
-          <div className="mt-10 flex justify-center">
+          <div className={`${RITMO.trasContenido} flex justify-center`}>
             <Boton href="/alojamientos" variante="contorno">
               Ver todas las cabañas
               <IconoFlecha className="size-4" />

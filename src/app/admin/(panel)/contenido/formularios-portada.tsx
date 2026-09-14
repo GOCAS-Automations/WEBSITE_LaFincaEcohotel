@@ -482,7 +482,10 @@ export function FormularioReconocimiento({ valor }: { valor: Valor }) {
             rows={4}
           />
         </Campo>
-        <Campo etiqueta="Foto">
+        <Campo
+          etiqueta="Foto"
+          ayuda="Si hay video, esta foto es la que se ve antes de reproducirlo."
+        >
           <CampoImagen
             name="imagen"
             urlInicial={texto(valor, "imagen")}
@@ -495,6 +498,21 @@ export function FormularioReconocimiento({ valor }: { valor: Valor }) {
             name="imagen_alt"
             defaultValue={texto(valor, "imagen_alt")}
             maxLength={300}
+          />
+        </Campo>
+        <Campo
+          etiqueta="Video (opcional)"
+          htmlFor="recon_video"
+          className="sm:col-span-2"
+          ayuda="Dirección de un archivo .mp4 o .webm. Si la dejas vacía, la sección muestra la foto. El video se reproduce solo, silenciado y en bucle, con controles para subir el volumen."
+        >
+          <Entrada
+            id="recon_video"
+            name="video"
+            type="url"
+            defaultValue={texto(valor, "video")}
+            maxLength={500}
+            placeholder="https://…/videos/sitio/cop16-la-finca.mp4"
           />
         </Campo>
         <Campo etiqueta="Botón — texto" htmlFor="recon_cta">

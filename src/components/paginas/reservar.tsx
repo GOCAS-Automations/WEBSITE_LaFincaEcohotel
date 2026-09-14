@@ -15,7 +15,7 @@ import {
 } from "@/components/sitio/selector-reserva";
 import { Boton } from "@/components/ui/boton";
 import { Revelar } from "@/components/ui/revelar";
-import { Seccion } from "@/components/ui/seccion";
+import { RITMO, Seccion } from "@/components/ui/seccion";
 import {
   getAlojamientos,
   getContacto,
@@ -201,7 +201,7 @@ export async function PaginaReservar() {
             </div>
           )}
 
-          <p className="mt-10 text-center text-sm text-crema-600 italic">
+          <p className={`${RITMO.nota} text-center text-sm text-crema-600 italic`}>
             {seccionPlanes.nota}
           </p>
 

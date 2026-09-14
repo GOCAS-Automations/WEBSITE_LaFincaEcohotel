@@ -6,7 +6,7 @@ import { HeroPagina } from "@/components/sitio/hero-pagina";
 import { IconoUbicacion } from "@/components/sitio/iconos";
 import { Boton } from "@/components/ui/boton";
 import { Revelar } from "@/components/ui/revelar";
-import { EncabezadoSeccion, Seccion } from "@/components/ui/seccion";
+import { EncabezadoSeccion, RITMO, Seccion } from "@/components/ui/seccion";
 import {
   getContacto,
   getHeroesListados,
@@ -93,7 +93,7 @@ export async function PaginaConocenos() {
             descripcion={lugar.instalaciones_descripcion}
           />
 
-          <ul className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className={`${RITMO.trasTitulo} grid gap-6 sm:grid-cols-2 lg:grid-cols-3`}>
             {lugar.instalaciones.map((instalacion, indice) => (
               <Revelar
                 key={instalacion.nombre}

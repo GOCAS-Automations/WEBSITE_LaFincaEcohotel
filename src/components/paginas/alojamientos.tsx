@@ -11,7 +11,7 @@ import { HeroPagina } from "@/components/sitio/hero-pagina";
 import { IconoCheck, IconoFlecha, IconoPersonas } from "@/components/sitio/iconos";
 import { Boton } from "@/components/ui/boton";
 import { Revelar } from "@/components/ui/revelar";
-import { Seccion } from "@/components/ui/seccion";
+import { RITMO, Seccion } from "@/components/ui/seccion";
 import {
   getAlojamientos,
   getHeroesListados,
@@ -97,7 +97,7 @@ export async function PaginaAlojamientos() {
                 ))}
               </ul>
 
-              <p className="mt-14 text-center text-sm text-crema-600 italic">
+              <p className={`${RITMO.nota} text-center text-sm text-crema-600 italic`}>
                 {seccionPlanes.nota}
               </p>
             </>

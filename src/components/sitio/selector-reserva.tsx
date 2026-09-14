@@ -94,6 +94,14 @@ type Props = {
   hoy: string;
 };
 
+/*
+  OJO CON EL `<legend>` Y EL `gap` DEL FIELDSET.
+  Los cuatro pasos son `<fieldset className="flex flex-col gap-4">` con su
+  `<legend>`. El navegador saca el `legend` del flujo del contenedor —es parte
+  del borde del fieldset, no un hijo normal— así que el `gap` NO lo separa de la
+  primera tarjeta: «1. Elige tu cabaña» quedaba pegado a la Cabaña 01. Cada
+  `legend` lleva por eso su propio `mb-4`.
+*/
 export function SelectorReserva({ cabanas, planes, whatsapp, hoy }: Props) {
   const parametros = useSearchParams();
 
@@ -188,7 +196,7 @@ export function SelectorReserva({ cabanas, planes, whatsapp, hoy }: Props) {
       >
         {/* Cabaña */}
         <fieldset className="flex flex-col gap-4">
-          <legend className="font-titulo text-lg font-bold text-petroleo-900">
+          <legend className="mb-4 font-titulo text-lg font-bold text-petroleo-900">
             1. Elige tu cabaña
           </legend>
           <ul className="grid gap-3 sm:grid-cols-2">
@@ -237,7 +245,7 @@ export function SelectorReserva({ cabanas, planes, whatsapp, hoy }: Props) {
 
         {/* Plan */}
         <fieldset className="flex flex-col gap-4">
-          <legend className="font-titulo text-lg font-bold text-petroleo-900">
+          <legend className="mb-4 font-titulo text-lg font-bold text-petroleo-900">
             2. Elige tu plan
           </legend>
           {/*
@@ -350,7 +358,7 @@ export function SelectorReserva({ cabanas, planes, whatsapp, hoy }: Props) {
 
         {/* Huéspedes */}
         <fieldset className="flex flex-col gap-3">
-          <legend className="font-titulo text-lg font-bold text-petroleo-900">
+          <legend className="mb-4 font-titulo text-lg font-bold text-petroleo-900">
             3. ¿Cuántos son?
           </legend>
           <div className="flex flex-wrap items-center gap-3">
@@ -383,7 +391,7 @@ export function SelectorReserva({ cabanas, planes, whatsapp, hoy }: Props) {
 
         {/* Fechas */}
         <fieldset className="flex flex-col gap-4">
-          <legend className="font-titulo text-lg font-bold text-petroleo-900">
+          <legend className="mb-4 font-titulo text-lg font-bold text-petroleo-900">
             4. ¿Qué fechas tienes en mente?{" "}
             <span className="font-normal text-crema-600">(opcional)</span>
           </legend>

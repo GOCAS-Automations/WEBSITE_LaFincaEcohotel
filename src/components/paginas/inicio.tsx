@@ -17,7 +17,7 @@ import { TarjetaCabana } from "@/components/sitio/tarjeta-cabana";
 import { TarjetaPlan } from "@/components/sitio/tarjeta-plan";
 import { Boton } from "@/components/ui/boton";
 import { Revelar } from "@/components/ui/revelar";
-import { EncabezadoSeccion, Seccion } from "@/components/ui/seccion";
+import { EncabezadoSeccion, RITMO, Seccion } from "@/components/ui/seccion";
 import {
   getAlojamientos,
   getContacto,
@@ -145,7 +145,16 @@ export async function PaginaInicio() {
         botones grandes de antes sobraban: se queda uno solo, secundario y
         discreto, debajo.
       */}
-      <section className="relative isolate flex min-h-svh flex-col items-center justify-center overflow-hidden">
+      {/*
+        SIN `overflow-hidden` EN LA SECCIÓN.
+        Lo tenía para recortar la bruma y las ramas, y de paso recortaba el
+        calendario del módulo de reserva, que cuelga por debajo del campo. El
+        recorte se baja ahora a una capa que envuelve SOLO la decoración: la
+        bruma sigue entrando y saliendo del encuadre y el calendario ya no se
+        corta.
+      */}
+      <section className="relative isolate flex min-h-svh flex-col items-center justify-center">
+        <div aria-hidden="true" className="absolute inset-0 overflow-hidden">
         {/*
           Dirección de arte real: la foto horizontal recortada a una pantalla de
           teléfono pierde justo las cabañas, así que en móvil se sirve la
@@ -227,6 +236,7 @@ export async function PaginaInicio() {
           className="absolute right-[-3%] bottom-[-8%] hidden w-52 text-brote-100/15 lg:block"
           espejo
         />
+        </div>
 
         <div className="contenedor relative z-10 flex flex-col items-center gap-6 pt-28 pb-16 text-center sm:gap-7 sm:pt-32 sm:pb-20">
           <p className="rounded-full bg-white/12 px-4 py-1.5 font-titulo text-[0.68rem] font-semibold tracking-[0.22em] text-brote-100 uppercase ring-1 ring-white/25 backdrop-blur-md sm:text-xs">
@@ -374,7 +384,7 @@ export async function PaginaInicio() {
             <ResenasGoogle
               resumen={resenas}
               titulo={null}
-              className="mt-10"
+              className={RITMO.trasTitulo}
             />
           </div>
         </Seccion>
@@ -388,7 +398,7 @@ export async function PaginaInicio() {
               titulo={testimonios.titulo}
             />
 
-            <ul className="mt-10 grid items-stretch gap-5 md:grid-cols-2 lg:grid-cols-3">
+            <ul className={`${RITMO.trasTitulo} grid items-stretch gap-5 md:grid-cols-2 lg:grid-cols-3`}>
               {testimonios.items.map((testimonio, indice) => (
                 <Revelar
                   key={testimonio.autor}
@@ -472,7 +482,7 @@ export async function PaginaInicio() {
               arriba, que es como se ve un catálogo y no un inventario a medio
               llenar. Los `li` se estiran solos al alto de su línea.
             */}
-            <ul className="mt-12 flex flex-wrap justify-center gap-6">
+            <ul className={`${RITMO.trasTitulo} flex flex-wrap justify-center gap-6`}>
               {alojamientos.map((alojamiento, indice) => (
                 <Revelar
                   key={alojamiento.id}
@@ -488,7 +498,7 @@ export async function PaginaInicio() {
               ))}
             </ul>
 
-            <div className="mt-10 flex justify-center">
+            <div className={`${RITMO.trasContenido} flex justify-center`}>
               <Boton href={seccionCabanas.cta_href} variante="contorno">
                 {seccionCabanas.cta_texto}
                 <IconoFlecha className="size-4" />
@@ -555,7 +565,7 @@ export async function PaginaInicio() {
                 en tabletas, dos y dos. El destacado es el Estándar, que es el
                 que más se vende de viernes a domingo.
               */}
-              <ul className="mt-12 grid items-stretch gap-5 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
+              <ul className={`${RITMO.trasTitulo} grid items-stretch gap-5 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6`}>
                 {planes.map((entrada, indice) => (
                   <Revelar
                     key={entrada.plan.id}
@@ -577,7 +587,7 @@ export async function PaginaInicio() {
               </ul>
 
               {seccionPlanes.nota ? (
-                <p className="mt-8 text-center text-sm text-crema-200/70 italic">
+                <p className={`${RITMO.nota} text-center text-sm text-crema-200/70 italic`}>
                   {seccionPlanes.nota}
                 </p>
               ) : null}
@@ -601,7 +611,7 @@ export async function PaginaInicio() {
             descripcion={seccionExperiencias.descripcion}
           />
 
-          <ul className="mx-auto mt-12 grid max-w-4xl gap-6 sm:grid-cols-2">
+          <ul className={`mx-auto ${RITMO.trasTitulo} grid max-w-4xl gap-6 sm:grid-cols-2`}>
             {experiencias.map((experiencia, indice) => (
               <Revelar
                 key={experiencia.id}
@@ -642,7 +652,7 @@ export async function PaginaInicio() {
             ))}
           </ul>
 
-          <div className="mt-10 flex justify-center">
+          <div className={`${RITMO.trasContenido} flex justify-center`}>
             <Boton href={seccionExperiencias.cta_href} variante="contorno">
               {seccionExperiencias.cta_texto}
               <IconoFlecha className="size-4" />

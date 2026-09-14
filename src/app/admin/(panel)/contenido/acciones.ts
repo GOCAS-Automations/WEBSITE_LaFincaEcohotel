@@ -201,6 +201,11 @@ export async function guardarReconocimientoAction(
         parrafos: aParrafos(textoOpcional(formData, "parrafos", 6000)),
         imagen: urlImagenOpcional(formData, "imagen"),
         imagen_alt: textoOpcional(formData, "imagen_alt", 300) ?? "",
+        /* La dirección del video. Va como texto y no por `CampoImagen`: el
+           bucket de videos es otro (migración 007) y la subida de archivos del
+           panel solo acepta imágenes. Si se deja vacía, la sección vuelve a
+           pintarse con la foto. */
+        video: textoOpcional(formData, "video", 500) ?? "",
         cta_texto: textoOpcional(formData, "cta_texto", 60) ?? "",
         cta_href: textoOpcional(formData, "cta_href", 200) ?? "",
       },

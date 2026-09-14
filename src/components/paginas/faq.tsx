@@ -8,7 +8,7 @@ import { HeroPagina } from "@/components/sitio/hero-pagina";
 import { IconoWhatsapp } from "@/components/sitio/iconos";
 import { Boton } from "@/components/ui/boton";
 import { Revelar } from "@/components/ui/revelar";
-import { Seccion } from "@/components/ui/seccion";
+import { RITMO, Seccion } from "@/components/ui/seccion";
 import {
   getContacto,
   getFaq,
@@ -110,7 +110,7 @@ export async function PaginaFaq() {
             ))}
           </ul>
 
-          <div className="mt-12 flex flex-col items-center gap-4 rounded-[var(--radius-generoso)] rounded-tl-[3.5rem] bg-white p-8 text-center ring-1 ring-crema-200/70">
+          <div className={`${RITMO.trasTitulo} flex flex-col items-center gap-4 rounded-[var(--radius-generoso)] rounded-tl-[3.5rem] bg-white p-8 text-center ring-1 ring-crema-200/70`}>
             <h2 className="font-titulo text-xl font-bold text-petroleo-900">
               ¿Te quedó alguna duda?
             </h2>

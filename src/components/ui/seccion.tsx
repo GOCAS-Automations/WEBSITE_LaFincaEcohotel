@@ -84,6 +84,30 @@ export function Seccion({
   );
 }
 
+/**
+ * LA ESCALA DE RITMO VERTICAL.
+ *
+ * El aire entre secciones ya lo decidía `ESPACIOS`. El aire DENTRO de una
+ * sección, en cambio, se decidía a ojo en cada página: había `mt-10`, `mt-12` y
+ * `mt-14` para exactamente la misma relación —un título y lo que viene debajo—,
+ * y el resultado es que dos secciones seguidas respiran distinto sin que nada
+ * lo justifique. Cesar lo vio en la página de cabañas.
+ *
+ * Son tres medidas y ninguna más:
+ *
+ *   · `trasTitulo`    — del encabezado de sección a su contenido.
+ *   · `trasContenido` — del contenido a la acción que lo cierra (un botón).
+ *   · `nota`          — a la letra pequeña del final (tarifas, condiciones).
+ *
+ * Si hace falta una cuarta, se añade AQUÍ y se documenta, no se escribe un
+ * `mt-` suelto en una página.
+ */
+export const RITMO = {
+  trasTitulo: "mt-10 sm:mt-12",
+  trasContenido: "mt-10",
+  nota: "mt-8",
+} as const;
+
 type PropsEncabezado = {
   antetitulo?: string;
   titulo: string;
