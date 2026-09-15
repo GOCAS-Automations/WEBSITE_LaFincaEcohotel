@@ -72,11 +72,17 @@ export async function PaginaConocenos() {
         proporción (`aspect-16/11` y `aspect-16/10`), que es lo que hay que
         hacer cuando ya no hay nada al lado con lo que alinearse.
 
-        RADIOS Y SELLO: las dos curvas grandes van abajo —`rounded-br` y
-        `rounded-bl`— y el encuadre se ancla con `CLASE_FOTO_CON_FLAG`. La
-        versión anterior abría con `rounded-tr-[7rem]`, justo sobre la esquina
-        donde todas las fotos del hotel llevan el sello (ver `ZONA_FLAG` en
-        `src/lib/fotos.ts`).
+        RADIOS Y SELLO: la curva grande de la foto de arriba abre en la esquina
+        SUPERIOR IZQUIERDA y la de la de abajo en la INFERIOR DERECHA, en
+        diagonal (petición de Cesar, 2026-09-15; antes iban las dos abajo y el
+        gesto se leía plano). Las dos son mayores que las anteriores —8 rem y
+        7 rem frente a 6 y 5— y en el teléfono bajan a 5 y 4,5 rem, que es lo
+        que aguanta una caja de 358 px de ancho sin comerse la foto.
+
+        Ninguna de las dos toca la esquina SUPERIOR DERECHA: ahí es donde todas
+        las fotos del hotel llevan impreso el sello de marca (ver `ZONA_FLAG` en
+        `src/lib/fotos.ts`), y el encuadre se ancla con `CLASE_FOTO_CON_FLAG`
+        para que se vea entero.
       */}
         <div className="relative z-10 grid items-center gap-10 lg:grid-cols-2 lg:items-stretch lg:gap-16">
           <Revelar className="flex flex-col justify-center gap-6">
@@ -99,7 +105,7 @@ export async function PaginaConocenos() {
 
           <Revelar retraso={110} className="lg:h-full">
             <div className="flex h-full flex-col gap-4 sm:gap-5">
-              <div className="relative aspect-16/11 min-h-0 shrink-0 overflow-hidden rounded-[var(--radius-generoso)] rounded-br-[6rem] bg-crema-200 shadow-[var(--shadow-elevada)] lg:aspect-auto lg:shrink lg:basis-0 lg:grow-[1.45]">
+              <div className="relative aspect-16/11 min-h-0 shrink-0 overflow-hidden rounded-[var(--radius-generoso)] rounded-tl-[5rem] bg-crema-200 shadow-[var(--shadow-elevada)] sm:rounded-tl-[8rem] lg:aspect-auto lg:shrink lg:basis-0 lg:grow-[1.45]">
                 <Foto
                   src={lugar.imagen}
                   alt={lugar.imagen_alt}
@@ -110,7 +116,7 @@ export async function PaginaConocenos() {
               </div>
 
               {lugar.imagen_secundaria ? (
-                <div className="relative aspect-16/10 min-h-0 shrink-0 overflow-hidden rounded-[var(--radius-generoso)] rounded-bl-[5rem] bg-crema-200 shadow-[var(--shadow-elevada)] lg:aspect-auto lg:shrink lg:basis-0 lg:grow">
+                <div className="relative aspect-16/10 min-h-0 shrink-0 overflow-hidden rounded-[var(--radius-generoso)] rounded-br-[4.5rem] bg-crema-200 shadow-[var(--shadow-elevada)] sm:rounded-br-[7rem] lg:aspect-auto lg:shrink lg:basis-0 lg:grow">
                   <Foto
                     src={lugar.imagen_secundaria}
                     alt={lugar.imagen_secundaria_alt}
