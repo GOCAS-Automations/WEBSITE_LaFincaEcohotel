@@ -159,6 +159,25 @@ Notas para el formulario del panel:
 OpenGraph; deben coincidir con el archivo real. Lo ideal es un recorte
 dedicado 1200×630.
 
+**`imagen` es la tarjeta de TODO el sitio, no solo de la portada** (desde el
+2026-09-14). Antes `metadatosPagina()` era una función síncrona y solo la
+portada leía esta clave: las otras doce páginas caían al respaldo escrito en
+código, así que el hotel cambiaba la foto en el panel y la mitad del sitio
+seguía compartiendo la vieja. Ahora la función es `async` y la lee siempre.
+
+El orden de precedencia es:
+
+1. **La foto que la página declare** — la de una cabaña en su ficha, la
+   cabecera de `/galeria`, `/faq`… Esa manda y es lo correcto: compartir el
+   enlace de la Cabaña 03 debe enseñar la Cabaña 03.
+2. **Esta clave**, para todo lo demás (las cuatro páginas legales, `/contacto`,
+   la portada…).
+3. **`IMAGEN_SOCIAL`** en `src/lib/sitio.ts`, si la base no responde durante el
+   build.
+
+La tarjeta por defecto la compone `npm run imagenes:social` con el logotipo
+oficial del diseñador sobre el hero de la portada. Ver `docs/MARCA.md` §4.
+
 ---
 
 ## `home.hero`

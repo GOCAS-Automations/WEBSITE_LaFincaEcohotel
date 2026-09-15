@@ -9,8 +9,10 @@
   **5 (panel administrativo)** completadas el 2026-09-02. El **rediseño con los
   datos y las fotos reales del cliente** se completó el 2026-09-11, y la
   **segunda ronda de ajustes de Cesar**, el 2026-09-14. Ese mismo día, una
-  **tercera ronda**: Instagram en la portada, la COP16 en Conócenos y los
-  heros regenerados a calidad 90.
+  **tercera ronda** (Instagram en la portada, la COP16 en Conócenos, heros a
+  calidad 90) y una **cuarta**: el motor de precios noche a noche, el sitio sin
+  el optimizador de imágenes de Vercel, la auditoría responsive y los logos
+  oficiales del diseñador.
 - Del motor de reservas ya existe la parte que no depende de la base: el
   calendario de festivos de Colombia, la regla plan ↔ noches y el calendario
   propio que apaga los días que el plan no cubre. Falta la disponibilidad real.
@@ -47,6 +49,13 @@
 | 2026-09-14 | **`IMAGENES_SIN_OPTIMIZAR=1` apaga la optimización de imágenes sin tocar código.** Cuando se agota la cuota de Vercel, Image Optimization no degrada: devuelve un error y el sitio se queda sin fotos. |
 | 2026-09-14 | **El sello de marca de las fotos está en las 53, y no se corta.** Ninguna forma del sitio toca la esquina superior derecha; donde el contenedor recorta se ancla con `object-position: right top`; y el hero de la portada usa variantes recortadas SIN sello. Ver `ZONA_FLAG` en `src/lib/fotos.ts`. |
 | 2026-09-14 | **El corte orgánico se dibuja ENCIMA de la sección con foto, no antes de ella.** Rellenarlo con el color del vecino recorta la propia imagen; dibujarlo en la sección anterior dejaba una franja de color plano y, debajo, el borde recto de la fotografía. |
+| 2026-09-14 | **El plan es una CONSECUENCIA de la noche, no una elección.** Cada noche se cobra con la tarifa de su fecha y las estadías mixtas se desglosan. La versión anterior prohibía las mixtas y apagaba días del calendario según el plan: plan y fechas se bloqueaban entre sí, que es el fallo que reportó Cesar. **Ninguna combinación de fechas está prohibida.** |
+| 2026-09-14 | **El sitio se publica SIN transformaciones de imagen.** Cuando se agota la cuota de Vercel, Image Optimization no degrada: devuelve un error y la portada se queda con los huecos vacíos. `images.unoptimized` pasa a estar encendido por defecto y el `srcset` —y el AVIF, que también se perdía— los generamos en el despliegue (`npm run imagenes:variantes` + `<Foto>`). |
+| 2026-09-14 | **`priority` de `next/image` emitía un `<link rel="preload">`,** y al escribir `<Foto>` se perdió sin que nada lo delatara: el LCP de la portada subió de 2,7 s a 4,1 s. Cualquier reemplazo de `next/image` tiene que emitirlo. |
+| 2026-09-14 | **Chrome descarga una imagen en `display: none` si no es perezosa.** Dos `<img>` con `hidden`/`sm:block` no son dirección de arte: son dos descargas. Se hace con `<picture>` y `media`, que el navegador evalúa ANTES de pedir. |
+| 2026-09-14 | **Un `sizes` que miente no ahorra peso: produce fotos blandas.** El de la galería decía `48vw` donde la mampostería pinta a `92vw` y el navegador elegía una variante de 480 px para estirarla a 654. |
+| 2026-09-14 | **`metadata.icons` escrito a mano GANA a los iconos que Next descubre por convención.** El bloque del layout apuntaba al isotipo provisional de Instagram y seguía publicándolo con los archivos oficiales al lado sin usar. Se quitó. |
+| 2026-09-14 | **`npm run build` con `npm run start` vivo produce una hoja de Tailwind de 2 kB.** El build reescribe `.next` bajo los pies del servidor. Una auditoría entera se corrió contra un sitio sin estilos y dio problemas que no existían. Matar los `node.exe` y borrar `.next` antes de compilar. |
 | 2026-09-14 | **La regla plan ↔ noches sale de `planes.dias_aplica`, no del nombre del plan.** El nombre lo edita el cliente desde el panel: una regla escrita contra «Estándar» dejaría de aplicarse en silencio el día que lo renombre. |
 | 2026-09-14 | **Los festivos se CALCULAN, no se copian.** Una tabla escrita a mano caduca cada 31 de diciembre. Y no siempre son 18: hay años de 17 (2025, 2030, 2038, 2041, 2052, 2057), cuando dos celebraciones caen en el mismo lunes. |
 | 2026-09-14 | **El video de una sección nunca lleva `autoplay` a secas.** `autoplay` gana a `preload="metadata"` y descarga el clip entero en la carga inicial. Se arranca con `IntersectionObserver` (`VideoSeccion`). |
@@ -1119,6 +1128,224 @@ esté encendido, el rendimiento en móvil se resiente.
 - Sigue en pie lo de la ronda anterior: **el clip de COP16 es un plano hablado de
   2 min 49 s**. Movido a `/conocenos` molesta menos, pero sigue haciendo falta un
   corte de 20–30 s solo de imágenes.
+
+### 2026-09-14 — Cuarta ronda: el motor de reservas, las imágenes sin Vercel y la marca oficial
+
+Ronda larga. Seis encargos de Cesar más uno que entró a mitad de camino (los
+logos del diseñador). Lo que la resume: **el plan de una noche lo decide la
+fecha de esa noche, y nada más**; y **el sitio deja de depender del optimizador
+de imágenes de Vercel**.
+
+#### El bug: las fechas y el plan se bloqueaban entre sí
+
+Cesar reportó que al elegir ciertas fechas ya no se podía cambiar de plan. No
+era un fallo de interfaz sino del modelo: `src/lib/reglas-reserva.ts` prohibía
+las estadías **mixtas** —jueves→sábado mezcla una noche entre semana con dos de
+fin de semana— y el calendario apagaba los días que el plan elegido no cubría.
+Plan y fechas se cerraban la puerta el uno al otro.
+
+El modelo real (§3 de `docs/DATOS_CLIENTE.md`, reescrito con Cesar ese mismo
+día) es el contrario: **el plan es una consecuencia de la noche**. Cada noche se
+cobra con la tarifa que le toca a su fecha, las mixtas se permiten y se
+desglosan.
+
+Se retiró `reglas-reserva.ts` entero y entró `src/lib/reserva/`:
+
+- **`noches.ts`** — trocea `[entrada, salida)` en noches y clasifica cada una
+  (`entre_semana` / `fin_de_semana`, con los festivos de Colombia). No tiene ni
+  una función que diga «no»: solo clasifica. La **víspera** de un festivo entre
+  semana queda tras `CONTAR_VISPERA = false`, marcada `TODO` hasta que Amapola
+  confirme; la prueba deja escrito el comportamiento en los dos mundos, así que
+  cambiar la constante no rompe la suite en silencio.
+- **`cotizacion.ts`** — aplica a cada noche su tarifa y devuelve el desglose más
+  el total. Una cabaña es elegible solo si tiene tarifa para **todos** los tipos
+  de noche de la estancia, y el motivo va escrito en español.
+
+**45 pruebas nuevas** (62 en total, todas en verde) con el catálogo y los
+precios reales del cliente.
+
+#### Cómo quedó el flujo
+
+`/reservar` cambió de orden: **fechas → cabañas elegibles → Estándar o Premium
+(solo si hay noches de fin de semana) → desglose noche por noche con el total**.
+Verificado por CDP contra el build de producción:
+
+| Caso | Resultado |
+|---|---|
+| jue 1 oct → sáb 3 oct, Cabaña 01 | 1 Entre Semana $350.000 + 1 Estándar $480.000 = **$830.000** |
+| jue → dom (3 noches) | 1 + 2 = **$1.310.000** con Estándar · **$1.710.000** con Premium |
+| Cambiar Estándar ↔ Premium | El resumen de fechas queda **idéntico**; solo cambian las líneas de fin de semana |
+| Cabaña 02 con noches entre semana | **Fuera de la lista**, con el motivo: «La Cabaña 02 no se ofrece para noches entre semana» |
+| Cabaña 02, fin de semana puro | Vuelve; Premium sale deshabilitado *para esa cabaña* y lo explica, **sin tocar las fechas** |
+| Calendario con `?plan=Entre Semana` | 42 celdas, 14 apagadas, y el único motivo es **«ya pasó»**. 24 resaltadas como preferencia, todas pulsables |
+
+El mensaje de WhatsApp lleva ahora el desglose completo, una línea por noche y
+el total, con saltos de línea reales.
+
+#### Sin transformaciones de imagen (decisión de Cesar)
+
+`images.unoptimized` pasa a estar encendido **por defecto**
+(`IMAGENES_SIN_OPTIMIZAR !== "0"`). El motivo es el de siempre: cuando se agota
+la cuota de Vercel, Image Optimization **no degrada**, devuelve un error y el
+sitio del hotel se queda con los huecos de las fotos vacíos.
+
+El precio de apagarlo era perder el `srcset` —el hero móvil eran 1,2 MB para un
+teléfono de 390 px— y, como se descubrió midiendo, **también el AVIF**, que es
+lo que `/_next/image` servía a todo navegador que lo aceptara. Así que ambas
+cosas se generan ahora nosotros:
+
+- **`npm run imagenes:variantes`** (`scripts/generar-variantes.mjs`) deja en el
+  bucket (`v/…`) las variantes por ancho de cada foto publicada, en WebP y en
+  AVIF. Dos escaleras: heros hasta 2400 px, fotos hasta 1200.
+- **`<Foto>`** (`src/components/ui/foto.tsx`) sustituye a `next/image` en todo
+  el sitio público. Mismo API —`fill`, `sizes`, `priority`, `className`—, más
+  `fuentes` para dirección de arte de verdad.
+
+| | Antes | Después |
+|---|---|---|
+| Hero móvil de la portada (412 px, dpr 2,625) | 1216 kB | **225 kB** (AVIF 1120) |
+| Peor relación descargado / pintado | sin `srcset`: hasta 4× | **1,20×** |
+| Lighthouse móvil portada (mediana de 5) | 87 | **92** (dos pasadas en 97–98) |
+
+#### Cuatro cosas que solo se vieron midiendo
+
+1. **`priority` de `next/image` emitía un `<link rel="preload">`** y al escribir
+   `<Foto>` se perdió: el LCP de la portada subió de 2,7 s a 4,1 s sin que nada
+   en el HTML lo delatara. `<Foto>` lo emite ahora (React 19 iza los `<link>` a
+   la cabecera solo).
+2. **Chrome descarga una imagen en `display: none` si no es perezosa.** El hero
+   de escritorio y el de móvil eran dos `<img>` con `hidden`/`sm:block`, así que
+   el escritorio se bajaba el vertical de 1,2 MB para no pintarlo nunca. Ahora
+   es un `<picture>` con `media`: el navegador evalúa antes de pedir.
+3. **El `sizes` de la galería mentía.** Decía `48vw` donde la mampostería pinta
+   a `92vw` en el teléfono: el navegador elegía la variante de 480 px y la
+   estiraba a 654. Un `sizes` que miente no ahorra peso, produce fotos blandas.
+4. **El peldaño de 1120 px no es redondo a propósito.** El teléfono de
+   referencia de Lighthouse es 412 px a densidad 2,625: pide 1081. Con un
+   peldaño en 1080 se queda cinco píxeles corto y el navegador salta al
+   siguiente, que pesa el doble.
+
+#### Portada y `/reservar`: alineaciones y tres secciones que se distinguían
+
+- En `/reservar`, la foto de la primera sección tenía proporción fija mientras
+  la columna de los tres pasos crecía con su texto. Ahora la fila es
+  `items-stretch` y el alto de la foto lo fija la columna de al lado.
+- En «Nuestra esencia», las dos fotos de abajo iban escalonadas (`mt-8`): se
+  leía como un fallo de maquetación. Comparten fila y `h-full`.
+- **Experiencias → Nuestra esencia → Instagram** se leían como una sola masa
+  blanca y ni siquiera compartían el mismo blanco (dos `#ffffff` y una crema).
+  Ahora: crema con la rama botánica asomando por la izquierda, la **banda del
+  verde oficial `#E8F4D9`** con sus dos ondas orgánicas, y blanco con el patrón
+  de colibríes. Tres tonos, ninguno estridente. Las tarjetas de experiencias
+  pasaron a blanco para no desaparecer sobre el crema.
+
+#### Auditoría responsive: cero desbordes
+
+Las once páginas públicas a **360, 390, 430, 768 y 1024 px**, con CDP contra el
+build de producción. `document.documentElement.scrollWidth <= innerWidth` en las
+**55 combinaciones**. Lo que se corrigió, por archivo:
+
+| Dónde | Qué medía | Qué se hizo |
+|---|---|---|
+| `ui/boton.tsx` | «Reservar» del nav: 104×43 | `min-h-11` en la base, no en cada tamaño |
+| `sitio/menu-movil.tsx` | Botón del menú: 40×40 | `size-11` |
+| `sitio/nav-escritorio.tsx` | Enlaces del nav: 38 px de alto | `min-h-11` |
+| `sitio/encabezado.tsx` | Enlace del logo: 36 px | `min-h-11` |
+| `ui/galeria.tsx` | Paginación y flechas: 40×40 | `size-11` |
+| `sitio/calendario-fechas.tsx` | Celdas 36 px; flechas de mes 32×32 | Celdas a 44 px (`p-px` en móvil para ganar los dos últimos), flechas `size-11` |
+| `sitio/hero-pagina.tsx`, `paginas/alojamiento.tsx`, `alojamientos.tsx`, `legal.tsx` | Migas de pan: 16 px de alto | `inline-flex min-h-11 items-center` |
+| `sitio/lector-resena.tsx`, `resenas-google.tsx`, `reel-instagram.tsx`, `pie.tsx`, `paginas/inicio.tsx` | Enlaces de acción en línea: 20 px | Igual |
+| `paginas/inicio.tsx` (antetítulo del hero), `sitio/modulo-reserva.tsx` (etiquetas), `sitio/tarjeta-plan.tsx` (insignia) | Texto de 10,9–11,2 px | A 12 px |
+
+Queda a propósito: **el «Eco · Hotel» del logotipo a 8,8 px**. Es parte del
+lockup de marca, no texto para leer, y agrandarlo rompería la proporción.
+Las migas de pan miden 44 px de alto pero 29 de ancho: es texto de navegación,
+pasa el mínimo AA (24×24) y forzar 44 de ancho a la palabra «Inicio» pediría un
+relleno que se leería como un botón.
+
+#### Los logos oficiales (encargo que entró a mitad de ronda)
+
+Llegaron las seis variantes del diseñador: PNG de 1080×1080 y JPG de 2250×2250,
+**sin vectorial**. Se copian los PNG a `public/marca/oficial/` y el mapeo queda
+en **`docs/MARCA.md`** (que se conserva entero: lo anterior era el análisis del
+WordPress viejo y explica de dónde salió el dorado retirado).
+
+| Variante | Qué es |
+|---|---|
+| 01 | Lockup completo en petróleo, **transparente** |
+| 02 / 03 | Lockup completo en crema, con fondo oliva / petróleo horneado |
+| 04 / 06 | Isotipo en oliva / verde claro, con fondo horneado |
+| 05 | Isotipo en petróleo, **transparente** |
+
+- **Iconos del sitio** (`npm run marca:iconos`): `icon.png` 512, `apple-icon.png`
+  180 y `favicon.ico` 16/32/48, desde la variante 05. Van en `src/app/` y se
+  **quitó el `metadata.icons` del layout**, que apuntaba al isotipo provisional
+  de Instagram y ganaba a los oficiales por convención.
+  El ave va en **verde claro sobre petróleo**: en petróleo sobre el blanco de
+  una pestaña se lee como una mancha, y en modo oscuro desaparece. El ave crece
+  en los tamaños pequeños (92 % del lienzo a 16 px frente al 66 % a 512).
+- **Manifiesto web** nuevo (`src/app/manifest.ts`), con el petróleo como
+  `theme_color` y `display: "browser"` —el sitio se lee como un sitio—.
+- **Tarjeta de OpenGraph** rehecha con la variante 01 teñida en crema sobre el
+  hero de la portada. Ruta nueva en el bucket; la anterior se borró.
+
+#### `metadatosPagina()` pasa a ser `async`, y eso arregló un fallo real
+
+La tarjeta al compartir se edita desde el panel (`sitio.seo`), pero **solo la
+portada la leía**: las otras doce páginas caían al respaldo escrito en código.
+El hotel podía cambiar la imagen y ver que el enlace de la portada se
+actualizaba mientras el de `/alojamientos` seguía mostrando la vieja, sin
+ninguna pista de por qué. Ahora la función lee `getSeoSitio()` —envuelto en el
+`cache()` de React, así que no cuesta una consulta más— y el orden es: foto
+propia de la página → panel → respaldo.
+
+#### Verificación
+
+- `tsc --noEmit`, `npm run lint` y `npm run build` limpios. **62 pruebas en
+  verde.** Las 19 rutas públicas siguen estáticas con ISR de una hora.
+- **Lighthouse móvil** (build de producción, mediana de cinco pasadas): portada
+  **92** de rendimiento, accesibilidad **100** (subió de 96: las correcciones
+  táctiles y de tamaño de letra), prácticas recomendadas 100.
+- **Panel con sesión real**: las trece pantallas responden 200, **sin un solo
+  error de consola**, y el campo «Imagen al compartir el enlace» muestra la
+  tarjeta nueva con previsualización y permite subir archivo.
+- **Bucket sin huérfanos.** `npm run imagenes:limpiar` da cero. Por el camino se
+  borraron 788 objetos: dos generaciones de variantes mal ubicadas de la propia
+  sesión (ver abajo) y la tarjeta OG anterior.
+
+#### Dos tropiezos que conviene no repetir
+
+1. **`npm run build` con `npm run start` vivo produce un CSS de 2 kB.** El build
+   reescribe `.next` bajo los pies del servidor y la hoja de Tailwind sale
+   vacía. Una auditoría entera se hizo contra un sitio sin estilos y dio
+   «desbordes» y «botones de 17 px» que no existían. En Windows hay que matar
+   los `node.exe` por PID y borrar `.next` antes de compilar.
+2. **Las variantes vivieron un rato en `web/v/`.** Con ese prefijo, el filtro de
+   fuentes del generador —que solo miraba el principio de la ruta— las dio por
+   fotos y generó variantes **de las variantes**. Ahora viven en `v/` con la
+   ruta de origen entera (`v/web/cabana-01/01-640.webp`), el filtro mira el
+   prefijo en cualquier punto, y `limpiar-bucket.mjs` hace el camino inverso:
+   una foto que sale del sitio se lleva sus peldaños con ella.
+
+#### Lo que no convence
+
+- **El `favicon.ico` de 16 px sigue siendo una mancha.** Es el límite del
+  dibujo, no del script: un colibrí de línea fina no cabe en 16 píxeles. A 32 y
+  48 se lee bien, y son los que usan hoy Chrome, Firefox y Safari. Si importa,
+  hace falta un **isotipo simplificado para tamaños pequeños**, y lo tiene que
+  dibujar Santiago.
+- **Sigue sin haber vectorial ni lockup horizontal.** Por eso el logo del nav no
+  cambió —a Cesar le gusta como está y ninguna de las seis variantes es
+  horizontal—. Cuando llegue el SVG, ese es el momento de rehacerlo.
+- **`/galeria`, `/alojamientos` y `/reservar` se quedan en 82–91 de
+  rendimiento** en Lighthouse móvil. Su LCP no es la cabecera sino la primera
+  foto grande de la página. Se les generó AVIF también; queda medir si basta.
+- **El calendario sigue sin consultar disponibilidad.** Apaga el pasado y nada
+  más: la ocupación real llega con la parte del motor que toca la base.
+- **`TODO` abierto del cliente:** si la víspera de un festivo entre semana se
+  cobra como fin de semana, y si el hotel cobra las estadías mixtas tal como las
+  desglosa el motor. Las dos preguntas son para Amapola.
+
 
 ## Pendientes de contenido/credenciales (pedir según se necesiten)
 
