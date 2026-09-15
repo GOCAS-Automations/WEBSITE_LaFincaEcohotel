@@ -73,7 +73,7 @@ comment on column reservas.tipo is
 create index if not exists reservas_tipo_idx on reservas (tipo);
 
 -- `origen` — se añade 'google_calendar' para la sincronización futura con el
--- calendario que el hotel llena a mano desde WhatsApp/Whatsfy. Hoy NADA crea
+-- Google Calendar «la finca», que el hotel llena a mano. Hoy NADA crea
 -- filas con ese origen: el modelo queda listo, la integración es posterior.
 alter table reservas drop constraint if exists reservas_origen_check;
 alter table reservas add constraint reservas_origen_check

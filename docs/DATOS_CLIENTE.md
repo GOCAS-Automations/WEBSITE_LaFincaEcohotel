@@ -1,8 +1,8 @@
 # Datos confirmados por el cliente — fuente de verdad del contenido
 
 > Consolidado el 2026-09-11 a partir de: `0.Respuestas_Requerimientos_La_Finca.docx`,
-> `0.Puntos_Pendientes_La_Finca.docx`, el documento de configuración del bot de ventas
-> (Whatsfy, junio 2026) y el manual `IDENTIDAD DE MARCA - LA FINCA` (PDF, copia local en
+> `0.Puntos_Pendientes_La_Finca.docx`, el documento de configuración del bot de ventas de
+> WhatsApp (junio 2026) y el manual `IDENTIDAD DE MARCA - LA FINCA` (PDF, copia local en
 > `EcoHotel - La Finca/IV LA FINCA.pdf`). Todos compartidos por Juan Camilo Mejía en el Drive
 > `PAGINA WEB`.
 >
@@ -67,8 +67,10 @@ Correcciones sobre el seed provisional: Premium era $650.000 → **$680.000**; E
 **Regla plan ↔ noches (para el calendario del motor de reservas):**
 - Una noche se identifica por la fecha de su check-in. Noche «entre semana» = lunes a jueves.
   Noche «fin de semana o festivo» = viernes, sábado, domingo, cualquier **festivo de Colombia**
-  (Ley 51 de 1983 / «Ley Emiliani»: fijos, móviles según Pascua y traslado a lunes) y `TODO` la
-  **víspera** de un festivo entre semana (por confirmar con el cliente).
+  (Ley 51 de 1983 / «Ley Emiliani»: fijos, móviles según Pascua y traslado a lunes) **y la
+  víspera de un festivo** (confirmado por el cliente el 2026-09-15: la casa se llena igual la
+  noche anterior a un festivo). En el código es `CONTAR_VISPERA = true` en
+  `src/lib/reserva/noches.ts`, y de ahí lo leen calendario, desglose, total y mensaje de WhatsApp.
 - **El plan es una consecuencia de la noche, no una elección libre** (modelo decidido con Cesar el
   2026-09-14, coherente con «los planes se cobran por noche» del cliente): cada noche se cobra con la
   tarifa que le corresponde a su fecha. Noche entre semana → Plan Entre Semana (único). Noche de fin
@@ -84,18 +86,21 @@ Correcciones sobre el seed provisional: Premium era $650.000 → **$680.000**; E
   «Estándar/Premium» desde la portada es una preferencia que prefiltra el calendario, nunca un bloqueo.
 - Día de Calma no ocupa cabaña ni noche (10 a.m.–5 p.m.); su venta en línea se modela en la Fase 3.
 
-**Día de Calma: cupo de 10 personas por día** (dato nuevo del cliente, 2026-09-15). El límite es de
-toda la finca y se cuenta sumando el número de personas de **todas** las reservas de día de esa
-fecha. Está implementado en tres capas: el trigger `reservas_cupo_dia_de_calma` de la base
+**Día de Calma: 1 o 2 adultos por reserva, y cupo de 10 personas por día** (datos del cliente,
+2026-09-15). Son dos límites distintos: cada solicitud es para **una o dos personas** —no existe la
+«persona adicional»; quien venga en grupo hace varias reservas— y el **cupo de 10** es el de toda la
+finca, contando el número de personas de **todas** las reservas de día de esa fecha. Está implementado en tres capas: el trigger `reservas_cupo_dia_de_calma` de la base
 (migración 009, que es quien decide), la comprobación previa del panel —que avisa antes y explica
 con cuántos cupos se topa— y el motor público, que enseña «Quedan N cupos para ese día» y solo
 ofrece elegir hasta ese número de personas. **Si el hotel cambia el cupo hay que tocar dos sitios**:
-la constante del trigger y `CUPO_DIA_DE_CALMA` en `src/lib/reserva/dia-de-calma.ts`.
+la constante del trigger y `CUPO_DIA_DE_CALMA` en `src/lib/reserva/dia-de-calma.ts`. El máximo por
+reserva vive en `MAX_PERSONAS_POR_RESERVA_DIA` (mismo archivo) y en el constraint
+`reservas_dia_maximo_dos_personas` de la migración 010.
 
 Lo que el Día de Calma **todavía no tiene confirmado** (y por eso no aparece con cifras en el sitio):
-el valor por persona adicional a partir de la tercera, si pide anticipo y de cuánto, su política de
-cancelación, y si se puede añadir jacuzzi y a qué precio. Mientras tanto el sitio dice «te lo
-confirmamos por WhatsApp».
+si pide anticipo y de cuánto, su política de cancelación, y si se puede añadir jacuzzi y a qué
+precio. Mientras tanto el sitio dice «te lo confirmamos por WhatsApp». El valor por persona adicional
+ya no hace falta: el plan se vende solo para una o dos personas.
 
 **Experiencias por noche.** Las experiencias (Aniversario con Amor, Cumpleaños con Amor, Fondue) se
 preparan para una noche concreta, así que desde 2026-09-15 se eligen **noche por noche**: una estadía
@@ -103,14 +108,17 @@ de tres noches puede llevar fondue el viernes y aniversario el sábado. Los adic
 pertenecen a una noche —la segunda mascota— se apuntan «para toda la estadía». En la base, cada línea
 de `reserva_extras` lleva su `noche` (o `null`).
 
-**Anticipo: 50 % o 100 %.** El motor deja elegir cuánto se paga al reservar. El 50 % es lo que pide el
-hotel para confirmar; el resto se cobra **por link de pago enviado antes de la llegada** (en la finca
-no hay datáfono ni se maneja efectivo). Quien prefiera llegar sin nada pendiente puede pagar el 100 %.
-Se guarda el porcentaje y el monto congelado (`reservas.porcentaje_anticipo`, `monto_anticipo`).
+**Anticipo: de 50 a 100 %, con un control deslizante** (decisión del cliente, 2026-09-15; antes eran
+dos botones de 50 % y 100 %). El **50 % es el mínimo** que pide el hotel para confirmar; el resto se
+cobra **por link de pago enviado antes de la llegada** (en la finca no hay datáfono ni se maneja
+efectivo). Quien quiera adelantar más, puede, hasta el 100 %. El deslizante va de cinco en cinco —un
+«63 %» no le dice nada a nadie— y muestra en vivo el porcentaje y el monto en pesos. Se guarda el
+porcentaje y el monto congelado (`reservas.porcentaje_anticipo`, `monto_anticipo`); el check de la
+base pasó a `between 50 and 100` en la migración 010.
 
-**Google Calendar («la finca»).** Hoy el equipo anota a mano en un Google Calendar las reservas que
-llegan por WhatsApp/Whatsfy. La sincronización con el sitio es una fase futura: **no está
-implementada**. El modelo ya la espera —`reservas.origen` admite `google_calendar` y
+**Google Calendar («la finca»).** El calendario del hotel es un **Google Calendar llamado «la
+finca»**, donde el equipo anota hoy a mano las reservas que llegan por WhatsApp. Nuestro sistema lo
+**leerá** para la disponibilidad real; la integración es una fase futura: **no está implementada**. El modelo ya la espera —`reservas.origen` admite `google_calendar` y
 `reservas.referencia_externa` guarda el id del evento, con índice único para que una sincronización
 repetida actualice en vez de duplicar—, así que cuando se haga no habrá que migrar nada.
 
@@ -132,8 +140,9 @@ repetida actualice en vez de duplicar—, así que cuando se haga no habrá que 
 
 - **Llegada:** desde la **1:00 p.m.** se pueden usar restaurante, senderos, decks y zonas sociales.
   **Entrega de la cabaña (check-in): 3:00 p.m.** · **Check-out: 1:00 p.m.**
-- **Reserva y pago:** anticipo del **50 %** para confirmar; el 50 % restante el día de la llegada por
-  link de pago enviado con anticipación. En la finca **no hay datáfono ni se maneja efectivo**.
+- **Reserva y pago:** anticipo de **mínimo el 50 %** para confirmar (el huésped elige en el sitio
+  cuánto adelanta, de 50 a 100 %); el resto, antes de la llegada, por link de pago enviado con
+  anticipación. En la finca **no hay datáfono ni se maneja efectivo**.
   Nunca se piden datos de tarjeta por WhatsApp.
 - **Cancelación:** una vez confirmada, **no hay reembolsos**. **Cambio de fecha** con mínimo **3 días**
   de anticipación, **un solo cambio** por reserva. Cancelar el mismo día o no presentarse =
@@ -195,9 +204,9 @@ repetida actualice en vez de duplicar—, así que cuando se haga no habrá que 
 - [ ] Cuenta bancaria y documentos Wompi (Amapola).
 - [ ] Video: definir con Juan Camilo; sugieren embeber links de Instagram.
 - [ ] ¿Mínimo de noches en fines de semana/festivos?
-- [ ] **Día de Calma**: valor por persona adicional (a partir de la tercera), anticipo, política de
-      cancelación y si se puede añadir jacuzzi. Hoy el sitio no muestra ninguna cifra de esto.
-- [ ] Sincronización con el Google Calendar del hotel: quién lo administra y con qué cuenta.
-- [ ] ¿Publican en Airbnb/Booking? (Amapola).
+- [ ] **Día de Calma**: anticipo, política de cancelación y si se puede añadir jacuzzi. Hoy el sitio
+      no muestra ninguna cifra de esto. (Cerrado el 2026-09-15: son 1 o 2 adultos por reserva, así
+      que no hace falta tarifa por persona adicional.)
+- [ ] Sincronización con el Google Calendar «la finca»: quién lo administra y con qué cuenta.
 - [ ] Usuarios del panel: el cliente preguntó «¿a qué se refiere con el panel?» — explicar que es el
       administrador del sitio donde cambian textos, fotos, precios y reservas.

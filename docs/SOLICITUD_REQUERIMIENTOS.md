@@ -86,7 +86,7 @@ Dudas que salieron del sitio actual y que no podemos resolver por nuestra cuenta
 3. **En varias fotos las toallas dicen "Finca Villarreal".** ¿Es un nombre anterior u otra propiedad? ¿Podemos usar esas fotos?
 4. **Las descripciones de las cabañas las escribimos mirando las fotos.** ¿Quién las valida?
 5. **¿Quién aprueba los textos del sitio** antes de publicar?
-6. **¿La Finca publica en Airbnb o Booking?** Si es así, conviene sincronizar los calendarios para que no se crucen las reservas.
+6. **¿Quién administra el Google Calendar «la finca»**, y con qué cuenta? Es el calendario donde el equipo anota hoy a mano lo que llega por WhatsApp, y de ahí saldrá la disponibilidad real del sitio. (Respondido: La Finca **no publica en Airbnb ni en Booking**.)
 
 ---
 

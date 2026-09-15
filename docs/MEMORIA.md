@@ -16,11 +16,16 @@
   ya publicado en Vercel: la portada sin «Nuestra esencia» y con fotos en
   Experiencias, el pie sin la línea clara, el calendario por encima de todo, el
   desplegable de cabañas con el estilo del sitio, las ondas de sección
-  redibujadas para el teléfono y los botones centrados a 390 px.
+  redibujadas para el teléfono y los botones centrados a 390 px. Ese mismo día,
+  una **sexta ronda**: la víspera de festivo como fin de semana, el Día de
+  Calma para una o dos personas, el anticipo con deslizante de 50 a 100 %, el
+  paso 4 sin solapes, los cinco pasos en la portada de `/reservar`, el video de
+  la COP16 y la decoración del FAQ.
 - **2026-09-15 · Fase 3, primera entrega del motor con datos reales:** el
   **Día de Calma ya es una reserva** (con su cupo de 10 personas por día), las
-  **experiencias se eligen noche por noche**, el huésped elige pagar el **50 %
-  o el 100 %** y el panel muestra el cupo del día bajo las cinco cabañas.
+  **experiencias se eligen noche por noche**, el huésped elige con un
+  deslizante **cuánto adelanta, de 50 a 100 %**, y el panel muestra el cupo del
+  día bajo las cinco cabañas.
   Sigue sin haber pasarela: el botón final es WhatsApp, con la costura de Wompi
   marcada en el código.
 - Del motor de reservas ya existe la parte que no depende de la base: el
@@ -99,7 +104,12 @@
 | 2026-09-15 | **El anticipo se guarda congelado** (`porcentaje_anticipo` + `monto_anticipo`) y no se recalcula: es la cifra que se le prometió al huésped. El saldo siempre es `total − anticipo`, para que las dos cifras sumen exacto. |
 | 2026-09-15 | **Elegir una sola fecha, sin salida, es la puerta al Día de Calma.** El calendario ofrece «Vengo solo ese día, sin dormir» en cuanto hay llegada, y se vuelve con «Prefiero quedarme a dormir». Nunca se usa la palabra «pasadía». |
 | 2026-09-15 | **El cupo que queda se consulta a un endpoint propio** (`/api/dia-de-calma/cupo`), que lee con `service_role` y devuelve **solo el número agregado**: `reservas` no tiene lectura pública y no debe tenerla. |
-| 2026-09-15 | **No se inventa el precio de la tercera persona del Día de Calma.** El hotel publicó $250.000 para dos y nada más: a partir de la tercera, el sitio dice que lo confirma por WhatsApp en vez de estimar. Igual con el anticipo, la cancelación y el jacuzzi de ese plan. |
+| 2026-09-15 | **El Día de Calma se vende para UNA O DOS personas.** El cliente cerró el asunto: no existe la «persona adicional» que el hotel nunca tarifó, y quien venga en grupo hace varias reservas. El cupo de 10 por día sigue siendo el de toda la finca, que es otro límite. Siguen sin confirmar el anticipo, la cancelación y el jacuzzi de ese plan, y de esos el sitio no da ninguna cifra. |
+| 2026-09-15 | **La víspera de un festivo se cobra como fin de semana** (`CONTAR_VISPERA = true`). Lo confirmó el cliente: la casa se llena igual la noche anterior a un festivo. Y la clasificación de las noches se quedó en UN solo sitio —`src/lib/reserva/noches.ts`—: `festivos-colombia.ts` tenía una segunda copia con su propio interruptor, y dos constantes para la misma decisión acaban diciendo cosas distintas. |
+| 2026-09-15 | **El anticipo pasa de dos botones a un rango de 50 a 100 %**, con un `<input type="range"> de verdad. El nativo trae rol `slider`, flechas, Inicio/Fin y arrastre táctil; reimplementarlo con divs cuesta cien líneas y se pierde todo eso. Solo se le cambia la piel. El paso es de 5 puntos: un «63 %» no le dice nada a nadie. |
+| 2026-09-15 | **Un `<legend>` dentro de una tarjeta con fondo SE SALE de ella.** El navegador saca el `legend` del flujo y lo pinta sobre el borde superior del `fieldset`: con `p-4`, fondo y `ring`, el título de cada noche del paso 4 quedaba montado en el filo —y a 390 px, fuera—. Las tarjetas de noche agrupan ahora con `role="group"` + `aria-labelledby`, que se anuncia igual y maqueta como un div. |
+| 2026-09-15 | **La curva grande del video de la COP16 abre ARRIBA A LA DERECHA.** La regla de no tocar esa esquina protege el sello de marca de las FOTOGRAFÍAS del bucket; el clip de la COP16 es video y su póster es un fotograma propio, sin sello. La regla sigue viva para todo lo que sí es una foto (ver `ZONA_FLAG` en `src/lib/fotos.ts`). |
+| 2026-09-15 | **La Finca NO publica en Airbnb ni en Booking**, y el calendario del hotel es un **Google Calendar llamado «la finca»**. Se retiró del sitio y de los documentos toda mención a esas plataformas y al nombre del bot (Whatsfy): la sincronización pendiente es la de ese calendario, y nada más. |
 | 2026-09-15 | **La sincronización con el Google Calendar del hotel no se implementa todavía**, pero el modelo la espera: `origen = 'google_calendar'` y `referencia_externa` (único cuando existe). |
 
 ## Registro de sesiones
@@ -1612,8 +1622,11 @@ con la ronda del motor de reservas de otro agente — solo se tocó
 - [ ] **No hay historial de cambios.** Si alguien borra una reserva o vacía un
       texto del CMS, no queda rastro. Para el volumen de La Finca es
       razonable; conviene decirlo en la capacitación.
-- [ ] **Exportar el calendario (iCal)** para sincronizar con Airbnb o Booking:
-      diseñado en el análisis de La Maima, no implementado aquí.
+- [ ] **Leer el Google Calendar «la finca»** para la disponibilidad real: es el
+      calendario donde el equipo anota hoy a mano lo que llega por WhatsApp. El
+      modelo ya lo espera (`origen = google_calendar` + `referencia_externa`);
+      falta la integración. La Finca **no publica en Airbnb ni en Booking**, así
+      que no hace falta exportar iCal.
 
 ### Pendientes que dejó la Fase 2 (revisar con el cliente)
 
@@ -1735,10 +1748,110 @@ los extras por noche y el anticipo.
 
 ### Lo que queda anotado
 
-- **Falta que Amapola confirme**: valor por persona adicional en el Día de
-  Calma, si ese plan pide anticipo, su política de cancelación y si se puede
-  añadir jacuzzi. Mientras tanto el sitio no muestra ninguna cifra de eso.
+- **Falta que Amapola confirme**: si el Día de Calma pide anticipo, su política
+  de cancelación y si se puede añadir jacuzzi. Mientras tanto el sitio no
+  muestra ninguna cifra de eso. (El valor por persona adicional dejó de hacer
+  falta el 2026-09-15: el plan es para una o dos personas.)
 - **La sincronización con Google Calendar no está hecha**: solo el modelo.
 - El `npm run build` de esta sesión no pudo terminar en la máquina (se quedó sin
   memoria con otro agente compilando en paralelo); `tsc`, `eslint` y el `next
   dev` sí corrieron limpios. **Conviene repetir el build antes de desplegar.**
+
+### 2026-09-15 — Sexta ronda: decisiones nuevas del cliente y pulido de `/reservar`
+
+Ronda corta pero que toca el motor. Cesar trajo cuatro decisiones cerradas del
+hotel y cinco arreglos del sitio.
+
+#### Lo que decidió el cliente
+
+- **La víspera de un festivo cuenta como fin de semana.** `CONTAR_VISPERA` pasa
+  de `false` a `true` en `src/lib/reserva/noches.ts` y deja de ser un `TODO`. De
+  esa constante viven el calendario, el desglose, el total y el mensaje de
+  WhatsApp, así que el cambio es de una línea. De paso se borró la **copia**
+  que vivía en `src/lib/festivos-colombia.ts` (`tipoDeNoche`, `TipoDeNoche`,
+  `etiquetaTipoDeNoche` y su propio `VISPERA_CUENTA_COMO_FIN_DE_SEMANA`): era
+  código muerto —solo lo usaba su propia prueba— y un segundo interruptor para
+  la misma regla. Ese módulo ahora dice qué días son festivos y nada más.
+- **El Día de Calma es para una o dos personas.** Desaparece la pregunta por la
+  «persona adicional» (`MAX_PERSONAS_POR_RESERVA_DIA = 2`). El **cupo de 10 por
+  día sigue intacto**: es el de toda la finca y lo llenan varias reservas. Son
+  dos límites distintos y el sitio lo dice así: «Cada solicitud es para una o
+  dos personas, y la finca recibe máximo 10 personas por día».
+- **La Finca no publica en Airbnb ni en Booking.** Se retiraron las tres
+  menciones que quedaban (`docs/SOLICITUD_REQUERIMIENTOS.md`, el pendiente de
+  iCal de esta memoria y la pregunta abierta de `DATOS_CLIENTE.md`).
+- **El calendario del hotel es un Google Calendar llamado «la finca»**, que
+  nuestro sistema **leerá** para la disponibilidad real. Sigue sin implementarse
+  —el modelo ya lo espera— y el nombre del bot (Whatsfy) desaparece de los
+  textos: no era el calendario, era quien anotaba en él.
+
+#### Los cambios del sitio
+
+1. **Paso 4 sin solapes.** Cada noche era un `<fieldset>` con su `<legend>`
+   dentro de una tarjeta con fondo, `p-4` y `ring`. El navegador saca el
+   `legend` del flujo y lo pinta **sobre el borde superior** del fieldset: el
+   título quedaba montado en el filo de la tarjeta y, con dos líneas a 390 px,
+   fuera de ella. Ahora son `<div role="group" aria-labelledby>` con un `<p>`
+   dentro: el lector de pantalla anuncia el grupo igual y el motor de
+   maquetación lo trata como un div cualquiera.
+2. **Paso 5: el anticipo es un deslizante de 50 a 100 %**, de cinco en cinco,
+   con el porcentaje y el monto en COP en vivo y `aria-valuetext` («75 por
+   ciento, $1.342.500 ahora»), que es lo que hace falta oír; «75» a secas no
+   dice nada. Es un `<input type="range">` de verdad —teclado, Inicio/Fin,
+   arrastre táctil, rol `slider` gratis— repintado con la marca
+   (`.deslizante-marca` en `globals.css`; el relleno del carril es un degradado
+   con el corte en la variable `--recorrido`, así no hay que tocar el DOM al
+   arrastrar). `total.ts` gana `ANTICIPO_MINIMO/MAXIMO`, `PASO_ANTICIPO`,
+   `normalizarPorcentajeAnticipo()` y `escalaDeAnticipo()`; el tipo
+   `PorcentajeAnticipo` deja de ser la unión `50 | 100`. **Migración 010**:
+   el check pasa a `between 50 and 100` (es una ampliación, ninguna fila
+   existente deja de valer) y se añade
+   `reservas_dia_maximo_dos_personas`. El panel transcribe el porcentaje
+   pactado con un desplegable de la misma escala —allí se anota una cifra ya
+   decidida, y un desplegable se rellena antes con el teclado—.
+3. **La primera sección de `/reservar` explica los CINCO pasos**, no tres:
+   faltaban las experiencias por noche y cuánto se paga hoy, que es justo lo
+   último que alguien quiere saber antes de pulsar. Para que la sección no
+   creciera de alto, las tarjetas van en **dos columnas** y más densas (`p-4`,
+   círculo de 1.75rem, texto de 13 px) y los títulos perdieron el número: la
+   tarjeta ya lleva su círculo numerado y «1» junto a «1. Tus fechas» se leía
+   como un once. La quinta, impar, ocupa las dos columnas.
+4. **El video de la COP16 redondea la esquina superior derecha**, no la
+   inferior izquierda. La regla de no tocar esa esquina protege el sello de
+   marca de las **fotografías** del bucket; aquí es un video y su póster es un
+   fotograma propio, sin sello.
+5. **El FAQ lleva las cuatro texturas del manual**: rama botánica en los **dos**
+   laterales (dos por lado, a distinta altura y escala, una en espejo — una
+   sola por borde se leía como una calcomanía), patrón de colibríes al 40 % de
+   su opacidad ya baja, un par de colibríes sueltos y el resplandor de luz. Todo
+   por debajo del contenido y escondido bajo `lg`: en el teléfono el ancho es
+   del texto. Las tarjetas del acordeón siguen en blanco sólido, así que el
+   contraste del texto no cambia ni un punto.
+
+Además se ajustaron los textos que prometían «anticipo del 50 %» a secas
+(`src/lib/legal.ts`, la pregunta de pagos del FAQ y §5 de `DATOS_CLIENTE.md`):
+ahora el 50 % es el **mínimo** y el huésped puede adelantar más.
+
+#### Verificación
+
+- `tsc --noEmit`, `eslint` (solo la advertencia preexistente de
+  `scripts/importar-fotos-drive.mjs`) y **96 pruebas** en verde: siete nuevas
+  del deslizante —la escala de cinco en cinco, el redondeo al peso con
+  `anticipo + saldo === total`, y que **nada de lo que sale de
+  `normalizarPorcentajeAnticipo()` puede ser rechazado por el check de la
+  base**— más las de la víspera y las del tope de dos personas del día.
+- `npm run build` limpio; las 18 rutas públicas siguen estáticas con ISR de 1 h.
+- `npm run db:aplicar`: migración 010 aplicada y seed de contenido recargado
+  (los cinco pasos viven en el CMS, así que sin recargarlo el sitio seguía
+  pintando tres).
+- **Capturas contra `localhost:3000`** (nunca contra Vercel) a **1440 y 390 px**
+  de `/reservar` vacío, con estadía de cuatro noches y en modo Día de Calma,
+  `/conocenos` y `/faq`, con un **detector de solapes** que compara los
+  rectángulos de todo el contenido no posicionado: **cero solapes** en las cinco
+  páginas y los dos anchos. (El detector marca como solape el contenido de un
+  `<details>` cerrado —Chrome le da rectángulo— y la cápsula flotante del nav;
+  los dos casos están filtrados o comprobados a mano en la captura.)
+- El deslizante, probado **con el teclado**: cinco flechas derecha → 75 % y
+  `$1.342.500`; tecla Fin → 100 % y el mensaje de WhatsApp dice «Quiero pagar el
+  100 % ahora: $1.790.000».
+- **La base quedó sin datos de prueba**: no se creó ninguna reserva.
