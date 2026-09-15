@@ -10,7 +10,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const heroes = await getHeroesListados();
   const hero = heroes.conocenos;
 
-  return metadatosPagina({
+  return await metadatosPagina({
     titulo: "Conócenos",
     descripcion:
       "La Finca Eco Hotel está en el Km 18 vía Cali–Buenaventura, en un bosque de niebla: zona húmeda, piscina, restaurante, salón de eventos y senderos.",

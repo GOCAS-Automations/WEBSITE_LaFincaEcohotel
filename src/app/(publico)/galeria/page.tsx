@@ -10,7 +10,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const heroes = await getHeroesListados();
   const hero = heroes.galeria;
 
-  return metadatosPagina({
+  return await metadatosPagina({
     titulo: "Galería",
     descripcion:
       "Fotos de La Finca Eco Hotel: las cabañas, el bosque de niebla, la zona húmeda, la piscina y los senderos del Km 18 vía Cali–Buenaventura.",

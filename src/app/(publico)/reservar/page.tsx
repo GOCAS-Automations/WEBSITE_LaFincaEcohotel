@@ -14,7 +14,7 @@ export async function generateMetadata(): Promise<Metadata> {
   ]);
   const hero = heroes.reservar;
 
-  return metadatosPagina({
+  return await metadatosPagina({
     titulo: "Reservar",
     descripcion: precioDesde
       ? `Reserva tu cabaña en La Finca Eco Hotel, a 45 minutos de Cali. Tres planes desde ${formatearCOP(precioDesde)} la noche para dos personas.`

@@ -44,20 +44,43 @@ config({ path: ".env.local", quiet: true });
 const ANCHO = 1200;
 const ALTO = 630;
 
-/** Ruta en el bucket. Es fija: las redes cachean la URL durante semanas. */
-const DESTINO = "sitio/social/tarjeta-og-1200x630.webp";
+/**
+ * Ruta en el bucket.
+ *
+ * Cambió al llegar los logos oficiales del diseñador: la tarjeta anterior
+ * componía el wordmark con una tipografía de sistema porque la de marca no
+ * estaba disponible, y esta usa el archivo real. **El nombre nuevo es
+ * deliberado**, no un descuido: en el bucket de La Finca ninguna imagen se
+ * sobrescribe —una URL siempre devuelve el mismo archivo, y por eso se sirven
+ * con un año de caché—, así que una tarjeta distinta es una ruta distinta.
+ *
+ * Se pudo hacer justo ahora porque el sitio todavía no está publicado
+ * (): nadie ha compartido aún el enlace, así que no hay
+ * ninguna previsualización cacheada en WhatsApp o Facebook que se vaya a
+ * quedar mostrando la tarjeta vieja. De aquí en adelante, esta ruta se queda.
+ */
+const DESTINO = "sitio/social/tarjeta-og-marca-oficial-1200x630.webp";
 
 /**
- * Foto de origen: el corredor techado abierto al bosque de niebla.
+ * Foto de origen: el hero de escritorio de la portada.
  *
- * Se eligió por dos motivos. Uno, es la única apaisada de verdad (2400×1800),
- * así que llega a 1200×630 perdiendo solo altura. Y dos —el importante—, todas
- * las fotos del Drive traen impreso abajo «Check-in: 3:00 pm | Check-out: 1:00
- * pm | www.lafincaecohotel.com». En la tarjeta social ese texto quedaría
- * pisando el wordmark. Recortando la FRANJA SUPERIOR de esta foto, la marca de
- * agua se queda fuera del encuadre.
+ * Es el corredor techado abierto al valle, y se elige por dos motivos.
+ *
+ * Uno: **ya viene sin el sello de marca**. Las 53 fotos del Drive llevan
+ * pegada en la esquina superior derecha una pegatina circular con el isotipo y
+ * el wordmark, y en una tarjeta social eso sale como una mancha al lado del
+ * logotipo que la propia tarjeta compone. `npm run imagenes:hero` genera esta
+ * variante recortando justo la franja donde vive el sello (ver
+ * `scripts/generar-heros.mjs`), así que aquí no hay nada que esquivar. Con la
+ * foto de `web/zonas-comunes/02.webp` que se usaba antes, el sello se colaba en
+ * la esquina —se vio en la primera prueba— y no había desplazamiento vertical
+ * que lo sacara sin perder el paisaje.
+ *
+ * Dos: mide 2400×1180, casi exactamente la proporción de la tarjeta (1200×630),
+ * así que llega a su tamaño perdiendo solo unos píxeles de alto en vez de
+ * recortar media foto.
  */
-const ORIGEN = "web/zonas-comunes/02.webp";
+const ORIGEN = "web/heroes/portada-escritorio.webp";
 
 const soloLocal = process.argv.includes("--local");
 
@@ -85,83 +108,93 @@ if (!respuesta.ok) {
 const original = Buffer.from(await respuesta.arrayBuffer());
 
 /*
-  RECORTE A MANO, NO AUTOMÁTICO.
+  UN `cover` CENTRADO BASTA.
 
-  Las fotos del Drive traen DOS marcas encima, una en cada extremo: arriba a la
-  derecha, la pegatina circular con el logo del hotel; abajo, la línea
-  «Check-in: 3:00 pm | Check-out: 1:00 pm | www.lafincaecohotel.com». Las dos
-  sobran en una tarjeta social —la primera repetiría el wordmark que la propia
-  tarjeta ya compone, y la segunda es información que no pinta en un enlace
-  compartido—.
-
-  Un `fit: "cover"` centrado deja dentro las dos, y `attention` es peor todavía:
-  elige por saliencia, y en estas fotos lo más "llamativo" acaba siendo la
-  baranda o la escalera, no el paisaje. Así que se escala a lo ancho y se corta
-  una franja desplazada hacia abajo, que esquiva ambas.
+  La versión anterior partía de una foto con el sello de marca impreso y tenía
+  que cortar una franja desplazada hacia abajo para esquivarlo. Con el hero de
+  la portada no hay nada que evitar: la foto ya viene recortada sin sello y su
+  proporción es casi la de la tarjeta, así que el recorte se lleva unos píxeles
+  de arriba y de abajo y no toca el encuadre.
 */
-const DESPLAZAMIENTO_Y = 120;
-
-const escalada = await sharp(original).resize({ width: ANCHO }).toBuffer();
-const { height: altoEscalado = ALTO } = await sharp(escalada).metadata();
-
-const fondo = await sharp(escalada)
-  .extract({
-    left: 0,
-    top: Math.max(0, Math.min(DESPLAZAMIENTO_Y, altoEscalado - ALTO)),
-    width: ANCHO,
-    height: Math.min(ALTO, altoEscalado),
-  })
-  .resize(ANCHO, ALTO, { fit: "cover" })
+const fondo = await sharp(original)
+  .resize(ANCHO, ALTO, { fit: "cover", position: "center" })
   .toBuffer();
 
 /* ---------------------------------------------------------------------------
  * 2. El velo y 3. la marca, en una sola capa SVG
  * ------------------------------------------------------------------------- */
 
-const isotipo = await readFile(path.join("public", "marca", "icono.png"));
+/*
+  EL LOGOTIPO OFICIAL, NO UNA RECONSTRUCCIÓN.
+
+  Hasta que llegaron los archivos del diseñador, esta tarjeta componía el
+  wordmark a mano en SVG —«LA FINCA» y «Eco · Hotel» con una tipografía de
+  sistema muy espaciada—, porque la fuente de marca es de pago y no está
+  instalada donde corre esto. Funcionaba de lejos y no era la marca.
+
+  Ahora se usa `logo-vertical-petroleo.png`: el lockup completo dibujado por el
+  diseñador, con el colibrí, el interletrado real y las proporciones que fija el
+  manual. No se redibuja, no se deforma, no se rota: solo cambia de color.
+*/
+const logoOficial = await readFile(
+  path.join("public", "marca", "oficial", "logo-vertical-petroleo.png"),
+);
 
 /*
-  El isotipo oficial es petróleo sólido sobre fondo transparente; sobre la foto
-  oscura de la tarjeta no se vería. Hace falta en blanco.
+  DE PETRÓLEO A CREMA, CON LA SILUETA INTACTA.
 
-  Se consigue con `blend: "dest-in"`: se parte de un cuadrado blanco y se le
-  aplica el PNG como recorte, de modo que solo sobrevive el blanco donde el
-  colibrí es opaco. Es la silueta EXACTA del archivo oficial —no se redibuja ni
-  se deforma nada, que es lo que prohíbe el manual—, solo cambia el color.
+  El archivo oficial es petróleo sólido sobre transparente, y sobre la foto
+  oscura de la tarjeta no se leería. Se pinta un rectángulo crema y se recorta
+  con el PNG (`blend: "dest-in"`): sobrevive el crema solo donde el logotipo es
+  opaco, así que la silueta y el suavizado de los bordes son EXACTAMENTE los del
+  archivo del diseñador. Es teñir, no redibujar, que es lo que el manual permite.
+
+  `trim()` antes de nada: el archivo es un cuadrado de 1080 px con mucho aire
+  alrededor, y sin recortarlo el logotipo saldría diminuto en la tarjeta.
 */
-const LADO_ISOTIPO = 112;
-const isotipoBlanco = await sharp({
+const ANCHO_LOGO = 430;
+const recortado = await sharp(logoOficial).trim({ threshold: 1 }).toBuffer();
+const { width: anchoReal = 1, height: altoReal = 1 } =
+  await sharp(recortado).metadata();
+const ALTO_LOGO = Math.round((altoReal * ANCHO_LOGO) / anchoReal);
+
+const logoCrema = await sharp({
   create: {
-    width: LADO_ISOTIPO,
-    height: LADO_ISOTIPO,
+    width: ANCHO_LOGO,
+    height: ALTO_LOGO,
     channels: 4,
-    background: { r: 255, g: 255, b: 255, alpha: 1 },
+    background: { r: 254, g: 251, b: 247, alpha: 1 },
   },
 })
   .composite([
     {
-      input: await sharp(isotipo)
-        .resize(LADO_ISOTIPO, LADO_ISOTIPO, {
-          fit: "contain",
-          background: { r: 0, g: 0, b: 0, alpha: 0 },
-        })
-        .toBuffer(),
+      input: await sharp(recortado).resize(ANCHO_LOGO, ALTO_LOGO).toBuffer(),
       blend: "dest-in",
     },
   ])
   .png()
   .toBuffer();
 
+/*
+  EL VELO Y LA LÍNEA DE UBICACIÓN.
+
+  El velo es más denso abajo: es lo que mete la fotografía en la paleta de marca
+  y lo que le da al logotipo un fondo con contraste suficiente. La línea de
+  ubicación sí sigue siendo texto SVG con tipografía de sistema, y ahí no
+  importa: no es marca, es un pie de foto.
+*/
+const LINEA_Y = Math.round(ALTO / 2 + ALTO_LOGO / 2 + 74);
+
 const capa = Buffer.from(`
 <svg width="${ANCHO}" height="${ALTO}" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="velo" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%"   stop-color="#052524" stop-opacity="0.42"/>
-      <stop offset="45%"  stop-color="#052524" stop-opacity="0.60"/>
+      <stop offset="0%"   stop-color="#02403e" stop-opacity="0.52"/>
+      <stop offset="45%"  stop-color="#023b39" stop-opacity="0.66"/>
       <stop offset="100%" stop-color="#052524" stop-opacity="0.90"/>
     </linearGradient>
     <radialGradient id="luz" cx="0.86" cy="0.10" r="0.62">
-      <stop offset="0%"   stop-color="#e8f4d9" stop-opacity="0.34"/>
+      <stop offset="0%"   stop-color="#e8f4d9" stop-opacity="0.30"/>
       <stop offset="100%" stop-color="#e8f4d9" stop-opacity="0"/>
     </radialGradient>
   </defs>
@@ -169,28 +202,24 @@ const capa = Buffer.from(`
   <rect width="${ANCHO}" height="${ALTO}" fill="url(#velo)"/>
   <rect width="${ANCHO}" height="${ALTO}" fill="url(#luz)"/>
 
-  <text x="${ANCHO / 2}" y="432" text-anchor="middle"
-        font-family="Segoe UI, Helvetica, Arial, sans-serif"
-        font-size="76" font-weight="300" letter-spacing="26" fill="#ffffff">LA FINCA</text>
-  <text x="${ANCHO / 2}" y="482" text-anchor="middle"
-        font-family="Segoe UI, Helvetica, Arial, sans-serif"
-        font-size="24" font-weight="400" letter-spacing="16" fill="#e8f4d9">Eco - Hotel</text>
-
-  <line x1="${ANCHO / 2 - 120}" y1="524" x2="${ANCHO / 2 + 120}" y2="524"
+  <line x1="${ANCHO / 2 - 130}" y1="${LINEA_Y - 36}" x2="${ANCHO / 2 + 130}" y2="${LINEA_Y - 36}"
         stroke="#e8f4d9" stroke-opacity="0.45" stroke-width="1.5"/>
 
-  <text x="${ANCHO / 2}" y="570" text-anchor="middle"
+  <text x="${ANCHO / 2}" y="${LINEA_Y}" text-anchor="middle"
         font-family="Segoe UI, Helvetica, Arial, sans-serif"
-        font-size="27" font-weight="400" fill="#e8f4d9" fill-opacity="0.95">Km 18 vía Cali–Buenaventura · Bosque de niebla</text>
+        font-size="28" font-weight="400" fill="#e8f4d9" fill-opacity="0.95">Km 18 vía Cali–Buenaventura · Bosque de niebla</text>
 </svg>`);
 
 const tarjeta = await sharp(fondo)
   .composite([
     { input: capa, top: 0, left: 0 },
     {
-      input: isotipoBlanco,
-      top: 232,
-      left: Math.round(ANCHO / 2 - LADO_ISOTIPO / 2),
+      input: logoCrema,
+      /* Centrado y un poco por encima del centro óptico: debajo va la línea
+         de ubicación, y un bloque perfectamente centrado con texto debajo se
+         lee como si estuviera caído. */
+      top: Math.round(ALTO / 2 - ALTO_LOGO / 2 - 26),
+      left: Math.round(ANCHO / 2 - ANCHO_LOGO / 2),
     },
   ])
   .webp({ quality: 86 })

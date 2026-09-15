@@ -35,6 +35,29 @@ export type ImagenSeo = {
   alto?: number;
 };
 
+/**
+ * La tarjeta social que el hotel tiene puesta hoy en el panel.
+ *
+ * Se importa en diferido (`await import`) a propósito: `src/lib/contenido.ts`
+ * importa a su vez este módulo, y una importación estática en los dos sentidos
+ * es un ciclo. En tiempo de ejecución no cuesta nada —el módulo ya está
+ * cargado— y `getSeoSitio()` va envuelto en `cache()`, así que la base se
+ * consulta una sola vez por render.
+ *
+ * Nunca lanza: si la base no responde durante el build devuelve `null` y quien
+ * llama cae al respaldo escrito en código. Un sitio que no se puede compilar
+ * porque Supabase tuvo un mal minuto es peor que uno con la foto de reserva.
+ */
+async function imagenSocialDelPanel(): Promise<ImagenSeo | null> {
+  try {
+    const { getSeoSitio } = await import("./contenido");
+    const seo = await getSeoSitio();
+    return seo.imagen?.url ? seo.imagen : null;
+  } catch {
+    return null;
+  }
+}
+
 export type SeoPagina = {
   /**
    * Título de la pestaña SIN la marca: la plantilla del layout raíz
@@ -58,7 +81,21 @@ export type SeoPagina = {
   noIndexar?: boolean;
 };
 
-export function metadatosPagina({
+/**
+ * ES `async` POR LA IMAGEN AL COMPARTIR, Y ESO ARREGLA UN FALLO REAL.
+ *
+ * La tarjeta de OpenGraph se edita desde el panel (`sitio.seo` → «Imagen al
+ * compartir el enlace»), pero hasta ahora **solo la portada la leía**: las otras
+ * doce páginas caían al respaldo escrito en código. El hotel podía cambiar la
+ * imagen y ver que el enlace de la portada se actualizaba mientras el de
+ * `/alojamientos` seguía mostrando la vieja, sin ninguna pista de por qué.
+ *
+ * Leerla aquí obliga a que la función espere, pero no cuesta una consulta más:
+ * `getSeoSitio()` va envuelto en el `cache()` de React y en el mismo render se
+ * resuelve una sola vez. Las trece llamadas ya vivían dentro de un
+ * `generateMetadata` asíncrono, así que solo hubo que añadirles el `await`.
+ */
+export async function metadatosPagina({
   titulo,
   tituloAbsoluto,
   descripcion,
@@ -67,15 +104,21 @@ export function metadatosPagina({
   tituloSocial,
   descripcionSocial,
   noIndexar,
-}: SeoPagina): Metadata {
+}: SeoPagina): Promise<Metadata> {
   const social = tituloSocial ?? `${titulo} · ${SITIO.nombre}`;
   const textoSocial = descripcionSocial ?? descripcion;
-  const foto: ImagenSeo = imagen ?? {
-    url: IMAGEN_SOCIAL.url,
-    alt: IMAGEN_SOCIAL.alt,
-    ancho: IMAGEN_SOCIAL.ancho,
-    alto: IMAGEN_SOCIAL.alto,
-  };
+
+  /* Si la página trae su propia foto (la de una cabaña, la del hero de una
+     sección), esa manda. Si no, la del panel. Si la base no responde, el
+     respaldo de `IMAGEN_SOCIAL`. En ese orden. */
+  const delPanel = imagen ? null : await imagenSocialDelPanel();
+  const foto: ImagenSeo = imagen ??
+    delPanel ?? {
+      url: IMAGEN_SOCIAL.url,
+      alt: IMAGEN_SOCIAL.alt,
+      ancho: IMAGEN_SOCIAL.ancho,
+      alto: IMAGEN_SOCIAL.alto,
+    };
 
   const robots = !sitioPublicado
     ? { index: false, follow: false }

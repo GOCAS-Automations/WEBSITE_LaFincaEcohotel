@@ -57,7 +57,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     `${alojamiento.nombre} de La Finca Eco Hotel`,
   );
 
-  return metadatosPagina({
+  return await metadatosPagina({
     titulo: alojamiento.nombre,
     descripcion: (await descripcionDe(slug)) ?? "",
     ruta: `/alojamientos/${alojamiento.slug}`,

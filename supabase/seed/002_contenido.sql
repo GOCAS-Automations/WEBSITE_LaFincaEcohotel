@@ -58,7 +58,7 @@ insert into contenido (clave, valor) values
     "plan romántico para parejas cerca de Cali"
   ],
   "imagen": {
-    "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/sitio/social/tarjeta-og-1200x630.webp",
+    "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/sitio/social/tarjeta-og-marca-oficial-1200x630.webp",
     "alt": "La Finca Eco Hotel — cabañas en el bosque de niebla del Km 18, cerca de Cali",
     "ancho": 1200,
     "alto": 630

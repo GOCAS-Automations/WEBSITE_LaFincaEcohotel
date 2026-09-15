@@ -252,18 +252,29 @@ export const LEGAL_ACTUALIZADO = "2026-09-11";
  * Imagen de OpenGraph / Twitter cuando una página no aporta la suya.
  *
  * Es una tarjeta DEDICADA de 1200×630, compuesta con
- * `npm run imagenes:social` (`scripts/generar-imagen-social.mjs`): una foto
- * oficial del corredor abierto al bosque, el velo de petróleo de la marca, el
- * isotipo en blanco y el wordmark. Antes se compartía el banner del hero y se
- * declaraba 1200×630 sin serlo: WhatsApp y Facebook recortan al centro, y ese
- * recorte se comía el cielo y la cabaña.
+ * `npm run imagenes:social` (`scripts/generar-imagen-social.mjs`): el hero de
+ * la portada bajo el velo de petróleo de la marca, con el **logotipo oficial
+ * del diseñador** —el lockup completo, colibrí y wordmark— teñido en crema.
+ * Antes se compartía el banner del hero declarado 1200×630 sin serlo: WhatsApp
+ * y Facebook recortan al centro, y ese recorte se comía el cielo y la cabaña.
  *
- * Si se regenera, la ruta NO cambia: las redes cachean la URL durante semanas
- * y una dirección nueva significa que los enlaces ya compartidos siguen
- * mostrando la imagen vieja.
+ * ---------------------------------------------------------------------------
+ * ESTO ES EL RESPALDO, NO LA FUENTE
+ * ---------------------------------------------------------------------------
+ * La imagen que de verdad se publica sale del CMS (`sitio.seo` → `imagen`), y
+ * el hotel la cambia desde el panel subiendo un archivo o pegando una
+ * dirección. Este objeto es lo que se usa si la base no responde durante el
+ * build, y es también el valor con el que nace la fila del seed.
+ *
+ * La ruta lleva `marca-oficial` porque la anterior (`tarjeta-og-1200x630`)
+ * componía el wordmark con una tipografía de sistema: en el bucket ninguna
+ * imagen se sobrescribe —una URL siempre devuelve el mismo archivo— así que
+ * una tarjeta distinta es una ruta distinta. Se pudo cambiar ahora porque el
+ * sitio todavía no está publicado y nadie ha compartido aún el enlace; de aquí
+ * en adelante esta dirección se queda quieta.
  */
 export const IMAGEN_SOCIAL = {
-  url: medio("sitio/social/tarjeta-og-1200x630.webp"),
+  url: medio("sitio/social/tarjeta-og-marca-oficial-1200x630.webp"),
   ancho: 1200,
   alto: 630,
   alt: "La Finca Eco Hotel — cabañas en el bosque de niebla del Km 18, cerca de Cali",

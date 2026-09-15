@@ -11,7 +11,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const heroes = await getHeroesListados();
   const hero = heroes.faq;
 
-  return metadatosPagina({
+  return await metadatosPagina({
     titulo: "Preguntas frecuentes",
     descripcion:
       "Ubicación, clima, parqueadero, mascotas, niños, restaurante y eventos: lo que más preguntan antes de llegar a La Finca Eco Hotel.",

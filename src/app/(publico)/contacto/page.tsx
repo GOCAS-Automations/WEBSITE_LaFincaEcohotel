@@ -13,7 +13,7 @@ export async function generateMetadata(): Promise<Metadata> {
   ]);
   const hero = heroes.contacto;
 
-  return metadatosPagina({
+  return await metadatosPagina({
     titulo: "Contacto",
     descripcion: `Escríbenos por WhatsApp al ${contacto.whatsapp_visible}. La Finca Eco Hotel está en el Km 18 vía Cali–Buenaventura, Vereda Loma Alta.`,
     ruta: "/contacto",

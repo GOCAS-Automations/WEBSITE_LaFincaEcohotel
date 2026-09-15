@@ -40,10 +40,20 @@ export const metadata: Metadata = {
   creator: SITIO.nombre,
   publisher: SITIO.nombre,
   formatDetection: { telephone: false },
-  icons: {
-    icon: [{ url: "/marca/icono.png", type: "image/png" }],
-    apple: [{ url: "/marca/icono.png" }],
-  },
+  /*
+    LOS ICONOS NO SE DECLARAN AQUÍ.
+
+    Antes este bloque apuntaba a `/marca/icono.png`, el isotipo PROVISIONAL que
+    se sacó del Instagram del hotel mientras no llegaba el oficial. Ahora los
+    iconos salen de los archivos que Next reconoce por su nombre —`icon.png`,
+    `apple-icon.png` y `favicon.ico`, los tres en `src/app/`—, generados desde
+    el isotipo del diseñador con `npm run marca:iconos`.
+
+    Es importante NO declararlos también en `metadata`: un `icons` escrito a
+    mano **reemplaza** a los que Next descubre por convención, y el resultado
+    sería seguir publicando el logo provisional con los archivos oficiales al
+    lado sin usar. Fue exactamente lo que pasó al añadirlos.
+  */
   ...(sitioPublicado ? {} : { robots: { index: false, follow: false } }),
 };
 

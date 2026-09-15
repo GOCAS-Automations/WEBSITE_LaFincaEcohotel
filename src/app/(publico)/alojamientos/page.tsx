@@ -14,7 +14,7 @@ export async function generateMetadata(): Promise<Metadata> {
   ]);
   const hero = heroes.alojamientos;
 
-  return metadatosPagina({
+  return await metadatosPagina({
     titulo: "Cabañas",
     descripcion: precioDesde
       ? `Cabañas para dos en La Finca Eco Hotel, Km 18 vía Cali–Buenaventura: cama doble, baño privado y vista a la montaña. Desde ${formatearCOP(precioDesde)} la noche.`

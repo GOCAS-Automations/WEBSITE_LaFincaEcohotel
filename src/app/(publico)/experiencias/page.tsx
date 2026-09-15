@@ -10,7 +10,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const heroes = await getHeroesListados();
   const hero = heroes.experiencias;
 
-  return metadatosPagina({
+  return await metadatosPagina({
     titulo: "Experiencias",
     descripcion:
       "Aniversarios, cumpleaños, picnic y veladas románticas en La Finca Eco Hotel: la cabaña queda lista antes de que llegues. Km 18 vía Cali–Buenaventura.",

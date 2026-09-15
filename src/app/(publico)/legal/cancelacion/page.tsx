@@ -13,7 +13,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const contacto = await getContacto();
   const documento = documentosLegales(contacto)[CLAVE];
 
-  return metadatosPagina({
+  return await metadatosPagina({
     titulo: documento.titulo,
     descripcion: documento.descripcion,
     ruta: documento.ruta,

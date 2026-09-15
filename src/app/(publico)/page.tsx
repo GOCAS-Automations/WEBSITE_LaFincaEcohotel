@@ -18,7 +18,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const [seo, hero] = await Promise.all([getSeoSitio(), getHero()]);
 
   return {
-    ...metadatosPagina({
+    ...(await metadatosPagina({
       titulo: seo.titulo,
       tituloAbsoluto: true,
       descripcion: seo.descripcion,
@@ -26,7 +26,7 @@ export async function generateMetadata(): Promise<Metadata> {
       imagen: seo.imagen,
       tituloSocial: seo.titulo,
       descripcionSocial: hero.subtitulo,
-    }),
+    })),
     keywords: seo.palabras_clave,
   };
 }
