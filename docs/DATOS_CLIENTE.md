@@ -69,9 +69,19 @@ Correcciones sobre el seed provisional: Premium era $650.000 → **$680.000**; E
   Noche «fin de semana o festivo» = viernes, sábado, domingo, cualquier **festivo de Colombia**
   (Ley 51 de 1983 / «Ley Emiliani»: fijos, móviles según Pascua y traslado a lunes) y `TODO` la
   **víspera** de un festivo entre semana (por confirmar con el cliente).
-- Plan Entre Semana solo admite noches entre semana; Estándar y Premium solo noches de fin de
-  semana o festivo. **Estancias mixtas** (ej. jueves→sábado) no se permiten en línea por ahora:
-  `TODO` preguntar al cliente cómo se cobran.
+- **El plan es una consecuencia de la noche, no una elección libre** (modelo decidido con Cesar el
+  2026-09-14, coherente con «los planes se cobran por noche» del cliente): cada noche se cobra con la
+  tarifa que le corresponde a su fecha. Noche entre semana → Plan Entre Semana (único). Noche de fin
+  de semana o festivo → el huésped elige **Estándar o Premium** (esa elección aplica a todas las
+  noches de fin de semana de la estancia).
+- **Estancias mixtas se permiten** y se desglosan por noche: jueves→sábado = 1 noche Entre Semana
+  ($350.000) + 2 noches Estándar ($480.000 × 2) o Premium. El motor muestra el desglose noche por
+  noche antes de continuar. `TODO` confirmar con Amapola que el hotel cobra así las mixtas (y cómo
+  aplica lo incluido, p. ej. jacuzzi 45 min vs. ilimitado, en cada noche).
+- Reglas de interfaz: cambiar de fechas recalcula el desglose; cambiar entre Estándar y Premium
+  conserva las fechas; una cabaña solo está disponible si tiene tarifa para **todas** las noches de
+  la estancia (la 02, solo Estándar, no se ofrece para noches entre semana). Elegir «Entre Semana» o
+  «Estándar/Premium» desde la portada es una preferencia que prefiltra el calendario, nunca un bloqueo.
 - Día de Calma no ocupa cabaña ni noche (10 a.m.–5 p.m.); su venta en línea se modela en la Fase 3.
 
 **Nombre de la página «El lugar»:** se renombra a **«Conócenos»** (`/conocenos`, con redirección desde

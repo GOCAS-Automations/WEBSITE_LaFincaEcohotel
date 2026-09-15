@@ -6,6 +6,10 @@ Sitio web + motor de reservas para La Finca Eco Hotel (Cali, Colombia). Cliente 
 ## Flujo de trabajo (regla obligatoria)
 
 - **Fable solo analiza y planea.** Toda ejecución (escribir código, correr migraciones, builds) se delega a agentes **Opus** (tareas complejas: arquitectura, motor de reservas, panel) o **Sonnet** (tareas medianas: páginas, componentes, scripts).
+- **Dos velocidades, según el tamaño del cambio:**
+  - **Cambio rápido** (texto, color, espaciado, una imagen, un enlace; ≤ 3 archivos, sin lógica nueva): lo hace Fable directamente o un agente **Sonnet**; verificación mínima (`tsc` + `build` + una captura de la zona tocada); un solo commit. Sin auditoría completa, sin Lighthouse. Cesar puede marcar el mensaje con «rápido».
+  - **Ronda de diseño o funcionalidad** (varias secciones, motor de reservas, panel, modelo de datos): agente **Opus** con verificación completa (build, tests, capturas a 1440/390, panel con sesión, Lighthouse cuando toque rendimiento).
+  - Varias tareas independientes se lanzan **en paralelo**; las que tocan los mismos archivos, en secuencia.
 - Al terminar una sesión de trabajo relevante, actualizar `docs/MEMORIA.md` (qué se hizo, qué falta, decisiones tomadas).
 - Outputs al usuario: sin ruido; respuestas + resumen de lo realizado al final.
 
