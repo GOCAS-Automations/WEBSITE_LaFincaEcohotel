@@ -9,11 +9,27 @@
  */
 import { estadoError, type EstadoAccion } from "./tipos";
 import { esFechaISO } from "./fechas";
+import { LARGO_MINIMO_CONTRASENA } from "./roles";
 
 export class ErrorDeValidacion extends Error {
   constructor(mensaje: string) {
     super(mensaje);
     this.name = "ErrorDeValidacion";
+  }
+}
+
+/**
+ * Falta de permiso: la acción existe y los datos están bien, pero esta cuenta
+ * no puede ejecutarla.
+ *
+ * Se distingue de `ErrorDeValidacion` porque no se arregla cambiando lo que se
+ * escribió. `ejecutarAccion()` las trata igual —mensaje en pantalla, sin
+ * pantalla de error de Next— pero el nombre importa al leer los registros.
+ */
+export class ErrorDePermiso extends Error {
+  constructor(mensaje: string) {
+    super(mensaje);
+    this.name = "ErrorDePermiso";
   }
 }
 
@@ -183,6 +199,52 @@ export function emailRequerido(
   return valor;
 }
 
+/**
+ * Correo de una cuenta del panel: obligatorio, válido y en minúsculas.
+ *
+ * Se normaliza a minúsculas porque Supabase Auth guarda el correo así y
+ * `Fincavillarreal@…` crearía la sensación de ser otra cuenta distinta.
+ */
+export function correoDeCuenta(
+  form: FormData,
+  campo: string,
+  etiqueta = "Correo",
+): string {
+  return emailRequerido(form, campo, etiqueta).toLowerCase();
+}
+
+/**
+ * Contraseña temporal de una cuenta del panel.
+ *
+ * El mínimo son {@link LARGO_MINIMO_CONTRASENA} caracteres —más de los 6 que
+ * pide Supabase por defecto— porque esta contraseña abre las reservas y los
+ * datos de los huéspedes. No se recorta ni se transforma: se comprueba y se
+ * pasa tal cual, espacios incluidos, que son legítimos en una frase de paso.
+ */
+export function contrasenaDeCuenta(
+  form: FormData,
+  campo: string,
+  etiqueta = "Contraseña",
+): string {
+  const valor = String(form.get(campo) ?? "");
+  if (!valor.trim()) {
+    throw new ErrorDeValidacion(`El campo «${etiqueta}» es obligatorio.`);
+  }
+  if (valor.length < LARGO_MINIMO_CONTRASENA) {
+    throw new ErrorDeValidacion(
+      `La contraseña debe tener al menos ${LARGO_MINIMO_CONTRASENA} caracteres. La que escribiste tiene ${valor.length}.`,
+    );
+  }
+  if (valor.length > 72) {
+    /* Supabase corta en 72 bytes (es el límite de bcrypt): más allá, parte de
+       lo que se escribió no contaría y la persona no lo sabría. */
+    throw new ErrorDeValidacion(
+      "La contraseña no puede pasar de 72 caracteres.",
+    );
+  }
+  return valor;
+}
+
 /** Correo opcional. */
 export function emailOpcional(form: FormData, campo: string): string | null {
   const valor = textoOpcional(form, campo, 200);
@@ -295,6 +357,29 @@ export function aParrafos(valor: string | null): string[] {
     .filter(Boolean);
 }
 
+/**
+ * Igual que `aParrafos()`, pero **conservando los saltos de línea sueltos**.
+ *
+ * Los documentos legales guardan sus listas de viñetas como un párrafo cuyas
+ * líneas empiezan por «- » (ver `src/lib/legal.ts`). `aParrafos()` junta esas
+ * líneas en una sola frase corrida —que es lo correcto para la bienvenida de la
+ * portada, escrita a mano con el ancho de la caja— y aquí destruiría todas las
+ * viñetas de la política de privacidad. Este corta solo por línea en blanco.
+ */
+export function aParrafosConLineas(valor: string | null): string[] {
+  if (!valor) return [];
+  return valor
+    .split(/\n\s*\n/)
+    .map((parrafo) =>
+      parrafo
+        .split("\n")
+        .map((linea) => linea.trim())
+        .filter(Boolean)
+        .join("\n"),
+    )
+    .filter(Boolean);
+}
+
 /** El camino inverso: párrafos guardados → texto para el textarea. */
 export function deParrafos(parrafos: readonly string[] | null | undefined): string {
   return (parrafos ?? []).join("\n\n");
@@ -312,6 +397,10 @@ export function listaObjetos(
   campo: string,
   campos: readonly string[],
   maximo = 60,
+  /* Cuánto cabe en CADA campo. Los 4.000 de siempre sobran para una pregunta
+     frecuente o el texto de un paso, pero una sección de la política de
+     privacidad puede pasarlos: ver `guardarLegalAction`. */
+  maximoCampo = 4000,
 ): Record<string, string>[] {
   const crudo = String(form.get(campo) ?? "").trim();
   if (!crudo) return [];
@@ -330,7 +419,8 @@ export function listaObjetos(
       const salida: Record<string, string> = {};
       for (const clave of campos) {
         const valor = origen[clave];
-        salida[clave] = typeof valor === "string" ? valor.trim().slice(0, 4000) : "";
+        salida[clave] =
+          typeof valor === "string" ? valor.trim().slice(0, maximoCampo) : "";
       }
       return campos.some((clave) => salida[clave]) ? [salida] : [];
     })
@@ -358,6 +448,9 @@ export async function ejecutarAccion(
   } catch (error) {
     if (esSenalDeNext(error)) throw error;
     if (error instanceof ErrorDeValidacion) return estadoError(error.message);
+    /* Una cuenta sin permiso recibe el «no» tal cual, sin detalles: el mensaje
+       no dice cuántas cuentas hay ni cómo se llaman. */
+    if (error instanceof ErrorDePermiso) return estadoError(error.message);
     /* El cupo del Día de Calma lo decide un trigger de la base, y su mensaje
        ya está en español: se muestra tal cual venga por donde venga. */
     if (esErrorDeCupo(error)) return estadoError(error.message);

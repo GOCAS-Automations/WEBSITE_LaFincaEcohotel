@@ -7,6 +7,7 @@
  * no es técnico y nunca debe leer un valor de base de datos en crudo.
  */
 
+import type { RolPanel } from "./roles";
 import type {
   EstadoReserva,
   OrigenReserva,
@@ -282,3 +283,26 @@ export type CarpetaImagenes =
   | "adicionales"
   | "sitio"
   | "galeria";
+
+/* ===========================================================================
+ * Cuentas del panel
+ * ======================================================================== */
+
+/**
+ * Una cuenta de Supabase Auth, con lo poco que la pantalla de Usuarios enseña.
+ *
+ * Vive aquí y no en `src/lib/admin/usuarios.ts` porque ese módulo es
+ * `server-only` —usa `service_role`— y la fila de la lista es un componente de
+ * cliente. Un `import type` se borra al compilar, sí, pero apoyar la frontera
+ * del `service_role` en esa sutileza es pedirle a quien lea el código dentro de
+ * un año que la recuerde.
+ */
+export type UsuarioPanel = {
+  id: string;
+  correo: string;
+  rol: RolPanel;
+  /** ISO del último inicio de sesión; `null` si nunca ha entrado. */
+  ultimoAcceso: string | null;
+  /** ISO de creación de la cuenta. */
+  creada: string;
+};

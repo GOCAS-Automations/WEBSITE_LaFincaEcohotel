@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import type { RolPanel } from "@/lib/admin/roles";
+
 /**
  * Navegación del panel: barra lateral en escritorio y fila de pestañas
  * desplazable en el celular (el cliente lo va a usar sobre todo desde el
@@ -23,7 +25,17 @@ export type ElementoNav = {
     | "capas"
     | "brujula"
     | "regalo"
+    | "personas"
     | "texto";
+  /**
+   * Solo la ve el propietario.
+   *
+   * Es una comodidad, NO la protección: quien escriba la dirección a mano se
+   * topa con la página, que comprueba el rol antes de leer nada, y con las
+   * Server Actions, que lo vuelven a comprobar. Ver
+   * `src/app/admin/(panel)/usuarios/page.tsx`.
+   */
+  soloPropietario?: boolean;
 };
 
 export const NAV_PANEL: ElementoNav[] = [
@@ -35,6 +47,12 @@ export const NAV_PANEL: ElementoNav[] = [
   { href: "/admin/experiencias", etiqueta: "Experiencias", icono: "brujula" },
   { href: "/admin/adicionales", etiqueta: "Adicionales", icono: "regalo" },
   { href: "/admin/contenido", etiqueta: "Contenido del sitio", icono: "texto" },
+  {
+    href: "/admin/usuarios",
+    etiqueta: "Usuarios",
+    icono: "personas",
+    soloPropietario: true,
+  },
 ];
 
 const TRAZOS: Record<ElementoNav["icono"], string> = {
@@ -50,6 +68,8 @@ const TRAZOS: Record<ElementoNav["icono"], string> = {
     "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm2.8-11.8-1.6 4.6-4.6 1.6 1.6-4.6 4.6-1.6Z",
   regalo:
     "M4 11h16v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8Zm-1-4h18v4H3V7Zm9 0v13M12 7S10.5 3 8.5 3a2 2 0 0 0 0 4H12Zm0 0s1.5-4 3.5-4a2 2 0 0 1 0 4H12Z",
+  personas:
+    "M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm0 0c-3 0-5.5 1.8-5.5 4v3h11v-3c0-2.2-2.5-4-5.5-4Zm7.5-6.7a3.5 3.5 0 0 1 0 6.7m1.2 2.4c1.9.6 3.3 1.9 3.3 3.6v3h-4",
   texto: "M5 6h14M5 11h14M5 16h9",
 };
 
@@ -75,15 +95,23 @@ function Icono({ icono }: { icono: ElementoNav["icono"] }) {
   );
 }
 
-export function NavPanel() {
+export function NavPanel({ rol }: { rol: RolPanel }) {
   const ruta = usePathname();
+
+  /* La sección de Usuarios solo se le pinta al propietario. El rol llega del
+     layout, que lo leyó del JWT ya validado en el servidor: no es un dato que
+     el navegador pueda cambiar para hacerse aparecer el enlace. Y aunque lo
+     hiciera, el enlace llevaría a una página que dice «No tienes permiso». */
+  const elementos = NAV_PANEL.filter(
+    (item) => !item.soloPropietario || rol === "propietario",
+  );
 
   return (
     <>
       {/* Escritorio: barra lateral */}
       <nav aria-label="Secciones del panel" className="hidden lg:block">
         <ul className="space-y-1">
-          {NAV_PANEL.map((item) => {
+          {elementos.map((item) => {
             const activo = estaActivo(ruta, item.href);
             return (
               <li key={item.href}>
@@ -111,7 +139,7 @@ export function NavPanel() {
         className="-mx-4 overflow-x-auto px-4 sm:-mx-6 sm:px-6 lg:hidden"
       >
         <ul className="flex w-max gap-2 pb-1">
-          {NAV_PANEL.map((item) => {
+          {elementos.map((item) => {
             const activo = estaActivo(ruta, item.href);
             return (
               <li key={item.href}>

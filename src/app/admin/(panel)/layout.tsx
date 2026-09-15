@@ -17,7 +17,7 @@ import { requireAdmin } from "@/lib/admin/auth";
 export default async function LayoutPanel({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const { usuario } = await requireAdmin();
+  const { usuario, rol } = await requireAdmin();
 
   return (
     <div className="min-h-screen bg-crema-100">
@@ -69,7 +69,7 @@ export default async function LayoutPanel({
       <div className="mx-auto max-w-[88rem] gap-8 px-4 py-5 sm:px-6 lg:flex lg:px-8 lg:py-10">
         <aside className="lg:w-60 lg:shrink-0">
           <div className="lg:sticky lg:top-24">
-            <NavPanel />
+            <NavPanel rol={rol} />
           </div>
         </aside>
 
