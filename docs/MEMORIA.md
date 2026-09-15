@@ -17,6 +17,12 @@
   Experiencias, el pie sin la línea clara, el calendario por encima de todo, el
   desplegable de cabañas con el estilo del sitio, las ondas de sección
   redibujadas para el teléfono y los botones centrados a 390 px.
+- **2026-09-15 · Fase 3, primera entrega del motor con datos reales:** el
+  **Día de Calma ya es una reserva** (con su cupo de 10 personas por día), las
+  **experiencias se eligen noche por noche**, el huésped elige pagar el **50 %
+  o el 100 %** y el panel muestra el cupo del día bajo las cinco cabañas.
+  Sigue sin haber pasarela: el botón final es WhatsApp, con la costura de Wompi
+  marcada en el código.
 - Del motor de reservas ya existe la parte que no depende de la base: el
   calendario de festivos de Colombia, la regla plan ↔ noches y el calendario
   propio que apaga los días que el plan no cubre. Falta la disponibilidad real.
@@ -87,6 +93,14 @@
 | 2026-09-15 | **«Nuestra esencia» sale de la portada y su clave del CMS con ella.** Una clave que ya no lee nadie se queda viva en la tabla para siempre: el seed la borra en un bloque «CLAVES RETIRADAS». |
 | 2026-09-02 | **La galería NO añade un campo `destacada`.** El editor del panel guarda solo `url` y `alt`, así que una clave extra se perdería en el primer guardado. Qué foto sale grande lo decide su **posición** dentro de la página, documentado en `docs/CMS_CLAVES.md`. |
 | 2026-09-02 | **La página de la galería vive en el estado del componente, no en la URL.** Meterla en la dirección obligaba a `useSearchParams` y a otro `<Suspense>` a cambio de nada: nadie comparte "la página 3 de la galería". |
+| 2026-09-15 | **El Día de Calma se reserva como una reserva más**, con `reservas.tipo` ('hospedaje' \| 'dia') en vez de una tabla aparte: comparte código, calendario y ficha, y el `daterange` `[fecha, fecha+1)` deja que las consultas de solape sigan siendo las mismas. Sin cabaña (`alojamiento_id` nulo), así que **no bloquea ninguna**: el constraint EXCLUDE ignora los nulos. |
+| 2026-09-15 | **El cupo de 10 personas por día vive en un trigger de la base** (`validar_cupo_dia_de_calma`, error `LF010` con mensaje en español), no solo en la aplicación: el panel no es el único camino de entrada y dos guardados simultáneos pasarían la comprobación de la app a la vez. La app comprueba antes para poder explicarlo mejor. |
+| 2026-09-15 | **`reserva_extras` gana `noche`** y cambia su PK por un `id` propio (una columna que puede ser nula no puede ser PK). La unicidad real —«este extra, esta noche, una vez»— es un índice único `nulls not distinct`. `noche = null` significa «para toda la estadía» y es lo que quedó en las filas anteriores. |
+| 2026-09-15 | **El anticipo se guarda congelado** (`porcentaje_anticipo` + `monto_anticipo`) y no se recalcula: es la cifra que se le prometió al huésped. El saldo siempre es `total − anticipo`, para que las dos cifras sumen exacto. |
+| 2026-09-15 | **Elegir una sola fecha, sin salida, es la puerta al Día de Calma.** El calendario ofrece «Vengo solo ese día, sin dormir» en cuanto hay llegada, y se vuelve con «Prefiero quedarme a dormir». Nunca se usa la palabra «pasadía». |
+| 2026-09-15 | **El cupo que queda se consulta a un endpoint propio** (`/api/dia-de-calma/cupo`), que lee con `service_role` y devuelve **solo el número agregado**: `reservas` no tiene lectura pública y no debe tenerla. |
+| 2026-09-15 | **No se inventa el precio de la tercera persona del Día de Calma.** El hotel publicó $250.000 para dos y nada más: a partir de la tercera, el sitio dice que lo confirma por WhatsApp en vez de estimar. Igual con el anticipo, la cancelación y el jacuzzi de ese plan. |
+| 2026-09-15 | **La sincronización con el Google Calendar del hotel no se implementa todavía**, pero el modelo la espera: `origen = 'google_calendar'` y `referencia_externa` (único cuando existe). |
 
 ## Registro de sesiones
 
@@ -1653,3 +1667,78 @@ con la ronda del motor de reservas de otro agente — solo se tocó
 - [ ] Accesos: Hostinger (dominio), Google Business, Analytics.
 - [ ] Cuenta Wompi (documentos, llaves sandbox/producción).
 - [ ] Decisión: pago total vs anticipo.
+
+
+## 2026-09-15 · Fase 3 — Día de Calma, experiencias por noche y anticipo
+
+Encargo de Cesar con datos nuevos del cliente: el **Día de Calma tiene un cupo
+de 10 personas por día**, y el calendario general se cruzará algún día con el
+**Google Calendar** que el equipo llena a mano desde WhatsApp.
+
+### El modelo (migración 009)
+
+| Cambio | Para qué |
+|---|---|
+| `reservas.tipo` ('hospedaje' \| 'dia') | Las dos formas de vender, en la misma tabla. |
+| `reservas_coherencia_tipo` | Un hospedaje **siempre** tiene cabaña; un día **nunca** la tiene y dura `[fecha, fecha+1)`. |
+| Trigger `reservas_cupo_dia_de_calma` | Rechaza la persona 11 de un día con un mensaje en español y el SQLSTATE propio `LF010`. |
+| `reserva_extras.noche` + PK nueva + índice `nulls not distinct` | El mismo extra en varias noches; `null` = toda la estadía. |
+| `porcentaje_anticipo` (50 \| 100) y `monto_anticipo` | Cuánto se paga al reservar, congelado. |
+| `origen = 'google_calendar'` y `referencia_externa` única | La costura para la sincronización futura. **No implementada.** |
+
+`npm run db:probar` (nuevo) verifica **18 reglas contra la base real** dentro de
+una transacción que termina en `rollback`: el cupo (incluido al editar y al
+cancelar), que un día no puede durar dos, que una reserva de día **no bloquea
+cabañas** y que dos hospedajes que se cruzan sí siguen chocando, la unicidad de
+los extras por noche y el anticipo.
+
+### El motor público
+
+- **Una sola fecha, sin salida → Día de Calma.** El calendario ofrece «Vengo
+  solo ese día, sin dormir»; el módulo cambia de modo, explica el horario
+  (10:00 a. m. – 5:00 p. m.), lo que incluye y que **no hay hospedaje**, y
+  enseña **«Quedan N cupos para ese día»** consultando `/api/dia-de-calma/cupo`.
+  Solo deja elegir hasta ese número de personas. Se vuelve con «Prefiero
+  quedarme a dormir». Nunca aparece la palabra «pasadía».
+- **Paso 4 — experiencias por noche.** Una sección por noche de la estadía, con
+  cantidad, y un bloque «Para toda la estadía» para los adicionales. El resumen
+  las agrupa igual y el mensaje de WhatsApp las lleva con su fecha.
+- **Paso 5 — anticipo.** 50 % o 100 %, con el monto de cada opción a la vista y
+  la explicación del link de pago. El botón sigue llevando a WhatsApp: la
+  costura de la pasarela está marcada con `AQUÍ VA EL COBRO DE WOMPI`.
+
+### El panel
+
+- El calendario del mes tiene una **fila «Día de Calma»** bajo las cinco
+  cabañas: `4/10` por día, con el color subiendo según se llena, y su entrada
+  en la leyenda.
+- El **alta manual** pregunta primero qué se vendió. En modo día desaparecen la
+  cabaña y la salida, el plan se limita a los de día, se ve el cupo («0 de 10
+  cupos ya ocupados ese día») y el aviso sale **antes** de intentar guardar.
+- La **ficha** distingue las dos: sin cabaña, con el día, las personas sobre el
+  cupo, las experiencias agrupadas por noche y el anticipo elegido.
+
+### Verificación
+
+- `tsc --noEmit`, `eslint` y **91 pruebas** en verde (29 nuevas: desglose con
+  extras por noche, anticipo que siempre suma el total, cupo y cotización del
+  día sin inventar precios).
+- `npm run db:probar`: 18 comprobaciones contra la base, con `rollback`.
+- **CDP contra localhost** a 1440 y 390 px: `/reservar` en los dos modos (Día de
+  Calma con cupo y hospedaje con los cinco pasos), sin desbordes horizontales y
+  **sin un solo error de consola**; el mensaje de WhatsApp sale completo, con el
+  desglose noche a noche, las experiencias con su fecha y el anticipo.
+- **Panel con sesión real**: se creó un Día de Calma de prueba de 4 personas, se
+  comprobó que un segundo de 8 se rechaza («…ya hay 4. Quedan 6 cupos»), se vio
+  la fila del calendario en `4/10` y **se borró la reserva**: la base queda con
+  **0 reservas**, como estaba.
+
+### Lo que queda anotado
+
+- **Falta que Amapola confirme**: valor por persona adicional en el Día de
+  Calma, si ese plan pide anticipo, su política de cancelación y si se puede
+  añadir jacuzzi. Mientras tanto el sitio no muestra ninguna cifra de eso.
+- **La sincronización con Google Calendar no está hecha**: solo el modelo.
+- El `npm run build` de esta sesión no pudo terminar en la máquina (se quedó sin
+  memoria con otro agente compilando en paralelo); `tsc`, `eslint` y el `next
+  dev` sí corrieron limpios. **Conviene repetir el build antes de desplegar.**

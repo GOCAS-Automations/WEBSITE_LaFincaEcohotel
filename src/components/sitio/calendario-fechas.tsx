@@ -540,7 +540,14 @@ export function CalendarioFechas({
           {entrada && alElegirDiaUnico && !diaUnico ? (
             <button
               type="button"
-              onClick={alElegirDiaUnico}
+              onClick={() => {
+                alElegirDiaUnico();
+                /* Se cierra como al elegir la salida: la respuesta ya está
+                   dada y lo siguiente que hay que ver —el plan del día y su
+                   cupo— vive debajo del calendario. */
+                setAbierto(false);
+                disparador.current?.focus();
+              }}
               className="mb-2 flex min-h-11 w-full items-center justify-center rounded-[var(--radius-suave)] bg-brote-100 px-3 text-xs leading-snug font-semibold text-oliva-800 transition-colors hover:bg-brote-200"
             >
               Vengo solo ese día, sin dormir

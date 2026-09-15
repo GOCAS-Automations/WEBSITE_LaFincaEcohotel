@@ -84,6 +84,36 @@ Correcciones sobre el seed provisional: Premium era $650.000 → **$680.000**; E
   «Estándar/Premium» desde la portada es una preferencia que prefiltra el calendario, nunca un bloqueo.
 - Día de Calma no ocupa cabaña ni noche (10 a.m.–5 p.m.); su venta en línea se modela en la Fase 3.
 
+**Día de Calma: cupo de 10 personas por día** (dato nuevo del cliente, 2026-09-15). El límite es de
+toda la finca y se cuenta sumando el número de personas de **todas** las reservas de día de esa
+fecha. Está implementado en tres capas: el trigger `reservas_cupo_dia_de_calma` de la base
+(migración 009, que es quien decide), la comprobación previa del panel —que avisa antes y explica
+con cuántos cupos se topa— y el motor público, que enseña «Quedan N cupos para ese día» y solo
+ofrece elegir hasta ese número de personas. **Si el hotel cambia el cupo hay que tocar dos sitios**:
+la constante del trigger y `CUPO_DIA_DE_CALMA` en `src/lib/reserva/dia-de-calma.ts`.
+
+Lo que el Día de Calma **todavía no tiene confirmado** (y por eso no aparece con cifras en el sitio):
+el valor por persona adicional a partir de la tercera, si pide anticipo y de cuánto, su política de
+cancelación, y si se puede añadir jacuzzi y a qué precio. Mientras tanto el sitio dice «te lo
+confirmamos por WhatsApp».
+
+**Experiencias por noche.** Las experiencias (Aniversario con Amor, Cumpleaños con Amor, Fondue) se
+preparan para una noche concreta, así que desde 2026-09-15 se eligen **noche por noche**: una estadía
+de tres noches puede llevar fondue el viernes y aniversario el sábado. Los adicionales que no
+pertenecen a una noche —la segunda mascota— se apuntan «para toda la estadía». En la base, cada línea
+de `reserva_extras` lleva su `noche` (o `null`).
+
+**Anticipo: 50 % o 100 %.** El motor deja elegir cuánto se paga al reservar. El 50 % es lo que pide el
+hotel para confirmar; el resto se cobra **por link de pago enviado antes de la llegada** (en la finca
+no hay datáfono ni se maneja efectivo). Quien prefiera llegar sin nada pendiente puede pagar el 100 %.
+Se guarda el porcentaje y el monto congelado (`reservas.porcentaje_anticipo`, `monto_anticipo`).
+
+**Google Calendar («la finca»).** Hoy el equipo anota a mano en un Google Calendar las reservas que
+llegan por WhatsApp/Whatsfy. La sincronización con el sitio es una fase futura: **no está
+implementada**. El modelo ya la espera —`reservas.origen` admite `google_calendar` y
+`reservas.referencia_externa` guarda el id del evento, con índice único para que una sincronización
+repetida actualice en vez de duplicar—, así que cuando se haga no habrá que migrar nada.
+
 **Nombre de la página «El lugar»:** se renombra a **«Conócenos»** (`/conocenos`, con redirección desde
 `/el-lugar`). Alternativas consideradas: «Nuestro bosque», «El refugio», «Descubre La Finca».
 
@@ -165,6 +195,9 @@ Correcciones sobre el seed provisional: Premium era $650.000 → **$680.000**; E
 - [ ] Cuenta bancaria y documentos Wompi (Amapola).
 - [ ] Video: definir con Juan Camilo; sugieren embeber links de Instagram.
 - [ ] ¿Mínimo de noches en fines de semana/festivos?
+- [ ] **Día de Calma**: valor por persona adicional (a partir de la tercera), anticipo, política de
+      cancelación y si se puede añadir jacuzzi. Hoy el sitio no muestra ninguna cifra de esto.
+- [ ] Sincronización con el Google Calendar del hotel: quién lo administra y con qué cuenta.
 - [ ] ¿Publican en Airbnb/Booking? (Amapola).
 - [ ] Usuarios del panel: el cliente preguntó «¿a qué se refiere con el panel?» — explicar que es el
       administrador del sitio donde cambian textos, fotos, precios y reservas.
