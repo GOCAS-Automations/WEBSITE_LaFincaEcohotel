@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   CUPO_DIA_DE_CALMA,
+  MAX_PERSONAS_POR_RESERVA_DIA,
   cotizarDiaDeCalma,
   cupoDelDia,
   opcionesDePersonas,
@@ -12,9 +13,9 @@ import {
  * Pruebas del Día de Calma: cupo de 10 personas por día y precio publicado de
  * $250.000 para dos (§3 de `docs/DATOS_CLIENTE.md`).
  *
- * La regla de oro que se prueba aquí: **no se inventa ningún precio**. A
- * partir de la tercera persona el módulo devuelve `precio: null` con su
- * explicación, porque el hotel no ha publicado el valor por persona adicional.
+ * La regla que se prueba aquí: el plan se vende para **una o dos personas**
+ * (decisión del cliente, 2026-09-15) y el módulo no inventa ningún precio —sin
+ * tarifa publicada devuelve `precio: null` con su explicación—.
  */
 
 const FECHA = "2026-09-18";
@@ -50,10 +51,15 @@ describe("cupo", () => {
     expect(textoCupo(0)).toContain("completo");
   });
 
-  it("ofrece tantas opciones de personas como cupos queden", () => {
-    expect(opcionesDePersonas(3)).toEqual([1, 2, 3]);
+  it("nunca ofrece más de dos personas, aunque sobre cupo", () => {
+    expect(MAX_PERSONAS_POR_RESERVA_DIA).toBe(2);
+    expect(opcionesDePersonas(99)).toEqual([1, 2]);
+    expect(opcionesDePersonas(CUPO_DIA_DE_CALMA)).toEqual([1, 2]);
+  });
+
+  it("si del día queda un solo cupo, solo se puede elegir 1", () => {
+    expect(opcionesDePersonas(1)).toEqual([1]);
     expect(opcionesDePersonas(0)).toEqual([]);
-    expect(opcionesDePersonas(99)).toHaveLength(CUPO_DIA_DE_CALMA);
   });
 });
 
@@ -80,16 +86,16 @@ describe("cotización", () => {
     expect(cotizacion.nota).toContain("mismo");
   });
 
-  it("no inventa el precio de la tercera persona", () => {
+  it("recorta a dos personas lo que venga con más (enlace viejo)", () => {
     const cotizacion = cotizarDiaDeCalma({
       fecha: FECHA,
-      personas: 3,
+      personas: 5,
       precioBase: PRECIO,
       restante: 10,
     });
-    expect(cotizacion.precio).toBeNull();
+    expect(cotizacion.personas).toBe(2);
+    expect(cotizacion.precio).toBe(PRECIO);
     expect(cotizacion.sinCupo).toBe(false);
-    expect(cotizacion.nota).toContain("WhatsApp");
   });
 
   it("avisa cuando piden más personas de las que quedan", () => {
