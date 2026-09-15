@@ -2,6 +2,8 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { normalizarPorcentajeAnticipo } from "@/lib/reserva/total";
+
 import { leerRangoFechas, sumarDiasISO } from "./fechas";
 import type {
   BloqueoAdmin,
@@ -381,9 +383,10 @@ function aReservaAdmin(
     monto_pagado: Number(fila.monto_pagado ?? 0),
     estado: fila.estado as EstadoReserva,
     origen: fila.origen as OrigenReserva,
-    /* El 50 % es lo que pide el hotel para confirmar, y es lo que valía por
-       defecto antes de que existiera la columna. */
-    porcentaje_anticipo: Number(fila.porcentaje_anticipo) === 100 ? 100 : 50,
+    /* El 50 % es el mínimo que pide el hotel para confirmar, y es lo que valía
+       por defecto antes de que existiera la columna. Desde la migración 010 la
+       columna admite cualquier entero entre 50 y 100. */
+    porcentaje_anticipo: normalizarPorcentajeAnticipo(fila.porcentaje_anticipo),
     monto_anticipo:
       fila.monto_anticipo === null || fila.monto_anticipo === undefined
         ? null

@@ -31,9 +31,17 @@ import {
 import {
   CUPO_DIA_DE_CALMA,
   HORARIO_DIA_POR_DEFECTO,
+  MAX_PERSONAS_POR_RESERVA_DIA,
   textoCupo,
 } from "@/lib/reserva/dia-de-calma";
-import { PORCENTAJES_ANTICIPO, type PorcentajeAnticipo } from "@/lib/reserva/total";
+import {
+  ANTICIPO_MAXIMO,
+  ANTICIPO_MINIMO,
+  calcularAnticipo,
+  escalaDeAnticipo,
+  normalizarPorcentajeAnticipo,
+  type PorcentajeAnticipo,
+} from "@/lib/reserva/total";
 import { formatearCOP } from "@/lib/utils/formato";
 import type {
   EstadoReserva,
@@ -122,7 +130,7 @@ export function FormularioReserva({
   );
   const [personas, setPersonas] = useState(String(reserva?.num_personas ?? 2));
   const [porcentaje, setPorcentaje] = useState<PorcentajeAnticipo>(
-    reserva?.porcentaje_anticipo === 100 ? 100 : 50,
+    normalizarPorcentajeAnticipo(reserva?.porcentaje_anticipo),
   );
 
   /* --- Las experiencias elegidas, por noche ----------------------------- */
@@ -452,10 +460,10 @@ export function FormularioReserva({
           ayuda={
             esDia
               ? cupo.estado === "ok" && cupo.restante !== null
-                ? `${cupo.usado ?? 0} de ${CUPO_DIA_DE_CALMA} cupos ya ocupados ese día. ${textoCupo(cupo.restante)}`
+                ? `Una o dos personas por reserva. ${cupo.usado ?? 0} de ${CUPO_DIA_DE_CALMA} cupos ya ocupados ese día. ${textoCupo(cupo.restante)}`
                 : cupo.estado === "cargando"
                   ? "Consultando el cupo de ese día…"
-                  : `Máximo ${CUPO_DIA_DE_CALMA} personas por día en toda la finca.`
+                  : `Una o dos personas por reserva; máximo ${CUPO_DIA_DE_CALMA} personas por día en toda la finca.`
               : "Las cabañas son para dos personas y La Finca no recibe menores de edad."
           }
         >
@@ -464,7 +472,7 @@ export function FormularioReserva({
             name="num_personas"
             type="number"
             min={1}
-            max={esDia ? CUPO_DIA_DE_CALMA : 30}
+            max={esDia ? MAX_PERSONAS_POR_RESERVA_DIA : 30}
             required
             value={personas}
             onChange={(evento) => setPersonas(evento.target.value)}
@@ -626,14 +634,25 @@ export function FormularioReserva({
           </div>
         </Campo>
 
+        {/*
+          ANTICIPO: UN RANGO, NO DOS BOTONES (migración 010).
+          Desde el 2026-09-15 el huésped elige en el sitio cualquier porcentaje
+          entre el 50 % —el mínimo que confirma— y el 100 %. El panel tiene que
+          poder anotar exactamente el que se pactó, así que aquí también es una
+          escala de cinco en cinco. Se queda como `<select>` y no como
+          deslizante: en el panel se transcribe una cifra ya decidida, y un
+          desplegable se rellena con el teclado más rápido.
+        */}
         <Campo
           etiqueta="Anticipo"
           htmlFor="porcentaje_anticipo"
           className="sm:col-span-2"
           ayuda={
-            porcentaje === 100
+            porcentaje >= ANTICIPO_MAXIMO
               ? "El huésped paga el total antes de llegar."
-              : "La mitad confirma la reserva; el resto se cobra por link de pago antes de la llegada."
+              : `El ${porcentaje} % confirma la reserva; el resto (${formatearCOP(
+                  total - calcularAnticipo(total, porcentaje).anticipo,
+                )}) se cobra por link de pago antes de la llegada.`
           }
         >
           <Desplegable
@@ -641,13 +660,18 @@ export function FormularioReserva({
             name="porcentaje_anticipo"
             value={String(porcentaje)}
             onChange={(evento) =>
-              setPorcentaje(Number(evento.target.value) as PorcentajeAnticipo)
+              setPorcentaje(normalizarPorcentajeAnticipo(evento.target.value))
             }
           >
-            {PORCENTAJES_ANTICIPO.map((opcion) => (
+            {escalaDeAnticipo().map((opcion) => (
               <option key={opcion} value={opcion}>
-                {opcion === 100 ? "100 % (pago total)" : "50 % (lo habitual)"} —{" "}
-                {formatearCOP(opcion === 100 ? total : Math.round(total / 2))}
+                {opcion} %
+                {opcion === ANTICIPO_MINIMO
+                  ? " (el mínimo)"
+                  : opcion === ANTICIPO_MAXIMO
+                    ? " (pago total)"
+                    : ""}{" "}
+                — {formatearCOP(calcularAnticipo(total, opcion).anticipo)}
               </option>
             ))}
           </Desplegable>

@@ -133,8 +133,8 @@ export interface Reserva {
   origen: OrigenReserva;
   /** Id del evento en el sistema de origen (Google Calendar). */
   referencia_externa: string | null;
-  /** Qué parte del total se cobra por adelantado: 50 o 100. */
-  porcentaje_anticipo: 50 | 100;
+  /** Qué parte del total se cobra por adelantado: un entero entre 50 y 100. */
+  porcentaje_anticipo: number;
   /** Anticipo en COP congelado al reservar. */
   monto_anticipo: number | null;
   created_at: string;

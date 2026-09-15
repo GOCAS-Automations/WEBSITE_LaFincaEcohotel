@@ -214,7 +214,7 @@ export function documentosLegales(
               "Todos los precios se expresan en pesos colombianos (COP) e incluyen los impuestos aplicables, salvo que se indique lo contrario.",
               "La tarifa corresponde al plan elegido (Entre Semana, Estándar o Premium) por noche y para dos personas. El plan Día de Calma se cobra por el día y no incluye hospedaje.",
               "Las experiencias y servicios adicionales se cobran aparte de la tarifa de alojamiento.",
-              "Para confirmar la reserva se paga un anticipo del 50 %. El 50 % restante se paga el día de la llegada, mediante un link de pago que enviamos con anticipación.",
+              "Para confirmar la reserva se paga un anticipo de mínimo el 50 % del total; al reservar puedes elegir adelantar más, hasta el 100 %. Lo que quede pendiente se paga antes de la llegada, mediante un link de pago que enviamos con anticipación.",
               "En La Finca no hay datáfono ni se maneja efectivo. Nunca solicitamos datos de tarjeta por WhatsApp ni por ningún otro canal de mensajería.",
               "Los pagos en línea se procesan a través de una pasarela autorizada. No almacenamos los datos de tu medio de pago.",
             ]),

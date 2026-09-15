@@ -154,8 +154,8 @@ export type ReservaAdmin = {
   monto_pagado: number;
   estado: EstadoReserva;
   origen: OrigenReserva;
-  /** Qué parte del total se cobró por adelantado: 50 o 100. */
-  porcentaje_anticipo: 50 | 100;
+  /** Qué parte del total se cobró por adelantado: un entero entre 50 y 100. */
+  porcentaje_anticipo: number;
   /** Anticipo congelado al reservar; `null` en las reservas antiguas. */
   monto_anticipo: number | null;
   /** Id del evento externo (Google Calendar) si la reserva vino de fuera. */

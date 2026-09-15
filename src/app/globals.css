@@ -690,3 +690,108 @@ p {
   content-visibility: auto;
   contain-intrinsic-size: auto 800px;
 }
+
+/* ===========================================================================
+ * Control deslizante del anticipo
+ * ======================================================================== */
+
+/**
+ * El `<input type="range">` con la marca puesta, sin dejar de ser un range.
+ *
+ * POR QUÉ UN RANGE DE VERDAD Y NO UNOS DIVS: el nativo ya trae flechas del
+ * teclado, Inicio/Fin, RePág/AvPág, el rol `slider` con su valor anunciado y el
+ * arrastre táctil. Reimplementarlo cuesta cien líneas y se pierde todo eso.
+ * Aquí solo se repinta: el carril con el verde claro de marca, la parte
+ * recorrida en petróleo —se dibuja con un degradado sobre el propio carril,
+ * cuyo corte llega por la variable `--recorrido`— y el pulsador en petróleo.
+ *
+ * Los pseudoelementos de WebKit y de Firefox NO se pueden agrupar en un mismo
+ * selector: un navegador que no entiende uno de los dos descarta la regla
+ * entera. Van por separado a propósito.
+ */
+.deslizante-marca {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 2.75rem; /* 44 px: el área táctil mínima, sin caja visible */
+  background: transparent;
+  cursor: pointer;
+}
+
+.deslizante-marca::-webkit-slider-runnable-track {
+  height: 0.5rem;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--color-petroleo-600) 0%,
+    var(--color-petroleo-600) var(--recorrido, 0%),
+    var(--color-brote-200) var(--recorrido, 0%),
+    var(--color-brote-200) 100%
+  );
+}
+
+.deslizante-marca::-moz-range-track {
+  height: 0.5rem;
+  border-radius: 999px;
+  background: var(--color-brote-200);
+}
+
+.deslizante-marca::-moz-range-progress {
+  height: 0.5rem;
+  border-radius: 999px;
+  background: var(--color-petroleo-600);
+}
+
+.deslizante-marca::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-top: -0.5rem; /* centra el pulsador sobre el carril de 0.5rem */
+  border-radius: 999px;
+  border: 3px solid #fff;
+  background: var(--color-petroleo-600);
+  box-shadow: var(--shadow-tenue);
+  transition: transform 150ms ease-out;
+}
+
+.deslizante-marca::-moz-range-thumb {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 999px;
+  border: 3px solid #fff;
+  background: var(--color-petroleo-600);
+  box-shadow: var(--shadow-tenue);
+  transition: transform 150ms ease-out;
+}
+
+.deslizante-marca:active::-webkit-slider-thumb {
+  transform: scale(1.1);
+}
+
+.deslizante-marca:active::-moz-range-thumb {
+  transform: scale(1.1);
+}
+
+/* El foco se ve en el pulsador, que es lo que se mueve: un anillo alrededor de
+   los 44 px de alto del control se leería como un rectángulo suelto. */
+.deslizante-marca:focus {
+  outline: none;
+}
+
+.deslizante-marca:focus-visible::-webkit-slider-thumb {
+  outline: 3px solid var(--color-petroleo-700);
+  outline-offset: 2px;
+}
+
+.deslizante-marca:focus-visible::-moz-range-thumb {
+  outline: 3px solid var(--color-petroleo-700);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .deslizante-marca::-webkit-slider-thumb,
+  .deslizante-marca::-moz-range-thumb {
+    transition: none;
+  }
+}

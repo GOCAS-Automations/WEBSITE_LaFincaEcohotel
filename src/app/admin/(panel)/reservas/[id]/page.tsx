@@ -17,6 +17,8 @@ import {
   Pastilla,
   Tarjeta,
 } from "@/components/admin/ui";
+import { calcularAnticipo } from "@/lib/reserva/total";
+
 import { requireAdmin } from "@/lib/admin/auth";
 import {
   extrasActivos,
@@ -293,9 +295,10 @@ export default async function PaginaReserva({
                   <dd className="font-medium text-crema-900">
                     {formatearCOP(
                       reserva.monto_anticipo ??
-                        (reserva.porcentaje_anticipo === 100
-                          ? reserva.total
-                          : Math.round(reserva.total / 2)),
+                        calcularAnticipo(
+                          reserva.total,
+                          reserva.porcentaje_anticipo,
+                        ).anticipo,
                     )}
                   </dd>
                 </div>

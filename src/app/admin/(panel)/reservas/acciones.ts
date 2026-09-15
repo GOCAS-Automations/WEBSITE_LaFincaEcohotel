@@ -20,8 +20,14 @@ import {
   estadoOk,
   type EstadoAccion,
 } from "@/lib/admin/tipos";
-import { CUPO_DIA_DE_CALMA } from "@/lib/reserva/dia-de-calma";
-import { PORCENTAJES_ANTICIPO } from "@/lib/reserva/total";
+import {
+  CUPO_DIA_DE_CALMA,
+  MAX_PERSONAS_POR_RESERVA_DIA,
+} from "@/lib/reserva/dia-de-calma";
+import {
+  calcularAnticipo,
+  normalizarPorcentajeAnticipo,
+} from "@/lib/reserva/total";
 import {
   CUPO_DIA_LLENO,
   ErrorDeValidacion,
@@ -206,7 +212,12 @@ export async function guardarReservaAction(
       formData,
       "num_personas",
       "Número de personas",
-      { min: 1, max: esDia ? CUPO_DIA_DE_CALMA : 30 },
+      /* El Día de Calma se vende para una o dos personas (decisión del
+         cliente, 2026-09-15): el cupo de 10 es el de toda la finca y lo
+         llenan varias reservas, no una sola. La base lo repite en
+         `reservas_dia_maximo_dos_personas` (migración 010); aquí se comprueba
+         antes para poder explicarlo en español. */
+      { min: 1, max: esDia ? MAX_PERSONAS_POR_RESERVA_DIA : 30 },
     );
 
     /* El plan tiene que ser del tipo que se está vendiendo: un Día de Calma
@@ -305,17 +316,14 @@ export async function guardarReservaAction(
 
     const total = subtotalAlojamiento + subtotalExtras;
 
-    /* Anticipo: el 50 % que pide el hotel para confirmar, o el 100 %. El monto
-       se guarda además del porcentaje porque es la cifra que se le prometió al
-       huésped; recalcularla después, con otras tarifas, daría otro número. */
-    const porcentajeCrudo = Number(formData.get("porcentaje_anticipo"));
-    const porcentajeAnticipo = (
-      PORCENTAJES_ANTICIPO as readonly number[]
-    ).includes(porcentajeCrudo)
-      ? (porcentajeCrudo as 50 | 100)
-      : 50;
-    const montoAnticipo =
-      porcentajeAnticipo === 100 ? total : Math.round(total / 2);
+    /* Anticipo: cualquier porcentaje entre el 50 % que pide el hotel para
+       confirmar y el 100 %. El monto se guarda además del porcentaje porque es
+       la cifra que se le prometió al huésped; recalcularla después, con otras
+       tarifas, daría otro número. */
+    const porcentajeAnticipo = normalizarPorcentajeAnticipo(
+      formData.get("porcentaje_anticipo"),
+    );
+    const montoAnticipo = calcularAnticipo(total, porcentajeAnticipo).anticipo;
 
     const datos = {
       tipo,
