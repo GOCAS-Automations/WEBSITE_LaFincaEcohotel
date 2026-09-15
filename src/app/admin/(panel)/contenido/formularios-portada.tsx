@@ -2,7 +2,6 @@
 
 import {
   guardarCtaFinalAction,
-  guardarEsenciaAction,
   guardarHeroAction,
   guardarIntroAction,
   guardarPlanesAction,
@@ -387,59 +386,13 @@ export function FormularioPlanes({ valor }: { valor: Valor }) {
 }
 
 /* ---------------------------------------------------------------------------
- * Naturaleza
+ * Aquí estaba «Naturaleza» (`home.esencia`).
+ *
+ * La sección se retiró de la portada el 2026-09-15 —Cesar pidió acortarla— y
+ * la clave salió del CMS con ella: no la usaba ninguna otra página. El texto
+ * de marca que contaba vive en «Sobre nosotros» de `/conocenos`, que se edita
+ * en la pantalla «Conócenos» de este mismo panel.
  * ------------------------------------------------------------------------- */
-
-export function FormularioEsencia({ valor }: { valor: Valor }) {
-  return (
-    <FormularioAccion accion={guardarEsenciaAction} etiquetaEnviar="Guardar">
-      <div className="grid gap-5 sm:grid-cols-2">
-        <Campo etiqueta="Texto pequeño de arriba" htmlFor="esencia_ante">
-          <Entrada
-            id="esencia_ante"
-            name="antetitulo"
-            defaultValue={texto(valor, "antetitulo")}
-            maxLength={120}
-          />
-        </Campo>
-        <Campo etiqueta="Titular" htmlFor="esencia_titulo" obligatorio>
-          <Entrada
-            id="esencia_titulo"
-            name="titulo"
-            defaultValue={texto(valor, "titulo")}
-            required
-            maxLength={200}
-          />
-        </Campo>
-        <Campo
-          etiqueta="Párrafos"
-          htmlFor="esencia_parrafos"
-          className="sm:col-span-2"
-          ayuda="Deja una línea en blanco entre un párrafo y el siguiente."
-        >
-          <AreaTexto
-            id="esencia_parrafos"
-            name="parrafos"
-            defaultValue={comoTextarea(textos(valor, "parrafos"))}
-            rows={5}
-          />
-        </Campo>
-        <Campo
-          etiqueta="Fotos"
-          className="sm:col-span-2"
-          ayuda="Tres se ven bien; con menos, la fila se recompone sola."
-        >
-          <EditorGaleria
-            name="imagenes"
-            inicial={galeria(valor, "imagenes")}
-            carpeta="sitio"
-            conPortada={false}
-          />
-        </Campo>
-      </div>
-    </FormularioAccion>
-  );
-}
 
 /* ---------------------------------------------------------------------------
  * Instagram

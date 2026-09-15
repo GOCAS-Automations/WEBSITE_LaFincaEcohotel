@@ -24,7 +24,7 @@ export const SECCIONES_CONTENIDO: SeccionContenido[] = [
     slug: "portada",
     titulo: "Portada",
     descripcion:
-      "Todo lo que se ve en la página de inicio: la primera pantalla, la bienvenida, los encabezados de cada bloque, la naturaleza, la tira de Instagram con el reel, los testimonios y el cierre.",
+      "Todo lo que se ve en la página de inicio: la primera pantalla, la bienvenida, los encabezados de cada bloque, la tira de Instagram con el reel, los testimonios y el cierre.",
     verEn: "/",
     claves: [
       "home.hero",
@@ -32,7 +32,6 @@ export const SECCIONES_CONTENIDO: SeccionContenido[] = [
       "home.cabanas",
       "home.planes",
       "home.experiencias",
-      "home.esencia",
       "home.instagram",
       "home.testimonios",
       "home.cta_final",

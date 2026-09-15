@@ -278,6 +278,28 @@ export function FormularioLugar({ valor }: { valor: Valor }) {
           />
         </Campo>
 
+        <Campo
+          etiqueta="Segunda foto"
+          ayuda="Va debajo de la principal. Entre las dos ocupan el alto del texto de al lado; si la dejas vacía, se muestra solo la principal."
+        >
+          <CampoImagen
+            name="imagen_secundaria"
+            urlInicial={texto(valor, "imagen_secundaria")}
+            proporcion="apaisada"
+          />
+        </Campo>
+        <Campo
+          etiqueta="Descripción de la segunda foto"
+          htmlFor="lugar_alt_2"
+        >
+          <Entrada
+            id="lugar_alt_2"
+            name="imagen_secundaria_alt"
+            defaultValue={texto(valor, "imagen_secundaria_alt")}
+            maxLength={300}
+          />
+        </Campo>
+
         <Divisor titulo="Instalaciones" />
 
         <Campo etiqueta="Título del bloque" htmlFor="lugar_inst_titulo">

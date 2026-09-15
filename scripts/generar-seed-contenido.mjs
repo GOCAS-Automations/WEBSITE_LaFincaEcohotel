@@ -215,6 +215,27 @@ lineas.push(`on conflict (clave) do update set
   actualizado_at = now();
 `);
 
+/* --- Claves retiradas ------------------------------------------------------
+   Una clave que sale de `CLAVES_CONTENIDO` deja de leerse, pero su fila sigue
+   viva en la base: el sitio la ignora y el panel ya no la muestra, así que se
+   queda ahí para siempre sin que nadie pueda tocarla. Se borra aquí, con su
+   motivo escrito, para que el seed deje la tabla exactamente como el código
+   dice que debe estar.
+   -------------------------------------------------------------------------- */
+
+const CLAVES_RETIRADAS = [
+  // «Nuestra esencia» salió de la portada el 2026-09-15 (Cesar pidió acortarla)
+  // y no la usaba ninguna otra página.
+  "home.esencia",
+];
+
+lineas.push(`
+-- ----------------------------------------------------------------------------
+-- CLAVES RETIRADAS DEL CMS
+-- ----------------------------------------------------------------------------
+delete from contenido where clave in (${CLAVES_RETIRADAS.map((c) => `'${c}'`).join(", ")});
+`);
+
 /* --- Fotos de las experiencias -------------------------------------------- */
 
 lineas.push(`

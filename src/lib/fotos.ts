@@ -544,14 +544,21 @@ export const GALERIAS_POR_CABANA: Record<string, ImagenGaleria[]> = {
  * ======================================================================== */
 
 /**
- * Las fotos de las dos experiencias, por nombre del extra.
+ * Las fotos de las experiencias, por nombre del extra.
  *
- * Son las ÚNICAS fotos del sitio viejo que sobreviven al cambio, y por un
- * motivo simple: la carpeta del Drive no trae ninguna foto de la mesa de
- * aniversario ni de la bandeja de cumpleaños, y son las dos únicas piezas de
- * material donde se ve lo que el hotel monta en la cabaña. Están revisadas una
- * por una: son de La Finca, no llevan el nombre antiguo por ninguna parte y la
- * calidad aguanta el tamaño al que se publican.
+ * Las dos primeras son las ÚNICAS fotos del sitio viejo que sobreviven al
+ * cambio, y por un motivo simple: la carpeta del Drive no trae ninguna foto de
+ * la mesa de aniversario ni de la bandeja de cumpleaños, y son las dos únicas
+ * piezas de material donde se ve lo que el hotel monta en la cabaña. Están
+ * revisadas una por una: son de La Finca, no llevan el nombre antiguo por
+ * ninguna parte y la calidad aguanta el tamaño al que se publican.
+ *
+ * ⚠️ **DEL FONDUE NO HAY FOTO.** Ni en el Drive ni en el sitio viejo existe una
+ * imagen de la fondue de frutas y chocolate. Se publica con una foto de
+ * AMBIENTE —el comedor para dos de la Cabaña 05, frente al ventanal— porque es
+ * donde se sirve, y se anota aquí para que nadie la confunda con una foto del
+ * producto. Si el hotel envía una foto real, se reemplaza en el panel
+ * («Experiencias» → Fondue → Imagen) y esta línea sobra.
  *
  * El script de limpieza del bucket las conserva explícitamente
  * (`scripts/limpiar-bucket.mjs`) porque las lee de la tabla `extras`.
@@ -561,6 +568,8 @@ export const FOTOS_EXPERIENCIAS: Record<string, string> = {
     "experiencias/pw-finca-aniversario-con-amor-21-2-21.webp",
   ),
   "Cumpleaños con Amor": medio("experiencias/experiencia-cumpleanos-30.webp"),
+  /* Foto de ambiente, no del plato: ver el aviso de arriba. */
+  Fondue: foto("cabana-05/04"),
 };
 
 /* ===========================================================================

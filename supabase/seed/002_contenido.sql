@@ -130,36 +130,6 @@ insert into contenido (clave, valor) values
   "cta_href": "/experiencias"
 }$json$::jsonb),
 
-('home.esencia', $json${
-  "antetitulo": "Nuestra esencia",
-  "titulo": "Un lugar donde el lujo no brilla: se siente",
-  "parrafos": [
-    "Donde la belleza no se muestra: se respira. Cada rincón ha sido creado para recordarte que la vida también puede ser lenta, suave y serena.",
-    "Nuestra misión es crear espacios donde el descanso se vuelva un ritual natural, donde el confort moderno se mezcle con la tierra húmeda y la neblina que abraza las montañas.",
-    "Soñamos con ser un refugio de bienestar y sostenibilidad, un símbolo del eco-lujo consciente, donde la comodidad y el respeto por la tierra caminen de la mano."
-  ],
-  "imagenes": [
-    {
-      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/03.webp",
-      "alt": "Deck de inmersión metálico suspendido entre los árboles del bosque de niebla",
-      "ancho": 1086,
-      "alto": 1231
-    },
-    {
-      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-03/10.webp",
-      "alt": "Comedor en el balcón de la Cabaña 03, con hamaca y vista al valle",
-      "ancho": 1086,
-      "alto": 1231
-    },
-    {
-      "url": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/01.webp",
-      "alt": "Deck techado de La Finca con comedor de vidrio y sillas, frente a las montañas",
-      "ancho": 2400,
-      "alto": 2720
-    }
-  ]
-}$json$::jsonb),
-
 ('home.instagram', $json${
   "antetitulo": "Instagram",
   "titulo": "La Finca, día a día",
@@ -371,6 +341,8 @@ insert into contenido (clave, valor) values
   ],
   "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/02.webp",
   "imagen_alt": "Corredor techado de La Finca con jardineras y baranda de madera, abierto al bosque de niebla del Km 18",
+  "imagen_secundaria": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-01/06.webp",
+  "imagen_secundaria_alt": "Jacuzzi privado al aire libre de la Cabaña 01, con toallas y vista a las montañas",
   "instalaciones_titulo": "Zonas comunes",
   "instalaciones_descripcion": "Todo esto está incluido con tu estadía, además de la cabaña.",
   "instalaciones": [
@@ -661,19 +633,19 @@ insert into contenido (clave, valor) values
 }$json$::jsonb),
 
 ('reservar', $json${
-  "intro": "Elige la cabaña y el plan que quieres. Te llevamos a WhatsApp con el mensaje ya escrito y confirmamos disponibilidad el mismo día.",
+  "intro": "Empieza por tus fechas: con ellas te mostramos las cabañas libres y el precio noche por noche. Te llevamos a WhatsApp con el mensaje ya escrito y confirmamos disponibilidad el mismo día.",
   "pasos": [
     {
-      "titulo": "1. Elige tu cabaña",
-      "texto": "Cinco cabañas independientes para dos personas. Cada una con su rasgo propio: jacuzzi privado, comedor en el balcón o chimenea."
+      "titulo": "1. Elige tus fechas",
+      "texto": "Marca la llegada y la salida en el calendario. Puedes mezclar noches entre semana y de fin de semana: cada noche se cobra con la tarifa de su fecha."
     },
     {
-      "titulo": "2. Elige tu plan",
-      "texto": "Entre Semana de lunes a jueves; Estándar y Premium de viernes a domingo y festivos. También está el Día de Calma, sin hospedaje."
+      "titulo": "2. Elige tu cabaña",
+      "texto": "Te mostramos las que sirven para esas fechas, con el total de la estadía. Las cinco son independientes y para dos personas."
     },
     {
-      "titulo": "3. Confirmamos y reservas con el 50 %",
-      "texto": "Te respondemos con la disponibilidad y el total. Con el 50 % de anticipo queda confirmada; el resto se paga el día de la llegada por link."
+      "titulo": "3. Elige tu plan",
+      "texto": "Solo si tu estadía tiene noches de fin de semana o festivos: ahí eliges entre Estándar y Premium. Entre semana el plan es automático. Confirmamos y reservas con el 50 %."
     }
   ],
   "nota": ""
@@ -693,6 +665,12 @@ on conflict (clave) do update set
 
 
 -- ----------------------------------------------------------------------------
+-- CLAVES RETIRADAS DEL CMS
+-- ----------------------------------------------------------------------------
+delete from contenido where clave in ('home.esencia');
+
+
+-- ----------------------------------------------------------------------------
 -- FOTOS DE LAS EXPERIENCIAS
 --
 -- Son las únicas imágenes del sitio anterior que se conservan: el Drive no trae
@@ -704,6 +682,8 @@ update extras set imagen_url = 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage
  where nombre = 'Aniversario con Amor';
 update extras set imagen_url = 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/experiencias/experiencia-cumpleanos-30.webp'
  where nombre = 'Cumpleaños con Amor';
+update extras set imagen_url = 'https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/cabana-05/04.webp'
+ where nombre = 'Fondue';
 
 -- ----------------------------------------------------------------------------
 -- GALERÍAS DE LAS CABAÑAS

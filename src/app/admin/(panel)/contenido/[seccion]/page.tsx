@@ -5,7 +5,6 @@ import { notFound } from "next/navigation";
 import { BloqueContenido } from "../bloque";
 import {
   FormularioCtaFinal,
-  FormularioEsencia,
   FormularioHero,
   FormularioInstagram,
   FormularioIntro,
@@ -125,13 +124,6 @@ export default async function PaginaSeccionContenido({
                 clave="home.experiencias"
                 valor={valor("home.experiencias")}
               />
-            </BloqueContenido>
-
-            <BloqueContenido
-              titulo="Naturaleza"
-              descripcion="El bloque del bosque de niebla, con sus tres fotos."
-            >
-              <FormularioEsencia valor={valor("home.esencia")} />
             </BloqueContenido>
 
             <BloqueContenido

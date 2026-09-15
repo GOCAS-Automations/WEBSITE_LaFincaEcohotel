@@ -112,13 +112,6 @@ export type SeccionPlanes = SeccionInicio & {
   imagen_fondo: string;
 };
 
-export type EsenciaInicio = {
-  antetitulo: string;
-  titulo: string;
-  parrafos: string[];
-  imagenes: ImagenGaleria[];
-};
-
 export type ReconocimientoInicio = {
   antetitulo: string;
   titulo: string;
@@ -276,6 +269,17 @@ export type ContenidoLugar = {
   parrafos: string[];
   imagen: string;
   imagen_alt: string;
+  /**
+   * SEGUNDA foto de «Sobre nosotros» (2026-09-15).
+   *
+   * La columna de la derecha llevaba una sola fotografía con proporción fija,
+   * así que en escritorio empezaba —y sobre todo acababa— a una altura
+   * distinta de la del texto de al lado. Ahora son DOS apiladas y entre las dos
+   * ocupan exactamente el alto de la columna de texto. Si esta se deja vacía,
+   * el bloque vuelve a pintar una sola foto y sigue alineado.
+   */
+  imagen_secundaria: string;
+  imagen_secundaria_alt: string;
   instalaciones_titulo: string;
   instalaciones_descripcion: string;
   instalaciones: Instalacion[];
@@ -390,31 +394,20 @@ const RESPALDO_EXPERIENCIAS: SeccionInicio = {
   cta_href: "/experiencias",
 };
 
-const RESPALDO_ESENCIA: EsenciaInicio = {
-  antetitulo: "Nuestra esencia",
-  /* Frase oficial del manual de marca. */
-  titulo: "Un lugar donde el lujo no brilla: se siente",
-  parrafos: [
-    "Donde la belleza no se muestra: se respira. Cada rincón ha sido creado para recordarte que la vida también puede ser lenta, suave y serena.",
-    "Nuestra misión es crear espacios donde el descanso se vuelva un ritual natural, donde el confort moderno se mezcle con la tierra húmeda y la neblina que abraza las montañas.",
-    "Soñamos con ser un refugio de bienestar y sostenibilidad, un símbolo del eco-lujo consciente, donde la comodidad y el respeto por la tierra caminen de la mano.",
-  ],
-  /*
-    MAPA DE USO DE LAS FOTOS (revision de Cesar): la ducha del bosque
-    —`ZONAS_COMUNES[4]`— salia en CINCO sitios distintos: aqui, el hero de
-    preguntas, la seccion de COP16, las instalaciones de Conocenos y la
-    galeria. Se queda solo en las instalaciones, que es donde se explica lo
-    que es, y en la galeria. Aqui entra en su lugar el comedor del balcon de
-    la Cabana 03, que no estaba en ninguna otra parte de la portada.
-    La fogata se muda al hero de Contacto, y su hueco lo ocupa el deck del
-    restaurante, que quedo libre al cambiar el hero movil.
-  */
-  imagenes: [
-    ZONAS_COMUNES[3],
-    GALERIA_CABANA_03[2],
-    ZONAS_COMUNES[1],
-  ],
-};
+/*
+  «NUESTRA ESENCIA» SE RETIRÓ DE LA PORTADA EL 2026-09-15.
+
+  Era la séptima sección —la banda de verde claro con las tres fotos y las
+  frases del manual— y no la pedía nadie: quien llega a la portada quiere ver
+  el lugar, el precio y la forma de reservar, y la página se había hecho larga.
+  El texto de marca no se pierde: vive entero en «Sobre nosotros» de
+  `/conocenos`, que es la página que cuenta quiénes somos.
+
+  La clave `home.esencia` sale del CMS con ella (no la usaba ninguna otra
+  página), del panel y de `docs/CMS_CLAVES.md`. Ninguna de sus tres fotos se
+  queda huérfana en el bucket: las tres seguían usándose en la galería general,
+  en las instalaciones de Conócenos o en la ficha de la Cabaña 03.
+*/
 
 /**
  * «Somos COP16» — VIVE EN `/conocenos`, NO EN LA PORTADA.
@@ -818,6 +811,21 @@ const RESPALDO_LUGAR: ContenidoLugar = {
      hotel —2400 px— y en este hueco de media columna se ve impecable. */
   imagen: ZONAS_COMUNES[0].url,
   imagen_alt: ZONAS_COMUNES[0].alt,
+  /*
+    La SEGUNDA foto de la columna (2026-09-15).
+
+    Tiene que ser APAISADA: la caja de abajo es ancha y baja —el alto se lo
+    reparten las dos fotos dentro del alto del texto— y una vertical metida ahí
+    se queda en una franja de pared. Se probó la fachada de la Cabaña 03
+    (1086×1231) y eso fue exactamente lo que pasó.
+
+    El jacuzzi de la Cabaña 01 es de 1448×923, no sale en ninguna otra parte de
+    esta página y su franja superior —las montañas, las nubes y la guadua— es lo
+    que el texto de al lado está contando. Las zonas comunes no sirven: las ocho
+    salen más abajo, en las instalaciones.
+  */
+  imagen_secundaria: GALERIA_CABANA_01[1].url,
+  imagen_secundaria_alt: GALERIA_CABANA_01[1].alt,
   instalaciones_titulo: "Zonas comunes",
   instalaciones_descripcion:
     "Todo esto está incluido con tu estadía, además de la cabaña.",
@@ -898,22 +906,30 @@ const RESPALDO_GALERIA: ContenidoGaleria = {
 
 const RESPALDO_RESERVAR: ContenidoReservar = {
   intro:
-    "Elige la cabaña y el plan que quieres. Te llevamos a WhatsApp con el mensaje ya escrito y confirmamos disponibilidad el mismo día.",
+    "Empieza por tus fechas: con ellas te mostramos las cabañas libres y el precio noche por noche. Te llevamos a WhatsApp con el mensaje ya escrito y confirmamos disponibilidad el mismo día.",
+  /*
+    EL ORDEN ES EL DEL FLUJO REAL, y no al revés (corregido el 2026-09-15).
+
+    El selector pregunta primero las FECHAS, porque de ellas sale todo lo
+    demás: qué cabañas sirven y qué planes se pueden elegir. Los tres pasos
+    decían «cabaña → plan → confirmamos», que era el flujo de antes del motor
+    de precios noche a noche y ya no describía lo que el visitante ve.
+  */
   pasos: [
     {
-      titulo: "1. Elige tu cabaña",
+      titulo: "1. Elige tus fechas",
       texto:
-        "Cinco cabañas independientes para dos personas. Cada una con su rasgo propio: jacuzzi privado, comedor en el balcón o chimenea.",
+        "Marca la llegada y la salida en el calendario. Puedes mezclar noches entre semana y de fin de semana: cada noche se cobra con la tarifa de su fecha.",
     },
     {
-      titulo: "2. Elige tu plan",
+      titulo: "2. Elige tu cabaña",
       texto:
-        "Entre Semana de lunes a jueves; Estándar y Premium de viernes a domingo y festivos. También está el Día de Calma, sin hospedaje.",
+        "Te mostramos las que sirven para esas fechas, con el total de la estadía. Las cinco son independientes y para dos personas.",
     },
     {
-      titulo: "3. Confirmamos y reservas con el 50 %",
+      titulo: "3. Elige tu plan",
       texto:
-        "Te respondemos con la disponibilidad y el total. Con el 50 % de anticipo queda confirmada; el resto se paga el día de la llegada por link.",
+        "Solo si tu estadía tiene noches de fin de semana o festivos: ahí eliges entre Estándar y Premium. Entre semana el plan es automático. Confirmamos y reservas con el 50 %.",
     },
   ],
   /*
@@ -954,7 +970,6 @@ export const CLAVES_CONTENIDO = [
   "home.cabanas",
   "home.planes",
   "home.experiencias",
-  "home.esencia",
   "home.instagram",
   "home.testimonios",
   "home.cta_final",
@@ -993,7 +1008,6 @@ export const RESPALDOS: Record<ClaveContenido, Record<string, unknown>> = {
   "home.cabanas": RESPALDO_CABANAS,
   "home.planes": RESPALDO_PLANES,
   "home.experiencias": RESPALDO_EXPERIENCIAS,
-  "home.esencia": RESPALDO_ESENCIA,
   "home.instagram": RESPALDO_INSTAGRAM,
   "home.testimonios": RESPALDO_TESTIMONIOS,
   "home.cta_final": RESPALDO_CTA_FINAL,
@@ -1133,7 +1147,6 @@ export const getSeccionPlanes = cache(() =>
 export const getSeccionExperiencias = cache(() =>
   obtener("home.experiencias", RESPALDO_EXPERIENCIAS),
 );
-export const getEsencia = cache(() => obtener("home.esencia", RESPALDO_ESENCIA));
 export const getInstagram = cache(() =>
   obtener("home.instagram", RESPALDO_INSTAGRAM),
 );

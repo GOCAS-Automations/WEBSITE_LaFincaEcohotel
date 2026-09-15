@@ -214,7 +214,15 @@ values
    'Torta para dos con topper de cumpleaños y vela, botella de vino, tres fotos instantáneas y, a elegir, arreglo floral o fondue de frutas.',
    150000, null, true, 2),
 
-  ('adicional', 'Fondue',
+  -- El fondue es una EXPERIENCIA, no un adicional (2026-09-15). Es una
+  -- celebración para dos con precio por estadía, igual que Aniversario y
+  -- Cumpleaños, y así lo nombra el cliente en §4 de docs/DATOS_CLIENTE.md.
+  -- Como «adicional» caía en la lista de texto de /experiencias junto a la
+  -- segunda mascota y no salía en la portada. La foto se la pone el bloque
+  -- de FOTOS DE LAS EXPERIENCIAS de 002_contenido.sql: es una foto de
+  -- AMBIENTE (el comedor para dos de la Cabaña 05), porque del plato no hay
+  -- ninguna imagen ni en el Drive ni en el sitio viejo.
+  ('experiencia', 'Fondue',
    'Fondue de frutas y chocolate para dos.',
    25000, null, true, 3),
 

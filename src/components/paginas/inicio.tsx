@@ -27,7 +27,6 @@ import {
   getAlojamientos,
   getContacto,
   getCtaFinal,
-  getEsencia,
   getExperiencias,
   getHero,
   getInstagram,
@@ -56,9 +55,12 @@ import { mensajeExperiencia, enlaceWhatsapp } from "@/lib/whatsapp";
  *   4. ¿Dónde voy a dormir?         → cabañas
  *   5. ¿Cuánto cuesta?              → planes con precio real de la base
  *   6. ¿Y si es una ocasión especial? → experiencias
- *   7. ¿Quiénes son?                → esencia
- *   8. ¿Cómo es esto de verdad?     → Instagram: fotos y el reel del hotel
- *   9. Reservar.                    → cierre
+ *   7. ¿Cómo es esto de verdad?     → Instagram: fotos y el reel del hotel
+ *   8. Reservar.                    → cierre
+ *
+ * «NUESTRA ESENCIA» YA NO ESTÁ. Era la séptima sección —la banda verde con las
+ * frases del manual— y se retiró el 2026-09-15 para acortar la portada: lo que
+ * contaba es el trabajo de «Sobre nosotros» en `/conocenos`.
  *
  * EL RECONOCIMIENTO DE LA COP16 YA NO ESTÁ AQUÍ. Era la octava sección y se
  * mudó a `/conocenos`: un video de dos minutos y cincuenta con locución pide
@@ -94,7 +96,6 @@ export async function PaginaInicio() {
     seccionCabanas,
     seccionPlanes,
     seccionExperiencias,
-    esencia,
     instagram,
     testimonios,
     ctaFinal,
@@ -109,7 +110,6 @@ export async function PaginaInicio() {
     getSeccionCabanas(),
     getSeccionPlanes(),
     getSeccionExperiencias(),
-    getEsencia(),
     getInstagram(),
     getTestimonios(),
     getCtaFinal(),
@@ -174,7 +174,19 @@ export async function PaginaInicio() {
         bruma sigue entrando y saliendo del encuadre y el calendario ya no se
         corta.
       */}
-      <section className="relative isolate flex min-h-svh flex-col items-center justify-center">
+      {/*
+        `z-30`: EL CALENDARIO TIENE QUE FLOTAR SOBRE LA SECCIÓN DE ABAJO.
+
+        El panel del calendario cuelga del campo con `absolute z-50`, pero ese
+        50 se cuenta DENTRO del contexto de apilamiento que crea el `isolate`
+        de este hero. La sección siguiente («Bienvenidos») es `relative` con
+        `z-index: auto`, así que se pinta después —por orden del documento— y
+        tapaba el calendario a partir del tercio inferior. Con el hero en un
+        nivel propio por encima, el calendario flota sobre todo lo que viene
+        detrás y sigue por debajo de la cápsula del nav (`z-50` fija) y del
+        botón de WhatsApp (`z-40`), que es el orden correcto.
+      */}
+      <section className="relative isolate z-30 flex min-h-svh flex-col items-center justify-center">
         <div aria-hidden="true" className="absolute inset-0 overflow-hidden">
         {/*
           DIRECCIÓN DE ARTE CON UN `picture`, NO CON DOS `img` Y CSS.
@@ -649,7 +661,22 @@ export async function PaginaInicio() {
             descripcion={seccionExperiencias.descripcion}
           />
 
-          <ul className={`mx-auto ${RITMO.trasTitulo} grid max-w-4xl gap-6 sm:grid-cols-2`}>
+          {/*
+            CON FOTO, Y LAS TRES A LA MISMA ALTURA.
+
+            Eran dos tarjetas de puro texto con un iconito de hoja: en una
+            portada donde todo lo demás son fotografías del hotel, la sección
+            que vende las celebraciones era la única sin enseñar nada. Ahora
+            cada experiencia abre con su imagen.
+
+            La foto va arriba con proporción fija (4/3) y el cuerpo crece con
+            `flex-1`, así que las tres tarjetas empiezan y acaban a la misma
+            altura aunque una descripción tenga una línea más. Y va con
+            `CLASE_FOTO_CON_FLAG`: el recorte se ancla arriba a la derecha,
+            donde vive el sello de marca, y el radio grande se lleva a la
+            esquina superior IZQUIERDA para no morderlo.
+          */}
+          <ul className={`mx-auto ${RITMO.trasTitulo} grid max-w-5xl items-stretch gap-6 sm:grid-cols-2 lg:grid-cols-3`}>
             {experiencias.map((experiencia, indice) => (
               <Revelar
                 key={experiencia.id}
@@ -657,34 +684,48 @@ export async function PaginaInicio() {
                 retraso={indice * 90}
                 className="h-full"
               >
-                <article className="flex h-full flex-col gap-3 rounded-[var(--radius-generoso)] rounded-tl-[3.5rem] bg-white p-6 ring-1 ring-crema-200/70 transition-shadow duration-300 hover:shadow-[var(--shadow-tarjeta)] sm:p-7">
-                  <IconoHoja className="size-6 text-oliva-500" />
-                  <h3 className="font-titulo text-xl font-bold text-petroleo-900">
-                    {experiencia.nombre}
-                  </h3>
-                  {experiencia.descripcion ? (
-                    <p className="text-sm leading-relaxed text-crema-700">
-                      {experiencia.descripcion}
-                    </p>
+                <article className="flex h-full flex-col overflow-hidden rounded-[var(--radius-generoso)] rounded-tl-[3.5rem] bg-white ring-1 ring-crema-200/70 transition-shadow duration-300 hover:shadow-[var(--shadow-tarjeta)]">
+                  {experiencia.imagen_url ? (
+                    <div className="relative aspect-4/3 shrink-0 bg-crema-200">
+                      <Foto
+                        src={experiencia.imagen_url}
+                        alt={`Experiencia ${experiencia.nombre} en una cabaña de La Finca`}
+                        fill
+                        sizes="(min-width: 1024px) 31vw, (min-width: 640px) 46vw, 92vw"
+                        className={CLASE_FOTO_CON_FLAG}
+                      />
+                    </div>
                   ) : null}
-                  <p className="mt-auto pt-3 font-titulo text-lg font-bold text-petroleo-700">
-                    {formatearCOP(experiencia.precio)}
-                    <span className="ml-1.5 text-sm font-medium text-crema-600">
-                      por estadía
-                    </span>
-                  </p>
-                  <a
-                    href={enlaceWhatsapp(
-                      mensajeExperiencia(experiencia.nombre),
-                      contacto.whatsapp,
-                    )}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-1 flex min-h-11 items-center gap-1.5 font-titulo text-sm font-semibold text-petroleo-600 underline-offset-4 hover:underline"
-                  >
-                    Añadir a mi reserva
-                    <IconoFlecha className="size-4" />
-                  </a>
+
+                  <div className="flex flex-1 flex-col gap-3 p-6 sm:p-7">
+                    <IconoHoja className="size-6 text-oliva-500" />
+                    <h3 className="font-titulo text-xl font-bold text-petroleo-900">
+                      {experiencia.nombre}
+                    </h3>
+                    {experiencia.descripcion ? (
+                      <p className="text-sm leading-relaxed text-crema-700">
+                        {experiencia.descripcion}
+                      </p>
+                    ) : null}
+                    <p className="mt-auto pt-3 font-titulo text-lg font-bold text-petroleo-700">
+                      {formatearCOP(experiencia.precio)}
+                      <span className="ml-1.5 text-sm font-medium text-crema-600">
+                        por estadía
+                      </span>
+                    </p>
+                    <a
+                      href={enlaceWhatsapp(
+                        mensajeExperiencia(experiencia.nombre),
+                        contacto.whatsapp,
+                      )}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-1 flex min-h-11 items-center gap-1.5 font-titulo text-sm font-semibold text-petroleo-600 underline-offset-4 hover:underline"
+                    >
+                      Añadir a mi reserva
+                      <IconoFlecha className="size-4" />
+                    </a>
+                  </div>
                 </article>
               </Revelar>
             ))}
@@ -699,121 +740,22 @@ export async function PaginaInicio() {
         </Seccion>
       ) : null}
 
-      {/* ---------------------------------------------------------------- 7 */}
-      <Seccion
-        fondo="brote-banda"
-        espacio="amplio"
-        /*
-          LA BANDA VERDE, CON LAS DOS ONDAS DENTRO.
-          `CorteOrganico` se pinta ENCIMA de la sección con el color de la
-          VECINA (crema arriba, blanco abajo), así que el verde queda recortado
-          por la forma en vez de llevar un borde recto. El relleno vertical
-          extra es el hueco de las dos ondas: sin él, el antetítulo se les monta.
-        */
-        className="relative isolate overflow-hidden pt-28 pb-28 sm:pt-32 sm:pb-32 lg:pt-36 lg:pb-36"
-      >
-        <CorteOrganico
-          perfil="bruma"
-          color="fill-crema-50"
-          borde="superior"
-          alto={72}
-        />
-        <CorteOrganico
-          perfil="loma"
-          color="fill-white"
-          borde="inferior"
-          alto={72}
-          espejo
-        />
+      {/*
+        AQUÍ ESTABA «NUESTRA ESENCIA», Y SE FUE EL 2026-09-15.
 
-        <Neblina tono="verde" className="opacity-50" />
+        Era la séptima sección: la banda del verde oficial con las tres
+        fotos y las frases del manual. Cesar pidió acortar la portada, y esta
+        es la que sobraba —no enseña el hotel, no da un precio y no lleva a
+        reservar; cuenta la filosofía de la marca, que es exactamente el
+        trabajo de «Sobre nosotros» en `/conocenos`—. Su clave del CMS
+        (`home.esencia`) salió con ella del código, del panel y de
+        `docs/CMS_CLAVES.md`: no la usaba ninguna otra página.
 
-        <div className="relative z-10 grid items-center gap-10 lg:grid-cols-[1fr_1.1fr] lg:gap-16">
-          <Revelar className="flex flex-col gap-6">
-            <EncabezadoSeccion
-              antetitulo={esencia.antetitulo}
-              titulo={esencia.titulo}
-              alineacion="izquierda"
-            />
-            <div className="flex flex-col gap-4">
-              {esencia.parrafos.map((parrafo) => (
-                <p
-                  key={parrafo.slice(0, 40)}
-                  className="text-base leading-relaxed text-crema-700 sm:text-lg"
-                >
-                  {parrafo}
-                </p>
-              ))}
-            </div>
-            <Boton href="/conocenos" variante="contorno" className="self-start">
-              Conócenos
-              <IconoFlecha className="size-4" />
-            </Boton>
-          </Revelar>
-
-          {esencia.imagenes.length > 0 ? (
-            <Revelar retraso={120}>
-              {/*
-                TRES FOTOS ALINEADAS ARRIBA Y ABAJO.
-                Las dos de la fila inferior iban escalonadas (`mt-8` en la
-                tercera). El gesto se leía como un fallo de maquetación, no como
-                una decisión: Cesar lo señaló. Ahora comparten fila de rejilla y
-                `h-full`, así que empiezan y acaban exactamente a la misma
-                altura. La personalidad la ponen los radios asimétricos, que
-                siguen ahí y no descuadran nada.
-              */}
-              <ul className="grid grid-cols-2 items-stretch gap-4">
-                {esencia.imagenes.slice(0, 3).map((imagen, indice) => (
-                  <li
-                    key={imagen.url}
-                    className={indice === 0 ? "col-span-2" : ""}
-                  >
-                    <div
-                      className={[
-                        "relative overflow-hidden bg-crema-200 shadow-[var(--shadow-tarjeta)]",
-                        /*
-                          NINGÚN RADIO GRANDE EN LA ESQUINA SUPERIOR DERECHA:
-                          es donde todas las fotos del hotel llevan el sello de
-                          marca, y la curva lo partía en diagonal (se veía en la
-                          tercera foto, la de la fogata). Las curvas abiertas se
-                          reparten entre la superior izquierda y las dos de
-                          abajo, que es donde no hay nada que cortar.
-                        */
-                        /* `h-full` en las dos de abajo: comparten fila, así que
-                           la proporción fija las lleva al mismo alto y el
-                           `h-full` lo garantiza aunque una cambie de foto. */
-                        indice === 0
-                          ? "aspect-16/10 rounded-[var(--radius-generoso)] rounded-tl-[6rem]"
-                          : "aspect-3/4 h-full",
-                        indice === 1
-                          ? "rounded-[var(--radius-tarjeta)] rounded-bl-[4rem]"
-                          : "",
-                        indice === 2
-                          ? "rounded-[var(--radius-tarjeta)] rounded-br-[4rem]"
-                          : "",
-                      ]
-                        .filter(Boolean)
-                        .join(" ")}
-                    >
-                      <Foto
-                        src={imagen.url}
-                        alt={imagen.alt}
-                        fill
-                        sizes={
-                          indice === 0
-                            ? "(min-width: 1024px) 52vw, 92vw"
-                            : "(min-width: 1024px) 26vw, 46vw"
-                        }
-                        className={CLASE_FOTO_CON_FLAG}
-                      />
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </Revelar>
-          ) : null}
-        </div>
-      </Seccion>
+        El ritmo de color no se rompe: Experiencias sigue en crema e
+        Instagram en blanco, y la costura entre las dos la cose ahora un
+        banco de niebla en el borde superior de Instagram (antes lo hacían
+        las dos ondas de la banda verde).
+      */}
 
       {/* ---------------------------------------------------------------- 8 */}
       {/*
@@ -838,7 +780,21 @@ export async function PaginaInicio() {
         cabecera— más la ducha del bosque. En un cuadrado de 130 px sus 941 px
         de ancho sobran; en una banda a pantalla completa, no llegaban.
       */}
-      <Seccion fondo="blanco" className="relative overflow-hidden">
+      <Seccion
+        fondo="blanco"
+        /* El relleno de arriba es el hueco del banco de niebla: sin él, el
+           antetítulo se le monta. */
+        className="relative isolate overflow-hidden pt-24 sm:pt-28"
+      >
+        {/* La costura con la sección de experiencias (crema). La hacían las dos
+            ondas de la banda verde que vivía en medio; al retirarla, este
+            borde se quedaba recto. */}
+        <CorteOrganico
+          perfil="bruma"
+          color="fill-crema-50"
+          borde="superior"
+          alto={72}
+        />
         <PatronColibri tono="claro" />
 
         <div className="relative z-10 grid items-center gap-10 lg:grid-cols-12 lg:gap-14">
@@ -895,7 +851,11 @@ export async function PaginaInicio() {
                   ))}
                 </ul>
 
-                <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-5">
+                {/* CENTRADO EN EL TELÉFONO. A 390 px el botón queda solo en su
+                    línea y pegado al borde izquierdo se leía como un resto de
+                    la columna de arriba; desde `sm` vuelve a la izquierda,
+                    junto al arroba. */}
+                <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-center sm:gap-5 sm:justify-start">
                   <Boton href={contacto.instagram} variante="primario" externo>
                     {instagram.cta_texto}
                   </Boton>
@@ -969,7 +929,10 @@ export async function PaginaInicio() {
 
           <div className="absolute inset-0 z-10 flex items-center">
             <div className="contenedor">
-              <Revelar className="flex max-w-2xl flex-col items-start gap-5">
+              {/* En el teléfono, el bloque entero va centrado: el botón queda
+                  solo en su línea y alineado a la izquierda se leía descolgado.
+                  Desde `sm` vuelve a la composición de la izquierda. */}
+              <Revelar className="flex max-w-2xl flex-col items-center gap-5 text-center sm:items-start sm:text-left">
                 <h2 className="text-3xl leading-tight font-bold text-white sm:text-4xl lg:text-[2.75rem]">
                   {ctaFinal.titulo}
                 </h2>

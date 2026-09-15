@@ -169,24 +169,11 @@ export async function guardarPlanesAction(
   });
 }
 
-export async function guardarEsenciaAction(
-  _estado: EstadoAccion,
-  formData: FormData,
-): Promise<EstadoAccion> {
-  return ejecutarAccion(async () => {
-    await guardarContenido(
-      "home.esencia",
-      {
-        antetitulo: textoOpcional(formData, "antetitulo", 120) ?? "",
-        titulo: textoRequerido(formData, "titulo", "Titular", 200),
-        parrafos: aParrafos(textoOpcional(formData, "parrafos", 6000)),
-        imagenes: listaGaleria(formData, "imagenes").slice(0, 6),
-      },
-      "portada",
-    );
-    return estadoOk(HECHO);
-  });
-}
+/*
+  Aquí estaba `guardarEsenciaAction` («Naturaleza» / `home.esencia`). La
+  sección se retiró de la portada el 2026-09-15 y la clave salió del CMS: no la
+  usaba ninguna otra página. Ver `docs/CMS_CLAVES.md`.
+*/
 
 /**
  * «Somos COP16».
@@ -381,6 +368,9 @@ export async function guardarLugarAction(
         parrafos: aParrafos(textoOpcional(formData, "parrafos", 8000)),
         imagen: urlImagenOpcional(formData, "imagen"),
         imagen_alt: textoOpcional(formData, "imagen_alt", 300) ?? "",
+        imagen_secundaria: urlImagenOpcional(formData, "imagen_secundaria"),
+        imagen_secundaria_alt:
+          textoOpcional(formData, "imagen_secundaria_alt", 300) ?? "",
         instalaciones_titulo:
           textoOpcional(formData, "instalaciones_titulo", 200) ?? "",
         instalaciones_descripcion:

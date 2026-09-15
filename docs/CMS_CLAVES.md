@@ -5,7 +5,7 @@
 > público las lee desde `src/lib/contenido.ts`. Si aquí no está, el sitio no lo
 > pinta.
 >
-> Última revisión: 2026-09-14 · 19 claves.
+> Última revisión: 2026-09-15 · 18 claves.
 
 ---
 
@@ -69,7 +69,6 @@ correctamente para lectores de pantalla ni para Google.
 | `home.cabanas` | Portada, encabezado de cabañas | `getSeccionCabanas()` |
 | `home.planes` | Portada, encabezado de planes | `getSeccionPlanes()` |
 | `home.experiencias` | Portada, encabezado de experiencias | `getSeccionExperiencias()` |
-| `home.esencia` | Portada, naturaleza | `getEsencia()` |
 | `home.instagram` | Portada, tira de Instagram y reel | `getInstagram()` |
 | `home.testimonios` | Portada, testimonios | `getTestimonios()` |
 | `home.cta_final` | Portada, cierre | `getCtaFinal()` |
@@ -266,18 +265,20 @@ planes de día, de `planes.precio_base`.
 
 ---
 
-## `home.esencia`
+## `home.esencia` — RETIRADA el 2026-09-15
 
-```jsonc
-{
-  "antetitulo": "Naturaleza",
-  "titulo": "Encontramos un bosque de neblina",
-  "parrafos": ["…", "…"],
-  "imagenes": [                       // exactamente 3 se ven bien; con menos, la fila se recompone
-    { "url": "https://…", "alt": "…", "ancho": 1448, "alto": 923 }
-  ]
-}
-```
+La sección «Nuestra esencia» (la banda de verde claro con las tres fotos y las
+frases del manual) **salió de la portada**: Cesar pidió acortarla y era la única
+sección que no enseña el hotel, no da un precio y no lleva a reservar. Lo que
+contaba es exactamente el trabajo de **«Sobre nosotros»** en `/conocenos`, que
+sí se edita desde el panel (pantalla «Conócenos»).
+
+La clave no la usaba ninguna otra página, así que salió del código
+(`src/lib/contenido.ts`), del panel y de la tabla: el seed la borra
+explícitamente (`delete from contenido where clave in ('home.esencia')`).
+Ninguna de sus tres fotos quedó huérfana en el bucket —las tres seguían usándose
+en la galería, en las instalaciones de Conócenos o en la ficha de la Cabaña 03—;
+comprobado con `npm run imagenes:limpiar` (cero huérfanos).
 
 ## `home.instagram`
 
@@ -382,9 +383,17 @@ hay ajuste que lo arregle.
 
 ## `experiencias`
 
-Las experiencias **con precio** (Aniversario y Cumpleaños con Amor) viven en la
-tabla `extras` y se editan en su propio módulo. Esta fila guarda el texto de
-entrada y las experiencias que hoy se ofrecen **sin precio publicado**.
+Las experiencias **con precio** (Aniversario con Amor, Cumpleaños con Amor y
+Fondue) viven en la tabla `extras` y se editan en su propio módulo. Esta fila
+guarda el texto de entrada y las experiencias que hoy se ofrecen **sin precio
+publicado**.
+
+> **El fondue pasó de «adicional» a «experiencia» el 2026-09-15.** Es una
+> celebración para dos con precio por estadía, igual que las otras dos, y como
+> adicional no salía en la portada y caía en la lista de texto junto a la segunda
+> mascota. Es un cambio de datos (`extras.tipo`), reversible desde el panel.
+> **Del fondue no hay foto:** se publica con una de ambiente (el comedor para dos
+> de la Cabaña 05) hasta que el hotel envíe una real.
 
 ```jsonc
 {
@@ -432,8 +441,10 @@ cual en el buscador.
   "antetitulo": "Sobre nosotros",
   "titulo": "…",
   "parrafos": ["…"],
-  "imagen": "https://…",
+  "imagen": "https://…",            // la de ARRIBA de la columna derecha
   "imagen_alt": "…",
+  "imagen_secundaria": "https://…", // la de ABAJO (sept. 2026). Vacía = una sola foto
+  "imagen_secundaria_alt": "…",
 
   "instalaciones_titulo": "Instalaciones",
   "instalaciones_descripcion": "…",
@@ -451,6 +462,13 @@ cual en el buscador.
   "llegar_indicaciones": ["Km 18, vía Cali–Buenaventura…", "…"]   // lista con viñetas
 }
 ```
+
+**Las dos fotos de «Sobre nosotros» tienen que ser APAISADAS.** Desde el
+2026-09-15 la columna de la derecha lleva dos, apiladas, y entre las dos ocupan
+exactamente el alto del texto de al lado (comprobado a 1024, 1440 y 1920 px: cero
+desfase arriba y abajo). Eso deja dos cajas anchas y bajas: una foto vertical
+metida ahí se queda en una franja. Si `imagen_secundaria` va vacía, el bloque
+vuelve a pintar una sola foto y sigue alineado.
 
 El mapa embebido de esta página **no** se configura aquí: sale de
 `sitio.contacto.mapa_embed`, para que exista en un solo sitio.
@@ -556,11 +574,21 @@ Página puente mientras no exista el motor de reservas.
 {
   "intro": "…",
   "pasos": [
-    { "titulo": "1. Elige tu cabaña", "texto": "…" }
+    { "titulo": "1. Elige tus fechas", "texto": "…" },
+    { "titulo": "2. Elige tu cabaña", "texto": "…" },
+    { "titulo": "3. Elige tu plan",   "texto": "…" }
   ],
   "nota": ""
 }
 ```
+
+**Los tres pasos tienen que describir el flujo REAL del selector**, que desde el
+motor de precios noche a noche es **fechas → cabaña → plan**, y no el
+«cabaña → plan → confirmamos» de antes (corregido el 2026-09-15). El plan solo
+se pregunta si la estadía incluye noches de fin de semana o festivos; entre
+semana sale solo de la fecha. El remate «Confirmamos y reservas con el 50 %» va
+al final del tercer paso: como cuarto paso mentía, porque en la pantalla no hay
+un cuarto paso.
 
 `nota` va **vacía**. Contenía «En La Finca no hay datáfono ni manejamos efectivo,
 y nunca pedimos datos de tarjeta por WhatsApp. Muy pronto vas a poder reservar y
