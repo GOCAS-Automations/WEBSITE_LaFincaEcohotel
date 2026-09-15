@@ -23,7 +23,8 @@
     "test": "vitest run",
     "test:mirar": "vitest",
     "imagenes:variantes": "node scripts/generar-variantes.mjs",
-    "marca:iconos": "node scripts/generar-iconos.mjs"
+    "marca:iconos": "node scripts/generar-iconos.mjs",
+    "db:probar": "node scripts/verificar-dia-de-calma.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.5",
