@@ -49,14 +49,15 @@ import type { FechaISO } from "../utils/formato";
 /**
  * ¿La **víspera** de un festivo entre semana se cobra como fin de semana?
  *
- * `TODO` (Amapola / Juan Camilo): dormir el domingo para disfrutar el lunes
- * festivo ya está cubierto —el domingo es fin de semana de todos modos—, pero
- * un miércoles víspera de un jueves festivo, no. El hotel **no lo ha
- * confirmado**, así que se deja en `false`: es la opción que no le cobra de más
- * a nadie. El día que lo confirme, se cambia esta constante y todo el sitio
- * —calendario, desglose, total y mensaje de WhatsApp— se entera a la vez.
+ * **Sí** (confirmado por el cliente el 2026-09-15). Dormir el domingo para
+ * disfrutar el lunes festivo ya estaba cubierto —el domingo es fin de semana de
+ * todos modos—; lo que faltaba por decidir era el miércoles víspera de un
+ * jueves festivo, y el hotel lo cobra como fin de semana: la casa se llena
+ * igual. Al estar encendida, todo el sitio —calendario, desglose, total y
+ * mensaje de WhatsApp— aplica la regla a la vez, porque todos leen
+ * `tipoDeNoche()`.
  */
-export const CONTAR_VISPERA = false;
+export const CONTAR_VISPERA = true;
 
 /* ===========================================================================
  * Tipos

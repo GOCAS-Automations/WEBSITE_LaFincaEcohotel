@@ -230,18 +230,17 @@ export function nombreDelFestivo(fecha: FechaISO): string | null {
 }
 
 /* ===========================================================================
- * La regla del hotel: qué noche es de qué tipo
- * ======================================================================== */
-
-/**
- * Tipo de una NOCHE.
+ * Día de la semana
+ * ===========================================================================
  *
- * Una noche se identifica por la fecha de su **check-in**: quien entra el
- * viernes y sale el sábado ha dormido «una noche de fin de semana», aunque el
- * sábado sea otro día. Es como lo cuenta el hotel y como lo cuenta la tabla
- * `tarifas`.
+ * LA CLASIFICACIÓN DE LAS NOCHES NO VIVE AQUÍ.
+ * Este módulo dice qué días son festivos, y nada más. Qué noche se cobra como
+ * fin de semana —festivos, viernes a domingo y la **víspera** de un festivo
+ * entre semana— lo decide `tipoDeNoche()` en `src/lib/reserva/noches.ts`, el
+ * único sitio donde está escrita la regla del hotel. Aquí vivía una segunda
+ * copia, con su propio interruptor de víspera: dos constantes para la misma
+ * decisión acaban diciendo cosas distintas.
  */
-export type TipoDeNoche = "entre-semana" | "fin-de-semana";
 
 /**
  * Día de la semana según ISO: 1 = lunes … 7 = domingo.
@@ -253,42 +252,4 @@ export function diaISO(fecha: FechaISO): number {
   const [anio, mes, dia] = fecha.split("-").map(Number);
   const numero = aUTC(anio, mes, dia).getUTCDay();
   return numero === 0 ? 7 : numero;
-}
-
-/**
- * Clasifica una noche.
- *
- * · **entre-semana**: lunes, martes, miércoles o jueves que NO sea festivo.
- * · **fin-de-semana**: viernes, sábado, domingo o cualquier festivo.
- *
- * TODO (Amapola / Juan Camilo): la **víspera de un festivo entre semana**
- * —dormir el domingo para disfrutar el lunes festivo ya está cubierto, pero un
- * miércoles víspera de un jueves festivo, no—. El hotel no ha confirmado si esa
- * noche se cobra como fin de semana. Mientras tanto NO se trata como tal, que
- * es la opción que no le cobra de más a nadie; el interruptor está a un
- * booleano de distancia (`VISPERA_CUENTA_COMO_FIN_DE_SEMANA`).
- */
-export const VISPERA_CUENTA_COMO_FIN_DE_SEMANA = false;
-
-export function tipoDeNoche(fecha: FechaISO): TipoDeNoche {
-  if (esFestivo(fecha)) return "fin-de-semana";
-
-  const dia = diaISO(fecha);
-  if (dia >= 5) return "fin-de-semana";
-
-  if (VISPERA_CUENTA_COMO_FIN_DE_SEMANA) {
-    /* La víspera: la noche anterior a un festivo que cae entre semana. */
-    const [anio, mes, diaMes] = fecha.split("-").map(Number);
-    const siguiente = aISO(sumar(aUTC(anio, mes, diaMes), 1));
-    if (esFestivo(siguiente)) return "fin-de-semana";
-  }
-
-  return "entre-semana";
-}
-
-/** Etiqueta en español para explicarle al huésped por qué un día no se puede. */
-export function etiquetaTipoDeNoche(tipo: TipoDeNoche): string {
-  return tipo === "entre-semana"
-    ? "noche de entre semana"
-    : "noche de fin de semana o festivo";
 }

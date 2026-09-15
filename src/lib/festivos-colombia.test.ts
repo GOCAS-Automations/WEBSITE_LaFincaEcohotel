@@ -6,7 +6,6 @@ import {
   esFestivo,
   festivosDeColombia,
   nombreDelFestivo,
-  tipoDeNoche,
 } from "./festivos-colombia";
 
 /**
@@ -180,45 +179,5 @@ describe("diaISO", () => {
     expect(diaISO("2026-09-18")).toBe(5); // viernes
     expect(diaISO("2026-09-19")).toBe(6); // sábado
     expect(diaISO("2026-09-20")).toBe(7); // domingo
-  });
-});
-
-describe("tipoDeNoche", () => {
-  it("de lunes a jueves es noche de entre semana", () => {
-    expect(tipoDeNoche("2026-09-14")).toBe("entre-semana"); // lunes
-    expect(tipoDeNoche("2026-09-15")).toBe("entre-semana");
-    expect(tipoDeNoche("2026-09-16")).toBe("entre-semana");
-    expect(tipoDeNoche("2026-09-17")).toBe("entre-semana"); // jueves
-  });
-
-  it("de viernes a domingo es noche de fin de semana", () => {
-    expect(tipoDeNoche("2026-09-18")).toBe("fin-de-semana"); // viernes
-    expect(tipoDeNoche("2026-09-19")).toBe("fin-de-semana");
-    expect(tipoDeNoche("2026-09-20")).toBe("fin-de-semana"); // domingo
-  });
-
-  it("un lunes FESTIVO cuenta como fin de semana", () => {
-    /* 12 de octubre de 2026: Día de la Raza, y cae lunes. */
-    expect(diaISO("2026-10-12")).toBe(1);
-    expect(tipoDeNoche("2026-10-12")).toBe("fin-de-semana");
-    /* El lunes siguiente ya es un lunes cualquiera. */
-    expect(tipoDeNoche("2026-10-19")).toBe("entre-semana");
-  });
-
-  it("un jueves festivo también cuenta como fin de semana", () => {
-    /* Jueves Santo de 2026. */
-    expect(diaISO("2026-04-02")).toBe(4);
-    expect(tipoDeNoche("2026-04-02")).toBe("fin-de-semana");
-  });
-
-  it("la VÍSPERA de un festivo entre semana NO cuenta, por ahora", () => {
-    /*
-      Domingo 11 de octubre de 2026, víspera del lunes festivo: ya es fin de
-      semana por ser domingo, así que no sirve de caso. El caso real es el
-      miércoles 1 de abril de 2026, víspera del Jueves Santo.
-      Está pendiente de confirmación del cliente (ver
-      `VISPERA_CUENTA_COMO_FIN_DE_SEMANA`), y hasta entonces es entre semana.
-    */
-    expect(tipoDeNoche("2026-04-01")).toBe("entre-semana");
   });
 });

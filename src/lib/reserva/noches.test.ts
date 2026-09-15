@@ -100,14 +100,28 @@ describe("la víspera de un festivo", () => {
     expect(esVisperaDeFestivo("2026-04-02")).toBe(false);
   });
 
-  it("mientras CONTAR_VISPERA esté apagada, la víspera se cobra entre semana", () => {
-    /* `TODO` del cliente: cuando Amapola confirme, se enciende la constante.
-       Esta prueba deja escrito el comportamiento en los dos mundos, así que
-       cambiar la constante no rompe la suite sin explicar por qué. */
+  it("la víspera se cobra como fin de semana (decisión del cliente)", () => {
+    /* Confirmado el 2026-09-15: el hotel se llena igual la noche anterior a un
+       festivo, así que esa noche va con tarifa de fin de semana. */
+    expect(CONTAR_VISPERA).toBe(true);
     const vispera = "2026-04-01"; // miércoles, víspera de Jueves Santo
-    expect(tipoDeNoche(vispera)).toBe(
-      CONTAR_VISPERA ? "fin_de_semana" : "entre_semana",
-    );
+    expect(diaDeLaSemana(vispera)).toBe(3);
+    expect(tipoDeNoche(vispera)).toBe("fin_de_semana");
+  });
+
+  it("un miércoles que no es víspera sigue siendo entre semana", () => {
+    /* Miércoles 16 de septiembre de 2026: ni festivo ni víspera. */
+    expect(esVisperaDeFestivo("2026-09-16")).toBe(false);
+    expect(tipoDeNoche("2026-09-16")).toBe("entre_semana");
+  });
+
+  it("la estadía que cae sobre una víspera la desglosa como fin de semana", () => {
+    /* Martes 31 de marzo → jueves 2 de abril de 2026: la noche del martes es
+       entre semana y la del miércoles, víspera de Jueves Santo, no. */
+    const noches = nochesDe("2026-03-31", "2026-04-02");
+    expect(noches.map((n) => n.tipo)).toEqual(["entre_semana", "fin_de_semana"]);
+    expect(noches[1].vispera).toBe(true);
+    expect(noches[1].festivo).toBeNull();
   });
 });
 
