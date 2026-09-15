@@ -660,3 +660,33 @@ p {
     transform: translate3d(1.25rem, -0.9rem, 0);
   }
 }
+
+/* ===========================================================================
+ * Secciones diferidas
+ * ======================================================================== */
+
+/**
+ * `content-visibility: auto` — el navegador se salta el estilo y la maquetación
+ * de lo que todavía no se ve.
+ *
+ * POR QUÉ: medido con Lighthouse móvil, el LCP de la portada NO lo decidían las
+ * imágenes (475 kB en total, con AVIF) sino el **trabajo de estilo y
+ * maquetación**: entre 1,0 y 1,2 s de `styleLayout` con la CPU frenada 4×, y un
+ * «render delay» de 2,7–3,5 s antes de pintar el titular del hero. La portada
+ * son nueve secciones con bruma, patrón de colibríes, resplandor, ramas y ondas
+ * orgánicas; el navegador maquetaba las nueve antes de pintar la primera.
+ *
+ * `contain-intrinsic-size: auto 800px` es la parte importante: el `auto` hace
+ * que el navegador RECUERDE el alto real de cada sección después de medirla una
+ * vez, así que la barra de desplazamiento no da saltos al bajar. Los 800 px son
+ * solo la estimación del primer momento.
+ *
+ * NO se aplica a la primera sección de cada página —el hero no está «fuera de
+ * pantalla» nunca— ni a nada con `position: sticky` dentro, que `contain` de
+ * maquetación rompería. De ahí que sea una clase que se pide, y no una regla
+ * sobre `section`.
+ */
+.seccion-diferida {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 800px;
+}

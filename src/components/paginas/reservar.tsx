@@ -168,7 +168,10 @@ export async function PaginaReservar() {
       </Seccion>
 
       {/* Selector */}
-      <Seccion fondo="crema" id="solicitud" className="relative">
+      {/* `diferida={false}`: el resumen de la derecha es `position: sticky`, y el
+          `contain` de maquetación que trae `content-visibility` lo rompe en
+          silencio. Ver `Seccion`. */}
+      <Seccion fondo="crema" id="solicitud" diferida={false} className="relative">
         <Neblina tono="verde" className="opacity-50" />
         <ColibriesSueltos tono="claro" className="opacity-60" />
 

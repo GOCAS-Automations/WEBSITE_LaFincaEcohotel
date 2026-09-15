@@ -36,6 +36,20 @@ type PropsSeccion = {
   claseContenedor?: string;
   /** Quita el contenedor: el hijo se encarga de su propio ancho. */
   sinContenedor?: boolean;
+  /**
+   * `content-visibility: auto`: el navegador se salta el estilo y la
+   * maquetación de esta sección mientras no se vea. Encendido por defecto.
+   *
+   * Es lo que baja el «render delay» de la portada: sus nueve secciones —con
+   * bruma, patrón, resplandor, ramas y ondas— se maquetaban enteras antes de
+   * pintar el titular del hero. Ver `.seccion-diferida` en `globals.css`.
+   *
+   * **Se apaga (`diferida={false}`) en dos casos, y son los únicos:**
+   *   · la sección que se ve al cargar, que no gana nada y sí paga la medida;
+   *   · cualquiera con un `position: sticky` dentro —el resumen de
+   *     `/reservar`—, porque el `contain` de maquetación lo rompe en silencio.
+   */
+  diferida?: boolean;
 };
 
 const FONDOS: Record<NonNullable<PropsSeccion["fondo"]>, string> = {
@@ -73,11 +87,17 @@ export function Seccion({
   className,
   claseContenedor,
   sinContenedor = false,
+  diferida = true,
 }: PropsSeccion) {
   return (
     <section
       id={id}
-      className={[FONDOS[fondo], ESPACIOS[espacio], className]
+      className={[
+        FONDOS[fondo],
+        ESPACIOS[espacio],
+        diferida ? "seccion-diferida" : "",
+        className,
+      ]
         .filter(Boolean)
         .join(" ")}
     >
