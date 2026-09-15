@@ -276,6 +276,19 @@ export function Galeria({
           </div>
 
           <div className="relative flex min-h-0 flex-1 items-center justify-center px-3 pb-6 sm:px-16">
+            {/*
+              `max-h-full`/`max-w-full` (porcentajes) NO bastan aquí: el
+              contenedor es un elemento flex (`flex-1` dentro de una columna) y
+              su alto, aunque está resuelto en píxeles, no siempre cuenta como
+              «definido» para que un hijo reparta un porcentaje sobre él —
+              medido en Chrome, la foto se desbordaba por arriba y por abajo en
+              escritorio y quedaba diminuta, con aire de sobra, en el teléfono.
+              `vh`/`vw` son relativos al viewport, no al contenedor, así que no
+              dependen de esa resolución y el tamaño sale estable en cualquier
+              proporción de pantalla. Se descuentan a mano la cabecera y el pie
+              (contador/cerrar arriba, texto alternativo abajo) para que la
+              foto nunca los tape.
+            */}
             <Foto
               key={actual.url}
               src={actual.url}
@@ -283,7 +296,7 @@ export function Galeria({
               width={1600}
               height={1200}
               sizes="100vw"
-              className="max-h-full w-auto max-w-full rounded-[var(--radius-tarjeta)] object-contain"
+              className="max-h-[calc(100vh-9.5rem)] max-w-[90vw] w-auto rounded-[var(--radius-tarjeta)] object-contain sm:max-w-[85vw]"
             />
 
             {total > 1 ? (
