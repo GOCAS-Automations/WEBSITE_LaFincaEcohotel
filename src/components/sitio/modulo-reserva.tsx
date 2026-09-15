@@ -1,18 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState, type FormEvent } from "react";
+import { useId, useMemo, useState, type FormEvent } from "react";
 
 import { clasesBoton } from "@/components/ui/boton";
 import { nochesDe, validarRango } from "@/lib/reserva/noches";
 
 import { CalendarioFechas } from "./calendario-fechas";
-import {
-  IconoCabana,
-  IconoChevron,
-  IconoFlecha,
-  IconoLlave,
-} from "./iconos";
+import { SelectorCabana } from "./selector-cabana";
+import { IconoFlecha, IconoLlave } from "./iconos";
 
 /**
  * Módulo de reserva directa de la portada.
@@ -65,12 +61,9 @@ type Props = {
   ctaTexto?: string;
 };
 
-/* `min-h-11` = 44 px: el mínimo que se acierta con el pulgar sin ampliar. */
-const CLASE_CAMPO =
-  "w-full min-h-11 rounded-[var(--radius-suave)] border border-crema-300/90 bg-white px-3.5 py-3 " +
-  "font-titulo text-[0.95rem] font-medium text-petroleo-900 shadow-[inset_0_1px_2px_rgba(41,37,33,0.04)] " +
-  "transition-colors duration-200 outline-none focus:border-petroleo-500 hover:border-crema-400";
-
+/* La piel de los campos vive ahora en cada control (`SelectorCabana` y
+   `CalendarioFechas`): los dos tienen que medir exactamente lo mismo —radio de
+   12 px, borde crema y 49 px de alto— y una constante aquí solo la usaba uno. */
 const CLASE_ETIQUETA =
   "flex items-center gap-1.5 font-titulo text-xs font-semibold tracking-[0.12em] text-crema-600 uppercase";
 
@@ -80,6 +73,7 @@ export function ModuloReserva({
   ctaTexto = "Reservar",
 }: Props) {
   const router = useRouter();
+  const idEtiquetaCabana = useId();
 
   const [cabana, setCabana] = useState("");
   const [entrada, setEntrada] = useState("");
@@ -160,43 +154,35 @@ export function ModuloReserva({
       */}
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.2fr_1.4fr_auto] lg:items-end lg:gap-4">
         {/*
-          EL DESPLEGABLE, CON LA FORMA DEL SITIO Y EL MOTOR DEL NAVEGADOR.
+          EL DESPLEGABLE ES NUESTRO, LISTA INCLUIDA.
 
-          Sin `appearance-none` el navegador dibuja su propio control: un
-          rectángulo gris de esquinas rectas con la flecha del sistema, al lado
-          de un campo de fechas con radio de 14 px y borde crema. Se veía —lo
-          dijo Cesar— «rectangular y anticuado».
+          Antes era un `<select>` con la piel del sitio, pero la LISTA
+          desplegada la seguía dibujando el sistema operativo: esquinas rectas,
+          su tipografía y su azul de selección, justo al lado de un calendario
+          con radios de 12 px. Cesar volvió a señalarlo —«se ve anticuado»— y
+          la única forma de arreglarlo es dibujar también la lista.
 
-          Lo que NO se hace es sustituirlo por una lista hecha a mano: el
-          `<select>` nativo es lo que abre la rueda a pantalla completa en un
-          teléfono, lo que responde a las teclas y lo que cualquier lector de
-          pantalla ya sabe anunciar. Se le quita la piel y se le pone la del
-          sitio; el motor sigue siendo el del navegador.
+          `SelectorCabana` es un combobox de solo selección con el patrón de
+          las APG (teclado completo, `aria-activedescendant`, roles
+          combobox/listbox/option) y, mientras React no ha hidratado, pinta el
+          `<select>` de siempre para que el formulario siga funcionando sin
+          JavaScript. Ver la cabecera de ese archivo.
 
-          El chevron va en un `<span>` hermano con `pointer-events-none`: si
-          estuviera dentro del `<label>` como hijo interactivo, un clic en la
-          flecha no abriría la lista.
+          No es un `<label>` envolvente: un `<label>` no nombra a un `<button>`.
+          El texto visible lleva `id` y el control lo referencia con
+          `aria-labelledby`.
         */}
-        <label className="flex flex-col gap-1.5">
-          <span className={CLASE_ETIQUETA}>Cabaña</span>
-          <span className="relative block">
-            <IconoCabana className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-oliva-600" />
-            <select
-              name="cabana"
-              value={cabana}
-              onChange={(evento) => setCabana(evento.target.value)}
-              className={`${CLASE_CAMPO} cursor-pointer appearance-none truncate pr-10 pl-9`}
-            >
-              <option value="">Cualquier cabaña</option>
-              {cabanas.map((opcion) => (
-                <option key={opcion.slug} value={opcion.slug}>
-                  {opcion.nombre}
-                </option>
-              ))}
-            </select>
-            <IconoChevron className="pointer-events-none absolute top-1/2 right-3.5 size-4 -translate-y-1/2 text-crema-600" />
+        <div className="flex flex-col gap-1.5">
+          <span id={idEtiquetaCabana} className={CLASE_ETIQUETA}>
+            Cabaña
           </span>
-        </label>
+          <SelectorCabana
+            cabanas={cabanas}
+            valor={cabana}
+            alCambiar={setCabana}
+            etiquetaId={idEtiquetaCabana}
+          />
+        </div>
 
         <div className="flex flex-col gap-1.5">
           <span className={CLASE_ETIQUETA}>Llegada y salida</span>
