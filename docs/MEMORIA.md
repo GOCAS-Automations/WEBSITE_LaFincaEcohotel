@@ -1525,6 +1525,60 @@ sección. Tras la pasada no queda ningún botón descolgado a 390 px.
   el arreglo es sacar el desenfoque a una capa de fondo o portar el panel a
   `document.body`.
 
+### 2026-09-15 — Visor de galería, fotos de Salón/Restaurante y verificación del reel
+
+Tres encargos sueltos (bug prioritario + dos retoques de contenido), en paralelo
+con la ronda del motor de reservas de otro agente — solo se tocó
+`src/components/ui/galeria.tsx`, `src/lib/contenido.ts`,
+`src/components/paginas/conocenos.tsx` y el módulo de contenido del panel.
+
+- **El visor de fotos (cabañas y `/galeria`) tenía DOS bugs distintos**, los
+  dos por dejar `next/image` por `<Foto>`/`<img>`:
+  1. `max-h-full`/`max-w-full` (porcentajes) sobre un hijo de un contenedor
+     `flex-1` no resolvían de forma fiable: la foto se desbordaba por arriba y
+     por abajo en escritorio y quedaba diminuta en el teléfono. Arreglado con
+     límites en `vh`/`vw` (relativos al viewport, no al contenedor).
+  2. **El de verdad grave, y solo en `/galeria`:** casi toda sección del sitio
+     usa `<Seccion diferida>` (`content-visibility: auto` por defecto), y esa
+     propiedad —parte de la especificación de `contain`, no un bug de
+     Chrome— convierte a la sección en el CONTENEDOR DE POSICIONAMIENTO de
+     cualquier descendiente `position: fixed`. El visor dejaba de anclarse a
+     la ventana y pasaba a ocupar el alto de TODA la sección (miles de
+     píxeles): la foto se pintaba muy por debajo de lo visible, en la
+     práctica invisible. Es la MISMA familia de bug que ya dejó anotada la
+     ronda anterior sobre la hoja del calendario (`backdrop-blur` en vez de
+     `content-visibility`) — mismo síntoma, mismo arreglo: sacar el diálogo
+     a un portal (`createPortal` a `document.body`). La ficha de cabaña no lo
+     sufría (su galería no vive en una sección diferida), pero el portal la
+     deja igual de blindada. **Vale la pena revisar si otros `position: fixed`
+     del sitio —el propio calendario, algún modal futuro— conviene portarlos
+     también en vez de confiar en que su sección no sea `diferida`.**
+  - Verificado en Chrome headless (Playwright + Chrome del sistema, este
+    entorno no tenía navegador de agente) a 1440×900 y 390×844, fotos
+    horizontales y verticales, flechas de teclado y Escape.
+- **Instalaciones de Conócenos:** Salón multifuncional pasa a usar la foto que
+  tenía Restaurante (el deck techado con el comedor de vidrio), encuadrada con
+  un `imagen_posicion: "center bottom"` **nuevo campo opcional** en
+  `Instalacion` (documentado en `docs/CMS_CLAVES.md`, editable desde el panel)
+  para enseñar la mesa y las sillas en vez del techo de guadua — de paso saca
+  de cuadro el sello de marca en vez de cortarlo. Restaurante pasa a usar la
+  foto del hero de la portada (el corredor techado, ya recortada sin sello).
+  Cambiado en el CÓDIGO (respaldo) y en la **fila real de Supabase** vía el
+  panel con sesión, porque `lugar` ya tenía fila propia y el respaldo solo
+  aplica si la fila falta. `npm run imagenes:limpiar`: 0 huérfanos — las dos
+  fotos siguen usándose en la galería general y en el cierre de página
+  (`FOTO.atardecer`).
+- **El campo del reel de Instagram ya existía** (`home.instagram.reel_url`,
+  con `direccionEmbebido()`, ayuda en español, documentado en
+  `docs/CMS_CLAVES.md` desde una ronda anterior) — no hubo que añadirlo, solo
+  probarlo: guardado con sesión real a un enlace de prueba, verificado que
+  cambia en la portada, y restaurado al valor original
+  (`https://www.instagram.com/reel/DbO8x0SxnFX/`).
+- `tsc`, `eslint`, `next build` y el bucket, en verde. No se corrió Lighthouse
+  (no tocaba rendimiento) ni la batería completa de capturas de las nueve
+  páginas — verificación acotada a lo que cambió, como pide una ronda con
+  varios encargos sueltos en paralelo con otro agente.
+
 ## Pendientes de contenido/credenciales (pedir según se necesiten)
 
 > Lo marcado como `TODO` en `supabase/seed/001_datos_iniciales.sql` sale del sitio

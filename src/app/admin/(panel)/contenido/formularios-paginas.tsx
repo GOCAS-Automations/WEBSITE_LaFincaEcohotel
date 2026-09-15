@@ -326,6 +326,7 @@ export function FormularioLugar({ valor }: { valor: Valor }) {
               "descripcion",
               "imagen",
               "imagen_alt",
+              "imagen_posicion",
             ])}
             etiquetaElemento="instalación"
             maximo={12}
@@ -342,6 +343,12 @@ export function FormularioLugar({ valor }: { valor: Valor }) {
                 clave: "imagen_alt",
                 etiqueta: "Descripción de la foto",
                 tipo: "texto",
+              },
+              {
+                clave: "imagen_posicion",
+                etiqueta: "Encuadre de la foto (opcional)",
+                tipo: "texto",
+                marcador: "center (por defecto), center bottom, center top…",
               },
             ]}
           />

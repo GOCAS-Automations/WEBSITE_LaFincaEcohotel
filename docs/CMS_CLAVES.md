@@ -453,7 +453,8 @@ cual en el buscador.
       "nombre": "Zona húmeda",
       "descripcion": "…",
       "imagen": "https://…",
-      "imagen_alt": "…"
+      "imagen_alt": "…",
+      "imagen_posicion": "center bottom"   // opcional, ver más abajo
     }
   ],
 
@@ -472,6 +473,16 @@ vuelve a pintar una sola foto y sigue alineado.
 
 El mapa embebido de esta página **no** se configura aquí: sale de
 `sitio.contacto.mapa_embed`, para que exista en un solo sitio.
+
+**`instalaciones[].imagen_posicion` es opcional** (campo nuevo, 2026-09-15):
+`object-position` del recorte en la tarjeta, que es 4:3. Sin ella la foto
+queda centrada, que es lo correcto casi siempre. Se añadió porque el Salón
+multifuncional usa la foto del deck comedor —vertical, 2400×2720— y un
+recorte centrado dejaba media tarjeta de techo de guadua; `"center bottom"`
+sube el encuadre para enseñar la mesa y las sillas. De paso saca de cuadro el
+sello de marca —vive en la esquina superior derecha de toda foto del hotel—
+en vez de cortarlo a la mitad. Valores válidos: cualquier `object-position`
+de CSS (`"center"`, `"center top"`, `"20% 80%"`…).
 
 ---
 

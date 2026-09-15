@@ -261,6 +261,18 @@ export type Instalacion = {
   descripcion: string;
   imagen: string;
   imagen_alt: string;
+  /**
+   * `object-position` del recorte en la tarjeta (4:3). Opcional: sin ella la
+   * tarjeta centra la foto, que es lo correcto casi siempre.
+   *
+   * Se añadió para el Salón multifuncional (2026-09-15): su foto es la del
+   * deck comedor, vertical (2400×2720), y un recorte centrado dejaba la mitad
+   * de la tarjeta ocupada por el techo de guadua. `"center bottom"` sube el
+   * encuadre para enseñar las sillas y la mesa, y de paso saca de cuadro el
+   * sello de marca —vive en la esquina superior derecha de toda foto del
+   * hotel— sin cortarlo a la mitad.
+   */
+  imagen_posicion?: string;
 };
 
 export type ContenidoLugar = {
@@ -839,12 +851,18 @@ const RESPALDO_LUGAR: ContenidoLugar = {
         "Piscina de agua fría de La Finca con su chorrera, frente a las montañas y las nubes",
     },
     {
+      /*
+        La foto del hero de la portada (2026-09-15): el corredor techado
+        abierto al valle. Ya viene recortada sin el sello de marca —es la
+        misma regla que sigue todo hero— así que sirve tal cual en una
+        tarjeta 4:3 sin encuadre especial.
+      */
       nombre: "Restaurante",
       descripcion:
         "De 9:00 a. m. a 8:00 p. m. todos los días, exclusivo para huéspedes. Desayuno desde las 9:00 a. m., con opciones vegetarianas, veganas y sin gluten.",
-      imagen: FOTO.deckComedor,
+      imagen: HERO.portadaEscritorio,
       imagen_alt:
-        "Deck techado de La Finca con comedor de vidrio y sillas, frente a las montañas",
+        "Corredor techado de La Finca Eco Hotel abierto al bosque de niebla del Km 18, con jardineras y baranda de madera",
     },
     {
       nombre: "Decks de inmersión",
@@ -870,11 +888,19 @@ const RESPALDO_LUGAR: ContenidoLugar = {
         "Pareja abrigada frente a la fogata encendida de La Finca, de noche",
     },
     {
+      /*
+        La foto que usaba Restaurante (2026-09-15): el deck techado con el
+        comedor de vidrio. Es vertical y el hueco de la tarjeta es 4:3, así
+        que sin `imagen_posicion` el recorte centrado dejaba medio techo de
+        guadua y perdía las sillas. "center bottom" enseña la parte de abajo.
+      */
       nombre: "Salón multifuncional",
       descripcion:
         "Espacio para retiros, cumpleaños y reuniones, con capacidad máxima para 30 personas. Talleres de yoga o meditación desde 10 personas.",
-      imagen: ZONAS_COMUNES[6].url,
-      imagen_alt: ZONAS_COMUNES[6].alt,
+      imagen: FOTO.deckComedor,
+      imagen_alt:
+        "Deck techado de La Finca con comedor de vidrio y sillas, frente a las montañas",
+      imagen_posicion: "center bottom",
     },
   ],
   llegar_titulo: "Cómo llegar",

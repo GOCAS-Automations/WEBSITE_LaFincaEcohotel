@@ -378,7 +378,13 @@ export async function guardarLugarAction(
         instalaciones: listaObjetos(
           formData,
           "instalaciones",
-          ["nombre", "descripcion", "imagen", "imagen_alt"],
+          [
+            "nombre",
+            "descripcion",
+            "imagen",
+            "imagen_alt",
+            "imagen_posicion",
+          ],
           12,
         ),
         llegar_titulo: textoOpcional(formData, "llegar_titulo", 200) ?? "",

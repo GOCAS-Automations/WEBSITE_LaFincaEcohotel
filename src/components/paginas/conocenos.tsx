@@ -241,6 +241,11 @@ export async function PaginaConocenos() {
                       fill
                       sizes="(min-width: 1024px) 30vw, (min-width: 640px) 45vw, 92vw"
                       className="object-cover"
+                      style={
+                        instalacion.imagen_posicion
+                          ? { objectPosition: instalacion.imagen_posicion }
+                          : undefined
+                      }
                     />
                   </div>
                   <div className="flex flex-1 flex-col gap-2 p-5 sm:p-6">
