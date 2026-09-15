@@ -14,23 +14,54 @@ import {
   Entrada,
 } from "@/components/admin/ui";
 import type { ExtraDeReserva } from "@/lib/admin/datos";
-import { hoyISO, nochesEntre, sumarDiasISO } from "@/lib/admin/fechas";
+import { fechaCorta, hoyISO, nochesEntre, sumarDiasISO } from "@/lib/admin/fechas";
 import {
   AYUDA_ESTADO,
+  AYUDA_TIPO_RESERVA,
   ESTADOS_RESERVA,
   ETIQUETA_ESTADO,
   ETIQUETA_ORIGEN,
+  ETIQUETA_TIPO_RESERVA,
   ORIGENES_RESERVA,
+  TIPOS_RESERVA,
   type OpcionAlojamiento,
   type OpcionPlan,
   type ReservaAdmin,
 } from "@/lib/admin/tipos";
+import {
+  CUPO_DIA_DE_CALMA,
+  HORARIO_DIA_POR_DEFECTO,
+  textoCupo,
+} from "@/lib/reserva/dia-de-calma";
+import { PORCENTAJES_ANTICIPO, type PorcentajeAnticipo } from "@/lib/reserva/total";
 import { formatearCOP } from "@/lib/utils/formato";
-import type { EstadoReserva, Extra } from "@/lib/tipos/basedatos";
+import type {
+  EstadoReserva,
+  Extra,
+  TipoReserva,
+} from "@/lib/tipos/basedatos";
 
 /**
  * Formulario de reserva manual: la que se apunta cuando alguien escribe por
  * WhatsApp o llama.
+ *
+ * ---------------------------------------------------------------------------
+ * DOS FORMAS DE VENDER EN UN SOLO FORMULARIO
+ * ---------------------------------------------------------------------------
+ * · **Hospedaje**: cabaña, entrada y salida. Esas noches quedan ocupadas.
+ * · **Día de Calma**: una sola fecha, sin cabaña, con el cupo de
+ *   {@link CUPO_DIA_DE_CALMA} personas por día a la vista. No bloquea ninguna
+ *   cabaña: el mismo día puede haber gente durmiendo y gente de día.
+ *
+ * ---------------------------------------------------------------------------
+ * LAS EXPERIENCIAS VAN POR NOCHE
+ * ---------------------------------------------------------------------------
+ * La torta de aniversario se sirve un día concreto, así que cada noche de la
+ * estadía tiene su propia lista. Los adicionales que no son de una noche —la
+ * segunda mascota— van en el bloque «Para toda la estadía» y se guardan con
+ * `noche = null`. Todo viaja como JSON en un único campo `extras`: son ternas
+ * (extra, noche, cantidad) y con campos sueltos no había forma de distinguir
+ * el fondue del viernes del fondue del sábado.
  *
  * El valor del alojamiento se calcula solo (precio del plan × noches) pero
  * queda EDITABLE: en la práctica se pacta un descuento, se cobra un festivo
@@ -40,6 +71,11 @@ import type { EstadoReserva, Extra } from "@/lib/tipos/basedatos";
  * El total nunca se escribe a mano: es alojamiento + extras. Que salga de una
  * suma visible evita cuadres imposibles después.
  */
+
+/** Clave de una línea de extra: el mismo extra puede ir en varias noches. */
+function claveExtra(noche: string | null, id: string): string {
+  return `${noche ?? ""}|${id}`;
+}
 
 export function FormularioReserva({
   reserva,
@@ -59,14 +95,23 @@ export function FormularioReserva({
 }) {
   const hoy = hoyISO();
 
+  const planesHospedaje = planes.filter((plan) => plan.tipo !== "dia");
+  const planesDia = planes.filter((plan) => plan.tipo === "dia");
+
+  const [tipo, setTipo] = useState<TipoReserva>(reserva?.tipo ?? "hospedaje");
+  const esDia = tipo === "dia";
+
   const [alojamientoId, setAlojamientoId] = useState(
     reserva?.alojamiento_id ?? alojamientos[0]?.id ?? "",
   );
-  const [planId, setPlanId] = useState(reserva?.plan_id ?? planes[0]?.id ?? "");
-  const [entrada, setEntrada] = useState(reserva?.entrada ?? hoy);
-  const [salida, setSalida] = useState(
-    reserva?.salida ?? sumarDiasISO(hoy, 1),
+  const [planId, setPlanId] = useState(
+    reserva?.plan_id ??
+      (reserva?.tipo === "dia" ? planesDia[0]?.id : planesHospedaje[0]?.id) ??
+      planes[0]?.id ??
+      "",
   );
+  const [entrada, setEntrada] = useState(reserva?.entrada ?? hoy);
+  const [salida, setSalida] = useState(reserva?.salida ?? sumarDiasISO(hoy, 1));
 
   const [subtotal, setSubtotal] = useState(
     reserva ? String(reserva.subtotal_alojamiento) : "",
@@ -75,11 +120,29 @@ export function FormularioReserva({
   const [estado, setEstado] = useState<EstadoReserva>(
     reserva?.estado ?? "confirmada",
   );
+  const [personas, setPersonas] = useState(String(reserva?.num_personas ?? 2));
+  const [porcentaje, setPorcentaje] = useState<PorcentajeAnticipo>(
+    reserva?.porcentaje_anticipo === 100 ? 100 : 50,
+  );
+
+  /* --- Las experiencias elegidas, por noche ----------------------------- */
 
   const [seleccion, setSeleccion] = useState<Record<string, number>>(() => {
     const inicial: Record<string, number> = {};
     for (const elegido of extrasElegidos) {
-      inicial[elegido.extra_id] = elegido.cantidad;
+      inicial[claveExtra(elegido.noche, elegido.extra_id)] = elegido.cantidad;
+    }
+    return inicial;
+  });
+
+  /* Los precios de lo ya guardado NO se recalculan: se congelaron al reservar
+     y cambiar la tarifa del catálogo no puede cambiar lo que se le cobró a un
+     huésped que ya reservó. */
+  const [preciosCongelados] = useState<Record<string, number>>(() => {
+    const inicial: Record<string, number> = {};
+    for (const elegido of extrasElegidos) {
+      inicial[claveExtra(elegido.noche, elegido.extra_id)] =
+        elegido.precio_unitario;
     }
     return inicial;
   });
@@ -89,8 +152,78 @@ export function FormularioReserva({
     [entrada, salida],
   );
 
-  const precioNoche = tarifas[`${alojamientoId}|${planId}`] ?? null;
-  const sugerido = precioNoche !== null ? precioNoche * noches : null;
+  /** Las noches de la estadía, en orden: una sección de extras por cada una. */
+  const fechasDeNoche = useMemo(() => {
+    if (esDia || !entrada || !salida || salida <= entrada) return [];
+    const lista: string[] = [];
+    for (let dia = entrada; dia < salida && lista.length < 120; ) {
+      lista.push(dia);
+      dia = sumarDiasISO(dia, 1);
+    }
+    return lista;
+  }, [esDia, entrada, salida]);
+
+  /* --- El cupo del día, consultado al servidor -------------------------- */
+
+  const [cupo, setCupo] = useState<{
+    estado: "inactivo" | "cargando" | "ok" | "error";
+    usado: number | null;
+    restante: number | null;
+  }>({ estado: "inactivo", usado: null, restante: null });
+
+  useEffect(() => {
+    if (!esDia || !entrada) {
+      setCupo({ estado: "inactivo", usado: null, restante: null });
+      return;
+    }
+    const control = new AbortController();
+    setCupo({ estado: "cargando", usado: null, restante: null });
+
+    fetch(`/api/dia-de-calma/cupo?fecha=${encodeURIComponent(entrada)}`, {
+      signal: control.signal,
+      cache: "no-store",
+    })
+      .then((respuesta) => {
+        if (!respuesta.ok) throw new Error("respuesta no válida");
+        return respuesta.json();
+      })
+      .then((datos: { usado?: number; restante?: number }) =>
+        setCupo({
+          estado: "ok",
+          usado: Number(datos.usado ?? 0),
+          restante: Number(datos.restante ?? 0),
+        }),
+      )
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setCupo({ estado: "error", usado: null, restante: null });
+      });
+
+    return () => control.abort();
+  }, [esDia, entrada]);
+
+  /* --- El plan sigue al tipo de reserva --------------------------------- */
+
+  useEffect(() => {
+    const disponibles = esDia ? planesDia : planesHospedaje;
+    if (disponibles.length === 0) return;
+    if (!disponibles.some((plan) => plan.id === planId)) {
+      setPlanId(disponibles[0].id);
+    }
+    // `planes` no cambia dentro de la vida del formulario.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [esDia, planId]);
+
+  /* --- El precio sugerido ----------------------------------------------- */
+
+  const planElegido = planes.find((plan) => plan.id === planId) ?? null;
+  const precioNoche = esDia ? null : (tarifas[`${alojamientoId}|${planId}`] ?? null);
+
+  const sugerido = esDia
+    ? (planElegido?.precio_base ?? null)
+    : precioNoche !== null
+      ? precioNoche * noches
+      : null;
 
   // Mientras nadie toque el importe a mano, sigue a la tarifa.
   useEffect(() => {
@@ -101,28 +234,70 @@ export function FormularioReserva({
   // Si la salida deja de ser posterior a la entrada, se corrige sola: es más
   // amable que un error después de darle a guardar.
   useEffect(() => {
-    if (entrada && salida && salida <= entrada) {
+    if (!esDia && entrada && salida && salida <= entrada) {
       setSalida(sumarDiasISO(entrada, 1));
     }
-  }, [entrada, salida]);
+  }, [esDia, entrada, salida]);
+
+  /* --- Las cuentas ------------------------------------------------------- */
 
   const subtotalNumero = Number(subtotal.replace(/[.\s$,]/g, "")) || 0;
 
-  const subtotalExtras = extras.reduce((suma, extra) => {
-    const cantidad = seleccion[extra.id];
-    return cantidad ? suma + cantidad * extra.precio : suma;
-  }, 0);
+  /** Las líneas de extras que se van a guardar, ya con su precio y su noche. */
+  const lineasExtras = useMemo(() => {
+    const nochesValidas = new Set(fechasDeNoche);
+    const lineas: {
+      extra_id: string;
+      noche: string | null;
+      cantidad: number;
+      precio_unitario: number;
+      nombre: string;
+    }[] = [];
+
+    for (const [clave, cantidad] of Object.entries(seleccion)) {
+      if (!cantidad || cantidad < 1) continue;
+      const separador = clave.indexOf("|");
+      const etiqueta = clave.slice(0, separador);
+      const id = clave.slice(separador + 1);
+      const noche = etiqueta ? etiqueta : null;
+      /* Si se cambian las fechas, lo que estaba en una noche que ya no existe
+         pasa a «toda la estadía» en vez de desaparecer sin avisar. */
+      const nocheFinal = noche && nochesValidas.has(noche) ? noche : null;
+
+      const extra = extras.find((item) => item.id === id);
+      if (!extra) continue;
+
+      lineas.push({
+        extra_id: id,
+        noche: nocheFinal,
+        cantidad,
+        precio_unitario: preciosCongelados[clave] ?? extra.precio,
+        nombre: extra.nombre,
+      });
+    }
+    return lineas;
+  }, [seleccion, extras, fechasDeNoche, preciosCongelados]);
+
+  const subtotalExtras = lineasExtras.reduce(
+    (suma, linea) => suma + linea.cantidad * linea.precio_unitario,
+    0,
+  );
 
   const total = subtotalNumero + subtotalExtras;
+  const anticipo = porcentaje === 100 ? total : Math.round(total / 2);
 
-  function alternarExtra(extra: Extra) {
+  function cambiarExtra(noche: string | null, id: string, cantidad: number) {
+    const clave = claveExtra(noche, id);
     setSeleccion((actual) => {
       const siguiente = { ...actual };
-      if (siguiente[extra.id]) delete siguiente[extra.id];
-      else siguiente[extra.id] = 1;
+      if (cantidad <= 0) delete siguiente[clave];
+      else siguiente[clave] = Math.min(99, cantidad);
       return siguiente;
     });
   }
+
+  const experiencias = extras.filter((extra) => extra.tipo === "experiencia");
+  const adicionales = extras.filter((extra) => extra.tipo !== "experiencia");
 
   return (
     <FormularioAccion
@@ -138,36 +313,88 @@ export function FormularioReserva({
       }
     >
       {reserva && <input type="hidden" name="id" value={reserva.id} />}
+      {/* Las experiencias viajan como JSON: cada línea es extra + noche. */}
+      <input
+        type="hidden"
+        name="extras"
+        value={JSON.stringify(
+          lineasExtras.map(({ extra_id, noche, cantidad, precio_unitario }) => ({
+            extra_id,
+            noche,
+            cantidad,
+            precio_unitario,
+          })),
+        )}
+      />
 
       <div className="grid gap-5 sm:grid-cols-2">
-        <Divisor titulo="Estadía" />
+        <Divisor titulo="Qué se reservó" />
 
-        <Campo etiqueta="Cabaña" htmlFor="alojamiento_id" obligatorio>
+        <Campo
+          etiqueta="Tipo de reserva"
+          htmlFor="tipo"
+          obligatorio
+          className="sm:col-span-2"
+          ayuda={AYUDA_TIPO_RESERVA[tipo]}
+        >
           <Desplegable
-            id="alojamiento_id"
-            name="alojamiento_id"
-            value={alojamientoId}
-            onChange={(evento) => setAlojamientoId(evento.target.value)}
+            id="tipo"
+            name="tipo"
+            value={tipo}
+            onChange={(evento) => {
+              setTipo(evento.target.value as TipoReserva);
+              setSubtotalTocado(false);
+            }}
             required
           >
-            {alojamientos.map((alojamiento) => (
-              <option key={alojamiento.id} value={alojamiento.id}>
-                {alojamiento.nombre}
-                {alojamiento.activo ? "" : " (pausada)"}
+            {TIPOS_RESERVA.map((opcion) => (
+              <option key={opcion} value={opcion}>
+                {ETIQUETA_TIPO_RESERVA[opcion]}
               </option>
             ))}
           </Desplegable>
         </Campo>
 
-        <Campo etiqueta="Plan" htmlFor="plan_id" obligatorio>
+        {!esDia && (
+          <Campo etiqueta="Cabaña" htmlFor="alojamiento_id" obligatorio>
+            <Desplegable
+              id="alojamiento_id"
+              name="alojamiento_id"
+              value={alojamientoId}
+              onChange={(evento) => setAlojamientoId(evento.target.value)}
+              required
+            >
+              {alojamientos.map((alojamiento) => (
+                <option key={alojamiento.id} value={alojamiento.id}>
+                  {alojamiento.nombre}
+                  {alojamiento.activo ? "" : " (pausada)"}
+                </option>
+              ))}
+            </Desplegable>
+          </Campo>
+        )}
+
+        <Campo
+          etiqueta="Plan"
+          htmlFor="plan_id"
+          obligatorio
+          ayuda={
+            esDia
+              ? `Horario: ${planElegido?.horario ?? HORARIO_DIA_POR_DEFECTO}. Sin hospedaje.`
+              : undefined
+          }
+        >
           <Desplegable
             id="plan_id"
             name="plan_id"
             value={planId}
-            onChange={(evento) => setPlanId(evento.target.value)}
+            onChange={(evento) => {
+              setPlanId(evento.target.value);
+              setSubtotalTocado(false);
+            }}
             required
           >
-            {planes.map((plan) => (
+            {(esDia ? planesDia : planesHospedaje).map((plan) => (
               <option key={plan.id} value={plan.id}>
                 {plan.nombre}
               </option>
@@ -175,7 +402,16 @@ export function FormularioReserva({
           </Desplegable>
         </Campo>
 
-        <Campo etiqueta="Entrada" htmlFor="entrada" obligatorio>
+        <Campo
+          etiqueta={esDia ? "Fecha del día" : "Entrada"}
+          htmlFor="entrada"
+          obligatorio
+          ayuda={
+            esDia
+              ? "El Día de Calma dura un solo día y no ocupa ninguna cabaña."
+              : undefined
+          }
+        >
           <Entrada
             id="entrada"
             name="entrada"
@@ -186,24 +422,52 @@ export function FormularioReserva({
           />
         </Campo>
 
+        {!esDia && (
+          <Campo
+            etiqueta="Salida"
+            htmlFor="salida"
+            obligatorio
+            ayuda={
+              noches > 0
+                ? `${noches} ${noches === 1 ? "noche" : "noches"}`
+                : "La salida debe ser posterior a la entrada."
+            }
+          >
+            <Entrada
+              id="salida"
+              name="salida"
+              type="date"
+              value={salida}
+              min={entrada ? sumarDiasISO(entrada, 1) : undefined}
+              onChange={(evento) => setSalida(evento.target.value)}
+              required
+            />
+          </Campo>
+        )}
+
         <Campo
-          etiqueta="Salida"
-          htmlFor="salida"
+          etiqueta={esDia ? "Cuántas personas" : "Cuántos adultos"}
+          htmlFor="num_personas"
           obligatorio
           ayuda={
-            noches > 0
-              ? `${noches} ${noches === 1 ? "noche" : "noches"}`
-              : "La salida debe ser posterior a la entrada."
+            esDia
+              ? cupo.estado === "ok" && cupo.restante !== null
+                ? `${cupo.usado ?? 0} de ${CUPO_DIA_DE_CALMA} cupos ya ocupados ese día. ${textoCupo(cupo.restante)}`
+                : cupo.estado === "cargando"
+                  ? "Consultando el cupo de ese día…"
+                  : `Máximo ${CUPO_DIA_DE_CALMA} personas por día en toda la finca.`
+              : "Las cabañas son para dos personas y La Finca no recibe menores de edad."
           }
         >
           <Entrada
-            id="salida"
-            name="salida"
-            type="date"
-            value={salida}
-            min={entrada ? sumarDiasISO(entrada, 1) : undefined}
-            onChange={(evento) => setSalida(evento.target.value)}
+            id="num_personas"
+            name="num_personas"
+            type="number"
+            min={1}
+            max={esDia ? CUPO_DIA_DE_CALMA : 30}
             required
+            value={personas}
+            onChange={(evento) => setPersonas(evento.target.value)}
           />
         </Campo>
 
@@ -257,28 +521,7 @@ export function FormularioReserva({
           />
         </Campo>
 
-        <Campo
-          etiqueta="Cuántos adultos"
-          htmlFor="num_personas"
-          obligatorio
-          ayuda="Las cabañas son para dos personas y La Finca no recibe menores de edad."
-        >
-          <Entrada
-            id="num_personas"
-            name="num_personas"
-            type="number"
-            min={1}
-            max={30}
-            required
-            defaultValue={reserva?.num_personas ?? 2}
-          />
-        </Campo>
-
-        <Campo
-          etiqueta="Cómo llegó la reserva"
-          htmlFor="origen"
-          obligatorio
-        >
+        <Campo etiqueta="Cómo llegó la reserva" htmlFor="origen" obligatorio>
           <Desplegable
             id="origen"
             name="origen"
@@ -311,13 +554,18 @@ export function FormularioReserva({
         <Divisor titulo="Dinero" />
 
         <Campo
-          etiqueta="Valor del alojamiento"
+          etiqueta={esDia ? "Valor del día" : "Valor del alojamiento"}
           htmlFor="subtotal_alojamiento"
           obligatorio
           ayuda={
-            precioNoche !== null
-              ? `Tarifa de esa cabaña con ese plan: ${formatearCOP(precioNoche)} por noche × ${noches} = ${formatearCOP(sugerido ?? 0)}. Puedes cambiarlo si acordaste otro precio.`
-              : "Esa cabaña no tiene precio para ese plan. Escribe el valor acordado."
+            esDia
+              ? planElegido?.precio_base !== null &&
+                planElegido?.precio_base !== undefined
+                ? `Precio publicado del plan: ${formatearCOP(planElegido.precio_base)} para dos personas. Puedes cambiarlo si acordaste otro valor.`
+                : "Ese plan no tiene precio publicado. Escribe el valor acordado."
+              : precioNoche !== null
+                ? `Tarifa de esa cabaña con ese plan: ${formatearCOP(precioNoche)} por noche × ${noches} = ${formatearCOP(sugerido ?? 0)}. Puedes cambiarlo si acordaste otro precio.`
+                : "Esa cabaña no tiene precio para ese plan. Escribe el valor acordado."
           }
         >
           <div className="relative">
@@ -378,82 +626,99 @@ export function FormularioReserva({
           </div>
         </Campo>
 
+        <Campo
+          etiqueta="Anticipo"
+          htmlFor="porcentaje_anticipo"
+          className="sm:col-span-2"
+          ayuda={
+            porcentaje === 100
+              ? "El huésped paga el total antes de llegar."
+              : "La mitad confirma la reserva; el resto se cobra por link de pago antes de la llegada."
+          }
+        >
+          <Desplegable
+            id="porcentaje_anticipo"
+            name="porcentaje_anticipo"
+            value={String(porcentaje)}
+            onChange={(evento) =>
+              setPorcentaje(Number(evento.target.value) as PorcentajeAnticipo)
+            }
+          >
+            {PORCENTAJES_ANTICIPO.map((opcion) => (
+              <option key={opcion} value={opcion}>
+                {opcion === 100 ? "100 % (pago total)" : "50 % (lo habitual)"} —{" "}
+                {formatearCOP(opcion === 100 ? total : Math.round(total / 2))}
+              </option>
+            ))}
+          </Desplegable>
+        </Campo>
+
+        {/* ---------------------------------------------------------------
+            EXPERIENCIAS: una lista por noche, y otra para toda la estadía.
+        ---------------------------------------------------------------- */}
         {extras.length > 0 && (
           <div className="sm:col-span-2">
             <p className="mb-2 text-[0.8125rem] font-semibold text-crema-900">
               Experiencias y adicionales
             </p>
-            <ul className="space-y-2">
-              {extras.map((extra) => {
-                const cantidad = seleccion[extra.id];
-                const marcado = Boolean(cantidad);
-                return (
-                  <li
-                    key={extra.id}
-                    className="flex flex-wrap items-center gap-3 rounded-tarjeta bg-crema-900/[0.03] px-3.5 py-2.5"
+
+            {!esDia && fechasDeNoche.length > 0 && experiencias.length > 0 && (
+              <div className="mb-3 space-y-3">
+                {fechasDeNoche.map((noche) => (
+                  <fieldset
+                    key={noche}
+                    className="rounded-tarjeta bg-crema-900/[0.03] px-3.5 py-3"
                   >
-                    <input type="hidden" name="extra_id" value={extra.id} />
-                    <input
-                      type="hidden"
-                      name={`precio_extra_${extra.id}`}
-                      value={extra.precio}
+                    <legend className="px-1 text-[0.75rem] font-semibold text-crema-700">
+                      Noche del {fechaCorta(noche)}
+                    </legend>
+                    <ul className="space-y-2">
+                      {experiencias.map((extra) => (
+                        <FilaExtra
+                          key={extra.id}
+                          extra={extra}
+                          cantidad={seleccion[claveExtra(noche, extra.id)] ?? 0}
+                          alCambiar={(cantidad) =>
+                            cambiarExtra(noche, extra.id, cantidad)
+                          }
+                        />
+                      ))}
+                    </ul>
+                  </fieldset>
+                ))}
+              </div>
+            )}
+
+            {/* Lo que no pertenece a una noche: se guarda con `noche = null`.
+                En un Día de Calma, todo va aquí. */}
+            {(esDia ? extras : adicionales).length > 0 && (
+              <fieldset className="rounded-tarjeta bg-crema-900/[0.03] px-3.5 py-3">
+                <legend className="px-1 text-[0.75rem] font-semibold text-crema-700">
+                  {esDia ? "Para ese día" : "Para toda la estadía"}
+                </legend>
+                <ul className="space-y-2">
+                  {(esDia ? extras : adicionales).map((extra) => (
+                    <FilaExtra
+                      key={extra.id}
+                      extra={extra}
+                      cantidad={seleccion[claveExtra(null, extra.id)] ?? 0}
+                      alCambiar={(cantidad) =>
+                        cambiarExtra(null, extra.id, cantidad)
+                      }
                     />
-                    <label className="flex flex-1 cursor-pointer items-center gap-3">
-                      <input
-                        type="checkbox"
-                        name="extra_elegido"
-                        value={extra.id}
-                        checked={marcado}
-                        onChange={() => alternarExtra(extra)}
-                        className="h-5 w-5 shrink-0 accent-[var(--color-petroleo-600)]"
-                      />
-                      <span className="min-w-0">
-                        <span className="block text-[0.875rem] font-medium text-crema-900">
-                          {extra.nombre}
-                        </span>
-                        <span className="block text-[0.75rem] text-crema-600">
-                          {formatearCOP(extra.precio)} c/u
-                        </span>
-                      </span>
-                    </label>
-                    {marcado && (
-                      <label className="flex items-center gap-2 text-[0.75rem] text-crema-700">
-                        Cantidad
-                        {/* El ancho va en el contenedor: `CLASE_INPUT` trae
-                            `w-full` y no siempre pierde ante una clase escrita
-                            después. */}
-                        <span className="block w-16">
-                          <input
-                            type="number"
-                            name={`cantidad_${extra.id}`}
-                            min={1}
-                            max={99}
-                            value={cantidad}
-                            onChange={(evento) =>
-                              setSeleccion((actual) => ({
-                                ...actual,
-                                [extra.id]: Math.max(
-                                  1,
-                                  Number(evento.target.value) || 1,
-                                ),
-                              }))
-                            }
-                            className={`${CLASE_INPUT} px-2 py-1.5 text-center text-[0.8125rem]`}
-                          />
-                        </span>
-                      </label>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
+                  ))}
+                </ul>
+              </fieldset>
+            )}
           </div>
         )}
 
         <div className="sm:col-span-2">
           <dl className="rounded-tarjeta bg-petroleo-600/[0.06] px-4 py-3.5 text-[0.875rem]">
             <div className="flex justify-between py-0.5">
-              <dt className="text-crema-700">Alojamiento</dt>
+              <dt className="text-crema-700">
+                {esDia ? "Día de Calma" : "Alojamiento"}
+              </dt>
               <dd className="font-medium text-crema-900">
                 {formatearCOP(subtotalNumero)}
               </dd>
@@ -468,6 +733,14 @@ export function FormularioReserva({
               <dt className="font-semibold text-crema-900">Total</dt>
               <dd className="font-titulo text-[1.125rem] font-semibold text-petroleo-700">
                 {formatearCOP(total)}
+              </dd>
+            </div>
+            <div className="flex justify-between py-0.5">
+              <dt className="text-crema-700">
+                Anticipo ({porcentaje} %)
+              </dt>
+              <dd className="font-medium text-crema-900">
+                {formatearCOP(anticipo)}
               </dd>
             </div>
           </dl>
@@ -502,5 +775,58 @@ export function FormularioReserva({
         </Campo>
       </div>
     </FormularioAccion>
+  );
+}
+
+/** Una experiencia dentro de una noche (o de la estadía): casilla y cantidad. */
+function FilaExtra({
+  extra,
+  cantidad,
+  alCambiar,
+}: {
+  extra: Extra;
+  cantidad: number;
+  alCambiar: (cantidad: number) => void;
+}) {
+  const marcado = cantidad > 0;
+
+  return (
+    <li className="flex flex-wrap items-center gap-3 rounded-tarjeta bg-white px-3.5 py-2.5 ring-1 ring-crema-900/[0.06]">
+      <label className="flex flex-1 cursor-pointer items-center gap-3">
+        <input
+          type="checkbox"
+          checked={marcado}
+          onChange={() => alCambiar(marcado ? 0 : 1)}
+          className="h-5 w-5 shrink-0 accent-[var(--color-petroleo-600)]"
+        />
+        <span className="min-w-0">
+          <span className="block text-[0.875rem] font-medium text-crema-900">
+            {extra.nombre}
+          </span>
+          <span className="block text-[0.75rem] text-crema-600">
+            {formatearCOP(extra.precio)} c/u
+          </span>
+        </span>
+      </label>
+      {marcado && (
+        <label className="flex items-center gap-2 text-[0.75rem] text-crema-700">
+          Cantidad
+          {/* El ancho va en el contenedor: `CLASE_INPUT` trae `w-full` y no
+              siempre pierde ante una clase escrita después. */}
+          <span className="block w-16">
+            <input
+              type="number"
+              min={1}
+              max={99}
+              value={cantidad}
+              onChange={(evento) =>
+                alCambiar(Math.max(1, Number(evento.target.value) || 1))
+              }
+              className={`${CLASE_INPUT} px-2 py-1.5 text-center text-[0.8125rem]`}
+            />
+          </span>
+        </label>
+      )}
+    </li>
   );
 }

@@ -2,7 +2,7 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { leerRangoFechas } from "./fechas";
+import { leerRangoFechas, sumarDiasISO } from "./fechas";
 import type {
   BloqueoAdmin,
   ImagenGaleriaAdmin,
@@ -17,6 +17,7 @@ import type {
   OrigenReserva,
   Plan,
   TipoExtra,
+  TipoReserva,
 } from "@/lib/tipos/basedatos";
 
 /**
@@ -108,7 +109,13 @@ export async function opcionesPlan(
   supabase: SupabaseClient,
 ): Promise<OpcionPlan[]> {
   const planes = await listarPlanes(supabase);
-  return planes.map((plan) => ({ id: plan.id, nombre: plan.nombre }));
+  return planes.map((plan) => ({
+    id: plan.id,
+    nombre: plan.nombre,
+    tipo: plan.tipo,
+    precio_base: plan.precio_base,
+    horario: plan.horario,
+  }));
 }
 
 export async function obtenerPlan(
@@ -334,7 +341,7 @@ export async function extrasActivos(supabase: SupabaseClient): Promise<Extra[]> 
  * ======================================================================== */
 
 const COLUMNAS_RESERVA =
-  "id, codigo, alojamiento_id, plan_id, estancia, huesped_nombre, huesped_email, huesped_telefono, huesped_documento, num_personas, notas, subtotal_alojamiento, subtotal_extras, total, monto_pagado, estado, origen, created_at";
+  "id, codigo, tipo, alojamiento_id, plan_id, estancia, huesped_nombre, huesped_email, huesped_telefono, huesped_documento, num_personas, notas, subtotal_alojamiento, subtotal_extras, total, monto_pagado, estado, origen, porcentaje_anticipo, monto_anticipo, referencia_externa, created_at";
 
 type FilaReserva = Record<string, unknown>;
 
@@ -352,6 +359,7 @@ function aReservaAdmin(
   return {
     id: String(fila.id),
     codigo: String(fila.codigo),
+    tipo: (fila.tipo === "dia" ? "dia" : "hospedaje") as TipoReserva,
     alojamiento_id: alojamientoId,
     alojamiento_nombre: alojamientoId
       ? (nombresAlojamiento.get(alojamientoId) ?? null)
@@ -373,6 +381,15 @@ function aReservaAdmin(
     monto_pagado: Number(fila.monto_pagado ?? 0),
     estado: fila.estado as EstadoReserva,
     origen: fila.origen as OrigenReserva,
+    /* El 50 % es lo que pide el hotel para confirmar, y es lo que valía por
+       defecto antes de que existiera la columna. */
+    porcentaje_anticipo: Number(fila.porcentaje_anticipo) === 100 ? 100 : 50,
+    monto_anticipo:
+      fila.monto_anticipo === null || fila.monto_anticipo === undefined
+        ? null
+        : Number(fila.monto_anticipo),
+    referencia_externa:
+      typeof fila.referencia_externa === "string" ? fila.referencia_externa : null,
     created_at: String(fila.created_at ?? ""),
   };
 }
@@ -441,6 +458,12 @@ export type ExtraDeReserva = {
   nombre: string;
   cantidad: number;
   precio_unitario: number;
+  /**
+   * Noche a la que se añadió el extra (`AAAA-MM-DD`). `null` = para toda la
+   * estadía, que es como se apuntan los adicionales que no pertenecen a una
+   * noche concreta y como quedaron las reservas anteriores a la migración 009.
+   */
+  noche: string | null;
 };
 
 export async function extrasDeReserva(
@@ -450,8 +473,9 @@ export async function extrasDeReserva(
   const [{ data, error }, catalogo] = await Promise.all([
     supabase
       .from("reserva_extras")
-      .select("extra_id, cantidad, precio_unitario")
-      .eq("reserva_id", reservaId),
+      .select("extra_id, cantidad, precio_unitario, noche")
+      .eq("reserva_id", reservaId)
+      .order("noche", { ascending: true, nullsFirst: false }),
     supabase.from("extras").select("id, nombre"),
   ]);
 
@@ -466,7 +490,49 @@ export async function extrasDeReserva(
     nombre: nombres.get(String(fila.extra_id)) ?? "Extra",
     cantidad: Number(fila.cantidad ?? 1),
     precio_unitario: Number(fila.precio_unitario ?? 0),
+    noche: typeof fila.noche === "string" ? fila.noche : null,
   }));
+}
+
+/* ---------------------------------------------------------------------------
+ * Cupo del Día de Calma
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Cuántas personas hay reservadas de día, fecha por fecha.
+ *
+ * Es lo que pinta la fila «Día de Calma» del calendario del panel: `4/10`.
+ * Solo cuenta lo que ocupa cupo (pendiente y confirmada), igual que el trigger
+ * `reservas_cupo_dia_de_calma` de la base.
+ */
+export async function personasDeDiaPorFecha(
+  supabase: SupabaseClient,
+  desde: string,
+  hasta: string,
+): Promise<Map<string, number>> {
+  const { data, error } = await supabase
+    .from("reservas")
+    .select("estancia, num_personas, estado")
+    .eq("tipo", "dia")
+    .in("estado", ["pendiente", "confirmada"])
+    .overlaps("estancia", `[${desde},${hasta})`);
+
+  if (error) throw new Error(error.message);
+
+  const porFecha = new Map<string, number>();
+  for (const fila of data ?? []) {
+    const rango = leerRangoFechas(fila.estancia);
+    if (!rango) continue;
+    /* Una reserva de día dura un solo día por construcción (lo garantiza el
+       check `reservas_coherencia_tipo`), pero se recorre el rango igual: si
+       algún día se admitieran varios días seguidos, esto ya funciona. */
+    let dia = rango.inicio;
+    while (dia < rango.fin) {
+      porFecha.set(dia, (porFecha.get(dia) ?? 0) + Number(fila.num_personas ?? 0));
+      dia = sumarDiasISO(dia, 1);
+    }
+  }
+  return porFecha;
 }
 
 /** Reservas que tocan un rango de fechas (el calendario del mes). */

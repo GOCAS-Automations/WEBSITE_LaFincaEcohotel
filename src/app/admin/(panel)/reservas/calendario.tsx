@@ -12,6 +12,7 @@ import {
   type AnioMes,
 } from "@/lib/admin/fechas";
 import { ETIQUETA_ESTADO } from "@/lib/admin/tipos";
+import { CUPO_DIA_DE_CALMA } from "@/lib/reserva/dia-de-calma";
 import type {
   BloqueoAdmin,
   OpcionAlojamiento,
@@ -26,6 +27,12 @@ import type { EstadoReserva } from "@/lib/tipos/basedatos";
  * responder de un vistazo a "¿qué tengo ocupado este mes?". Cada celda es una
  * noche; las noches de una misma reserva se pintan como una barra continua con
  * el nombre del huésped encima.
+ *
+ * Debajo de las cabañas hay una fila más: el **Día de Calma**. No es una
+ * cabaña —esas reservas no ocupan ninguna— pero sí tiene un límite propio, de
+ * {@link CUPO_DIA_DE_CALMA} personas por día en toda la finca, y el equipo
+ * necesita verlo junto al resto del mes: `4/10`, con el color subiendo de tono
+ * según se llena.
  *
  * Es un componente de SERVIDOR: el mes viaja en la dirección (`?mes=2026-09`),
  * así que las flechas son enlaces normales. No hay estado en el navegador que
@@ -50,11 +57,14 @@ export function CalendarioMes({
   alojamientos,
   reservas,
   bloqueos,
+  personasDeDia,
 }: {
   mes: AnioMes;
   alojamientos: OpcionAlojamiento[];
   reservas: ReservaAdmin[];
   bloqueos: BloqueoAdmin[];
+  /** Personas reservadas de día, por fecha. Alimenta la fila del Día de Calma. */
+  personasDeDia: Map<string, number>;
 }) {
   const dias = diasDeMes(mes);
   const hoy = hoyISO();
@@ -83,6 +93,8 @@ export function CalendarioMes({
   // Las reservas se pintan encima de los bloqueos: si por lo que sea coexisten,
   // manda la información del huésped.
   for (const reserva of reservas) {
+    /* Las de Día de Calma no ocupan cabaña: van en su propia fila, abajo. */
+    if (reserva.tipo === "dia") continue;
     if (!reserva.alojamiento_id) continue;
     if (reserva.estado === "cancelada") continue;
     for (const dia of dias) {
@@ -207,11 +219,103 @@ export function CalendarioMes({
                   ))}
                 </tr>
               ))}
+
+              {/*
+                LA FILA DEL DÍA DE CALMA.
+                No es una cabaña: es el cupo de la finca entera para las visitas
+                de día. Va debajo de las cinco cabañas, separada por una línea
+                más marcada, porque se lee distinto: aquí no hay barras de
+                reserva sino cuántas de las diez personas del día están tomadas.
+              */}
+              <tr>
+                <th
+                  scope="row"
+                  className="sticky left-0 z-10 border-t-2 border-b border-crema-900/[0.05] border-t-crema-900/[0.12] bg-white px-3 py-2 text-left"
+                >
+                  <span className="block truncate text-[0.8125rem] font-semibold text-crema-900">
+                    Día de Calma
+                  </span>
+                  <span className="block text-[0.625rem] text-crema-500">
+                    cupo {CUPO_DIA_DE_CALMA} personas/día
+                  </span>
+                </th>
+                {dias.map((dia) => (
+                  <CeldaCupo
+                    key={dia}
+                    dia={dia}
+                    hoy={hoy}
+                    personas={personasDeDia.get(dia) ?? 0}
+                  />
+                ))}
+              </tr>
             </tbody>
           </table>
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Una celda de la fila del Día de Calma: cuántas de las diez personas del día
+ * están tomadas.
+ *
+ * El color sube de tono con la ocupación —claro cuando hay sitio de sobra,
+ * ámbar cuando queda poco, lleno cuando no cabe nadie más— para poder barrer
+ * el mes con la vista sin leer los números uno a uno. El texto («4/10») sigue
+ * ahí para quien sí necesita el dato exacto, y el `title` lo dice con
+ * palabras para quien usa lector de pantalla.
+ */
+function CeldaCupo({
+  dia,
+  hoy,
+  personas,
+}: {
+  dia: string;
+  hoy: string;
+  personas: number;
+}) {
+  const finde = esFinDeSemana(dia);
+  const esHoy = dia === hoy;
+  const lleno = personas >= CUPO_DIA_DE_CALMA;
+
+  const fondoLibre = esHoy
+    ? "bg-petroleo-600/[0.07]"
+    : finde
+      ? "bg-crema-900/[0.03]"
+      : "";
+
+  if (personas <= 0) {
+    return (
+      <td
+        className={`h-9 border-t-2 border-b border-crema-900/[0.05] border-t-crema-900/[0.12] p-0 align-middle ${fondoLibre}`}
+      />
+    );
+  }
+
+  const tono = lleno
+    ? "bg-crema-700 text-white"
+    : personas >= CUPO_DIA_DE_CALMA * 0.6
+      ? "bg-dorado-400 text-dorado-950"
+      : "bg-oliva-200 text-oliva-900";
+
+  return (
+    <td
+      className={`h-9 border-t-2 border-b border-crema-900/[0.05] border-t-crema-900/[0.12] p-0 align-middle ${fondoLibre}`}
+    >
+      <div className="flex h-full items-stretch px-0.5 py-1">
+        <span
+          title={`${personas} de ${CUPO_DIA_DE_CALMA} cupos del Día de Calma${lleno ? " — completo" : ""}`}
+          className={`flex flex-1 items-center justify-center rounded-[4px] text-[0.5rem] leading-none font-bold tabular-nums ${tono}`}
+        >
+          {personas}/{CUPO_DIA_DE_CALMA}
+          <span className="sr-only">
+            {" "}
+            personas en el Día de Calma{lleno ? ", completo" : ""}
+          </span>
+        </span>
+      </div>
+    </td>
   );
 }
 
@@ -354,6 +458,7 @@ function Leyenda() {
     { color: COLOR_ESTADO.pendiente, etiqueta: "Pendiente" },
     { color: COLOR_ESTADO.completada, etiqueta: "Completada" },
     { color: COLOR_BLOQUEO, etiqueta: "Bloqueo" },
+    { color: "bg-oliva-200", etiqueta: "Día de Calma" },
   ];
 
   return (

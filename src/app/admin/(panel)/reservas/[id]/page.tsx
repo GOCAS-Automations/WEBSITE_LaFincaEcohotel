@@ -26,14 +26,21 @@ import {
   opcionesAlojamiento,
   opcionesPlan,
 } from "@/lib/admin/datos";
-import { fechaHora, fechaLarga, nochesEntre } from "@/lib/admin/fechas";
+import {
+  fechaCorta,
+  fechaHora,
+  fechaLarga,
+  nochesEntre,
+} from "@/lib/admin/fechas";
 import {
   AYUDA_ESTADO,
   ESTADOS_RESERVA,
+  ETIQUETA_CORTA_TIPO_RESERVA,
   ETIQUETA_ESTADO,
   ETIQUETA_ORIGEN,
   TONO_ESTADO,
 } from "@/lib/admin/tipos";
+import { CUPO_DIA_DE_CALMA } from "@/lib/reserva/dia-de-calma";
 import { esUuid } from "@/lib/admin/validacion";
 import { formatearCOP } from "@/lib/utils/formato";
 
@@ -66,6 +73,26 @@ export default async function PaginaReserva({
 
   const noches = nochesEntre(reserva.entrada, reserva.salida);
   const pendiente = reserva.total - reserva.monto_pagado;
+  const esDia = reserva.tipo === "dia";
+
+  /*
+    Las experiencias se agrupan por la noche a la que se añadieron: en una
+    estadía de tres noches, ver «Fondue» sin saber cuándo obliga a preguntarle
+    al huésped. Lo que no pertenece a una noche (la segunda mascota) va al
+    final, bajo «Para toda la estadía».
+  */
+  const extrasPorNoche = new Map<string, typeof elegidos>();
+  for (const elegido of elegidos) {
+    const clave = elegido.noche ?? "";
+    const lista = extrasPorNoche.get(clave) ?? [];
+    lista.push(elegido);
+    extrasPorNoche.set(clave, lista);
+  }
+  const gruposDeExtras = [...extrasPorNoche.entries()].sort(([a], [b]) => {
+    if (a === "") return 1;
+    if (b === "") return -1;
+    return a < b ? -1 : 1;
+  });
 
   /* Al listado de extras del formulario se le añaden los que la reserva ya
      tiene pero que entretanto se pausaron: si no, editar la reserva los
@@ -110,25 +137,51 @@ export default async function PaginaReserva({
             <CabeceraTarjeta
               titulo="Resumen"
               accion={
-                <Pastilla tono={TONO_ESTADO[reserva.estado]}>
-                  {ETIQUETA_ESTADO[reserva.estado]}
-                </Pastilla>
+                <span className="flex flex-wrap items-center gap-2">
+                  {/* El tipo va primero: es lo que cambia cómo se lee todo lo
+                      demás (un Día de Calma no tiene cabaña ni noches). */}
+                  <Pastilla tono={esDia ? "azul" : "gris"}>
+                    {ETIQUETA_CORTA_TIPO_RESERVA[reserva.tipo]}
+                  </Pastilla>
+                  <Pastilla tono={TONO_ESTADO[reserva.estado]}>
+                    {ETIQUETA_ESTADO[reserva.estado]}
+                  </Pastilla>
+                </span>
               }
             />
             <CuerpoTarjeta>
               <dl className="grid gap-4 sm:grid-cols-2">
-                <Dato etiqueta="Cabaña">
-                  {reserva.alojamiento_nombre ?? "—"}
-                </Dato>
-                <Dato etiqueta="Plan">{reserva.plan_nombre ?? "—"}</Dato>
-                <Dato etiqueta="Entrada">{fechaLarga(reserva.entrada)}</Dato>
-                <Dato etiqueta="Salida">
-                  {fechaLarga(reserva.salida)}
-                  <span className="ml-2 text-[0.8125rem] text-crema-600">
-                    ({noches} {noches === 1 ? "noche" : "noches"})
-                  </span>
-                </Dato>
-                <Dato etiqueta="Personas">{reserva.num_personas}</Dato>
+                {esDia ? (
+                  <>
+                    <Dato etiqueta="Plan">{reserva.plan_nombre ?? "—"}</Dato>
+                    <Dato etiqueta="Día">{fechaLarga(reserva.entrada)}</Dato>
+                    <Dato etiqueta="Cabaña">
+                      Sin cabaña: el Día de Calma no incluye hospedaje y no
+                      bloquea ninguna.
+                    </Dato>
+                    <Dato etiqueta="Personas">
+                      {reserva.num_personas}
+                      <span className="ml-2 text-[0.8125rem] text-crema-600">
+                        (de {CUPO_DIA_DE_CALMA} del día)
+                      </span>
+                    </Dato>
+                  </>
+                ) : (
+                  <>
+                    <Dato etiqueta="Cabaña">
+                      {reserva.alojamiento_nombre ?? "—"}
+                    </Dato>
+                    <Dato etiqueta="Plan">{reserva.plan_nombre ?? "—"}</Dato>
+                    <Dato etiqueta="Entrada">{fechaLarga(reserva.entrada)}</Dato>
+                    <Dato etiqueta="Salida">
+                      {fechaLarga(reserva.salida)}
+                      <span className="ml-2 text-[0.8125rem] text-crema-600">
+                        ({noches} {noches === 1 ? "noche" : "noches"})
+                      </span>
+                    </Dato>
+                    <Dato etiqueta="Personas">{reserva.num_personas}</Dato>
+                  </>
+                )}
                 <Dato etiqueta="Cómo llegó">
                   {ETIQUETA_ORIGEN[reserva.origen]}
                 </Dato>
@@ -173,24 +226,37 @@ export default async function PaginaReserva({
                   <p className="mb-2 text-[0.75rem] font-semibold uppercase tracking-wide text-crema-600">
                     Experiencias y adicionales
                   </p>
-                  <ul className="space-y-1 text-[0.875rem] text-crema-900">
-                    {elegidos.map((elegido) => (
-                      <li
-                        key={elegido.extra_id}
-                        className="flex justify-between gap-3"
-                      >
-                        <span>
-                          {elegido.nombre}
-                          {elegido.cantidad > 1 && ` × ${elegido.cantidad}`}
-                        </span>
-                        <span className="font-medium">
-                          {formatearCOP(
-                            elegido.cantidad * elegido.precio_unitario,
-                          )}
-                        </span>
-                      </li>
+                  <div className="space-y-3">
+                    {gruposDeExtras.map(([noche, lineas]) => (
+                      <div key={noche || "estadia"}>
+                        <p className="text-[0.75rem] font-semibold text-crema-700">
+                          {noche
+                            ? `Noche del ${fechaCorta(noche)}`
+                            : esDia
+                              ? "Para ese día"
+                              : "Para toda la estadía"}
+                        </p>
+                        <ul className="space-y-1 text-[0.875rem] text-crema-900">
+                          {lineas.map((elegido) => (
+                            <li
+                              key={`${noche}-${elegido.extra_id}`}
+                              className="flex justify-between gap-3"
+                            >
+                              <span>
+                                {elegido.nombre}
+                                {elegido.cantidad > 1 && ` × ${elegido.cantidad}`}
+                              </span>
+                              <span className="font-medium">
+                                {formatearCOP(
+                                  elegido.cantidad * elegido.precio_unitario,
+                                )}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 </div>
               )}
             </CuerpoTarjeta>
@@ -218,6 +284,19 @@ export default async function PaginaReserva({
                   <dt className="font-semibold text-crema-900">Total</dt>
                   <dd className="font-titulo text-[1.125rem] font-semibold text-petroleo-700">
                     {formatearCOP(reserva.total)}
+                  </dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-crema-700">
+                    Anticipo ({reserva.porcentaje_anticipo} %)
+                  </dt>
+                  <dd className="font-medium text-crema-900">
+                    {formatearCOP(
+                      reserva.monto_anticipo ??
+                        (reserva.porcentaje_anticipo === 100
+                          ? reserva.total
+                          : Math.round(reserva.total / 2)),
+                    )}
                   </dd>
                 </div>
                 <div className="flex justify-between">
@@ -295,7 +374,7 @@ export default async function PaginaReserva({
         <Tarjeta>
           <CabeceraTarjeta
             titulo="Editar la reserva"
-            descripcion="Cambia fechas, cabaña, plan, datos del huésped o el dinero."
+            descripcion="Cambia fechas, cabaña, plan, experiencias por noche, datos del huésped o el dinero."
           />
           <CuerpoTarjeta>
             <FormularioReserva

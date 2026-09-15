@@ -176,7 +176,11 @@ export default async function PaginaResumen({
                           {reserva.huesped_nombre}
                         </p>
                         <p className="text-[0.75rem] text-crema-600">
-                          {reserva.alojamiento_nombre ?? "—"}
+                          {/* Un Día de Calma no tiene cabaña: se nombra el plan
+                              para que no aparezca un guion sin explicación. */}
+                          {reserva.tipo === "dia"
+                            ? "Día de Calma"
+                            : (reserva.alojamiento_nombre ?? "—")}
                           <span className="mx-1.5">·</span>
                           {rangoCorto(reserva.entrada, reserva.salida)}
                         </p>
@@ -234,6 +238,7 @@ function GrupoDelDia({
     huesped_nombre: string;
     alojamiento_nombre: string | null;
     huesped_telefono: string;
+    tipo: "hospedaje" | "dia";
   }[];
   vacio: string;
 }) {
@@ -254,7 +259,9 @@ function GrupoDelDia({
               >
                 <span className="font-medium">{reserva.huesped_nombre}</span>
                 <span className="text-[0.75rem] text-crema-600">
-                  {reserva.alojamiento_nombre ?? "—"}
+                  {reserva.tipo === "dia"
+                    ? "Día de Calma"
+                    : (reserva.alojamiento_nombre ?? "—")}
                 </span>
               </Link>
             </li>

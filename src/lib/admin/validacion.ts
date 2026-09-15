@@ -358,11 +358,27 @@ export async function ejecutarAccion(
   } catch (error) {
     if (esSenalDeNext(error)) throw error;
     if (error instanceof ErrorDeValidacion) return estadoError(error.message);
+    /* El cupo del Día de Calma lo decide un trigger de la base, y su mensaje
+       ya está en español: se muestra tal cual venga por donde venga. */
+    if (esErrorDeCupo(error)) return estadoError(error.message);
     console.error("[panel] error inesperado en una acción:", error);
     return estadoError(
       "Ocurrió un problema al guardar. Vuelve a intentarlo; si sigue pasando, avísale al desarrollador.",
     );
   }
+}
+
+/** ¿Es el error del trigger del cupo del Día de Calma? */
+function esErrorDeCupo(
+  error: unknown,
+): error is { code: string; message: string } {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: unknown }).code === CUPO_DIA_LLENO &&
+    typeof (error as { message?: unknown }).message === "string"
+  );
 }
 
 function esSenalDeNext(error: unknown): boolean {
@@ -388,13 +404,21 @@ export const VIOLACION_LLAVE_FORANEA = "23503";
 export const VIOLACION_EXCLUSION = "23P01";
 /** CHECK: la fila no cumple una regla del modelo (tipo de plan, precios…). */
 export const VIOLACION_CHECK = "23514";
+/**
+ * Cupo del Día de Calma agotado.
+ *
+ * Es un SQLSTATE propio del proyecto, lanzado por el trigger
+ * `validar_cupo_dia_de_calma()` (migración 009). Su mensaje YA viene escrito
+ * en español y dice cuántos cupos quedan, así que se muestra tal cual.
+ */
+export const CUPO_DIA_LLENO = "LF010";
 
 /**
  * Traduce al español los errores de Postgres que el usuario del panel puede
  * llegar a provocar. Los que no reconocemos suben como error genérico.
  */
 export function traducirErrorPostgres(
-  error: { code?: string; message: string },
+  error: { code?: string; message: string; details?: string | null },
   contexto: {
     unico?: string;
     foranea?: string;
@@ -402,6 +426,9 @@ export function traducirErrorPostgres(
     check?: string;
   } = {},
 ): Error {
+  if (error.code === CUPO_DIA_LLENO) {
+    return new ErrorDeValidacion(error.message);
+  }
   if (error.code === VIOLACION_UNICA) {
     return new ErrorDeValidacion(
       contexto.unico ??

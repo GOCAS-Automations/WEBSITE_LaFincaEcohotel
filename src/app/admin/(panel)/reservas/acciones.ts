@@ -5,22 +5,32 @@ import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/admin/auth";
 import { REINTENTOS_CODIGO, siguienteCodigo } from "@/lib/admin/codigo-reserva";
 import { buscarChoques, describirChoques } from "@/lib/admin/disponibilidad";
-import { aRangoFechas, leerRangoFechas, nochesEntre } from "@/lib/admin/fechas";
+import {
+  aRangoFechas,
+  leerRangoFechas,
+  nochesEntre,
+  sumarDiasISO,
+} from "@/lib/admin/fechas";
 import { refrescarPanel } from "@/lib/admin/revalidar";
 import {
   ESTADOS_QUE_OCUPAN,
   ESTADOS_RESERVA,
   ORIGENES_RESERVA,
+  TIPOS_RESERVA,
   estadoOk,
   type EstadoAccion,
 } from "@/lib/admin/tipos";
+import { CUPO_DIA_DE_CALMA } from "@/lib/reserva/dia-de-calma";
+import { PORCENTAJES_ANTICIPO } from "@/lib/reserva/total";
 import {
+  CUPO_DIA_LLENO,
   ErrorDeValidacion,
   ejecutarAccion,
   emailOpcional,
   enteroOpcional,
   enteroRequerido,
   enumRequerido,
+  esUuid,
   fechaRequerida,
   textoOpcional,
   textoRequerido,
@@ -40,34 +50,97 @@ function refrescar(id?: string) {
   );
 }
 
-/** Lee los extras marcados en el formulario, con su cantidad y su precio. */
-function leerExtras(formData: FormData): {
+type LineaExtra = {
   extra_id: string;
   cantidad: number;
   precio_unitario: number;
-}[] {
-  const ids = formData.getAll("extra_id").map((valor) => String(valor));
-  const elegidos = new Set(
-    formData.getAll("extra_elegido").map((valor) => String(valor)),
-  );
+  /** Noche a la que se añade; `null` = para toda la estadía. */
+  noche: string | null;
+};
 
-  return ids
-    .filter((id) => elegidos.has(id))
-    .map((id) => ({
-      extra_id: id,
-      cantidad: Math.max(
-        1,
-        enteroOpcional(formData, `cantidad_${id}`, "Cantidad", {
-          min: 1,
-          max: 99,
-        }) ?? 1,
-      ),
-      precio_unitario:
-        enteroOpcional(formData, `precio_extra_${id}`, "Precio del extra", {
-          min: 0,
-          max: 100_000_000,
-        }) ?? 0,
-    }));
+/**
+ * Lee las experiencias elegidas en el formulario.
+ *
+ * Viajan como JSON en un solo campo porque cada línea es una TERNA —extra,
+ * noche y cantidad— y el mismo extra puede aparecer en varias noches: con
+ * campos sueltos (`cantidad_<id>`) no había forma de distinguir el fondue del
+ * viernes del fondue del sábado. El formato se valida entero aquí: lo que
+ * llega del navegador nunca se cree sin mirar.
+ */
+function leerExtras(formData: FormData, nochesValidas: string[]): LineaExtra[] {
+  const crudo = String(formData.get("extras") ?? "").trim();
+  if (!crudo) return [];
+
+  let analizado: unknown;
+  try {
+    analizado = JSON.parse(crudo);
+  } catch {
+    throw new ErrorDeValidacion(
+      "No se pudieron leer las experiencias de la pantalla. Vuelve a marcarlas.",
+    );
+  }
+  if (!Array.isArray(analizado)) return [];
+
+  const permitidas = new Set(nochesValidas);
+  const vistas = new Set<string>();
+  const lineas: LineaExtra[] = [];
+
+  for (const item of analizado) {
+    if (typeof item !== "object" || item === null) continue;
+    const fila = item as Record<string, unknown>;
+
+    const extraId = String(fila.extra_id ?? "").trim();
+    if (!esUuid(extraId)) continue;
+
+    const cantidad = Math.max(1, Math.min(99, Number(fila.cantidad ?? 1) || 1));
+    const precio = Math.max(
+      0,
+      Math.min(100_000_000, Math.round(Number(fila.precio_unitario ?? 0) || 0)),
+    );
+
+    const nocheCruda =
+      typeof fila.noche === "string" && fila.noche.trim()
+        ? fila.noche.trim()
+        : null;
+    /* Una noche que no pertenece a la estadía se guarda como «toda la
+       estadía» en vez de rechazar el guardado: el usuario del panel cambió las
+       fechas y no tiene por qué perder lo que ya había marcado. */
+    const noche =
+      nocheCruda && permitidas.has(nocheCruda) ? nocheCruda : null;
+
+    const clave = `${extraId}|${noche ?? ""}`;
+    if (vistas.has(clave)) continue;
+    vistas.add(clave);
+
+    lineas.push({ extra_id: extraId, cantidad, precio_unitario: precio, noche });
+  }
+
+  return lineas;
+}
+
+/**
+ * Cuántas personas hay ya reservadas de día en esa fecha.
+ *
+ * La palabra final la tiene el trigger `reservas_cupo_dia_de_calma` de la
+ * base; esto es para poder avisar ANTES, y con el detalle a la vista.
+ */
+async function personasDeDiaEn(
+  supabase: Awaited<ReturnType<typeof requireAdmin>>["supabase"],
+  fecha: string,
+  excluirId?: string,
+): Promise<number> {
+  const { data, error } = await supabase
+    .from("reservas")
+    .select("id, num_personas")
+    .eq("tipo", "dia")
+    .in("estado", ["pendiente", "confirmada"])
+    .overlaps("estancia", `[${fecha},${sumarDiasISO(fecha, 1)})`);
+
+  if (error) throw new Error(error.message);
+
+  return (data ?? [])
+    .filter((fila) => !excluirId || String(fila.id) !== excluirId)
+    .reduce((suma, fila) => suma + Number(fila.num_personas ?? 0), 0);
 }
 
 /**
@@ -93,21 +166,37 @@ export async function guardarReservaAction(
     const { supabase } = await requireAdmin();
 
     const id = String(formData.get("id") ?? "").trim();
-    const alojamientoId = uuidRequerido(formData, "alojamiento_id", "Cabaña");
+    const tipo = enumRequerido(formData, "tipo", "Tipo de reserva", TIPOS_RESERVA);
+    const esDia = tipo === "dia";
+
+    /* El Día de Calma no ocupa cabaña y dura un solo día: la salida se calcula
+       (`[fecha, fecha+1)`), no se pregunta. Así el calendario, el cupo y las
+       consultas de solape siguen usando el mismo `daterange` de siempre. */
+    const alojamientoId = esDia
+      ? null
+      : uuidRequerido(formData, "alojamiento_id", "Cabaña");
     const planId = uuidRequerido(formData, "plan_id", "Plan");
-    const entrada = fechaRequerida(formData, "entrada", "Fecha de entrada");
-    const salida = fechaRequerida(formData, "salida", "Fecha de salida");
+    const entrada = fechaRequerida(
+      formData,
+      "entrada",
+      esDia ? "Fecha del día" : "Fecha de entrada",
+    );
+    const salida = esDia
+      ? sumarDiasISO(entrada, 1)
+      : fechaRequerida(formData, "salida", "Fecha de salida");
 
     const noches = nochesEntre(entrada, salida);
-    if (noches < 1) {
-      throw new ErrorDeValidacion(
-        "La fecha de salida tiene que ser posterior a la de entrada: una estadía es de mínimo una noche.",
-      );
-    }
-    if (noches > 120) {
-      throw new ErrorDeValidacion(
-        "La estadía no puede pasar de 120 noches. Revisa las fechas.",
-      );
+    if (!esDia) {
+      if (noches < 1) {
+        throw new ErrorDeValidacion(
+          "La fecha de salida tiene que ser posterior a la de entrada: una estadía es de mínimo una noche.",
+        );
+      }
+      if (noches > 120) {
+        throw new ErrorDeValidacion(
+          "La estadía no puede pasar de 120 noches. Revisa las fechas.",
+        );
+      }
     }
 
     const estado = enumRequerido(formData, "estado", "Estado", ESTADOS_RESERVA);
@@ -117,33 +206,85 @@ export async function guardarReservaAction(
       formData,
       "num_personas",
       "Número de personas",
-      { min: 1, max: 30 },
+      { min: 1, max: esDia ? CUPO_DIA_DE_CALMA : 30 },
     );
 
-    const { data: alojamiento } = await supabase
-      .from("alojamientos")
-      .select("nombre, capacidad")
-      .eq("id", alojamientoId)
+    /* El plan tiene que ser del tipo que se está vendiendo: un Día de Calma
+       cobrado con el plan Premium sería una reserva que no significa nada. */
+    const { data: plan } = await supabase
+      .from("planes")
+      .select("nombre, tipo")
+      .eq("id", planId)
       .maybeSingle();
 
-    if (!alojamiento) {
-      throw new ErrorDeValidacion("La cabaña que elegiste ya no existe.");
+    if (!plan) {
+      throw new ErrorDeValidacion("El plan que elegiste ya no existe.");
+    }
+    if (esDia && plan.tipo !== "dia") {
+      throw new ErrorDeValidacion(
+        "Para una reserva de Día de Calma tienes que elegir un plan de día.",
+      );
+    }
+    if (!esDia && plan.tipo === "dia") {
+      throw new ErrorDeValidacion(
+        "Ese plan es de día, sin hospedaje. Elige un plan de hospedaje o cambia el tipo de reserva.",
+      );
     }
 
-    if (ESTADOS_QUE_OCUPAN.includes(estado)) {
-      const choques = await buscarChoques(
-        supabase,
-        alojamientoId,
-        entrada,
-        salida,
-        id || undefined,
-      );
-      if (choques.length > 0) {
-        throw new ErrorDeValidacion(describirChoques(choques));
+    let alojamiento: { nombre: string; capacidad: number } | null = null;
+
+    if (!esDia && alojamientoId) {
+      const { data } = await supabase
+        .from("alojamientos")
+        .select("nombre, capacidad")
+        .eq("id", alojamientoId)
+        .maybeSingle();
+
+      if (!data) {
+        throw new ErrorDeValidacion("La cabaña que elegiste ya no existe.");
+      }
+      alojamiento = {
+        nombre: String(data.nombre),
+        capacidad: Number(data.capacidad),
+      };
+
+      if (ESTADOS_QUE_OCUPAN.includes(estado)) {
+        const choques = await buscarChoques(
+          supabase,
+          alojamientoId,
+          entrada,
+          salida,
+          id || undefined,
+        );
+        if (choques.length > 0) {
+          throw new ErrorDeValidacion(describirChoques(choques));
+        }
       }
     }
 
-    const extras = leerExtras(formData);
+    /* El cupo del día, avisado antes de intentarlo. Si dos personas guardan a
+       la vez, el trigger de la base sigue siendo quien decide. */
+    if (esDia && ["pendiente", "confirmada"].includes(estado)) {
+      const ocupadas = await personasDeDiaEn(supabase, entrada, id || undefined);
+      if (ocupadas + numPersonas > CUPO_DIA_DE_CALMA) {
+        throw new ErrorDeValidacion(
+          `El Día de Calma admite ${CUPO_DIA_DE_CALMA} personas por día y para esa fecha ya hay ${ocupadas}. Quedan ${Math.max(
+            CUPO_DIA_DE_CALMA - ocupadas,
+            0,
+          )} cupos.`,
+        );
+      }
+    }
+
+    /* Las noches de la estadía, para saber a cuál puede pertenecer un extra. */
+    const nochesValidas: string[] = [];
+    if (!esDia) {
+      for (let dia = entrada; dia < salida; dia = sumarDiasISO(dia, 1)) {
+        nochesValidas.push(dia);
+      }
+    }
+
+    const extras = leerExtras(formData, nochesValidas);
     const subtotalExtras = extras.reduce(
       (suma, extra) => suma + extra.cantidad * extra.precio_unitario,
       0,
@@ -162,7 +303,22 @@ export async function guardarReservaAction(
         max: 1_000_000_000,
       }) ?? 0;
 
+    const total = subtotalAlojamiento + subtotalExtras;
+
+    /* Anticipo: el 50 % que pide el hotel para confirmar, o el 100 %. El monto
+       se guarda además del porcentaje porque es la cifra que se le prometió al
+       huésped; recalcularla después, con otras tarifas, daría otro número. */
+    const porcentajeCrudo = Number(formData.get("porcentaje_anticipo"));
+    const porcentajeAnticipo = (
+      PORCENTAJES_ANTICIPO as readonly number[]
+    ).includes(porcentajeCrudo)
+      ? (porcentajeCrudo as 50 | 100)
+      : 50;
+    const montoAnticipo =
+      porcentajeAnticipo === 100 ? total : Math.round(total / 2);
+
     const datos = {
+      tipo,
       alojamiento_id: alojamientoId,
       plan_id: planId,
       estancia: aRangoFechas(entrada, salida),
@@ -184,14 +340,16 @@ export async function guardarReservaAction(
       notas: textoOpcional(formData, "notas", 4000),
       subtotal_alojamiento: subtotalAlojamiento,
       subtotal_extras: subtotalExtras,
-      total: subtotalAlojamiento + subtotalExtras,
+      total,
       monto_pagado: montoPagado,
       estado,
       origen,
+      porcentaje_anticipo: porcentajeAnticipo,
+      monto_anticipo: montoAnticipo,
     };
 
     const avisoCapacidad =
-      numPersonas > alojamiento.capacidad
+      alojamiento && numPersonas > alojamiento.capacidad
         ? `\nAviso: son más personas de las que caben normalmente en ${alojamiento.nombre} (${alojamiento.capacidad}).`
         : "";
 
@@ -247,7 +405,9 @@ export async function guardarReservaAction(
     refrescar(nuevaId);
     redirect(
       `${RUTA_LISTA}/${nuevaId}?ok=${encodeURIComponent(
-        `Reserva ${codigoUsado} creada. Esas fechas ya quedan ocupadas en el calendario.${avisoCapacidad}`,
+        esDia
+          ? `Reserva ${codigoUsado} creada. Ese Día de Calma ya cuenta para el cupo de esa fecha; no bloquea ninguna cabaña.`
+          : `Reserva ${codigoUsado} creada. Esas fechas ya quedan ocupadas en el calendario.${avisoCapacidad}`,
       )}`,
     );
   });
@@ -257,7 +417,7 @@ export async function guardarReservaAction(
 async function guardarExtrasDeReserva(
   supabase: Awaited<ReturnType<typeof requireAdmin>>["supabase"],
   reservaId: string,
-  extras: { extra_id: string; cantidad: number; precio_unitario: number }[],
+  extras: LineaExtra[],
 ) {
   const { error: errorBorrado } = await supabase
     .from("reserva_extras")
@@ -273,6 +433,7 @@ async function guardarExtrasDeReserva(
       extra_id: extra.extra_id,
       cantidad: extra.cantidad,
       precio_unitario: extra.precio_unitario,
+      noche: extra.noche,
     })),
   );
   if (error) throw new Error(error.message);
@@ -333,10 +494,14 @@ export async function cambiarEstadoReservaAction(formData: FormData) {
     .eq("id", id);
 
   if (error) {
+    /* El mensaje del cupo del Día de Calma ya viene escrito en español desde
+       la base (trigger `validar_cupo_dia_de_calma`): se muestra tal cual. */
     const mensaje =
       error.code === "23P01"
         ? "Esas fechas se cruzan con otra reserva activa de la misma cabaña."
-        : error.message;
+        : error.code === CUPO_DIA_LLENO
+          ? `No se pudo cambiar el estado. ${error.message}`
+          : error.message;
     redirect(`${RUTA_LISTA}/${id}?error=${encodeURIComponent(mensaje)}`);
   }
 

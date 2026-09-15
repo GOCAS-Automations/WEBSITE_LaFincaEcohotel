@@ -17,6 +17,7 @@ import {
   bloqueosEnRango,
   listarReservas,
   opcionesAlojamiento,
+  personasDeDiaPorFecha,
   reservasEnRango,
 } from "@/lib/admin/datos";
 import {
@@ -29,6 +30,7 @@ import {
 } from "@/lib/admin/fechas";
 import {
   ESTADOS_RESERVA,
+  ETIQUETA_CORTA_TIPO_RESERVA,
   ETIQUETA_ESTADO,
   ETIQUETA_ORIGEN,
   TONO_ESTADO,
@@ -69,19 +71,20 @@ export default async function PaginaReservas({
       ? (params.estado as EstadoReserva)
       : "todas";
 
-  const [alojamientos, reservasDelMes, bloqueosDelMes, reservas] =
+  const [alojamientos, reservasDelMes, bloqueosDelMes, reservas, cupoDelMes] =
     await Promise.all([
       opcionesAlojamiento(supabase),
       reservasEnRango(supabase, primerDia, finDeMes),
       bloqueosEnRango(supabase, primerDia, finDeMes),
       listarReservas(supabase, { estado: estadoFiltro }),
+      personasDeDiaPorFecha(supabase, primerDia, finDeMes),
     ]);
 
   return (
     <>
       <EncabezadoPagina
         titulo="Reservas"
-        descripcion="El calendario del mes con las cabañas y, más abajo, todas las reservas registradas."
+        descripcion="El calendario del mes con las cabañas y el cupo del Día de Calma y, más abajo, todas las reservas registradas."
         accion={
           <EnlaceBoton href="/admin/reservas/nueva">Nueva reserva</EnlaceBoton>
         }
@@ -94,6 +97,7 @@ export default async function PaginaReservas({
         alojamientos={alojamientos}
         reservas={reservasDelMes}
         bloqueos={bloqueosDelMes}
+        personasDeDia={cupoDelMes}
       />
 
       <div className="mt-8">
@@ -175,7 +179,9 @@ export default async function PaginaReservas({
                       <p className="mt-0.5 text-[0.75rem] text-crema-600">
                         {reserva.codigo}
                         <span className="mx-1.5">·</span>
-                        {reserva.alojamiento_nombre ?? "Sin cabaña"}
+                        {reserva.tipo === "dia"
+                          ? `${ETIQUETA_CORTA_TIPO_RESERVA.dia} · ${reserva.num_personas} ${reserva.num_personas === 1 ? "persona" : "personas"}`
+                          : (reserva.alojamiento_nombre ?? "Sin cabaña")}
                         <span className="mx-1.5">·</span>
                         {rangoCorto(reserva.entrada, reserva.salida)}
                         <span className="mx-1.5">·</span>

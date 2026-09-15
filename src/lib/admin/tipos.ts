@@ -12,6 +12,7 @@ import type {
   OrigenReserva,
   TipoExtra,
   TipoPlan,
+  TipoReserva,
 } from "@/lib/tipos/basedatos";
 
 /* ===========================================================================
@@ -50,7 +51,32 @@ export const ORIGENES_RESERVA = [
   "whatsapp",
   "telefono",
   "manual",
+  "google_calendar",
 ] as const;
+
+/* ---------------------------------------------------------------------------
+ * Las dos formas de reservar
+ * ------------------------------------------------------------------------- */
+
+export const TIPOS_RESERVA = ["hospedaje", "dia"] as const;
+
+/** Nunca «pasadía»: el hotel rechaza esa palabra (§3 de DATOS_CLIENTE.md). */
+export const ETIQUETA_TIPO_RESERVA: Record<TipoReserva, string> = {
+  hospedaje: "Hospedaje (noches en una cabaña)",
+  dia: "Día de Calma (sin hospedaje)",
+};
+
+/** Pastilla corta, para listados y calendario. */
+export const ETIQUETA_CORTA_TIPO_RESERVA: Record<TipoReserva, string> = {
+  hospedaje: "Hospedaje",
+  dia: "Día de Calma",
+};
+
+export const AYUDA_TIPO_RESERVA: Record<TipoReserva, string> = {
+  hospedaje:
+    "El huésped duerme en una cabaña. Esas noches quedan ocupadas en el calendario.",
+  dia: "Visita de un día, de 10:00 a. m. a 5:00 p. m., sin cabaña. No bloquea ninguna cabaña, pero cuenta para el cupo de 10 personas de ese día.",
+};
 
 export const ETIQUETA_ESTADO: Record<EstadoReserva, string> = {
   pendiente: "Pendiente",
@@ -72,6 +98,9 @@ export const ETIQUETA_ORIGEN: Record<OrigenReserva, string> = {
   whatsapp: "Por WhatsApp",
   telefono: "Por teléfono",
   manual: "Registrada a mano",
+  /* Reservado para la sincronización futura con el calendario que el hotel
+     llena a mano. Hoy nada crea reservas con este origen. */
+  google_calendar: "Desde el calendario de Google",
 };
 
 /**
@@ -104,6 +133,9 @@ export const TONO_ESTADO: Record<
 export type ReservaAdmin = {
   id: string;
   codigo: string;
+  /** Hospedaje o Día de Calma. */
+  tipo: TipoReserva;
+  /** `null` en las reservas de Día de Calma. */
   alojamiento_id: string | null;
   alojamiento_nombre: string | null;
   plan_id: string | null;
@@ -122,6 +154,12 @@ export type ReservaAdmin = {
   monto_pagado: number;
   estado: EstadoReserva;
   origen: OrigenReserva;
+  /** Qué parte del total se cobró por adelantado: 50 o 100. */
+  porcentaje_anticipo: 50 | 100;
+  /** Anticipo congelado al reservar; `null` en las reservas antiguas. */
+  monto_anticipo: number | null;
+  /** Id del evento externo (Google Calendar) si la reserva vino de fuera. */
+  referencia_externa: string | null;
   created_at: string;
 };
 
@@ -156,6 +194,12 @@ export type OpcionAlojamiento = {
 export type OpcionPlan = {
   id: string;
   nombre: string;
+  /** Hospedaje o día: el formulario de reserva pregunta cosas distintas. */
+  tipo: TipoPlan;
+  /** Precio propio de los planes de día (el Día de Calma). */
+  precio_base: number | null;
+  /** Franja horaria de los planes de día. */
+  horario: string | null;
 };
 
 /* ---------------------------------------------------------------------------
