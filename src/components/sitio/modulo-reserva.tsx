@@ -7,7 +7,12 @@ import { clasesBoton } from "@/components/ui/boton";
 import { nochesDe, validarRango } from "@/lib/reserva/noches";
 
 import { CalendarioFechas } from "./calendario-fechas";
-import { IconoFlecha, IconoLlave } from "./iconos";
+import {
+  IconoCabana,
+  IconoChevron,
+  IconoFlecha,
+  IconoLlave,
+} from "./iconos";
 
 /**
  * Módulo de reserva directa de la portada.
@@ -136,10 +141,13 @@ export function ModuloReserva({
           {/* Solo la cuenta, no el desglose por tipo de noche: este módulo vive
               DENTRO del hero y tiene que caber en el primer visor de un
               teléfono. El desglose entero lo enseña `/reservar`, que es adonde
-              lleva el botón. */}
+              lleva el botón.
+
+              Sin fechas no se escribe nada. Aquí decía «Sin intermediarios ni
+              comisiones» y Cesar pidió retirarlo del sitio entero. */}
           {noches.length > 0
             ? `${noches.length} ${noches.length === 1 ? "noche" : "noches"}`
-            : "Sin intermediarios ni comisiones"}
+            : ""}
         </p>
       </div>
 
@@ -151,21 +159,43 @@ export function ModuloReserva({
         ocupan las dos columnas.
       */}
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.2fr_1.4fr_auto] lg:items-end lg:gap-4">
+        {/*
+          EL DESPLEGABLE, CON LA FORMA DEL SITIO Y EL MOTOR DEL NAVEGADOR.
+
+          Sin `appearance-none` el navegador dibuja su propio control: un
+          rectángulo gris de esquinas rectas con la flecha del sistema, al lado
+          de un campo de fechas con radio de 14 px y borde crema. Se veía —lo
+          dijo Cesar— «rectangular y anticuado».
+
+          Lo que NO se hace es sustituirlo por una lista hecha a mano: el
+          `<select>` nativo es lo que abre la rueda a pantalla completa en un
+          teléfono, lo que responde a las teclas y lo que cualquier lector de
+          pantalla ya sabe anunciar. Se le quita la piel y se le pone la del
+          sitio; el motor sigue siendo el del navegador.
+
+          El chevron va en un `<span>` hermano con `pointer-events-none`: si
+          estuviera dentro del `<label>` como hijo interactivo, un clic en la
+          flecha no abriría la lista.
+        */}
         <label className="flex flex-col gap-1.5">
           <span className={CLASE_ETIQUETA}>Cabaña</span>
-          <select
-            name="cabana"
-            value={cabana}
-            onChange={(evento) => setCabana(evento.target.value)}
-            className={CLASE_CAMPO}
-          >
-            <option value="">Cualquier cabaña</option>
-            {cabanas.map((opcion) => (
-              <option key={opcion.slug} value={opcion.slug}>
-                {opcion.nombre}
-              </option>
-            ))}
-          </select>
+          <span className="relative block">
+            <IconoCabana className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-oliva-600" />
+            <select
+              name="cabana"
+              value={cabana}
+              onChange={(evento) => setCabana(evento.target.value)}
+              className={`${CLASE_CAMPO} cursor-pointer appearance-none truncate pr-10 pl-9`}
+            >
+              <option value="">Cualquier cabaña</option>
+              {cabanas.map((opcion) => (
+                <option key={opcion.slug} value={opcion.slug}>
+                  {opcion.nombre}
+                </option>
+              ))}
+            </select>
+            <IconoChevron className="pointer-events-none absolute top-1/2 right-3.5 size-4 -translate-y-1/2 text-crema-600" />
+          </span>
         </label>
 
         <div className="flex flex-col gap-1.5">

@@ -137,6 +137,35 @@ export function IconoLlave({ className }: PropsIcono) {
   );
 }
 
+/** Cabaña: la casita del campo de «Cabaña» del módulo de reserva. */
+export function IconoCabana({ className }: PropsIcono) {
+  return (
+    <Svg className={className}>
+      <path d="M3.5 10.8 12 4l8.5 6.8" />
+      <path d="M6 9.6V20h12V9.6" />
+      <path d="M10 20v-4.6h4V20" />
+    </Svg>
+  );
+}
+
+/**
+ * Chevron hacia abajo.
+ *
+ * Es el del desplegable de cabañas: el `<select>` va con `appearance-none`
+ * para poder darle el radio, el borde y el alto del resto de los campos, y esa
+ * propiedad se lleva por delante la flecha que pinta el sistema. Dibujarla
+ * nosotros es la única forma de que el campo se vea del sitio y siga siendo un
+ * `<select>` nativo —que es lo que abre la rueda a pantalla completa en un
+ * teléfono y lo que ya sabe manejar cualquier lector de pantalla—.
+ */
+export function IconoChevron({ className }: PropsIcono) {
+  return (
+    <Svg className={className}>
+      <path d="m6 9.5 6 6 6-6" />
+    </Svg>
+  );
+}
+
 export function IconoHoja({ className }: PropsIcono) {
   return (
     <Svg className={className}>
