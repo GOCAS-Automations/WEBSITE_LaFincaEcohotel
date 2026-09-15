@@ -9,7 +9,26 @@ export type EstadoReserva =
   | "cancelada"
   | "completada";
 
-export type OrigenReserva = "web" | "whatsapp" | "telefono" | "manual";
+/**
+ * De dónde salió la reserva.
+ *
+ * `google_calendar` queda declarado para la sincronización futura con el
+ * calendario que el hotel llena a mano desde WhatsApp (ver la migración 009):
+ * hoy NADA crea reservas con ese origen, pero el panel ya sabe nombrarlo.
+ */
+export type OrigenReserva =
+  | "web"
+  | "whatsapp"
+  | "telefono"
+  | "manual"
+  | "google_calendar";
+
+/**
+ * Qué se vendió en una reserva:
+ *   · `hospedaje` — noche(s) en una cabaña.
+ *   · `dia`       — Día de Calma: un solo día, sin cabaña y con cupo diario.
+ */
+export type TipoReserva = "hospedaje" | "dia";
 
 export type TipoExtra = "experiencia" | "adicional";
 
@@ -93,6 +112,9 @@ export interface Extra {
 export interface Reserva {
   id: string;
   codigo: string;
+  /** Hospedaje o Día de Calma. Decide si hay cabaña y si cuenta para el cupo. */
+  tipo: TipoReserva;
+  /** `null` en las reservas de Día de Calma: no ocupan cabaña. */
   alojamiento_id: string | null;
   plan_id: string | null;
   /** `daterange` `[check_in, check_out)`. */
@@ -109,14 +131,27 @@ export interface Reserva {
   monto_pagado: number;
   estado: EstadoReserva;
   origen: OrigenReserva;
+  /** Id del evento en el sistema de origen (Google Calendar). */
+  referencia_externa: string | null;
+  /** Qué parte del total se cobra por adelantado: 50 o 100. */
+  porcentaje_anticipo: 50 | 100;
+  /** Anticipo en COP congelado al reservar. */
+  monto_anticipo: number | null;
   created_at: string;
 }
 
 export interface ReservaExtra {
+  id: string;
   reserva_id: string;
   extra_id: string;
   cantidad: number;
   precio_unitario: number;
+  /**
+   * Noche (fecha de check-in) a la que se añade el extra. `null` = para toda
+   * la estadía, que es como se apuntan los adicionales que no pertenecen a una
+   * noche concreta (la segunda mascota) y como quedaron las reservas viejas.
+   */
+  noche: string | null;
 }
 
 export interface Bloqueo {
