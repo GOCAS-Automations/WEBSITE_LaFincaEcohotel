@@ -26,6 +26,8 @@ export type CampoLista = {
   etiqueta: string;
   tipo: "texto" | "parrafo" | "imagen";
   marcador?: string;
+  /** Alto de la caja cuando `tipo` es "parrafo". Tres líneas por defecto. */
+  filas?: number;
   /** Carpeta del bucket cuando `tipo` es "imagen". */
   carpeta?: CarpetaSubida;
 };
@@ -137,7 +139,7 @@ export function EditorLista({
                           actualizar(indice, campo.clave, evento.target.value)
                         }
                         placeholder={campo.marcador}
-                        rows={3}
+                        rows={campo.filas ?? 3}
                         className={`${CLASE_INPUT} py-2 text-[0.8125rem] leading-relaxed`}
                       />
                     ) : campo.tipo === "imagen" ? (

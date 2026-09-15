@@ -1,8 +1,13 @@
 import Link from "next/link";
 
 import { Seccion } from "@/components/ui/seccion";
-import { getContacto } from "@/lib/contenido";
-import { documentosLegales, type ClaveLegal } from "@/lib/legal";
+import { getDocumentoLegal } from "@/lib/contenido";
+import {
+  RUTA_LEGAL,
+  esLista,
+  itemsDeLista,
+  type ClaveLegal,
+} from "@/lib/legal";
 import { DOCUMENTOS_LEGALES } from "@/lib/sitio";
 import { formatearFecha } from "@/lib/utils/formato";
 
@@ -13,10 +18,15 @@ import { formatearFecha } from "@/lib/utils/formato";
  * limita el ancho a ~68 caracteres por línea, que es donde la lectura larga
  * deja de cansar, y se deja al final la navegación entre los cuatro documentos
  * porque quien llega a uno suele necesitar otro.
+ *
+ * Desde el 2026-09-16 el texto sale del CMS (`legal.*`) y no de una constante:
+ * el cliente los edita desde el panel. Las viñetas se reconocen por la
+ * convención de `esLista()` —un párrafo cuyas líneas empiezan por «- »—, que es
+ * lo que deja editar un documento entero con cajas de texto normales.
  */
 export async function PaginaLegal({ clave }: { clave: ClaveLegal }) {
-  const contacto = await getContacto();
-  const documento = documentosLegales(contacto)[clave];
+  const documento = await getDocumentoLegal(clave);
+  const ruta = RUTA_LEGAL[clave];
 
   return (
     <>
@@ -56,23 +66,21 @@ export async function PaginaLegal({ clave }: { clave: ClaveLegal }) {
 
       <Seccion fondo="crema">
         <article className="mx-auto flex max-w-[68ch] flex-col gap-10">
-          {documento.secciones.map((seccion) => (
-            <section key={seccion.titulo} className="flex flex-col gap-4">
-              <h2 className="font-titulo text-xl font-bold text-petroleo-900">
-                {seccion.titulo}
-              </h2>
+          {documento.secciones.map((seccion, indiceSeccion) => (
+            <section
+              key={`${indiceSeccion}-${seccion.titulo}`}
+              className="flex flex-col gap-4"
+            >
+              {seccion.titulo ? (
+                <h2 className="font-titulo text-xl font-bold text-petroleo-900">
+                  {seccion.titulo}
+                </h2>
+              ) : null}
 
-              {seccion.bloques.map((bloque, indice) =>
-                bloque.tipo === "parrafo" ? (
-                  <p
-                    key={indice}
-                    className="text-base leading-relaxed text-crema-800"
-                  >
-                    {bloque.texto}
-                  </p>
-                ) : (
+              {seccion.parrafos.map((parrafo, indice) =>
+                esLista(parrafo) ? (
                   <ul key={indice} className="flex flex-col gap-2.5 pl-1">
-                    {bloque.items.map((item) => (
+                    {itemsDeLista(parrafo).map((item) => (
                       <li
                         key={item.slice(0, 40)}
                         className="flex gap-3 text-base leading-relaxed text-crema-800"
@@ -85,6 +93,13 @@ export async function PaginaLegal({ clave }: { clave: ClaveLegal }) {
                       </li>
                     ))}
                   </ul>
+                ) : (
+                  <p
+                    key={indice}
+                    className="text-base leading-relaxed text-crema-800"
+                  >
+                    {parrafo}
+                  </p>
                 ),
               )}
             </section>
@@ -99,7 +114,7 @@ export async function PaginaLegal({ clave }: { clave: ClaveLegal }) {
             </h2>
             <ul className="mt-4 flex flex-wrap gap-x-6 gap-y-3">
               {DOCUMENTOS_LEGALES.filter(
-                (otro) => otro.href !== documento.ruta,
+                (otro) => otro.href !== ruta,
               ).map((otro) => (
                 <li key={otro.href}>
                   <Link

@@ -1,7 +1,7 @@
 import type { ClaveContenido } from "@/lib/contenido";
 
 /**
- * Las 18 claves del CMS, agrupadas en secciones que tengan sentido para quien
+ * Las 22 claves del CMS, agrupadas en secciones que tengan sentido para quien
  * las edita.
  *
  * El contrato de cada clave —qué campos tiene su jsonb y dónde se ve— está en
@@ -91,6 +91,19 @@ export const SECCIONES_CONTENIDO: SeccionContenido[] = [
       "El número de WhatsApp, la dirección, el horario del restaurante, el RNT y las redes sociales. Es la información que aparece en el pie de todas las páginas.",
     verEn: "/contacto",
     claves: ["sitio.contacto"],
+  },
+  {
+    slug: "legales",
+    titulo: "Documentos legales",
+    descripcion:
+      "La política de privacidad, los términos y condiciones, el tratamiento de datos y la política de cancelación. Son los textos que exige la pasarela de pagos y los que lee quien reclama.",
+    verEn: "/legal/privacidad",
+    claves: [
+      "legal.privacidad",
+      "legal.terminos",
+      "legal.datos",
+      "legal.cancelacion",
+    ],
   },
   {
     slug: "buscadores",

@@ -2,13 +2,28 @@
  * Documentos legales del sitio.
  *
  * ---------------------------------------------------------------------------
- * POR QUÉ VIVEN EN CÓDIGO Y NO EN EL CMS
+ * SE EDITAN DESDE EL PANEL (decisión de Cesar, 2026-09-16)
  * ---------------------------------------------------------------------------
- * Son documentos jurídicos, no contenido de marketing: se revisan enteros y se
- * versionan con el repositorio, con fecha de revisión explícita
- * (`LEGAL_ACTUALIZADO` en `src/lib/sitio.ts`). Editarlos desde un panel, sin
- * historial y sin control de cambios, sería un problema el día que alguien
- * discuta una cancelación.
+ * Hasta hoy vivían SOLO en código, con este argumento: son documentos
+ * jurídicos, se revisan enteros y se versionan con el repositorio. La decisión
+ * se revierte porque el cliente tiene que poder corregir una frase de su
+ * política de cancelación sin esperar un despliegue, y porque el sitio entra a
+ * revisión legal con Amapola: cada vuelta de esa revisión era, si no, un
+ * cambio de código.
+ *
+ * Lo que queda de la decisión anterior es lo que la hacía valiosa: **el texto
+ * de este archivo sigue siendo el valor por defecto**. Si la fila del CMS no
+ * existe, o alguien la vacía, el sitio publica esto. El CMS superpone, nunca
+ * sustituye a la nada. Las cuatro claves son `legal.privacidad`,
+ * `legal.terminos`, `legal.datos` y `legal.cancelacion`
+ * (ver `docs/CMS_CLAVES.md`).
+ *
+ * ⚠ **Los datos de contacto que aparecen dentro del texto legal quedan
+ * congelados aquí.** Antes se interpolaban desde `sitio.contacto`, así que el
+ * número de WhatsApp del texto legal siempre coincidía con el del pie. Al pasar
+ * el texto al CMS eso deja de ser automático: si el hotel cambia de número o de
+ * dirección hay que corregirlo también en estos cuatro documentos, desde el
+ * panel. Está avisado en la propia pantalla del panel.
  *
  * ⚠ SON BORRADORES. Están redactados para que el sitio pueda publicarse y para
  * que la pasarela de pagos (Wompi exige política de datos, términos y política
@@ -26,16 +41,39 @@
  * Datos que faltan y hay que completar cuando el cliente los entregue:
  * razón social y NIT (Raquel Lenis) y el correo de notificaciones (Amapola).
  */
-import type { ContactoSitio } from "./contenido";
 import { LEGAL_ACTUALIZADO, SITIO } from "./sitio";
 
-export type BloqueLegal =
-  | { tipo: "parrafo"; texto: string }
-  | { tipo: "lista"; items: string[] };
+export type ClaveLegal =
+  | "privacidad"
+  | "terminos"
+  | "datos"
+  | "cancelacion";
 
+export const CLAVES_LEGALES: readonly ClaveLegal[] = [
+  "privacidad",
+  "terminos",
+  "datos",
+  "cancelacion",
+] as const;
+
+/* ---------------------------------------------------------------------------
+ * La forma que se guarda en el CMS
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Una sección del documento: un título y sus párrafos.
+ *
+ * **Las listas de viñetas son párrafos con una convención**: un párrafo cuyas
+ * líneas empiezan todas por «- » se pinta como lista de viñetas. Así el panel
+ * edita el documento entero con cajas de texto normales —una sección, una
+ * caja— sin inventarse un editor de bloques, y el sitio conserva las listas que
+ * ya tenían los cuatro documentos. Ver `esLista()` y el componente
+ * `src/components/paginas/legal.tsx`.
+ */
 export type SeccionLegal = {
   titulo: string;
-  bloques: BloqueLegal[];
+  /** Párrafos separados por una línea en blanco en el panel. */
+  parrafos: string[];
 };
 
 export type DocumentoLegal = {
@@ -44,34 +82,76 @@ export type DocumentoLegal = {
   entrada: string;
   /** Descripción para los metadatos. */
   descripcion: string;
-  ruta: string;
+  /** Fecha `AAAA-MM-DD` de la última revisión. */
   actualizado: string;
   secciones: SeccionLegal[];
 };
 
-export type ClaveLegal =
-  | "privacidad"
-  | "terminos"
-  | "datos"
-  | "cancelacion";
+/** Dónde vive cada documento. La ruta NO se edita: es la dirección del sitio. */
+export const RUTA_LEGAL: Record<ClaveLegal, string> = {
+  privacidad: "/legal/privacidad",
+  terminos: "/legal/terminos",
+  datos: "/legal/datos",
+  cancelacion: "/legal/cancelacion",
+};
 
-const p = (texto: string): BloqueLegal => ({ tipo: "parrafo", texto });
-const lista = (items: string[]): BloqueLegal => ({ tipo: "lista", items });
+/** La clave del CMS de cada documento. */
+export const CLAVE_CMS_LEGAL: Record<ClaveLegal, string> = {
+  privacidad: "legal.privacidad",
+  terminos: "legal.terminos",
+  datos: "legal.datos",
+  cancelacion: "legal.cancelacion",
+};
 
 /**
- * Los cuatro documentos, ya resueltos con los datos de contacto vigentes.
+ * ¿Este párrafo es en realidad una lista de viñetas?
  *
- * Reciben `contacto` en vez de leerlo por su cuenta para que el número de
- * WhatsApp y la dirección que aparecen en el texto legal sean EXACTAMENTE los
- * mismos que muestra el pie: dos direcciones distintas en el mismo sitio son
- * un problema real si alguien reclama.
+ * Lo es cuando tiene más de una línea y **todas** empiezan por «- ». Una sola
+ * línea suelta no cuenta: un párrafo que empieza por un guion es un párrafo.
  */
-export function documentosLegales(
-  contacto: ContactoSitio,
-): Record<ClaveLegal, DocumentoLegal> {
-  const canal = `WhatsApp ${contacto.whatsapp_visible}`;
-  const domicilio = contacto.direccion_completa;
-  const responsable = `${SITIO.nombre} (RNT ${contacto.rnt})`;
+export function esLista(parrafo: string): boolean {
+  const lineas = parrafo.split("\n").map((linea) => linea.trim()).filter(Boolean);
+  return lineas.length > 1 && lineas.every((linea) => linea.startsWith("- "));
+}
+
+/** Los elementos de un párrafo que es lista, ya sin el guion. */
+export function itemsDeLista(parrafo: string): string[] {
+  return parrafo
+    .split("\n")
+    .map((linea) => linea.trim())
+    .filter(Boolean)
+    .map((linea) => linea.replace(/^-\s*/, ""));
+}
+
+/* ---------------------------------------------------------------------------
+ * El texto por defecto
+ * ------------------------------------------------------------------------- */
+
+/** Forma intermedia con la que se REDACTA aquí abajo, más cómoda de leer. */
+type BloqueFuente =
+  | { tipo: "parrafo"; texto: string }
+  | { tipo: "lista"; items: string[] };
+
+type DocumentoFuente = Omit<DocumentoLegal, "secciones"> & {
+  ruta: string;
+  secciones: { titulo: string; bloques: BloqueFuente[] }[];
+};
+
+const p = (texto: string): BloqueFuente => ({ tipo: "parrafo", texto });
+const lista = (items: string[]): BloqueFuente => ({ tipo: "lista", items });
+
+/**
+ * Los cuatro documentos con el texto de partida.
+ *
+ * Los datos de contacto se toman de `SITIO` —no de la fila `sitio.contacto` del
+ * CMS— porque esto es el respaldo: tiene que poder construirse sin base de
+ * datos, en el build y en el generador del seed. Y porque, una vez el texto
+ * está en el CMS, dejan de estar ligados: ver el aviso de la cabecera.
+ */
+function documentosFuente(): Record<ClaveLegal, DocumentoFuente> {
+  const canal = `WhatsApp ${SITIO.contacto.whatsappVisible}`;
+  const domicilio = SITIO.contacto.direccionCompleta;
+  const responsable = `${SITIO.nombre} (RNT ${SITIO.rnt})`;
 
   return {
     /* ------------------------------------------------------------------ */
@@ -530,5 +610,87 @@ export function documentosLegales(
         },
       ],
     },
+  };
+}
+
+/* ---------------------------------------------------------------------------
+ * De la forma de redacción a la del CMS
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Aplana los bloques de una sección a `parrafos[]`.
+ *
+ * Una lista se convierte en UN párrafo cuyas líneas empiezan por «- »: es la
+ * convención que el panel edita en una caja de texto y que el sitio vuelve a
+ * pintar como viñetas. Ver `esLista()`.
+ */
+function aParrafosDeSeccion(bloques: BloqueFuente[]): string[] {
+  return bloques.map((bloque) =>
+    bloque.tipo === "parrafo"
+      ? bloque.texto
+      : bloque.items.map((item) => `- ${item}`).join("\n"),
+  );
+}
+
+/**
+ * Los cuatro documentos en la forma exacta que se guarda en el CMS.
+ *
+ * Es el respaldo de `src/lib/contenido.ts` y la fuente del seed
+ * (`npm run seed:contenido`). Una función y no una constante para no ejecutar
+ * nada al importar el módulo; el resultado se congela en `RESPALDO_LEGAL`.
+ */
+export function respaldosLegales(): Record<ClaveLegal, DocumentoLegal> {
+  const fuente = documentosFuente();
+  const salida = {} as Record<ClaveLegal, DocumentoLegal>;
+
+  for (const clave of CLAVES_LEGALES) {
+    const documento = fuente[clave];
+    salida[clave] = {
+      titulo: documento.titulo,
+      entrada: documento.entrada,
+      descripcion: documento.descripcion,
+      actualizado: documento.actualizado,
+      secciones: documento.secciones.map((seccion) => ({
+        titulo: seccion.titulo,
+        parrafos: aParrafosDeSeccion(seccion.bloques),
+      })),
+    };
+  }
+
+  return salida;
+}
+
+/** El respaldo ya calculado, para importarlo sin repetir el trabajo. */
+export const RESPALDO_LEGAL: Record<ClaveLegal, DocumentoLegal> =
+  respaldosLegales();
+
+/**
+ * Deja un documento del CMS en una forma que el componente pueda pintar.
+ *
+ * `fusionar()` reemplaza los arreglos ENTEROS sin mirar dentro, así que una
+ * sección guardada sin título o con `parrafos` que no sean textos llegaría tal
+ * cual a la página. Aquí se descarta lo que no encaja y, si no queda nada, se
+ * devuelve el respaldo: un documento legal en blanco es peor que uno viejo.
+ */
+export function normalizarDocumentoLegal(
+  clave: ClaveLegal,
+  valor: DocumentoLegal,
+): DocumentoLegal {
+  const secciones = (Array.isArray(valor.secciones) ? valor.secciones : [])
+    .flatMap((seccion): SeccionLegal[] => {
+      if (!seccion || typeof seccion !== "object") return [];
+      const titulo = typeof seccion.titulo === "string" ? seccion.titulo.trim() : "";
+      const parrafos = (Array.isArray(seccion.parrafos) ? seccion.parrafos : [])
+        .filter((parrafo): parrafo is string => typeof parrafo === "string")
+        .map((parrafo) => parrafo.trim())
+        .filter(Boolean);
+      if (!titulo && parrafos.length === 0) return [];
+      return [{ titulo, parrafos }];
+    });
+
+  return {
+    ...valor,
+    secciones:
+      secciones.length > 0 ? secciones : RESPALDO_LEGAL[clave].secciones,
   };
 }

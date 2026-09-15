@@ -37,6 +37,13 @@ import {
   ZONAS_COMUNES,
 } from "./fotos";
 import { IMAGEN_SOCIAL, SITIO, medio, video } from "./sitio";
+import {
+  CLAVE_CMS_LEGAL,
+  RESPALDO_LEGAL,
+  normalizarDocumentoLegal,
+  type ClaveLegal,
+  type DocumentoLegal,
+} from "./legal";
 import type { Alojamiento, Extra, Plan } from "./tipos/basedatos";
 
 /* ===========================================================================
@@ -1020,6 +1027,12 @@ export const CLAVES_CONTENIDO = [
   "galeria",
   "reservar",
   "no_encontrado",
+  /* Los cuatro documentos legales. Hasta el 2026-09-16 vivían SOLO en código;
+     ahora se editan desde el panel y `src/lib/legal.ts` es su respaldo. */
+  "legal.privacidad",
+  "legal.terminos",
+  "legal.datos",
+  "legal.cancelacion",
 ] as const;
 
 export type ClaveContenido = (typeof CLAVES_CONTENIDO)[number];
@@ -1058,6 +1071,10 @@ export const RESPALDOS: Record<ClaveContenido, Record<string, unknown>> = {
   galeria: RESPALDO_GALERIA,
   reservar: RESPALDO_RESERVAR,
   no_encontrado: RESPALDO_NO_ENCONTRADO,
+  "legal.privacidad": RESPALDO_LEGAL.privacidad,
+  "legal.terminos": RESPALDO_LEGAL.terminos,
+  "legal.datos": RESPALDO_LEGAL.datos,
+  "legal.cancelacion": RESPALDO_LEGAL.cancelacion,
 };
 
 /**
@@ -1615,6 +1632,24 @@ export const getUltimaModificacion = cache(
       return vacio;
     }
   },
+);
+
+/**
+ * Uno de los cuatro documentos legales, con lo que haya guardado el panel.
+ *
+ * Pasa por `normalizarDocumentoLegal()` porque `fusionar()` reemplaza los
+ * arreglos enteros sin mirar dentro: una sección guardada a medias llegaría
+ * tal cual a una página que el sitio publica como documento jurídico.
+ */
+export const getDocumentoLegal = cache(
+  async (clave: ClaveLegal): Promise<DocumentoLegal> =>
+    normalizarDocumentoLegal(
+      clave,
+      await obtener(
+        CLAVE_CMS_LEGAL[clave] as ClaveContenido,
+        RESPALDO_LEGAL[clave],
+      ),
+    ),
 );
 
 /* ===========================================================================

@@ -26,12 +26,51 @@ import {
   FormularioContacto,
   FormularioSeo,
 } from "../formularios-sitio";
+import { FormularioLegal } from "../formularios-legal";
 import { buscarSeccion } from "../secciones";
 import { EncabezadoPagina } from "@/components/admin/ui";
 import { requireAdmin } from "@/lib/admin/auth";
 import { leerContenidoPanel } from "@/lib/admin/datos";
+import { RESPALDOS, type ClaveContenido } from "@/lib/contenido";
+import { CLAVE_CMS_LEGAL, type ClaveLegal } from "@/lib/legal";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * Los cuatro documentos legales, en el orden en que se enlazan desde el pie.
+ *
+ * Cada uno se guarda por separado: un error en la política de cancelación no
+ * puede impedir corregir la de privacidad. Es la misma regla que ya seguía el
+ * resto del módulo de contenido (un botón de guardar por bloque).
+ */
+const DOCUMENTOS_DEL_PANEL: {
+  clave: ClaveLegal;
+  titulo: string;
+  descripcion: string;
+}[] = [
+  {
+    clave: "privacidad",
+    titulo: "Política de privacidad",
+    descripcion: "Qué información se recoge en el sitio y para qué se usa.",
+  },
+  {
+    clave: "terminos",
+    titulo: "Términos y condiciones",
+    descripcion: "Las condiciones del servicio y de la reserva.",
+  },
+  {
+    clave: "datos",
+    titulo: "Tratamiento de datos personales",
+    descripcion:
+      "La autorización de tratamiento de datos que exige la Ley 1581 de 2012.",
+  },
+  {
+    clave: "cancelacion",
+    titulo: "Política de cancelación",
+    descripcion:
+      "Plazos, retenciones y reembolsos. Es el documento que se cita cuando alguien cancela.",
+  },
+];
 
 export async function generateMetadata({
   params,
@@ -55,7 +94,19 @@ export default async function PaginaSeccionContenido({
   if (!seccion) notFound();
 
   const filas = await leerContenidoPanel(supabase);
-  const valor = (clave: string) => filas.get(clave) ?? {};
+
+  /*
+    SIN FILA EN LA BASE, EL FORMULARIO ARRANCA CON EL RESPALDO.
+    Antes devolvía `{}` y la pantalla salía en blanco: el sitio público sí
+    enseñaba su texto de respaldo, pero el panel no, y quien entrara a editar
+    habría creído que el contenido se perdió. Es exactamente lo que pasaría con
+    los cuatro documentos legales, que pasaron al CMS el 2026-09-16 y todavía no
+    tienen fila hasta que alguien los guarde por primera vez.
+  */
+  const valor = (clave: string): Record<string, unknown> =>
+    filas.get(clave) ??
+    RESPALDOS[clave as ClaveContenido] ??
+    {};
 
   return (
     <>
@@ -220,6 +271,23 @@ export default async function PaginaSeccionContenido({
           >
             <FormularioContacto valor={valor("sitio.contacto")} />
           </BloqueContenido>
+        )}
+
+        {slug === "legales" && (
+          <>
+            {DOCUMENTOS_DEL_PANEL.map((documento) => (
+              <BloqueContenido
+                key={documento.clave}
+                titulo={documento.titulo}
+                descripcion={documento.descripcion}
+              >
+                <FormularioLegal
+                  clave={documento.clave}
+                  valor={valor(CLAVE_CMS_LEGAL[documento.clave])}
+                />
+              </BloqueContenido>
+            ))}
+          </>
         )}
 
         {slug === "buscadores" && (

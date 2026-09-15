@@ -5,7 +5,7 @@
 > público las lee desde `src/lib/contenido.ts`. Si aquí no está, el sitio no lo
 > pinta.
 >
-> Última revisión: 2026-09-15 · 18 claves.
+> Última revisión: 2026-09-16 · 22 claves.
 
 ---
 
@@ -80,12 +80,17 @@ correctamente para lectores de pantalla ni para Google.
 | `galeria` | `/galeria` | `getGaleria()` |
 | `reservar` | `/reservar` | `getReservar()` |
 | `no_encontrado` | Página 404 | `getNoEncontrado()` |
+| `legal.privacidad` | `/legal/privacidad` | `getDocumentoLegal("privacidad")` |
+| `legal.terminos` | `/legal/terminos` | `getDocumentoLegal("terminos")` |
+| `legal.datos` | `/legal/datos` | `getDocumentoLegal("datos")` |
+| `legal.cancelacion` | `/legal/cancelacion` | `getDocumentoLegal("cancelacion")` |
 
 Lo que **no** vive aquí: las cabañas, los planes, las tarifas y las
 experiencias con precio son tablas propias (`alojamientos`, `planes`,
 `tarifas`, `extras`, `imagenes`) y tienen su propio módulo en el panel. Los
-textos legales viven en código (`src/components/paginas/legal.tsx`), porque son
-documentos, no contenido de marketing.
+textos legales **sí** viven aquí desde el 2026-09-16, en las cuatro claves
+`legal.*`: hasta entonces estaban solo en código, y la decisión se revirtió a
+petición de Cesar para que el cliente pueda corregirlos sin un despliegue.
 
 ---
 
@@ -631,10 +636,54 @@ revalidatePath("/_not-found");
 
 ---
 
+## `legal.privacidad`, `legal.terminos`, `legal.datos`, `legal.cancelacion`
+
+Los cuatro documentos legales. Tienen **exactamente la misma forma** y un solo
+editor en el panel (Contenido del sitio → «Documentos legales»).
+
+```jsonc
+{
+  "titulo": "Política de privacidad",
+  "entrada": "Cómo tratamos la información de quienes visitan este sitio…",
+  "descripcion": "Resumen para Google. No se ve en la página.",
+  "actualizado": "2026-09-11",           // AAAA-MM-DD, se publica bajo el título
+  "secciones": [
+    {
+      "titulo": "1. Quiénes somos",
+      "parrafos": [
+        "La Finca Eco Hotel (RNT 114565) es el responsable de…",
+        "- Primer punto de una lista\n- Segundo punto\n- Tercero"
+      ]
+    }
+  ]
+}
+```
+
+**Las listas de viñetas son un párrafo con una convención.** Un párrafo cuyas
+líneas empiezan TODAS por `- ` (y tiene más de una línea) se pinta como lista de
+viñetas; cualquier otro, como párrafo. Así el documento entero se edita con
+cajas de texto normales —una sección, una caja, párrafos separados por línea en
+blanco— sin un editor de bloques. La regla vive en `esLista()` e
+`itemsDeLista()`, en `src/lib/legal.ts`.
+
+Notas:
+
+- La **ruta** de cada documento no se edita: es la dirección del sitio y vive en
+  `RUTA_LEGAL` (`src/lib/legal.ts`).
+- El **texto por defecto** —el que publica el sitio si la fila no existe o queda
+  vacía— también está en `src/lib/legal.ts`, y de ahí sale el seed.
+- ⚠ El número de WhatsApp y la dirección que aparecen **dentro** del texto legal
+  son texto plano. Antes se interpolaban desde `sitio.contacto`; al pasar el
+  texto al CMS dejaron de estar ligados. Si el hotel cambia de número, hay que
+  corregir también estos cuatro documentos.
+- Al guardar se revalidan las cuatro rutas `/legal/*` (`revalidarSitioPublico()`).
+
+---
+
 ## Añadir una clave nueva
 
 1. Definir el tipo y el respaldo en `src/lib/contenido.ts`.
 2. Añadir la clave al arreglo `CLAVES_CONTENIDO` y crear su getter con `cache()`.
-3. Añadir la fila a `supabase/seed/002_contenido.sql` (con `on conflict do update`).
+3. Regenerar el seed con `npm run seed:contenido` (el SQL NO se edita a mano).
 4. **Documentarla aquí.** Una clave sin documentar es una clave que el panel no
    va a poder editar.

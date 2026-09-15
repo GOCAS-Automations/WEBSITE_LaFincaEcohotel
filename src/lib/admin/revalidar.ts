@@ -30,6 +30,13 @@ export function revalidarSitioPublico() {
   revalidatePath("/faq");
   revalidatePath("/contacto");
   revalidatePath("/reservar");
+  /* Los cuatro documentos legales se editan desde el panel desde el
+     2026-09-16: si no se revalidan aquí, el cambio no se ve hasta que expire
+     su hora de ISR. */
+  revalidatePath("/legal/privacidad");
+  revalidatePath("/legal/terminos");
+  revalidatePath("/legal/datos");
+  revalidatePath("/legal/cancelacion");
   revalidatePath("/sitemap.xml");
   // La 404 propia (`app/(publico)/not-found.tsx`) también lee el CMS
   // (clave `no_encontrado`); su ruta interna en Next es esta.

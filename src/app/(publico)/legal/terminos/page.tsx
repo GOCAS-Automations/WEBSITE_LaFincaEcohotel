@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 import { PaginaLegal } from "@/components/paginas/legal";
-import { getContacto } from "@/lib/contenido";
-import { documentosLegales } from "@/lib/legal";
+import { getDocumentoLegal } from "@/lib/contenido";
+import { RUTA_LEGAL } from "@/lib/legal";
 import { metadatosPagina } from "@/lib/seo";
 
 export const revalidate = 3600;
@@ -10,13 +10,12 @@ export const revalidate = 3600;
 const CLAVE = "terminos" as const;
 
 export async function generateMetadata(): Promise<Metadata> {
-  const contacto = await getContacto();
-  const documento = documentosLegales(contacto)[CLAVE];
+  const documento = await getDocumentoLegal(CLAVE);
 
   return await metadatosPagina({
     titulo: documento.titulo,
     descripcion: documento.descripcion,
-    ruta: documento.ruta,
+    ruta: RUTA_LEGAL[CLAVE],
   });
 }
 

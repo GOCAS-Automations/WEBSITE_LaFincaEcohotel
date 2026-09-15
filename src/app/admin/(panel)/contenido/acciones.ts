@@ -7,10 +7,13 @@ import { cadenasDe, limpiarImagenesHuerfanas } from "@/lib/admin/limpieza-storag
 import { refrescarPanel, revalidarSitioPublico } from "@/lib/admin/revalidar";
 import { estadoOk, type EstadoAccion } from "@/lib/admin/tipos";
 import {
+  ErrorDeValidacion,
   aParrafos,
+  aParrafosConLineas,
   ejecutarAccion,
   enteroOpcional,
   enumRequerido,
+  fechaRequerida,
   listaGaleria,
   listaObjetos,
   listaTexto,
@@ -18,6 +21,7 @@ import {
   textoRequerido,
   urlImagenOpcional,
 } from "@/lib/admin/validacion";
+import { CLAVES_LEGALES, CLAVE_CMS_LEGAL } from "@/lib/legal";
 
 const RUTA = "/admin/contenido";
 
@@ -533,6 +537,72 @@ export async function guardarSeoAction(
       },
       "buscadores",
     );
+    return estadoOk(HECHO);
+  });
+}
+
+/* ===========================================================================
+ * Documentos legales
+ * ===========================================================================
+ *
+ * Los cuatro documentos (`legal.privacidad`, `legal.terminos`, `legal.datos`,
+ * `legal.cancelacion`) pasaron al CMS el 2026-09-16, por pedido de Cesar. Una
+ * sola acción para los cuatro: tienen exactamente la misma forma, y cuatro
+ * copias de esto habrían empezado a divergir a la primera corrección.
+ *
+ * Dos cuidados propios de estos textos:
+ *   · **Los párrafos se cortan SOLO por línea en blanco** (`aParrafosConLineas`).
+ *     Las listas de viñetas son un párrafo con varias líneas que empiezan por
+ *     «- »; el `aParrafos()` de la portada las juntaría en una frase corrida.
+ *   · **Las secciones caben enteras**: 12.000 caracteres por campo en vez de
+ *     los 4.000 de una pregunta frecuente.
+ * ======================================================================== */
+
+export async function guardarLegalAction(
+  _estado: EstadoAccion,
+  formData: FormData,
+): Promise<EstadoAccion> {
+  return ejecutarAccion(async () => {
+    const clave = enumRequerido(
+      formData,
+      "clave_legal",
+      "Documento",
+      CLAVES_LEGALES,
+    );
+
+    const secciones = listaObjetos(
+      formData,
+      "secciones",
+      ["titulo", "parrafos"],
+      40,
+      12_000,
+    ).map((seccion) => ({
+      titulo: seccion.titulo,
+      parrafos: aParrafosConLineas(seccion.parrafos),
+    }));
+
+    if (secciones.length === 0) {
+      throw new ErrorDeValidacion(
+        "Un documento legal no puede quedarse sin secciones. Si quieres volver al texto original, borra lo que escribiste y avísale al desarrollador.",
+      );
+    }
+
+    await guardarContenido(
+      CLAVE_CMS_LEGAL[clave],
+      {
+        titulo: textoRequerido(formData, "titulo", "Título del documento", 200),
+        entrada: textoOpcional(formData, "entrada", 600) ?? "",
+        descripcion: textoOpcional(formData, "descripcion", 400) ?? "",
+        actualizado: fechaRequerida(
+          formData,
+          "actualizado",
+          "Fecha de actualización",
+        ),
+        secciones,
+      },
+      "legales",
+    );
+
     return estadoOk(HECHO);
   });
 }

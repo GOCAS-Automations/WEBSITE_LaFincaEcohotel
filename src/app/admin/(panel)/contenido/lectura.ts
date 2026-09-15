@@ -91,3 +91,29 @@ export function objeto(
 export function comoTextarea(parrafos: string[]): string {
   return parrafos.join("\n\n");
 }
+
+/**
+ * Las secciones de un documento legal, listas para el editor.
+ *
+ * Cada sección llega con `parrafos` como arreglo y el editor necesita UNA
+ * cadena por caja de texto: se juntan con una línea en blanco, que es
+ * exactamente por donde vuelve a cortarlas `aParrafosConLineas()` al guardar.
+ * Los saltos de línea sueltos —las viñetas— se conservan tal cual.
+ */
+export function seccionesLegales(
+  valor: Record<string, unknown>,
+): { titulo: string; parrafos: string }[] {
+  const dato = valor.secciones;
+  if (!Array.isArray(dato)) return [];
+
+  return dato.flatMap((item): { titulo: string; parrafos: string }[] => {
+    if (typeof item !== "object" || item === null) return [];
+    const origen = item as Record<string, unknown>;
+    return [
+      {
+        titulo: texto(origen, "titulo"),
+        parrafos: comoTextarea(textos(origen, "parrafos")),
+      },
+    ];
+  });
+}

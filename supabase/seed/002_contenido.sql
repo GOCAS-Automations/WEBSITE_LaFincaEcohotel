@@ -667,6 +667,275 @@ insert into contenido (clave, valor) values
   "cta_href": "/",
   "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/03.webp",
   "imagen_alt": "Deck de inmersión metálico suspendido entre los árboles del bosque de niebla"
+}$json$::jsonb),
+
+('legal.privacidad', $json${
+  "titulo": "Política de privacidad",
+  "entrada": "Cómo tratamos la información de quienes visitan este sitio y se comunican con nosotros.",
+  "descripcion": "Política de privacidad de La Finca Eco Hotel: qué información recogemos en el sitio web, para qué la usamos y con quién la compartimos.",
+  "actualizado": "2026-09-11",
+  "secciones": [
+    {
+      "titulo": "1. Quiénes somos",
+      "parrafos": [
+        "La Finca Eco Hotel (RNT 114565) es el responsable de la información personal que se recoge a través de este sitio web. Nuestro domicilio es Km 18 vía Cali–Buenaventura, Vereda Loma Alta, Valle del Cauca, Colombia y nuestro canal de atención es WhatsApp +57 316 047 6671."
+      ]
+    },
+    {
+      "titulo": "2. Qué información recogemos",
+      "parrafos": [
+        "Este sitio no tiene formularios de registro ni de contacto: no pedimos datos para navegarlo. La información personal llega por dos vías:",
+        "- La que nos escribes voluntariamente por WhatsApp o por nuestras redes sociales cuando consultas disponibilidad o haces una reserva: nombre, número de teléfono y los datos de la estadía.\n- La que entregas al reservar y pagar, cuando ese servicio esté disponible en el sitio: nombre, documento de identidad, correo electrónico, teléfono y los datos de la transacción.",
+        "También recogemos información técnica anónima de navegación (páginas visitadas, tipo de dispositivo, ciudad aproximada) mediante herramientas de analítica, con el único fin de entender qué contenido resulta útil y mejorar el sitio."
+      ]
+    },
+    {
+      "titulo": "3. Para qué la usamos",
+      "parrafos": [
+        "- Responder tus consultas y confirmar tu reserva.\n- Prestar el servicio de alojamiento y los servicios adicionales que contrates.\n- Cumplir las obligaciones legales de un prestador de servicios turísticos en Colombia, incluido el registro de huéspedes.\n- Enviarte información sobre tu reserva (confirmación, instrucciones de llegada, cambios).\n- Mejorar el sitio y nuestros servicios con información estadística agregada.",
+        "No vendemos ni cedemos tu información a terceros con fines publicitarios."
+      ]
+    },
+    {
+      "titulo": "4. Con quién la compartimos",
+      "parrafos": [
+        "Solo con los proveedores que hacen posible el servicio, y únicamente con lo que necesitan para prestarlo:",
+        "- El proveedor de alojamiento del sitio y de la base de datos, para almacenar la información de forma segura.\n- La pasarela de pagos, cuando hagas un pago en línea. Los datos de tu tarjeta se procesan directamente en la pasarela: nosotros nunca los recibimos ni los guardamos.\n- El proveedor de correo transaccional, para enviarte la confirmación de tu reserva.\n- Las autoridades competentes, cuando una norma nos obligue a entregarla."
+      ]
+    },
+    {
+      "titulo": "5. Cookies y analítica",
+      "parrafos": [
+        "El sitio usa cookies técnicas necesarias para funcionar y, cuando estén activas, cookies de analítica que nos ayudan a medir el tráfico de forma agregada. Puedes bloquearlas o borrarlas desde la configuración de tu navegador; el sitio seguirá funcionando.",
+        "El mapa de la página de contacto es un servicio de Google incrustado: al cargarlo, Google puede recoger información según sus propias políticas."
+      ]
+    },
+    {
+      "titulo": "6. Tus derechos",
+      "parrafos": [
+        "Puedes conocer, actualizar, rectificar y suprimir tu información, y revocar la autorización que nos diste para tratarla, en los términos de la Ley 1581 de 2012. El detalle del procedimiento está en nuestra política de tratamiento de datos personales.",
+        "Para ejercerlos, escríbenos por WhatsApp +57 316 047 6671."
+      ]
+    },
+    {
+      "titulo": "7. Cambios en esta política",
+      "parrafos": [
+        "Si modificamos esta política publicaremos la nueva versión en esta misma página, con su fecha de actualización. Te recomendamos revisarla de vez en cuando."
+      ]
+    }
+  ]
+}$json$::jsonb),
+
+('legal.terminos', $json${
+  "titulo": "Términos y condiciones",
+  "entrada": "Las reglas de uso del sitio y las condiciones de la reserva y la estadía.",
+  "descripcion": "Términos y condiciones de La Finca Eco Hotel: uso del sitio, reservas, tarifas, pagos y normas de la estadía en la reserva natural.",
+  "actualizado": "2026-09-11",
+  "secciones": [
+    {
+      "titulo": "1. Objeto y aceptación",
+      "parrafos": [
+        "Estos términos regulan el uso del sitio web de La Finca Eco Hotel (RNT 114565) y la contratación de los servicios de alojamiento y experiencias que ofrecemos. Al usar el sitio o al hacer una reserva, aceptas estas condiciones."
+      ]
+    },
+    {
+      "titulo": "2. Información del sitio",
+      "parrafos": [
+        "Procuramos que la información publicada —descripciones, fotografías, servicios y tarifas— sea exacta y esté al día. Las fotografías son de nuestras instalaciones reales y son ilustrativas: la decoración y la dotación pueden variar entre cabañas y con el tiempo.",
+        "Las tarifas publicadas son referenciales para temporada baja y pueden variar según la temporada, los días festivos y la demanda. La tarifa aplicable es la que se confirme al momento de cerrar la reserva."
+      ]
+    },
+    {
+      "titulo": "3. Reservas",
+      "parrafos": [
+        "- Una solicitud de reserva no es una reserva confirmada. La reserva queda en firme cuando la confirmamos expresamente y se cumple la condición de pago acordada.\n- Las cabañas están diseñadas para dos personas. Cualquier ocupación distinta debe acordarse antes de la llegada.\n- Para hacer una reserva debes ser mayor de edad y entregar información veraz.\n- Al llegar, todos los huéspedes deben presentar un documento de identidad válido, como exige la normativa turística colombiana."
+      ]
+    },
+    {
+      "titulo": "4. Tarifas y pagos",
+      "parrafos": [
+        "- Todos los precios se expresan en pesos colombianos (COP) e incluyen los impuestos aplicables, salvo que se indique lo contrario.\n- La tarifa corresponde al plan elegido (Entre Semana, Estándar o Premium) por noche y para dos personas. El plan Día de Calma se cobra por el día y no incluye hospedaje.\n- Las experiencias y servicios adicionales se cobran aparte de la tarifa de alojamiento.\n- Para confirmar la reserva se paga un anticipo de mínimo el 50 % del total; al reservar puedes elegir adelantar más, hasta el 100 %. Lo que quede pendiente se paga antes de la llegada, mediante un link de pago que enviamos con anticipación.\n- En La Finca no hay datáfono ni se maneja efectivo. Nunca solicitamos datos de tarjeta por WhatsApp ni por ningún otro canal de mensajería.\n- Los pagos en línea se procesan a través de una pasarela autorizada. No almacenamos los datos de tu medio de pago."
+      ]
+    },
+    {
+      "titulo": "5. Llegada, salida y estadía",
+      "parrafos": [
+        "Desde las 13:00 puedes usar el restaurante, los senderos, los decks y las zonas sociales. La cabaña se entrega a las 15:00 y la salida es hasta las 13:00. Los cambios de horario dependen de la disponibilidad y deben acordarse previamente.",
+        "El restaurante atiende todos los días en el horario publicado en el sitio y es de uso exclusivo para huéspedes. El desayuno está incluido en los tres planes de hospedaje.",
+        "La Finca es un establecimiento para adultos. No se permite el ingreso ni el alojamiento de menores de edad en ninguna de las cabañas ni en las zonas comunes, sin excepción. La reserva se entiende hecha para huéspedes mayores de dieciocho (18) años, y el incumplimiento de esta condición faculta al hotel para no prestar el servicio, sin derecho a reembolso."
+      ]
+    },
+    {
+      "titulo": "6. Normas de la reserva natural",
+      "parrafos": [
+        "La Finca está dentro de una reserva natural. Estas normas existen para proteger el bosque y a las especies que lo habitan, y su incumplimiento puede dar lugar a la terminación de la estadía sin reembolso:",
+        "- No se permite el ingreso de vehículos a la propiedad. El parqueadero es externo y vigilado 24 horas.\n- El recorrido del bosque se hace únicamente por los senderos habilitados. No está permitido internarse en el bosque.\n- Las mascotas son bienvenidas en todas las áreas, bajo la responsabilidad y el cuidado permanente de sus acompañantes. La primera no tiene costo; a partir de la segunda se cobra el valor publicado por estadía.\n- No está permitido fumar dentro de las cabañas ni en las zonas cerradas.\n- No se permite encender fuego fuera de los espacios dispuestos para ello.\n- Te pedimos cuidar el descanso de los demás huéspedes: somos pocas cabañas y el silencio es parte de lo que se viene a buscar."
+      ]
+    },
+    {
+      "titulo": "7. Responsabilidad",
+      "parrafos": [
+        "Respondemos por la correcta prestación de los servicios contratados. No respondemos por los objetos de valor que dejes sin custodia, ni por los daños derivados del incumplimiento de las normas de seguridad y de la reserva natural, ni por hechos de fuerza mayor o caso fortuito, como cierres de vía, fenómenos climáticos o cortes prolongados de servicios públicos.",
+        "El uso de la piscina, el jacuzzi, el turco y los senderos es bajo tu propia responsabilidad."
+      ]
+    },
+    {
+      "titulo": "8. Propiedad intelectual",
+      "parrafos": [
+        "Los textos, fotografías, marcas y demás contenidos de este sitio son propiedad de La Finca Eco Hotel o se usan con autorización. No pueden reproducirse ni usarse con fines comerciales sin nuestro permiso escrito."
+      ]
+    },
+    {
+      "titulo": "9. Ley aplicable y solución de controversias",
+      "parrafos": [
+        "Estos términos se rigen por las leyes de la República de Colombia. Cualquier controversia se intentará resolver de buena fe entre las partes y, de no lograrse, se someterá a los jueces competentes del país."
+      ]
+    },
+    {
+      "titulo": "10. Cambios",
+      "parrafos": [
+        "Podemos actualizar estos términos. La versión vigente es siempre la publicada en esta página, con su fecha de actualización. Los cambios no afectan las reservas ya confirmadas."
+      ]
+    }
+  ]
+}$json$::jsonb),
+
+('legal.datos', $json${
+  "titulo": "Política de tratamiento de datos personales",
+  "entrada": "Política adoptada conforme a la Ley 1581 de 2012 y al Decreto 1074 de 2015.",
+  "descripcion": "Política de tratamiento de datos personales de La Finca Eco Hotel, conforme a la Ley 1581 de 2012: finalidades, derechos del titular y procedimiento de consultas y reclamos.",
+  "actualizado": "2026-09-11",
+  "secciones": [
+    {
+      "titulo": "1. Responsable del tratamiento",
+      "parrafos": [
+        "La Finca Eco Hotel (RNT 114565), con domicilio en Km 18 vía Cali–Buenaventura, Vereda Loma Alta, Valle del Cauca, Colombia, es el responsable del tratamiento de los datos personales que recolecta en desarrollo de su actividad de alojamiento turístico. Canal de atención: WhatsApp +57 316 047 6671.",
+        "Nota: la razón social y el NIT se incorporarán a este documento una vez se confirmen; hasta entonces, el prestador se identifica con su Registro Nacional de Turismo."
+      ]
+    },
+    {
+      "titulo": "2. Marco normativo",
+      "parrafos": [
+        "Esta política se adopta en cumplimiento de la Ley 1581 de 2012, del Decreto 1074 de 2015 (que compiló el Decreto 1377 de 2013) y de las demás normas que los modifiquen o complementen."
+      ]
+    },
+    {
+      "titulo": "3. Datos que tratamos",
+      "parrafos": [
+        "- Datos de identificación: nombre completo, tipo y número de documento.\n- Datos de contacto: teléfono, correo electrónico y ciudad de residencia.\n- Datos de la reserva: fechas de estadía, cabaña, plan, número de acompañantes y solicitudes especiales.\n- Datos de la transacción: valor, medio de pago y estado. Los datos de la tarjeta los procesa directamente la pasarela de pagos y no quedan en nuestros sistemas.",
+        "No solicitamos datos sensibles. Si por alguna necesidad de la estadía nos compartes información de salud o alimentación, la trataremos únicamente para atender esa solicitud, con tu autorización expresa y sabiendo que no estás obligado a entregarla."
+      ]
+    },
+    {
+      "titulo": "4. Finalidades del tratamiento",
+      "parrafos": [
+        "- Gestionar la reserva, el pago y la prestación del servicio de alojamiento y de las experiencias contratadas.\n- Enviar comunicaciones relacionadas con la reserva y la estadía.\n- Cumplir las obligaciones legales, contables y tributarias, incluido el registro de huéspedes exigido a los prestadores de servicios turísticos.\n- Atender peticiones, quejas y reclamos.\n- Evaluar la calidad del servicio.\n- Enviar información comercial sobre promociones y novedades, únicamente si nos autorizas expresamente para ello."
+      ]
+    },
+    {
+      "titulo": "5. Autorización del titular",
+      "parrafos": [
+        "La autorización se obtiene antes o al momento de recolectar los datos, por el medio a través del cual te comunicas con nosotros: al enviarnos una solicitud de reserva por WhatsApp o al completar una reserva en el sitio, aceptas esta política.",
+        "Conservamos prueba de la autorización otorgada, en los términos del artículo 2.2.2.25.2.4 del Decreto 1074 de 2015."
+      ]
+    },
+    {
+      "titulo": "6. Derechos del titular",
+      "parrafos": [
+        "Como titular de los datos, y de acuerdo con el artículo 8 de la Ley 1581 de 2012, tienes derecho a:",
+        "- Conocer, actualizar y rectificar tus datos personales.\n- Solicitar prueba de la autorización que otorgaste.\n- Ser informado, previa solicitud, sobre el uso que le hemos dado a tus datos.\n- Presentar quejas ante la Superintendencia de Industria y Comercio por infracciones a la ley.\n- Revocar la autorización y solicitar la supresión de tus datos, cuando no exista un deber legal o contractual que obligue a conservarlos.\n- Acceder de forma gratuita a los datos que hayan sido objeto de tratamiento."
+      ]
+    },
+    {
+      "titulo": "7. Consultas y reclamos",
+      "parrafos": [
+        "Toda consulta o reclamo puede presentarse por WhatsApp +57 316 047 6671, indicando tu nombre, tu documento, la descripción de los hechos y los datos de contacto para responderte.",
+        "- Consultas: se atienden en un término máximo de diez (10) días hábiles. Si no fuera posible, te informaremos los motivos y la fecha en que se atenderá, dentro de los cinco (5) días hábiles siguientes al vencimiento del primer plazo.\n- Reclamos: se atienden en un término máximo de quince (15) días hábiles contados desde el día siguiente a su recepción. Si no fuera posible, te informaremos los motivos y la nueva fecha, que no superará los ocho (8) días hábiles siguientes al vencimiento del primer término.\n- Si el reclamo llega incompleto, te pediremos que lo completes dentro de los cinco (5) días siguientes; transcurridos dos (2) meses sin respuesta, se entenderá desistido."
+      ]
+    },
+    {
+      "titulo": "8. Seguridad y conservación",
+      "parrafos": [
+        "Aplicamos medidas técnicas, humanas y administrativas razonables para proteger los datos contra el acceso no autorizado, la pérdida o la alteración. El acceso está restringido al personal que lo necesita para prestar el servicio.",
+        "Los datos se conservan durante el tiempo necesario para cumplir las finalidades descritas y los plazos de conservación legales y contables aplicables."
+      ]
+    },
+    {
+      "titulo": "9. Encargados y transferencias",
+      "parrafos": [
+        "Para prestar el servicio usamos proveedores tecnológicos (alojamiento del sitio, base de datos, pasarela de pagos y correo transaccional) que actúan como encargados del tratamiento y que pueden operar servidores fuera de Colombia. En esos casos exigimos que apliquen estándares de protección equivalentes a los de la normativa colombiana."
+      ]
+    },
+    {
+      "titulo": "10. Vigencia",
+      "parrafos": [
+        "Esta política rige desde el 2026-09-11 y permanecerá vigente mientras desarrollemos nuestra actividad. Las bases de datos se conservarán por el tiempo necesario para cumplir las finalidades autorizadas."
+      ]
+    }
+  ]
+}$json$::jsonb),
+
+('legal.cancelacion', $json${
+  "titulo": "Política de cancelación y reembolsos",
+  "entrada": "Qué pasa si necesitas cambiar tu reserva, y en qué casos no hay devolución.",
+  "descripcion": "Política de cancelación de La Finca Eco Hotel: cambios de fecha, no presentación y derecho de retracto.",
+  "actualizado": "2026-09-11",
+  "secciones": [
+    {
+      "titulo": "1. Antes de reservar",
+      "parrafos": [
+        "Somos un hotel pequeño: cada cancelación deja una cabaña vacía que difícilmente se vuelve a vender con poca antelación. Por eso nuestra política es estricta y te pedimos leerla antes de confirmar.",
+        "Las condiciones aplicables son las vigentes al momento de confirmar tu reserva y quedan indicadas en el mensaje de confirmación."
+      ]
+    },
+    {
+      "titulo": "2. La reserva no es reembolsable",
+      "parrafos": [
+        "Una vez confirmada la reserva no hay reembolsos, ni totales ni parciales, del anticipo ni de ningún otro pago.",
+        "Lo que sí ofrecemos es un cambio de fecha, en las condiciones del punto siguiente."
+      ]
+    },
+    {
+      "titulo": "3. Cambio de fecha",
+      "parrafos": [
+        "- Se solicita con mínimo tres (3) días calendario de anticipación a la fecha de llegada.\n- Se permite un (1) solo cambio por reserva.\n- Está sujeto a disponibilidad. Si la nueva fecha corresponde a una tarifa más alta, se cobra la diferencia; si es más baja, no se reembolsa la diferencia.\n- La solicitud debe hacerse por escrito a nuestro canal de atención. La fecha que cuenta es la de recepción del mensaje."
+      ]
+    },
+    {
+      "titulo": "4. No presentación y salida anticipada",
+      "parrafos": [
+        "Cancelar el mismo día de la llegada, o no presentarse, se considera un incumplimiento de la reserva: no da lugar a devolución ni a reprogramación.",
+        "Si decides marcharte antes de terminar la estadía, tampoco se reembolsan las noches no utilizadas."
+      ]
+    },
+    {
+      "titulo": "5. Cancelación por parte del hotel",
+      "parrafos": [
+        "Si por una causa que nos sea imputable no pudiéramos prestarte el servicio, te ofreceremos una fecha alternativa o el reembolso íntegro de lo pagado, a tu elección.",
+        "En casos de fuerza mayor o caso fortuito ajenos a las dos partes —cierre prolongado de la vía, emergencia climática, orden de autoridad— te ofreceremos el cambio de fecha sin costo o un saldo a favor por el valor pagado, válido durante doce (12) meses."
+      ]
+    },
+    {
+      "titulo": "6. Derecho de retracto",
+      "parrafos": [
+        "En las compras hechas a distancia se aplica el derecho de retracto del artículo 47 de la Ley 1480 de 2011 (Estatuto del Consumidor): puedes retractarte dentro de los cinco (5) días hábiles siguientes a la compra y recibir el reembolso de lo pagado. Este derecho es de orden público y prevalece sobre el punto 2 de esta política.",
+        "No aplica cuando la prestación del servicio comienza, de común acuerdo, antes de que venza ese plazo: es decir, cuando la fecha de llegada está dentro de esos cinco días hábiles."
+      ]
+    },
+    {
+      "titulo": "7. Cómo se hacen los reembolsos",
+      "parrafos": [
+        "Cuando corresponda un reembolso —por retracto, o por una cancelación nuestra—:",
+        "- Se hace por el mismo medio de pago con el que se hizo la transacción.\n- El tiempo de acreditación depende de la entidad financiera y de la pasarela de pagos; normalmente toma entre cinco (5) y quince (15) días hábiles.\n- Los costos de la transacción que la pasarela no devuelva podrán descontarse del valor a reembolsar."
+      ]
+    },
+    {
+      "titulo": "8. Cómo solicitarlo",
+      "parrafos": [
+        "Escríbenos por WhatsApp +57 316 047 6671 indicando el nombre de la reserva, las fechas y el motivo. Te confirmaremos por el mismo canal el trámite y el valor que corresponda."
+      ]
+    }
+  ]
 }$json$::jsonb)
 on conflict (clave) do update set
   valor          = excluded.valor,
