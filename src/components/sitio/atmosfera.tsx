@@ -341,6 +341,39 @@ const PERFILES = {
 const PERFIL_BRUMA_FONDO =
   "M0,120 V102 C220,90 380,108 600,100 C820,92 940,68 1140,74 C1280,78 1370,96 1440,90 V120 Z";
 
+/* ---------------------------------------------------------------------------
+ * LOS MISMOS PERFILES, PARA PANTALLAS ESTRECHAS
+ * ---------------------------------------------------------------------------
+ * `preserveAspectRatio="none"` estira el perfil al ancho del visor. A 1440 px
+ * las cuatro o cinco crestas de `cresta` se leen como una ladera; a 390 px el
+ * mismo dibujo se comprime a menos de un tercio y lo que queda es un rizado
+ * apretado —«se ven demasiadas ondas», dijo Cesar— que parece una cenefa y no
+ * una montaña entre la bruma.
+ *
+ * La solución no es escalar: es DIBUJAR OTRO PERFIL. Estos van en un
+ * `viewBox` de 480 y tienen **una sola ondulación** cada uno, con la cresta
+ * descolocada (nunca a la mitad) para que sigan sin leerse como una onda seno.
+ * El alto del `viewBox` es el mismo, 120, así que la amplitud relativa se
+ * conserva y el corte sigue mordiendo la propia fotografía igual que en
+ * escritorio.
+ *
+ * Se eligen por CSS, no por JavaScript: los dos `<svg>` están en el HTML y
+ * `sm:hidden` / `hidden sm:block` decide cuál se pinta. Con una media query
+ * en JS habría un primer pintado con el perfil equivocado.
+ * ======================================================================== */
+
+const PERFILES_MOVIL: Record<keyof typeof PERFILES, string> = {
+  cresta:
+    "M0,120 V74 C64,62 116,30 208,26 C300,22 356,60 424,58 C450,57 468,50 480,44 V120 Z",
+  loma:
+    "M0,120 V98 C92,84 158,26 268,30 C356,33 398,66 440,74 C456,77 470,76 480,72 V120 Z",
+  bruma:
+    "M0,120 V90 C96,78 176,52 288,58 C372,62 414,82 480,76 V120 Z",
+};
+
+const PERFIL_BRUMA_FONDO_MOVIL =
+  "M0,120 V104 C104,96 196,74 304,80 C384,84 432,100 480,94 V120 Z";
+
 type PropsDivisor = {
   perfil?: keyof typeof PERFILES;
   /**
@@ -381,6 +414,22 @@ export function DivisorOrganico({
     .filter(Boolean)
     .join(" ");
 
+  const estilo = transformaciones
+    ? { transform: transformaciones }
+    : undefined;
+
+  /*
+    `shapeRendering="geometricPrecision"` le pide al navegador que no redondee
+    la curva a la rejilla de píxeles: es lo que evita que el filo de la onda
+    deje un diente claro contra el color del vecino donde la curva es casi
+    horizontal.
+  */
+  const comunes = {
+    preserveAspectRatio: "none" as const,
+    shapeRendering: "geometricPrecision" as const,
+    style: estilo,
+  };
+
   return (
     <div
       aria-hidden="true"
@@ -389,16 +438,32 @@ export function DivisorOrganico({
         .join(" ")}
       style={{ height: alto }}
     >
+      {/* Escritorio y tabletas: el perfil largo. */}
       <svg
         viewBox="0 0 1440 120"
-        preserveAspectRatio="none"
-        className="absolute inset-0 block h-full w-full"
-        style={transformaciones ? { transform: transformaciones } : undefined}
+        className="absolute inset-0 hidden h-full w-full sm:block"
+        {...comunes}
       >
         {perfil === "bruma" ? (
           <path d={PERFIL_BRUMA_FONDO} className={color} opacity={0.45} />
         ) : null}
         <path d={PERFILES[perfil]} className={color} />
+      </svg>
+
+      {/* Teléfono: una sola ondulación. Ver `PERFILES_MOVIL`. */}
+      <svg
+        viewBox="0 0 480 120"
+        className="absolute inset-0 block h-full w-full sm:hidden"
+        {...comunes}
+      >
+        {perfil === "bruma" ? (
+          <path
+            d={PERFIL_BRUMA_FONDO_MOVIL}
+            className={color}
+            opacity={0.45}
+          />
+        ) : null}
+        <path d={PERFILES_MOVIL[perfil]} className={color} />
       </svg>
     </div>
   );
