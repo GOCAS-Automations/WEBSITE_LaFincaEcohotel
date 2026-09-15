@@ -8,6 +8,7 @@ import { VideoSeccion } from "@/components/sitio/video-seccion";
 import { Boton } from "@/components/ui/boton";
 import { Revelar } from "@/components/ui/revelar";
 import { EncabezadoSeccion, RITMO, Seccion } from "@/components/ui/seccion";
+import { CLASE_FOTO_CON_FLAG } from "@/lib/fotos";
 import {
   getContacto,
   getHeroesListados,
@@ -55,8 +56,30 @@ export async function PaginaConocenos() {
           espejo
         />
 
-        <div className="relative z-10 grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
-          <Revelar className="flex flex-col gap-6">
+      {/*
+        DOS FOTOS, Y LAS DOS CUADRADAS CON EL TEXTO.
+
+        Había una sola fotografía con proporción fija (`aspect-16/11`): en
+        escritorio la columna de la derecha acababa mucho antes que la de texto
+        y la sección se leía descuadrada. Ahora son dos apiladas dentro de una
+        columna `h-full`, con `flex-[1.45]` y `flex-1` sobre base cero: la
+        altura total la fija la columna de al lado —`items-stretch`— y las dos
+        fotos se reparten ese alto. El resultado es que el borde de arriba de la
+        primera y el de abajo de la segunda caen exactamente donde empieza y
+        acaba el texto, a 1024, 1440 y 1920 px.
+
+        En el teléfono la rejilla es de una columna y las fotos recuperan su
+        proporción (`aspect-16/11` y `aspect-16/10`), que es lo que hay que
+        hacer cuando ya no hay nada al lado con lo que alinearse.
+
+        RADIOS Y SELLO: las dos curvas grandes van abajo —`rounded-br` y
+        `rounded-bl`— y el encuadre se ancla con `CLASE_FOTO_CON_FLAG`. La
+        versión anterior abría con `rounded-tr-[7rem]`, justo sobre la esquina
+        donde todas las fotos del hotel llevan el sello (ver `ZONA_FLAG` en
+        `src/lib/fotos.ts`).
+      */}
+        <div className="relative z-10 grid items-center gap-10 lg:grid-cols-2 lg:items-stretch lg:gap-16">
+          <Revelar className="flex flex-col justify-center gap-6">
             <EncabezadoSeccion
               antetitulo={lugar.antetitulo}
               titulo={lugar.titulo}
@@ -74,15 +97,29 @@ export async function PaginaConocenos() {
             </div>
           </Revelar>
 
-          <Revelar retraso={110}>
-            <div className="relative aspect-16/11 overflow-hidden rounded-[var(--radius-generoso)] rounded-tr-[7rem] bg-crema-200 shadow-[var(--shadow-elevada)]">
-              <Foto
-                src={lugar.imagen}
-                alt={lugar.imagen_alt}
-                fill
-                sizes="(min-width: 1024px) 45vw, 92vw"
-                className="object-cover"
-              />
+          <Revelar retraso={110} className="lg:h-full">
+            <div className="flex h-full flex-col gap-4 sm:gap-5">
+              <div className="relative aspect-16/11 min-h-0 shrink-0 overflow-hidden rounded-[var(--radius-generoso)] rounded-br-[6rem] bg-crema-200 shadow-[var(--shadow-elevada)] lg:aspect-auto lg:shrink lg:basis-0 lg:grow-[1.45]">
+                <Foto
+                  src={lugar.imagen}
+                  alt={lugar.imagen_alt}
+                  fill
+                  sizes="(min-width: 1024px) 45vw, 92vw"
+                  className={CLASE_FOTO_CON_FLAG}
+                />
+              </div>
+
+              {lugar.imagen_secundaria ? (
+                <div className="relative aspect-16/10 min-h-0 shrink-0 overflow-hidden rounded-[var(--radius-generoso)] rounded-bl-[5rem] bg-crema-200 shadow-[var(--shadow-elevada)] lg:aspect-auto lg:shrink lg:basis-0 lg:grow">
+                  <Foto
+                    src={lugar.imagen_secundaria}
+                    alt={lugar.imagen_secundaria_alt}
+                    fill
+                    sizes="(min-width: 1024px) 45vw, 92vw"
+                    className={CLASE_FOTO_CON_FLAG}
+                  />
+                </div>
+              ) : null}
             </div>
           </Revelar>
         </div>
@@ -160,10 +197,12 @@ export async function PaginaConocenos() {
                 </p>
               ))}
             </div>
+            {/* Centrado en el teléfono: va solo en su línea y pegado a la
+                izquierda se leía como un resto del párrafo de arriba. */}
             <Boton
               href={reconocimiento.cta_href}
               variante="contorno"
-              className="self-start"
+              className="self-center sm:self-start"
             >
               {reconocimiento.cta_texto}
             </Boton>
@@ -248,7 +287,9 @@ export async function PaginaConocenos() {
               </ul>
             ) : null}
 
-            <div className="flex flex-wrap gap-3">
+            {/* Centrados en el teléfono: a 390 px cada botón cae en su propia
+                línea y la fila se leía escalonada contra el borde izquierdo. */}
+            <div className="flex flex-wrap justify-center gap-3 sm:justify-start">
               <Boton
                 href={contacto.mapa_como_llegar || contacto.mapa_url}
                 variante="contorno"

@@ -15,6 +15,7 @@ import {
   getHeroesListados,
   getSeccionPlanes,
 } from "@/lib/contenido";
+import { CLASE_FOTO_CON_FLAG } from "@/lib/fotos";
 import { formatearCOP } from "@/lib/utils/formato";
 import { enlaceWhatsapp, mensajeExperiencia } from "@/lib/whatsapp";
 
@@ -54,8 +55,13 @@ export async function PaginaExperiencias() {
           {contenido.intro}
         </p>
 
+        {/* TRES COLUMNAS DESDE `lg`: el fondue pasó de «adicional» a
+            experiencia el 2026-09-15 (es una celebración para dos con precio
+            por estadía, no un extra operativo como la segunda mascota), así
+            que aquí hay tres tarjetas y no dos. Con `sm:grid-cols-2` a secas,
+            la tercera quedaba sola en una fila. */}
         {experiencias.length > 0 ? (
-          <ul className={`relative z-10 mx-auto ${RITMO.trasTitulo} grid max-w-5xl gap-6 sm:grid-cols-2`}>
+          <ul className={`relative z-10 mx-auto ${RITMO.trasTitulo} grid max-w-5xl items-stretch gap-6 sm:grid-cols-2 lg:grid-cols-3`}>
             {experiencias.map((experiencia, indice) => (
               <Revelar
                 key={experiencia.id}
@@ -63,15 +69,21 @@ export async function PaginaExperiencias() {
                 retraso={indice * 90}
                 className="h-full"
               >
-                <article className="flex h-full flex-col overflow-hidden rounded-[var(--radius-generoso)] rounded-tr-[3.5rem] bg-white shadow-[var(--shadow-tarjeta)] ring-1 ring-crema-200/70">
+                {/* La curva grande va arriba a la IZQUIERDA: el fondue se
+                    publica con una foto del catálogo del hotel y todas llevan
+                    el sello de marca en la esquina superior derecha, que
+                    `rounded-tr` partía en diagonal. */}
+                <article className="flex h-full flex-col overflow-hidden rounded-[var(--radius-generoso)] rounded-tl-[3.5rem] bg-white shadow-[var(--shadow-tarjeta)] ring-1 ring-crema-200/70">
                   {experiencia.imagen_url ? (
-                    <div className="relative aspect-3/4 bg-crema-200">
+                    /* 4/3 y no 3/4: con tres columnas, un retrato estiraba la
+                       tarjeta hasta que las tres no cabían en una pantalla. */
+                    <div className="relative aspect-4/3 shrink-0 bg-crema-200">
                       <Foto
                         src={experiencia.imagen_url}
                         alt={`Experiencia ${experiencia.nombre} preparada en una cabaña de La Finca`}
                         fill
-                        sizes="(min-width: 640px) 45vw, 92vw"
-                        className="object-cover"
+                        sizes="(min-width: 1024px) 31vw, (min-width: 640px) 46vw, 92vw"
+                        className={CLASE_FOTO_CON_FLAG}
                         priority={indice === 0}
                       />
                     </div>
@@ -113,10 +125,15 @@ export async function PaginaExperiencias() {
 
       {/*
         LOS ADICIONALES, en lista y no en tarjetas con foto.
-        Son el fondue ($25.000) y la segunda mascota ($50.000): cosas pequeñas
-        que se suman a la reserva. Darles una tarjeta con fotografía del mismo
-        tamaño que a una celebración de $150.000 confundía la jerarquía y hacía
-        creer que el fondue era un plan.
+        Hoy es solo la segunda mascota ($50.000): una cosa pequeña que se suma
+        a la reserva. Darle una tarjeta con fotografía del mismo tamaño que a
+        una celebración de $150.000 confundiría la jerarquía.
+
+        El fondue estaba aquí hasta el 2026-09-15. Se movió a «experiencias»
+        —donde el cliente lo nombra junto a Aniversario y Cumpleaños— porque es
+        una celebración para dos, con precio por estadía, y no un extra
+        operativo. El cambio es de datos (`extras.tipo`), así que el hotel
+        puede devolverlo desde el panel sin tocar código.
       */}
       {adicionales.length > 0 ? (
         <Seccion fondo="blanco">
@@ -210,7 +227,10 @@ export async function PaginaExperiencias() {
             : "bg-crema-50"
         }
         titulo="Todas se suman a tu reserva"
-        texto="Elige primero la cabaña y el plan; la experiencia se añade después y queda lista antes de que llegues."
+        /* El orden real del flujo es fechas → cabaña → plan (ver los tres
+           pasos de `/reservar`): esta frase decía «elige primero la cabaña y
+           el plan» y contradecía lo que el visitante iba a encontrar. */
+        texto="Elige primero tus fechas y tu cabaña; la experiencia se añade después y queda lista antes de que llegues."
         espejo
       />
     </>
