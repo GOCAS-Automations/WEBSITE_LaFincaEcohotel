@@ -625,7 +625,7 @@ function Celda({
     .join(" ");
 
   return (
-    <td role="gridcell" className="p-0.5 text-center">
+    <td role="gridcell" className="p-px text-center sm:p-0.5">
       <button
         ref={refFoco}
         type="button"

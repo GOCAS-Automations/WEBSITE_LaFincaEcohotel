@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { Foto } from "@/components/ui/foto";
 import {
   useCallback,
   useEffect,
@@ -276,13 +276,12 @@ export function Galeria({
           </div>
 
           <div className="relative flex min-h-0 flex-1 items-center justify-center px-3 pb-6 sm:px-16">
-            <Image
+            <Foto
               key={actual.url}
               src={actual.url}
               alt={actual.alt}
               width={1600}
               height={1200}
-              quality={90}
               sizes="100vw"
               className="max-h-full w-auto max-w-full rounded-[var(--radius-tarjeta)] object-contain"
             />
@@ -335,12 +334,11 @@ function MosaicoUniforme({
             className={`${CLASES_MINIATURA} aspect-4/5`}
             aria-label={`Ampliar: ${imagen.alt}`}
           >
-            <Image
+            <Foto
               src={imagen.url}
               alt={imagen.alt}
               fill
-              quality={68}
-              sizes="(min-width: 1024px) 24vw, (min-width: 768px) 32vw, 48vw"
+              sizes="(min-width: 1024px) 24vw, (min-width: 768px) 32vw, 92vw"
               className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
               priority={prioridad && indice === 0}
             />
@@ -479,14 +477,16 @@ function MosaicoEditorial({
             style={{ aspectRatio: relacion }}
             aria-label={`Ampliar: ${imagen.alt}`}
           >
-            <Image
+            <Foto
               src={imagen.url}
               alt={imagen.alt}
               fill
-              /* Solo 68, 75 y 90 están declaradas en `next.config.ts`: una
-                 calidad fuera de esa lista revienta en ejecución. */
-              quality={75}
-              sizes="(min-width: 1024px) 24vw, (min-width: 768px) 32vw, 48vw"
+              /* 92vw en el teléfono, no 48: la mampostería va a UNA foto por
+                 fila por debajo de `md` (`flex-wrap`), así que un `sizes` de
+                 media pantalla hacía que el navegador eligiera la variante de
+                 480 px para pintarla a 654 y la estirara. Un `sizes` que miente
+                 no ahorra peso: produce fotos blandas. */
+              sizes="(min-width: 1024px) 24vw, (min-width: 768px) 32vw, 92vw"
               /* `object-cover` sobre una caja que YA tiene la proporción de la
                  foto no recorta nada: solo cubre el píxel de redondeo. */
               className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.05]"
@@ -576,7 +576,7 @@ function Paginacion({
                     aria-current={activa ? "page" : undefined}
                     aria-label={`Página ${numero} de ${paginas}`}
                     className={[
-                      "flex size-10 items-center justify-center rounded-full font-titulo text-sm font-semibold tabular-nums",
+                      "flex size-11 items-center justify-center rounded-full font-titulo text-sm font-semibold tabular-nums",
                       "transition-all duration-200 ease-out",
                       activa
                         ? "bg-petroleo-600 text-white shadow-[0_2px_8px_-2px_rgba(2,117,112,0.5)]"
@@ -620,7 +620,7 @@ function BotonPagina({
       onClick={alPulsar}
       disabled={deshabilitado}
       aria-label={etiqueta}
-      className="flex size-10 items-center justify-center rounded-full bg-white text-petroleo-800 ring-1 ring-crema-300/80 transition-all duration-200 hover:bg-petroleo-50 hover:ring-petroleo-300 disabled:pointer-events-none disabled:opacity-35"
+      className="flex size-11 items-center justify-center rounded-full bg-white text-petroleo-800 ring-1 ring-crema-300/80 transition-all duration-200 hover:bg-petroleo-50 hover:ring-petroleo-300 disabled:pointer-events-none disabled:opacity-35"
     >
       <svg
         viewBox="0 0 24 24"
@@ -670,11 +670,10 @@ function MosaicoFicha({
         }}
         aria-label={`Ampliar: ${portada.alt}`}
       >
-        <Image
+        <Foto
           src={portada.url}
           alt={portada.alt}
           fill
-          quality={90}
           sizes="(min-width: 1024px) 60vw, 100vw"
           priority={prioridad}
           className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
@@ -712,11 +711,10 @@ function MosaicoFicha({
                       : `Ampliar: ${imagen.alt}`
                   }
                 >
-                  <Image
+                  <Foto
                     src={imagen.url}
                     alt={imagen.alt}
                     fill
-                    quality={68}
                     sizes="(min-width: 1024px) 20vw, 48vw"
                     className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
                   />

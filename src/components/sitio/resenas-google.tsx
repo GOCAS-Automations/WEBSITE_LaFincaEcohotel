@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { Foto } from "@/components/ui/foto";
 
 import type { ResenaGoogle, ResumenGoogle } from "@/lib/resenas-google";
 
@@ -137,12 +137,11 @@ function TarjetaResena({
   const inicial = resena.autor.trim().charAt(0).toUpperCase();
 
   const avatar = resena.foto ? (
-    <Image
+    <Foto
       src={resena.foto}
       alt=""
       width={44}
       height={44}
-      quality={75}
       className="h-11 w-11 shrink-0 rounded-full object-cover"
       /* Decorativa: el nombre del autor ya va escrito al lado en texto. */
       aria-hidden="true"
@@ -287,7 +286,7 @@ export function ResenasGoogle({
             href={mapsUrl}
             target="_blank"
             rel="noopener noreferrer nofollow"
-            className={`mt-1 inline-block text-sm font-semibold underline-offset-4 transition-colors duration-200 hover:underline ${enlace}`}
+            className={`mt-1 inline-flex min-h-11 items-center text-sm font-semibold underline-offset-4 transition-colors duration-200 hover:underline ${enlace}`}
           >
             Ver todas en Google Maps
           </a>

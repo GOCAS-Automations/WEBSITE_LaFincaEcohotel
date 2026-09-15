@@ -92,7 +92,7 @@ export function MenuMovil({ enlaces, ctaTexto, ctaHref }: PropsMenu) {
         aria-label="Abrir el menú de navegación"
         /* Vive dentro de la cápsula de petróleo, así que va en claro. La
            superficie táctil sigue siendo de 44 px aunque el icono mida 24. */
-        className="flex size-10 items-center justify-center rounded-full text-brote-100 transition-colors duration-200 hover:bg-white/12 lg:hidden"
+        className="flex size-11 items-center justify-center rounded-full text-brote-100 transition-colors duration-200 hover:bg-white/12 lg:hidden"
       >
         <svg
           viewBox="0 0 24 24"

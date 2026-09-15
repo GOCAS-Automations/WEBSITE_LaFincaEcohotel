@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { Foto } from "@/components/ui/foto";
 import { useEffect, useRef, useState } from "react";
 
 import { IconoInstagram } from "./iconos";
@@ -143,14 +143,13 @@ export function ReelInstagram({ permalink, poster, posterAlt }: Props) {
           />
         ) : (
           <>
-            <Image
+            <Foto
               src={poster}
               alt={posterAlt}
               fill
               /* Está al final de la portada: nunca compite por el ancho de
                  banda del primer pintado. */
               sizes="352px"
-              quality={75}
               fetchPriority="low"
               /* `object-right-top` y no el centro: el marco es mucho más alto
                  que ancho y recorta por los lados, y el sello de marca del
@@ -210,7 +209,7 @@ export function ReelInstagram({ permalink, poster, posterAlt }: Props) {
         href={permalink}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex items-center justify-center gap-2 text-sm font-semibold text-petroleo-700 underline-offset-4 transition-colors duration-200 hover:text-petroleo-800 hover:underline"
+        className="inline-flex min-h-11 items-center justify-center gap-2 text-sm font-semibold text-petroleo-700 underline-offset-4 transition-colors duration-200 hover:text-petroleo-800 hover:underline"
       >
         <IconoInstagram className="size-4" />
         Ver el reel en Instagram

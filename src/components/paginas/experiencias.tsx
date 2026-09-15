@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { Foto } from "@/components/ui/foto";
 
 import { Neblina } from "@/components/sitio/atmosfera";
 import { CierreReserva } from "@/components/sitio/cierre-reserva";
@@ -66,11 +66,10 @@ export async function PaginaExperiencias() {
                 <article className="flex h-full flex-col overflow-hidden rounded-[var(--radius-generoso)] rounded-tr-[3.5rem] bg-white shadow-[var(--shadow-tarjeta)] ring-1 ring-crema-200/70">
                   {experiencia.imagen_url ? (
                     <div className="relative aspect-3/4 bg-crema-200">
-                      <Image
+                      <Foto
                         src={experiencia.imagen_url}
                         alt={`Experiencia ${experiencia.nombre} preparada en una cabaña de La Finca`}
                         fill
-                        quality={75}
                         sizes="(min-width: 640px) 45vw, 92vw"
                         className="object-cover"
                         priority={indice === 0}
@@ -169,11 +168,10 @@ export async function PaginaExperiencias() {
               >
                 <article className="flex h-full flex-col overflow-hidden rounded-[var(--radius-generoso)] rounded-tl-[3.5rem] bg-crema-50 ring-1 ring-crema-200/70">
                   <div className="relative aspect-3/4 bg-crema-200">
-                    <Image
+                    <Foto
                       src={adicional.imagen}
                       alt={adicional.imagen_alt}
                       fill
-                      quality={75}
                       sizes="(min-width: 640px) 45vw, 92vw"
                       className="object-cover"
                     />

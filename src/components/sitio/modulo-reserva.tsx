@@ -67,7 +67,7 @@ const CLASE_CAMPO =
   "transition-colors duration-200 outline-none focus:border-petroleo-500 hover:border-crema-400";
 
 const CLASE_ETIQUETA =
-  "flex items-center gap-1.5 font-titulo text-[0.7rem] font-semibold tracking-[0.14em] text-crema-600 uppercase";
+  "flex items-center gap-1.5 font-titulo text-xs font-semibold tracking-[0.12em] text-crema-600 uppercase";
 
 export function ModuloReserva({
   cabanas,

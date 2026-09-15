@@ -108,7 +108,7 @@ export function TarjetaPlan({
       {destacado ? (
         <p
           className={[
-            "mb-2.5 self-start rounded-full px-2.5 py-0.5 font-titulo text-[0.7rem] font-semibold tracking-wide uppercase",
+            "mb-2.5 self-start rounded-full px-2.5 py-0.5 font-titulo text-xs font-semibold tracking-wide uppercase",
             claro
               ? "bg-brote-100 text-oliva-700"
               : "bg-brote-100/20 text-brote-100",

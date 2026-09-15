@@ -12,26 +12,30 @@ const origenSupabase = new URL(
 const nextConfig: NextConfig = {
   images: {
     /**
-     * INTERRUPTOR DE EMERGENCIA PARA LA CUOTA DE VERCEL.
+     * SIN TRANSFORMACIONES DE IMAGEN. ES EL MODO NORMAL, NO UNA EMERGENCIA.
      *
-     * El plan gratuito de Vercel incluye un número limitado de
-     * «transformaciones» de Image Optimization al mes. Cuando se agota, Vercel
-     * NO sirve la foto sin optimizar: devuelve un error, y el sitio se queda
-     * con los huecos de las imágenes vacíos. Es un fallo total de la portada
-     * por una cuota, no por un error de código.
+     * Decisión de Cesar (2026-09-14). El plan de Vercel incluye un número
+     * limitado de «transformaciones» de Image Optimization al mes y, cuando se
+     * agota, Vercel **no sirve la foto sin optimizar: devuelve un error**. El
+     * sitio del hotel se queda con los huecos de las imágenes vacíos, y es un
+     * fallo total de la portada por una cuota, no por un error de código.
+     * Depender de un servicio que falla así en el camino crítico de un sitio
+     * cuyo producto ES la fotografía no compensa.
      *
-     * Con `IMAGENES_SIN_OPTIMIZAR=1` en las variables de entorno del proyecto
-     * (Vercel → Settings → Environment Variables) y un redespliegue, `next/image`
-     * deja de pasar por `/_next/image` y apunta directo a la URL del bucket.
-     * Se pierde el redimensionado por dispositivo, pero NO se pierde gran cosa:
-     * las fotos del bucket ya son WebP recortados a la medida a la que se
-     * publican. El sitio sigue en pie y no hay que tocar una línea de código.
+     * Antes esto era un interruptor de emergencia apagado por defecto. Ahora es
+     * al revés: **la optimización está apagada salvo que alguien escriba
+     * `IMAGENES_SIN_OPTIMIZAR=0`**, y esa variable solo existe para poder
+     * comparar los dos modos.
      *
-     * Se lee como `=== "1"` a propósito: cualquier otro valor —incluido
-     * `"false"`, `"0"` o la variable ausente— deja la optimización encendida,
-     * que es el estado normal.
+     * EL PESO LO CONTROLAMOS NOSOTROS. Sin `/_next/image` no hay `srcset`
+     * automático, así que lo generamos en el despliegue:
+     * `npm run imagenes:variantes` deja en el bucket (`web/v/…`) las variantes
+     * por ancho de cada foto, y `<Foto>` (`src/components/ui/foto.tsx`) arma el
+     * `srcset` con los `sizes` reales de cada uso. El navegador elige el
+     * peldaño exactamente igual que antes; la diferencia es que los archivos ya
+     * existen y Vercel no transforma nada.
      */
-    unoptimized: process.env.IMAGENES_SIN_OPTIMIZAR === "1",
+    unoptimized: process.env.IMAGENES_SIN_OPTIMIZAR !== "0",
     remotePatterns: [
       {
         // Imágenes servidas desde Supabase Storage (bucket `imagenes`)

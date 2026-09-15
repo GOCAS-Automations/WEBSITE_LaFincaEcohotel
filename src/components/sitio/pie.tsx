@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { Foto } from "@/components/ui/foto";
 import Link from "next/link";
 
 import { getContacto } from "@/lib/contenido";
@@ -61,7 +61,7 @@ export async function Pie() {
               el comando no encontraba el enlace. El wordmark ya lo nombra.
             */}
             <Link href="/" className="flex items-center gap-3">
-              <Image
+              <Foto
                 src="/marca/icono.png"
                 alt=""
                 width={96}
@@ -102,7 +102,7 @@ export async function Pie() {
                   )}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="underline-offset-4 transition-colors duration-200 hover:text-white hover:underline"
+                  className="inline-flex min-h-11 items-center underline-offset-4 transition-colors duration-200 hover:text-white hover:underline"
                 >
                   {contacto.whatsapp_visible}
                 </a>

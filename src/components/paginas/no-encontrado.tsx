@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { Foto } from "@/components/ui/foto";
 
 import { IconoWhatsapp } from "@/components/sitio/iconos";
 import { Boton } from "@/components/ui/boton";
@@ -24,12 +24,11 @@ export async function ContenidoNoEncontrado() {
   return (
     <section className="contenedor bajo-nav flex flex-col items-center gap-8 pb-16 text-center sm:pb-24">
       <div className="relative size-56 sm:size-72">
-        <Image
+        <Foto
           src={contenido.imagen}
           alt={contenido.imagen_alt}
           fill
           priority
-          quality={75}
           sizes="(min-width: 640px) 18rem, 14rem"
           className="object-contain"
         />

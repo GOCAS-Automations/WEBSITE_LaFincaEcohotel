@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { Foto } from "@/components/ui/foto";
 
 import { Neblina, PatronColibri, RamaBotanica } from "@/components/sitio/atmosfera";
 import { CierreReserva } from "@/components/sitio/cierre-reserva";
@@ -76,11 +76,10 @@ export async function PaginaConocenos() {
 
           <Revelar retraso={110}>
             <div className="relative aspect-16/11 overflow-hidden rounded-[var(--radius-generoso)] rounded-tr-[7rem] bg-crema-200 shadow-[var(--shadow-elevada)]">
-              <Image
+              <Foto
                 src={lugar.imagen}
                 alt={lugar.imagen_alt}
                 fill
-                quality={75}
                 sizes="(min-width: 1024px) 45vw, 92vw"
                 className="object-cover"
               />
@@ -134,11 +133,10 @@ export async function PaginaConocenos() {
                   className="absolute inset-0 h-full w-full object-cover"
                 />
               ) : (
-                <Image
+                <Foto
                   src={reconocimiento.imagen}
                   alt={reconocimiento.imagen_alt}
                   fill
-                  quality={75}
                   sizes="(min-width: 1024px) 45vw, 92vw"
                   className="object-cover"
                 />
@@ -192,11 +190,10 @@ export async function PaginaConocenos() {
               >
                 <article className="flex h-full flex-col overflow-hidden rounded-[var(--radius-generoso)] rounded-tl-[3rem] bg-crema-50 shadow-[var(--shadow-tenue)] ring-1 ring-crema-200/70 transition-shadow duration-300 hover:shadow-[var(--shadow-tarjeta)]">
                   <div className="relative aspect-4/3 bg-crema-200">
-                    <Image
+                    <Foto
                       src={instalacion.imagen}
                       alt={instalacion.imagen_alt}
                       fill
-                      quality={68}
                       sizes="(min-width: 1024px) 30vw, (min-width: 640px) 45vw, 92vw"
                       className="object-cover"
                     />

@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { Foto } from "@/components/ui/foto";
 import Link from "next/link";
 
 import { clasesBoton } from "@/components/ui/boton";
@@ -57,9 +57,9 @@ export function Encabezado() {
       */}
       <Link
         href="/"
-        className="group flex shrink-0 items-center gap-2.5 rounded-full pl-1"
+        className="group flex min-h-11 shrink-0 items-center gap-2.5 rounded-full pl-1"
       >
-        <Image
+        <Foto
           src="/marca/icono.png"
           alt=""
           /* 96, no 513: se pinta a 36–40 px y con las medidas del archivo Next

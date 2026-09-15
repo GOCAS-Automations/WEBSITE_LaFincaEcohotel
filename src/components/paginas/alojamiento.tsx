@@ -55,7 +55,7 @@ export async function PaginaAlojamiento({
               <li className="flex items-center gap-2">
                 <Link
                   href="/"
-                  className="underline-offset-4 transition-colors duration-200 hover:text-petroleo-700 hover:underline"
+                  className="inline-flex min-h-11 items-center underline-offset-4 transition-colors duration-200 hover:text-petroleo-700 hover:underline"
                 >
                   Inicio
                 </Link>
@@ -64,7 +64,7 @@ export async function PaginaAlojamiento({
               <li className="flex items-center gap-2">
                 <Link
                   href="/alojamientos"
-                  className="underline-offset-4 transition-colors duration-200 hover:text-petroleo-700 hover:underline"
+                  className="inline-flex min-h-11 items-center underline-offset-4 transition-colors duration-200 hover:text-petroleo-700 hover:underline"
                 >
                   Cabañas
                 </Link>

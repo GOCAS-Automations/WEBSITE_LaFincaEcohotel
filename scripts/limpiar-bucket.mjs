@@ -184,8 +184,32 @@ console.log(`Objetos en el bucket: ${objetos.length}.`);
 const protegido = (ruta) =>
   PREFIJOS_PROTEGIDOS.some((prefijo) => ruta.startsWith(prefijo));
 
+/**
+ * Las VARIANTES por ancho (`v/…`) no aparecen en la base: las genera
+ * `npm run imagenes:variantes` y las sirve `<Foto>` en el `srcset`. No se
+ * protegen en bloque —eso dejaría huérfanas para siempre las de una foto que se
+ * retire— sino que se consideran referenciadas **si lo está su original**:
+ *
+ *     v/web/cabana-01/01-640.webp   ←   web/cabana-01/01.webp
+ *
+ * Así una foto que sale del sitio se lleva sus seis peldaños con ella, que es
+ * exactamente la regla 11 de `CLAUDE.md`.
+ */
+function originalDeVariante(ruta) {
+  /* La extensión de la variante puede ser `.webp` o `.avif` —los heros llevan
+     las dos—, pero el original SIEMPRE es el `.webp` del bucket. */
+  const coincidencia = /^v\/(.+)-\d+\.(?:webp|avif)$/.exec(ruta);
+  return coincidencia ? `${coincidencia[1]}.webp` : null;
+}
+
+const referenciada = (ruta) => {
+  if (referenciadas.has(ruta)) return true;
+  const original = originalDeVariante(ruta);
+  return Boolean(original && referenciadas.has(original));
+};
+
 const sobrantes = objetos.filter(
-  (objeto) => !protegido(objeto.ruta) && !referenciadas.has(objeto.ruta),
+  (objeto) => !protegido(objeto.ruta) && !referenciada(objeto.ruta),
 );
 
 const bytesSobrantes = sobrantes.reduce((suma, o) => suma + o.bytes, 0);

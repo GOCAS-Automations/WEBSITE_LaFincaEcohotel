@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { Foto } from "@/components/ui/foto";
 
 /**
  * Atmósfera del sitio: bosque real, neblina, resplandor, patrón y botánica.
@@ -288,11 +288,10 @@ export function FondoBosque({
         .filter(Boolean)
         .join(" ")}
     >
-      <Image
+      <Foto
         src={imagen}
         alt=""
         fill
-        quality={68}
         sizes="100vw"
         className="object-cover"
       />

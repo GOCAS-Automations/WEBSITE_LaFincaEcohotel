@@ -44,7 +44,7 @@ export function NavEscritorio({ enlaces }: { enlaces: readonly EnlaceNav[] }) {
                 href={enlace.href}
                 aria-current={activo ? "page" : undefined}
                 className={[
-                  "block rounded-full px-3.5 py-2 font-titulo text-[0.9rem] font-medium transition-colors duration-200",
+                  "flex min-h-11 items-center rounded-full px-3.5 py-2 font-titulo text-[0.9rem] font-medium transition-colors duration-200",
                   activo
                     ? "bg-white/15 text-white"
                     : "text-brote-100/80 hover:bg-white/10 hover:text-white",

@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { Foto } from "@/components/ui/foto";
 import Link from "next/link";
 
 import {
@@ -170,12 +170,11 @@ function FilaCabana({
             : "rounded-bl-[5rem] lg:order-1",
         ].join(" ")}
       >
-        <Image
+        <Foto
           src={foto.url}
           alt={foto.alt}
           fill
           priority={prioridad}
-          quality={75}
           sizes="(min-width: 1024px) 55vw, 92vw"
           className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
         />
@@ -191,7 +190,7 @@ function FilaCabana({
           <h2 className="font-titulo text-2xl font-extrabold text-petroleo-900 sm:text-3xl">
             <Link
               href={ruta}
-              className="underline-offset-4 transition-colors duration-200 hover:text-petroleo-700 hover:underline"
+              className="inline-flex min-h-11 items-center underline-offset-4 transition-colors duration-200 hover:text-petroleo-700 hover:underline"
             >
               {alojamiento.nombre}
             </Link>

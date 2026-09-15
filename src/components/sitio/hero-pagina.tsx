@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { Foto } from "@/components/ui/foto";
 import Link from "next/link";
 
 import type { HeroListado } from "@/lib/contenido";
@@ -50,12 +50,11 @@ export function HeroPagina({ hero, migas, prioridad = true }: PropsHero) {
           imagen que ya estaba en el primer visor. No entra ninguna petición
           nueva.
         */}
-        <Image
+        <Foto
           src={hero.imagen}
           alt={hero.imagen_alt}
           fill
           priority={prioridad}
-          quality={90}
           sizes="100vw"
           className="object-cover"
         />
@@ -85,7 +84,7 @@ export function HeroPagina({ hero, migas, prioridad = true }: PropsHero) {
                         <>
                           <Link
                             href={miga.ruta}
-                            className="underline-offset-4 transition-colors duration-200 hover:text-white hover:underline"
+                            className="inline-flex min-h-11 items-center underline-offset-4 transition-colors duration-200 hover:text-white hover:underline"
                           >
                             {miga.nombre}
                           </Link>

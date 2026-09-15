@@ -82,7 +82,7 @@ export function LectorResena({
       <button
         type="button"
         onClick={abrir}
-        className={`mt-4 self-start font-titulo text-sm font-semibold underline-offset-4 transition-colors duration-200 hover:underline ${enlace}`}
+        className={`mt-4 inline-flex min-h-11 items-center self-start font-titulo text-sm font-semibold underline-offset-4 transition-colors duration-200 hover:underline ${enlace}`}
       >
         Leer más
         <span className="sr-only"> la reseña de {autor}</span>

@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { Foto } from "@/components/ui/foto";
 import Link from "next/link";
 
 import { portada, type AlojamientoPublico } from "@/lib/contenido";
@@ -40,12 +40,11 @@ export function TarjetaCabana({
           apaisada hace que las tarjetas se lean como un catálogo y no como un
           álbum. El recorte que sobra es mínimo. */}
       <div className="relative aspect-3/2 overflow-hidden bg-crema-200">
-        <Image
+        <Foto
           src={foto.url}
           alt={foto.alt}
           fill
           priority={prioridad}
-          quality={75}
           sizes="(min-width: 1024px) 30vw, (min-width: 640px) 45vw, 92vw"
           className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
         />
