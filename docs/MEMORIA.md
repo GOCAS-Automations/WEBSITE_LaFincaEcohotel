@@ -12,7 +12,11 @@
   **tercera ronda** (Instagram en la portada, la COP16 en Conócenos, heros a
   calidad 90) y una **cuarta**: el motor de precios noche a noche, el sitio sin
   el optimizador de imágenes de Vercel, la auditoría responsive y los logos
-  oficiales del diseñador.
+  oficiales del diseñador. El **2026-09-15**, una **quinta ronda** sobre el sitio
+  ya publicado en Vercel: la portada sin «Nuestra esencia» y con fotos en
+  Experiencias, el pie sin la línea clara, el calendario por encima de todo, el
+  desplegable de cabañas con el estilo del sitio, las ondas de sección
+  redibujadas para el teléfono y los botones centrados a 390 px.
 - Del motor de reservas ya existe la parte que no depende de la base: el
   calendario de festivos de Colombia, la regla plan ↔ noches y el calendario
   propio que apaga los días que el plan no cubre. Falta la disponibilidad real.
@@ -76,6 +80,11 @@
 | 2026-09-02 | **Sin `will-change` en las capas de atmósfera.** La portada tiene 15 capas de bruma y 10 motas; declarar `will-change` en las 25 habría reservado 25 capas de composición permanentes en la GPU. Una animación de `transform` que ya corre la promueve el navegador sola. |
 | 2026-09-02 | **La bruma va DEBAJO del degradado en heros y cierres.** Encima, su `mix-blend-screen` aclaraba justo la franja del titular y hundía el contraste por debajo de 4.5:1. Debajo, aclara la foto y el degradado la oscurece a ella también. |
 | 2026-09-02 | **En fondo oscuro sólido, el botón `claro` (cristal blanco al 15 %) NO sirve:** se lee como deshabilitado. Se añadieron las variantes `crema` (relleno, ~10:1) y `contornoClaro`. El petróleo tampoco vale sobre `bosque-900`: 2,2:1, por debajo del 3:1 que pide la norma para el contorno de un control. |
+| 2026-09-15 | **Un borde de 1 px más claro que el fondo ES la línea blanca.** El pie llevaba `border-t border-petroleo-800/40` sobre `bg-petroleo-900`. Y el `-mb-px` de `CorteOrganico` no lo tapaba: la sección que contiene la onda tiene `overflow-hidden` y ese píxel de solape se recorta. |
+| 2026-09-15 | **Un `z-index` alto dentro de un `isolate` no sirve para salir de él.** El calendario iba con `z-50` dentro del hero, que es un contexto propio; la sección siguiente, `relative` con `z-auto`, se pintaba encima por orden del documento. El hero pasa a `z-30`. |
+| 2026-09-15 | **Las ondas de sección se REDIBUJAN para el teléfono, no se escalan.** `preserveAspectRatio="none"` comprime el perfil de 1440 a 390 y lo convierte en una cenefa. `PERFILES_MOVIL` tiene una sola ondulación y se elige por CSS, no con una media query en JavaScript. |
+| 2026-09-15 | **El fondue pasa a `extras.tipo = 'experiencia'`.** Es una celebración para dos con precio por estadía, igual que Aniversario y Cumpleaños. El cambio va en los datos y no en el código: ninguna regla se escribe contra el nombre del extra, que el cliente puede renombrar desde el panel. |
+| 2026-09-15 | **«Nuestra esencia» sale de la portada y su clave del CMS con ella.** Una clave que ya no lee nadie se queda viva en la tabla para siempre: el seed la borra en un bloque «CLAVES RETIRADAS». |
 | 2026-09-02 | **La galería NO añade un campo `destacada`.** El editor del panel guarda solo `url` y `alt`, así que una clave extra se perdería en el primer guardado. Qué foto sale grande lo decide su **posición** dentro de la página, documentado en `docs/CMS_CLAVES.md`. |
 | 2026-09-02 | **La página de la galería vive en el estado del componente, no en la URL.** Meterla en la dirección obligaba a `useSearchParams` y a otro `<Suspense>` a cambio de nada: nadie comparte "la página 3 de la galería". |
 
@@ -1346,6 +1355,175 @@ propia de la página → panel → respaldo.
   cobra como fin de semana, y si el hotel cobra las estadías mixtas tal como las
   desglosa el motor. Las dos preguntas son para Amapola.
 
+
+
+### 2026-09-15 — Quinta ronda: la portada más corta, el pie sin costura y el calendario por encima
+
+Nueve encargos de Cesar sobre el sitio ya publicado
+(`website-la-finca-ecohotel.vercel.app`). Ninguno es de arquitectura: son cosas
+que se ven, más dos textos que ya no describían lo que el visitante encuentra.
+
+#### La «línea blanca» del pie era una clase, no un hueco subpíxel
+
+El pie llevaba `border-t border-petroleo-800/40` sobre `bg-petroleo-900`: una
+fila de píxeles de `#084a48` al 40 % sobre `#0a3c3b`, es decir **más clara que
+el propio pie**, justo en la costura con el corte orgánico de arriba. Medida con
+CDP: `rgb(9,66,64)` contra `rgb(10,60,59)` del resto.
+
+Y no la tapaba el `-mb-px` que `CorteOrganico` trae para esto: **la sección que
+contiene la onda tiene `overflow-hidden`, así que ese píxel de solape se
+recorta**. Se quitó el borde —un pie oscuro pegado a una onda del mismo color no
+necesita separador—, se le puso `-mt-px` al pie y los dos `<svg>` del divisor
+van con `shape-rendering="geometricPrecision"`. Verificado píxel a píxel a 1440
+y 390 px en portada, `/conocenos`, `/reservar` y `/alojamientos`: una sola tinta
+en las diez filas alrededor de la costura.
+
+#### El calendario lo tapaba la sección siguiente, y era un contexto de apilamiento
+
+El panel del calendario cuelga del campo con `absolute z-50`, pero ese 50 se
+cuenta **dentro del contexto que crea el `isolate` del hero**. La sección de
+«Bienvenidos» es `relative` con `z-index: auto`, así que se pinta después por
+orden del documento y se comía el calendario de la mitad hacia abajo.
+Comprobado con `elementFromPoint` contra el sitio publicado: a 1440×700 el punto
+medio del panel lo ocupaba `bg-crema-50 … seccion-diferida`, y el punto bajo, la
+propia fotografía de la sección.
+
+El hero pasa a `z-30`. Queda por encima de todo lo que viene detrás y por debajo
+de la cápsula del nav (`z-50` fija) y del botón de WhatsApp (`z-40`), que es el
+orden correcto. Verificado a 1440×700, 1440×900 y 1024×700: el panel entero
+responde. En móvil la hoja va de y=182 a y=678 con el nav acabando en 76: ni el
+nav ni el FAB la tocan, y tocar fuera sigue cerrándola.
+
+#### La portada, una sección más corta
+
+- **Fuera «Nuestra esencia»** (la banda de verde claro con las tres fotos y las
+  frases del manual). Era la única sección que no enseña el hotel, no da un
+  precio y no lleva a reservar; lo que contaba es el trabajo de «Sobre nosotros»
+  en `/conocenos`. La clave `home.esencia` salió con ella del código, del panel y
+  de `docs/CMS_CLAVES.md` —no la usaba ninguna otra página— y el seed la borra de
+  la tabla (bloque nuevo «CLAVES RETIRADAS»). **Cero huérfanos en el bucket**:
+  sus tres fotos seguían usándose en la galería, en las instalaciones de
+  Conócenos y en la ficha de la Cabaña 03 (`npm run imagenes:limpiar`).
+- La costura crema → blanco que hacían las dos ondas de esa banda la cose ahora
+  un banco de niebla en el borde superior de la sección de Instagram.
+- **Experiencias con foto.** Eran dos tarjetas de puro texto con un icono de
+  hoja, en una portada donde todo lo demás son fotografías. Ahora son **tres**,
+  cada una con su imagen, alineadas arriba y abajo (`items-stretch` + foto
+  `aspect-4/3` con `shrink-0` y cuerpo `flex-1`) y con la regla del sello:
+  `CLASE_FOTO_CON_FLAG` y la curva grande en la esquina superior IZQUIERDA.
+
+#### El fondue es una experiencia, no un adicional
+
+Cesar pidió «una foto por experiencia (Aniversario, Cumpleaños, Fondue)» y el
+fondue no salía: estaba en `extras` con `tipo = 'adicional'`, así que caía en la
+lista de texto de `/experiencias` junto a la segunda mascota y no aparecía en la
+portada. Es una celebración para dos con precio por estadía, igual que las otras
+dos, así que **el cambio se hizo en los datos** (`extras.tipo`), no en el código:
+es reversible desde el panel y no hay ninguna regla escrita contra el nombre
+«Fondue».
+
+⚠️ **Del fondue no existe foto.** Ni en el Drive ni en el sitio viejo. Se publica
+con una de **ambiente** —el comedor para dos de la Cabaña 05 frente al
+ventanal—, anotado en `FOTOS_EXPERIENCIAS` (`src/lib/fotos.ts`), en el seed y en
+`docs/CMS_CLAVES.md`. **Pedírsela a Juan Camilo.** Aniversario y Cumpleaños sí
+llevan su foto real.
+
+#### «Sobre nosotros»: dos fotos cuadradas con el texto
+
+La columna derecha llevaba una sola foto con proporción fija y acababa mucho
+antes que la de texto. Ahora son dos apiladas en una columna `h-full` con
+`grow-[1.45]` y `grow` sobre base cero: el alto lo fija la columna de al lado.
+Medido: **desfase 0 px arriba y 0 px abajo a 1024, 1440 y 1920**; a 768 y 390 se
+apilan y recuperan su proporción.
+
+⚠️ **La segunda foto TIENE que ser apaisada.** La primera elegida fue la fachada
+de la Cabaña 03 (1086×1231) y en una caja ancha y baja se quedó en una franja de
+pared blanca. Entró el jacuzzi de la Cabaña 01 (1448×923), cuya franja superior
+—montañas, nubes y guadua— es justo lo que cuenta el texto de al lado. Las zonas
+comunes no servían: las ocho salen más abajo, en las instalaciones. Clave nueva
+del CMS: `lugar.imagen_secundaria` + `imagen_secundaria_alt`, con su campo en el
+panel. Vacía, el bloque vuelve a una sola foto y sigue alineado.
+
+#### Los tres pasos de `/reservar` no describían el flujo
+
+Decían «1. Elige tu cabaña · 2. Elige tu plan · 3. Confirmamos y reservas con el
+50 %», que es el flujo de antes del motor de precios noche a noche. El selector
+pregunta **fechas → cabaña → plan**, y el plan solo si la estadía tiene noches de
+fin de semana o festivos. Reescritos los tres pasos y la entrada; el remate del
+50 % queda al final del paso 3, porque como cuarto paso mentía: en pantalla no
+hay cuarto paso. Actualizados el respaldo, el seed y **la fila real de la base**
+(la del CMS gana sobre el código). De paso, el cierre de `/experiencias` decía
+«elige primero la cabaña y el plan» y ahora dice fechas.
+
+#### El desplegable de cabañas
+
+Sin `appearance-none` el navegador dibuja su propio control —rectángulo gris de
+esquinas rectas— al lado de un campo de fechas con radio de 12 px y borde crema.
+Ahora lleva la piel del sitio (radio, borde, alto de 49 px exactamente igual que
+el campo de fechas, icono de cabaña a la izquierda y chevron propio en SVG a la
+derecha) y **sigue siendo un `<select>` nativo**: es lo que abre la rueda a
+pantalla completa en un teléfono y lo que cualquier lector de pantalla ya sabe
+anunciar. El chevron va en un `<span>` hermano con `pointer-events-none`.
+
+Se retiró además **«Sin intermediarios ni comisiones»** (única aparición en todo
+el repo, en el contador de noches del módulo). Sin fechas, ese hueco queda vacío.
+
+#### Las ondas en el teléfono
+
+`preserveAspectRatio="none"` estira el perfil al ancho del visor: a 1440 px las
+cuatro o cinco crestas de `cresta` se leen como una ladera; a 390 px el mismo
+dibujo se comprime a menos de un tercio y queda un rizado de cenefa. **La
+solución no es escalar, es dibujar otro perfil**: `PERFILES_MOVIL` en un
+`viewBox` de 480 —mismo alto de 120, así que la amplitud relativa se conserva—
+con **una sola ondulación** cada uno y la cresta descolocada. Se eligen por CSS
+(`sm:hidden` / `hidden sm:block`), no con una media query en JavaScript, que
+daría un primer pintado con el perfil equivocado. Verificado: a 390 px los cinco
+cortes de la portada y los dos de `/conocenos` pintan solo el `viewBox` de 480.
+
+#### Botones centrados a 390 px
+
+Auditoría por CDP en once páginas buscando botones no centrados en su bloque.
+Corregidos:
+
+| Dónde | Antes | Ahora |
+|---|---|---|
+| Portada · «Síguenos en Instagram» | `items-start` | centrado; desde `sm`, a la izquierda |
+| Portada · «Reservar ahora» del cierre | bloque `items-start` | bloque centrado con `text-center`; desde `sm`, a la izquierda |
+| `/conocenos` · «Reservar ahora» (COP16) | `self-start` | `self-center sm:self-start` |
+| `/conocenos` · «Cómo llegar» + «Ver la ficha» | fila pegada a la izquierda | `justify-center sm:justify-start` |
+| `/alojamientos` · «Ver la cabaña» | `ml-auto`: saltaba de línea y quedaba solo contra el borde derecho | `w-full justify-center sm:ml-auto sm:w-auto` |
+
+El «Conócenos» de «Nuestra esencia» también salía en la lista; desapareció con la
+sección. Tras la pasada no queda ningún botón descolgado a 390 px.
+
+#### Verificación
+
+- `tsc --noEmit`, `npm run lint` y `npm run build` limpios. **62 pruebas en
+  verde.** Las rutas públicas siguen estáticas con ISR de una hora.
+- CDP a **1440 y 390 px** de las nueve páginas públicas: **cero desbordes
+  horizontales y cero errores de consola**. Más el calendario abierto a tres
+  alturas de ventana, el módulo de reserva, la costura del pie en cuatro páginas
+  y los siete cortes orgánicos a 390 px.
+- **Panel con sesión real** (contraseña del usuario de pruebas rotada para la
+  comprobación y rotada de nuevo a un valor aleatorio al terminar):
+  `/admin/contenido`, «Portada» —ya sin el bloque «Naturaleza»—, «Conócenos»
+  —con el campo nuevo de segunda foto—, «Página de reserva», «Página de
+  experiencias» y el módulo de Experiencias, que ahora lista **3**. Todo 200,
+  **cero errores de consola**.
+- **Bucket sin huérfanos**: `npm run imagenes:limpiar` da 0 objetos y 0 MB. No se
+  subió ni se borró una sola imagen: las fotos nuevas de Experiencias y de
+  Conócenos ya estaban publicadas y tienen sus variantes en `v/`.
+
+#### Lo que queda anotado
+
+- **Falta una foto real del fondue** (hoy, una de ambiente).
+- La hoja del calendario en móvil **no se ancla al borde inferior de la pantalla**
+  aunque el código diga `fixed … bottom-3`: el `backdrop-blur-xl` del módulo de
+  reserva crea bloque contenedor para los descendientes `fixed`, así que la hoja
+  se posiciona respecto al formulario. Se ve entera, nadie la tapa y tocar fuera
+  la cierra, así que se deja; si algún día hace falta la hoja inferior de verdad,
+  el arreglo es sacar el desenfoque a una capa de fondo o portar el panel a
+  `document.body`.
 
 ## Pendientes de contenido/credenciales (pedir según se necesiten)
 
