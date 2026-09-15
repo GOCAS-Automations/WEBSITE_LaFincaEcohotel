@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 
 import type { ImagenGaleria } from "@/lib/contenido";
 
@@ -236,82 +237,111 @@ export function Galeria({
         />
       ) : null}
 
-      {actual ? (
-        <div
-          ref={dialogoRef}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby={idTitulo}
-          className="fixed inset-0 z-100 flex flex-col bg-bosque-950/96 backdrop-blur-sm"
-        >
-          <p id={idTitulo} className="sr-only">
-            {titulo ? `Galería de ${titulo}. ` : "Galería. "}
-            Imagen {(abierta ?? 0) + 1} de {total}. Usa las flechas del teclado
-            para cambiar de foto y la tecla Escape para cerrar.
-          </p>
+      {actual
+        ? createPortal(
+            /*
+              PORTAL A `document.body`, y no un simple `position: fixed` en el
+              sitio donde vive el componente.
 
-          <div className="flex items-center justify-between px-5 py-4 text-crema-100 sm:px-8">
-            <span className="font-titulo text-sm tabular-nums">
-              {(abierta ?? 0) + 1} / {total}
-            </span>
-            <button
-              ref={cerrarRef}
-              type="button"
-              onClick={cerrar}
-              className="flex size-11 items-center justify-center rounded-full bg-white/10 transition-colors duration-200 hover:bg-white/20"
-              aria-label="Cerrar la galería"
+              La galería cuelga casi siempre de una `<Seccion diferida>`
+              (`src/components/ui/seccion.tsx`), que por defecto lleva
+              `content-visibility: auto` para no pintar lo que está fuera de
+              pantalla. Esa propiedad, aunque el elemento sea `position:
+              relative` normal y corriente, lo convierte también en el
+              CONTENEDOR DE POSICIONAMIENTO de cualquier descendiente `fixed`
+              —es parte de la especificación de `contain`, no un error de
+              Chrome—. El resultado, medido en `/galeria`: el visor dejaba de
+              anclarse a la ventana y pasaba a ocupar el alto de la SECCIÓN
+              entera (varios miles de píxeles), con la foto pintada muy por
+              debajo de lo visible. Sacar el diálogo del árbol con un portal
+              lo deja colgando directo de `<body>`, fuera del alcance de
+              `content-visibility`, `overflow` o `transform` de cualquier
+              antepasado.
+            */
+            <div
+              ref={dialogoRef}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={idTitulo}
+              className="fixed inset-0 z-100 flex flex-col bg-bosque-950/96 backdrop-blur-sm"
             >
-              <svg
-                viewBox="0 0 24 24"
-                className="size-5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                aria-hidden="true"
-              >
-                <path d="M6 6l12 12M18 6L6 18" />
-              </svg>
-            </button>
-          </div>
+              <p id={idTitulo} className="sr-only">
+                {titulo ? `Galería de ${titulo}. ` : "Galería. "}
+                Imagen {(abierta ?? 0) + 1} de {total}. Usa las flechas del
+                teclado para cambiar de foto y la tecla Escape para cerrar.
+              </p>
 
-          <div className="relative flex min-h-0 flex-1 items-center justify-center px-3 pb-6 sm:px-16">
-            {/*
-              `max-h-full`/`max-w-full` (porcentajes) NO bastan aquí: el
-              contenedor es un elemento flex (`flex-1` dentro de una columna) y
-              su alto, aunque está resuelto en píxeles, no siempre cuenta como
-              «definido» para que un hijo reparta un porcentaje sobre él —
-              medido en Chrome, la foto se desbordaba por arriba y por abajo en
-              escritorio y quedaba diminuta, con aire de sobra, en el teléfono.
-              `vh`/`vw` son relativos al viewport, no al contenedor, así que no
-              dependen de esa resolución y el tamaño sale estable en cualquier
-              proporción de pantalla. Se descuentan a mano la cabecera y el pie
-              (contador/cerrar arriba, texto alternativo abajo) para que la
-              foto nunca los tape.
-            */}
-            <Foto
-              key={actual.url}
-              src={actual.url}
-              alt={actual.alt}
-              width={1600}
-              height={1200}
-              sizes="100vw"
-              className="max-h-[calc(100vh-9.5rem)] max-w-[90vw] w-auto rounded-[var(--radius-tarjeta)] object-contain sm:max-w-[85vw]"
-            />
+              <div className="flex items-center justify-between px-5 py-4 text-crema-100 sm:px-8">
+                <span className="font-titulo text-sm tabular-nums">
+                  {(abierta ?? 0) + 1} / {total}
+                </span>
+                <button
+                  ref={cerrarRef}
+                  type="button"
+                  onClick={cerrar}
+                  className="flex size-11 items-center justify-center rounded-full bg-white/10 transition-colors duration-200 hover:bg-white/20"
+                  aria-label="Cerrar la galería"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="size-5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M6 6l12 12M18 6L6 18" />
+                  </svg>
+                </button>
+              </div>
 
-            {total > 1 ? (
-              <>
-                <BotonPaso direccion="anterior" alPulsar={() => mover(-1)} />
-                <BotonPaso direccion="siguiente" alPulsar={() => mover(1)} />
-              </>
-            ) : null}
-          </div>
+              <div className="relative flex min-h-0 flex-1 items-center justify-center px-3 pb-6 sm:px-16">
+                {/*
+                  `max-h-full`/`max-w-full` (porcentajes) NO bastan aquí: el
+                  contenedor es un elemento flex (`flex-1` dentro de una
+                  columna) y su alto, aunque está resuelto en píxeles, no
+                  siempre cuenta como «definido» para que un hijo reparta un
+                  porcentaje sobre él — medido en Chrome, la foto se
+                  desbordaba por arriba y por abajo en escritorio y quedaba
+                  diminuta, con aire de sobra, en el teléfono. `vh`/`vw` son
+                  relativos al viewport, no al contenedor, así que no dependen
+                  de esa resolución y el tamaño sale estable en cualquier
+                  proporción de pantalla. Se descuentan a mano la cabecera y
+                  el pie (contador/cerrar arriba, texto alternativo abajo)
+                  para que la foto nunca los tape.
+                */}
+                <Foto
+                  key={actual.url}
+                  src={actual.url}
+                  alt={actual.alt}
+                  width={1600}
+                  height={1200}
+                  sizes="100vw"
+                  className="max-h-[calc(100vh-9.5rem)] max-w-[90vw] w-auto rounded-[var(--radius-tarjeta)] object-contain sm:max-w-[85vw]"
+                />
 
-          <p className="px-6 pb-6 text-center text-sm text-crema-200/90">
-            {actual.alt}
-          </p>
-        </div>
-      ) : null}
+                {total > 1 ? (
+                  <>
+                    <BotonPaso
+                      direccion="anterior"
+                      alPulsar={() => mover(-1)}
+                    />
+                    <BotonPaso
+                      direccion="siguiente"
+                      alPulsar={() => mover(1)}
+                    />
+                  </>
+                ) : null}
+              </div>
+
+              <p className="px-6 pb-6 text-center text-sm text-crema-200/90">
+                {actual.alt}
+              </p>
+            </div>,
+            document.body,
+          )
+        : null}
     </>
   );
 }
