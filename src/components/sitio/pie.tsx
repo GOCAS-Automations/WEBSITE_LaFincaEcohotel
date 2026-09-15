@@ -67,7 +67,25 @@ export async function Pie() {
     */
     <footer className="-mt-px bg-petroleo-900 text-crema-100">
       <div className="contenedor py-14 sm:py-16">
-        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr]">
+        {/*
+          LAS TRES COLUMNAS, REPARTIDAS POR SU CONTENIDO.
+
+          Antes era `lg:grid-cols-[1.4fr_1fr_1fr]`: tres carriles fijos con la
+          misma separación entre ellos. Pero el contenido de cada uno mide algo
+          muy distinto —la marca llena su carril, «El sitio» son siete palabras
+          sueltas— así que los HUECOS que se ven no eran los del `gap`, sino lo
+          que sobraba dentro de cada carril: 56 px entre la primera columna y la
+          segunda, 266 px entre la segunda y la tercera, y casi 200 px muertos
+          contra el borde derecho. Es exactamente lo que reportó Cesar: la
+          segunda columna parecía pegada a la primera.
+
+          Ahora los dos carriles de enlaces miden lo que mide su texto (`auto`)
+          y el espacio que sobra se reparte a partes iguales entre los tres
+          (`justify-between`). Los huecos quedan iguales, la columna legal cierra
+          a ras del borde derecho —la misma línea que el RNT de abajo— y la de
+          marca abre a ras del izquierdo.
+        */}
+        <div className="grid gap-10 sm:grid-cols-2 sm:gap-x-12 lg:grid-cols-[minmax(0,24rem)_auto_auto] lg:items-start lg:justify-between lg:gap-x-16">
           {/* Marca y contacto */}
           <div className="flex flex-col gap-5">
             {/*
