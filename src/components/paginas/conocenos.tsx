@@ -157,11 +157,17 @@ export async function PaginaConocenos() {
         <div className="relative z-10 grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
           <Revelar retraso={80} className="order-2 lg:order-1">
             {/*
-              La curva grande abre ABAJO A LA IZQUIERDA: en la esquina superior
-              derecha no se toca nada, que es donde el material del hotel lleva
-              impreso el sello de marca.
+              LA CURVA GRANDE ABRE ARRIBA A LA DERECHA (Cesar, 2026-09-15).
+              Estaba abajo a la izquierda para no tocar la esquina donde las
+              FOTOGRAFÍAS del hotel llevan impreso el sello de marca, pero aquí
+              lo que se pinta es el clip de la COP16 —grabado en video, sin
+              sello— y la esquina de arriba a la derecha queda libre. Encima, al
+              abrir hacia el titular de la derecha, el bloque deja de leerse
+              como dos piezas sueltas. La regla del sello sigue viva para todo
+              lo que sí es una foto del bucket: ver `ZONA_FLAG` en
+              `src/lib/fotos.ts`.
             */}
-            <div className="relative aspect-16/10 overflow-hidden rounded-[var(--radius-generoso)] rounded-bl-[7rem] bg-crema-200 shadow-[var(--shadow-elevada)]">
+            <div className="relative aspect-16/10 overflow-hidden rounded-[var(--radius-generoso)] rounded-tr-[7rem] bg-crema-200 shadow-[var(--shadow-elevada)]">
               {reconocimiento.video ? (
                 /*
                   Arranca solo, silenciado y en bucle, pero NO en la carga
