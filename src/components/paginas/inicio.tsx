@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { Foto } from "@/components/ui/foto";
 import Link from "next/link";
 
 import {
@@ -177,57 +177,27 @@ export async function PaginaInicio() {
       <section className="relative isolate flex min-h-svh flex-col items-center justify-center">
         <div aria-hidden="true" className="absolute inset-0 overflow-hidden">
         {/*
-          Dirección de arte real: la foto horizontal recortada a una pantalla de
-          teléfono pierde justo las cabañas, así que en móvil se sirve la
-          vertical. Las dos comparten texto alternativo; solo una se decodifica
-          en cada dispositivo gracias a `sizes` y a las clases de visibilidad.
+          DIRECCIÓN DE ARTE CON UN `picture`, NO CON DOS `img` Y CSS.
+
+          La foto horizontal recortada a una pantalla de teléfono pierde justo
+          las cabañas, así que en móvil se sirve la vertical. Antes eran dos
+          imágenes con `hidden` / `sm:block`, y eso costaba caro sin verse:
+          **Chrome descarga igualmente una imagen en `display: none` si no es
+          perezosa**, de modo que el escritorio se bajaba el hero vertical de
+          1,2 MB para no pintarlo nunca. La de escritorio, para evitar lo
+          contrario, iba en `lazy` — y perdía la prioridad que sí merece.
+
+          Con `picture` el navegador evalúa la media ANTES de pedir nada:
+          descarga una sola, la correcta, y con prioridad alta en los dos casos.
         */}
-        <Image
-          src={hero.imagen_movil}
-          alt={hero.imagen_alt}
-          fill
-          priority
-          /*
-            90, NO 68.
-
-            La calidad 68 se puso para ahorrar 50 kB en el primer visor y se
-            veía: a pantalla completa en un teléfono, sobre una foto que ya
-            venía comprimida de Instagram, la tercera pasada de WebP dejaba el
-            follaje pastoso. Es lo primero que se ve del sitio y es lo que Cesar
-            reportó como borroso.
-
-            El archivo de origen también cambió: ahora es `web/heroes/`, cortado
-            del original de `drive/` a calidad 90, en vez de heredar la copia de
-            `web/` que ya venía a 82. Una generación de pérdida menos.
-          */
-          quality={90}
-          sizes="100vw"
-          className="object-cover sm:hidden"
-        />
-        {/*
-          La de escritorio va en `lazy`, no en `eager` ni en `priority`.
-
-          Con `priority` se añade un `<link rel="preload">` que el navegador
-          respeta aunque la imagen esté en `display: none`. Con `eager` pasa lo
-          mismo: se descarga igual. Medido con Lighthouse móvil, eran 60 kB de
-          una foto que en un teléfono NO SE VE NUNCA, compitiendo por el ancho
-          de banda con la que sí se ve.
-
-          En `lazy`, el navegador no la pide mientras esté oculta —un elemento
-          en `display: none` no llega a intersecar nunca— y en escritorio, donde
-          sí es visible desde el primer momento, la pide en la primera pasada
-          de maquetación. La mayoría de los huéspedes llega desde el celular
-          (por Instagram y WhatsApp): si hay que elegir a quién favorecer, es a
-          ellos.
-        */}
-        <Image
+        <Foto
           src={hero.imagen}
           alt={hero.imagen_alt}
+          fuentes={[{ media: "(max-width: 639px)", src: hero.imagen_movil }]}
           fill
-          loading="lazy"
-          quality={90}
+          priority
           sizes="100vw"
-          className="hidden object-cover sm:block"
+          className="object-cover"
         />
 
         {/*
@@ -278,7 +248,7 @@ export async function PaginaInicio() {
         </div>
 
         <div className="contenedor relative z-10 flex flex-col items-center gap-6 pt-28 pb-16 text-center sm:gap-7 sm:pt-32 sm:pb-20">
-          <p className="rounded-full bg-white/12 px-4 py-1.5 font-titulo text-[0.68rem] font-semibold tracking-[0.22em] text-brote-100 uppercase ring-1 ring-white/25 backdrop-blur-md sm:text-xs">
+          <p className="rounded-full bg-white/12 px-4 py-1.5 font-titulo text-xs font-semibold tracking-[0.22em] text-brote-100 uppercase ring-1 ring-white/25 backdrop-blur-md">
             {hero.antetitulo}
           </p>
 
@@ -309,7 +279,7 @@ export async function PaginaInicio() {
 
           <Link
             href={hero.cta_secundario_href}
-            className="group mt-1 inline-flex items-center gap-2 font-titulo text-sm font-semibold text-brote-100/90 underline-offset-[6px] transition-colors duration-200 hover:text-white hover:underline"
+            className="group mt-1 inline-flex min-h-11 items-center gap-2 font-titulo text-sm font-semibold text-brote-100/90 underline-offset-[6px] transition-colors duration-200 hover:text-white hover:underline"
           >
             {hero.cta_secundario_texto}
             <IconoFlecha className="size-4 transition-transform duration-300 ease-out group-hover:translate-x-1" />
@@ -378,11 +348,10 @@ export async function PaginaInicio() {
               Ver `ZONA_FLAG` en `src/lib/fotos.ts`.
             */}
             <div className="relative aspect-4/5 overflow-hidden rounded-tl-[13rem] rounded-br-[7rem] rounded-tr-[var(--radius-tarjeta)] rounded-bl-[var(--radius-tarjeta)] bg-crema-200 shadow-[var(--shadow-elevada)]">
-              <Image
+              <Foto
                 src={intro.imagen}
                 alt={intro.imagen_alt}
                 fill
-                quality={75}
                 sizes="(min-width: 1024px) 45vw, 92vw"
                 /* El recorte se ancla arriba a la derecha: con el encuadre
                    centrado, la caja 4/5 le cortaba un dedo al sello. */
@@ -711,7 +680,7 @@ export async function PaginaInicio() {
                     )}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-1 flex items-center gap-1.5 font-titulo text-sm font-semibold text-petroleo-600 underline-offset-4 hover:underline"
+                    className="mt-1 flex min-h-11 items-center gap-1.5 font-titulo text-sm font-semibold text-petroleo-600 underline-offset-4 hover:underline"
                   >
                     Añadir a mi reserva
                     <IconoFlecha className="size-4" />
@@ -826,11 +795,10 @@ export async function PaginaInicio() {
                         .filter(Boolean)
                         .join(" ")}
                     >
-                      <Image
+                      <Foto
                         src={imagen.url}
                         alt={imagen.alt}
                         fill
-                        quality={68}
                         sizes={
                           indice === 0
                             ? "(min-width: 1024px) 52vw, 92vw"
@@ -908,11 +876,10 @@ export async function PaginaInicio() {
                         rel="noopener noreferrer"
                         className="group relative block aspect-square overflow-hidden rounded-[var(--radius-tarjeta)] bg-crema-200 ring-1 ring-crema-200/70 transition-shadow duration-300 hover:shadow-[var(--shadow-tarjeta)]"
                       >
-                        <Image
+                        <Foto
                           src={foto.url}
                           alt={foto.alt}
                           fill
-                          quality={68}
                           sizes="(min-width: 1024px) 140px, (min-width: 640px) 22vw, 45vw"
                           fetchPriority="low"
                           className={`${CLASE_FOTO_CON_FLAG} transition-transform duration-500 group-hover:scale-[1.04]`}
@@ -979,11 +946,10 @@ export async function PaginaInicio() {
         />
 
         <div className="relative min-h-[62vh] w-full pb-16 sm:min-h-[28rem]">
-          <Image
+          <Foto
             src={ctaFinal.imagen}
             alt={ctaFinal.imagen_alt}
             fill
-            quality={75}
             sizes="100vw"
             className="object-cover"
           />

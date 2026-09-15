@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { Foto } from "@/components/ui/foto";
 import { Suspense } from "react";
 
 import {
@@ -119,12 +119,11 @@ export async function PaginaReservar() {
         <div className="relative z-10 grid items-center gap-10 lg:grid-cols-[1fr_1.05fr] lg:items-stretch lg:gap-14">
           <Revelar className="lg:h-full">
             <div className="relative aspect-4/3 overflow-hidden rounded-[var(--radius-generoso)] rounded-tl-[8rem] bg-crema-200 shadow-[var(--shadow-elevada)] sm:aspect-16/10 lg:aspect-auto lg:h-full lg:min-h-[24rem]">
-              <Image
+              <Foto
                 src={FOTO.panoramica}
                 alt="Las cabañas de techo azul de La Finca Eco Hotel sobre la ladera, entre el bosque de niebla"
                 fill
                 priority
-                quality={75}
                 sizes="(min-width: 1024px) 46vw, 92vw"
                 className={CLASE_FOTO_CON_FLAG}
               />
