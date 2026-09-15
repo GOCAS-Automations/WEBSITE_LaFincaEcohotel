@@ -24,8 +24,15 @@ export type VarianteBoton =
   | "contornoClaro";
 export type TamanoBoton = "normal" | "grande" | "pequeno" | "nav";
 
+/**
+ * `min-h-11` = 44 px: el mínimo táctil, aquí y no en cada tamaño.
+ *
+ * Lo pedía la auditoría a 360–430 px: el «Reservar» de la barra medía 43 px de
+ * alto —uno menos— y el tamaño `pequeno`, 36. Un botón que se falla con el
+ * pulgar es un botón que no se pulsa, y este es el camino a la reserva.
+ */
 const BASE =
-  "inline-flex items-center justify-center gap-2 rounded-full font-titulo font-semibold " +
+  "inline-flex min-h-11 items-center justify-center gap-2 rounded-full font-titulo font-semibold " +
   "transition-all duration-200 ease-out select-none " +
   "active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50";
 
