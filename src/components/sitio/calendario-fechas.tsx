@@ -192,6 +192,18 @@ export type PropsCalendario = {
   nombrePreferencia?: string | null;
   /** Si se pasa, se muestra un enlace para quitar la preferencia. */
   alQuitarPreferencia?: () => void;
+  /**
+   * DÍA SUELTO, SIN SALIDA: el Día de Calma.
+   *
+   * Quien solo quiere venir un día no tiene salida que elegir. Con
+   * `alElegirDiaUnico` el panel ofrece «Vengo solo ese día» en cuanto hay
+   * llegada, y `diaUnico` pinta el calendario en ese modo: un solo día
+   * marcado, sin rango y sin pedir salida.
+   */
+  diaUnico?: boolean;
+  alElegirDiaUnico?: () => void;
+  /** Vuelve al modo estadía conservando la fecha ya elegida. */
+  alQuitarDiaUnico?: () => void;
   /** Nombres de los campos ocultos, para que el `<form>` funcione sin JS. */
   nombreEntrada?: string;
   nombreSalida?: string;
@@ -208,6 +220,9 @@ export function CalendarioFechas({
   preferencia = null,
   nombrePreferencia = null,
   alQuitarPreferencia,
+  diaUnico = false,
+  alElegirDiaUnico,
+  alQuitarDiaUnico,
   nombreEntrada = "entrada",
   nombreSalida = "salida",
   compacto = false,
@@ -219,8 +234,12 @@ export function CalendarioFechas({
   const [abierto, setAbierto] = useState(false);
   const [mes, setMes] = useState(() => inicioDeMes(entrada || hoy));
   const [foco, setFoco] = useState(() => entrada || hoy);
-  /** Fase: si ya hay llegada y falta salida, el siguiente clic pone la salida. */
-  const eligiendoSalida = Boolean(entrada) && !salida;
+  /**
+   * Fase: si ya hay llegada y falta salida, el siguiente clic pone la salida.
+   * En modo «solo ese día» no hay salida que elegir, así que cada clic mueve
+   * el día elegido en vez de cerrar un rango.
+   */
+  const eligiendoSalida = Boolean(entrada) && !salida && !diaUnico;
 
   const contenedor = useRef<HTMLDivElement>(null);
   const disparador = useRef<HTMLButtonElement>(null);
@@ -376,11 +395,13 @@ export function CalendarioFechas({
   }, [entrada, salida]);
 
   const resumen =
-    entrada && salida
-      ? `${formatearFechaCorta(entrada)} → ${formatearFechaCorta(salida)}`
-      : entrada
-        ? `${formatearFechaCorta(entrada)} → elige la salida`
-        : "Elige tus fechas";
+    diaUnico && entrada
+      ? `${formatearFechaCorta(entrada)} · solo ese día`
+      : entrada && salida
+        ? `${formatearFechaCorta(entrada)} → ${formatearFechaCorta(salida)}`
+        : entrada
+          ? `${formatearFechaCorta(entrada)} → elige la salida`
+          : "Elige tus fechas";
 
   const mesAnteriorPermitido = inicioDeMes(mes) > inicioDeMes(hoy);
 
@@ -503,10 +524,38 @@ export function CalendarioFechas({
           </div>
 
           <p className="mb-2 text-xs leading-snug text-crema-600">
-            {eligiendoSalida
-              ? "Ahora elige el día de salida. Cuentan las noches, no los días: si sales el sábado, el sábado no se cobra."
-              : "Elige el día de llegada. Cualquier fecha vale: a cada noche le ponemos su tarifa."}
+            {diaUnico
+              ? "Vienes solo ese día, sin dormir. Toca otro día si quieres cambiarlo."
+              : eligiendoSalida
+                ? "Ahora elige el día de salida. Cuentan las noches, no los días: si sales el sábado, el sábado no se cobra."
+                : "Elige el día de llegada. Cualquier fecha vale: a cada noche le ponemos su tarifa."}
           </p>
+
+          {/*
+            EL CAMINO AL DÍA DE CALMA.
+            Elegir un día y NO elegir salida es exactamente lo que hace quien
+            solo quiere venir de día. En vez de dejarlo atascado pidiéndole una
+            salida que no existe, el panel se lo ofrece con todas las letras.
+          */}
+          {entrada && alElegirDiaUnico && !diaUnico ? (
+            <button
+              type="button"
+              onClick={alElegirDiaUnico}
+              className="mb-2 flex min-h-11 w-full items-center justify-center rounded-[var(--radius-suave)] bg-brote-100 px-3 text-xs leading-snug font-semibold text-oliva-800 transition-colors hover:bg-brote-200"
+            >
+              Vengo solo ese día, sin dormir
+            </button>
+          ) : null}
+
+          {diaUnico && alQuitarDiaUnico ? (
+            <button
+              type="button"
+              onClick={alQuitarDiaUnico}
+              className="mb-2 flex min-h-11 w-full items-center justify-center rounded-[var(--radius-suave)] bg-petroleo-50 px-3 text-xs leading-snug font-semibold text-petroleo-800 transition-colors hover:bg-petroleo-100"
+            >
+              Prefiero quedarme a dormir
+            </button>
+          ) : null}
 
           {/*
             LA PREFERENCIA SE EXPLICA Y SE PUEDE QUITAR.
@@ -583,7 +632,7 @@ export function CalendarioFechas({
             calendario para verla. Aquí se lee mientras se elige: «1 noche entre
             semana y 2 noches de fin de semana o festivo».
           */}
-          {resumenNoches ? (
+          {resumenNoches && !diaUnico ? (
             <p className="mt-3 rounded-[var(--radius-suave)] bg-petroleo-50 px-3 py-2 text-xs leading-snug font-medium text-petroleo-800">
               {resumenNoches}
             </p>
@@ -593,6 +642,7 @@ export function CalendarioFechas({
             <button
               type="button"
               onClick={() => {
+                alQuitarDiaUnico?.();
                 alCambiar("", "");
                 setFoco(hoy);
               }}

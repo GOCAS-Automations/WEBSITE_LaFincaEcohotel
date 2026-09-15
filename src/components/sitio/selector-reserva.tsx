@@ -15,6 +15,13 @@ import {
   type PlanCotizable,
 } from "@/lib/reserva/cotizacion";
 import {
+  CUPO_DIA_DE_CALMA,
+  HORARIO_DIA_POR_DEFECTO,
+  cotizarDiaDeCalma,
+  opcionesDePersonas,
+  textoCupo,
+} from "@/lib/reserva/dia-de-calma";
+import {
   esFechaISO,
   etiquetaTipoNoche,
   nochesDe,
@@ -24,11 +31,19 @@ import {
   type TipoNoche,
 } from "@/lib/reserva/noches";
 import {
+  ANTICIPO_POR_DEFECTO,
+  PORCENTAJES_ANTICIPO,
+  explicacionAnticipo,
+  resumenDePago,
+  type ExtraElegido,
+  type PorcentajeAnticipo,
+} from "@/lib/reserva/total";
+import {
   formatearCOP,
   formatearFecha,
   formatearFechaCorta,
 } from "@/lib/utils/formato";
-import { enlaceWhatsapp, mensajeReserva } from "@/lib/whatsapp";
+import { enlaceWhatsapp, mensajeDiaDeCalma, mensajeReserva } from "@/lib/whatsapp";
 
 import { CalendarioFechas } from "./calendario-fechas";
 import { IconoCheck, IconoWhatsapp } from "./iconos";
@@ -42,15 +57,21 @@ import { IconoCheck, IconoWhatsapp } from "./iconos";
  * En La Finca **el plan es una consecuencia de la noche**, no una elección
  * libre (§3 de `docs/DATOS_CLIENTE.md`). Así que el orden de las preguntas es:
  *
- *   1. **Fechas.** Nunca se bloquean. Cualquier rango es vendible.
+ *   1. **Fechas.** Nunca se bloquean. Cualquier rango es vendible. Y elegir
+ *      **un solo día, sin salida**, es una respuesta válida: es el Día de
+ *      Calma, que se explica solo y muestra el cupo que queda.
  *   2. **Cabaña**, entre las que tienen tarifa para TODAS las noches de esa
  *      estadía. La 02 solo se vende con Estándar, así que desaparece —con su
  *      explicación escrita— cuando hay noches entre semana.
  *   3. **Plan de fin de semana** (Estándar o Premium), y solo si la estadía
  *      toca viernes, sábado, domingo o festivo. Cambiar entre ellos NO toca
  *      las fechas.
- *   4. **Desglose noche por noche** con el total, y el botón de WhatsApp con
- *      ese mismo desglose ya escrito.
+ *   4. **Experiencias, noche por noche.** La torta de aniversario se sirve un
+ *      día concreto: el paso pregunta cuál.
+ *   5. **Cuánto se paga ahora**: el 50 % que confirma la reserva o el 100 %.
+ *
+ * Y a la derecha, el desglose noche por noche con el total y el botón de
+ * WhatsApp con ese mismo desglose ya escrito.
  *
  * La versión anterior preguntaba el plan PRIMERO y luego apagaba días del
  * calendario. De ahí salía el fallo que reportó Cesar: con ciertas fechas
@@ -62,15 +83,16 @@ import { IconoCheck, IconoWhatsapp } from "./iconos";
  * `?plan=Premium` preselecciona ese plan de fin de semana. `?plan=Entre Semana`
  * resalta en el calendario las noches de lunes a jueves —y se puede quitar—,
  * pero si el visitante elige un fin de semana el sistema cambia el plan solo y
- * lo dice en una frase. Nunca se le niega una fecha.
+ * lo dice en una frase. `?plan=Día de Calma` abre directamente el modo de día.
+ * Nunca se le niega una fecha.
  *
  * ---------------------------------------------------------------------------
  * EL PRECIO QUE SE VE ES UNA ESTIMACIÓN
  * ---------------------------------------------------------------------------
  * Sale de las tarifas publicadas y se calcula en el NAVEGADOR: sirve para
- * mirar, nunca para cobrar. Cuando exista el motor con pagos, la misma función
- * (`src/lib/reserva/cotizacion.ts`, pura y probada) se ejecutará en el servidor
- * y ese será el número que mande.
+ * mirar, nunca para cobrar. Cuando exista el motor con pagos, las mismas
+ * funciones (`src/lib/reserva/*.ts`, puras y probadas) se ejecutarán en el
+ * servidor y ese será el número que mande.
  *
  * Accesibilidad: cada paso es un `<fieldset>` con su `<legend>`; las tarjetas
  * son `<label>` con un `<input type="radio">` real escondido, así que funcionan
@@ -90,14 +112,31 @@ export type PlanSeleccionable = PlanCotizable & {
   horario: string | null;
 };
 
+/** Una experiencia o adicional del catálogo, para el paso 4. */
+export type ExtraSeleccionable = {
+  id: string;
+  tipo: "experiencia" | "adicional";
+  nombre: string;
+  descripcion: string | null;
+  /** Precio unitario, entero COP. */
+  precio: number;
+};
+
 type Props = {
   cabanas: CabanaSeleccionable[];
   /** Los planes del catálogo, en orden. */
   planes: PlanSeleccionable[];
+  /** Experiencias y adicionales activos. */
+  extras: ExtraSeleccionable[];
   whatsapp: string;
   /** Fecha mínima seleccionable (`AAAA-MM-DD`), calculada en el servidor. */
   hoy: string;
 };
+
+/** Clave de una elección de extra: el mismo extra puede ir en varias noches. */
+function claveExtra(noche: string | null, id: string): string {
+  return `${noche ?? "estadia"}::${id}`;
+}
 
 /*
   OJO CON EL `<legend>` Y EL `gap` DEL FIELDSET.
@@ -106,7 +145,13 @@ type Props = {
   del borde del fieldset, no un hijo normal— así que el `gap` NO lo separa de la
   primera tarjeta. Cada `legend` lleva por eso su propio `mb-4`.
 */
-export function SelectorReserva({ cabanas, planes, whatsapp, hoy }: Props) {
+export function SelectorReserva({
+  cabanas,
+  planes,
+  extras,
+  whatsapp,
+  hoy,
+}: Props) {
   const parametros = useSearchParams();
 
   /* --- Lo que llega por la dirección ------------------------------------ */
@@ -145,6 +190,12 @@ export function SelectorReserva({ cabanas, planes, whatsapp, hoy }: Props) {
   */
   const [adultos, setAdultos] = useState(2);
 
+  /* El plan de día del catálogo: hoy, el Día de Calma. */
+  const planDia = useMemo(
+    () => planes.find((plan) => categoriaDePlan(plan) === "dia") ?? null,
+    [planes],
+  );
+
   /* Los planes de fin de semana del catálogo. Hoy: Estándar y Premium. */
   const planesFinDeSemana = useMemo(
     () => planesDeFinDeSemana(planes),
@@ -155,7 +206,8 @@ export function SelectorReserva({ cabanas, planes, whatsapp, hoy }: Props) {
     LA PREFERENCIA QUE TRAE DE LA PORTADA.
     Si pulsó Estándar o Premium, ese es el plan de fin de semana preseleccionado.
     Si pulsó Entre Semana, se guarda como preferencia de CALENDARIO (resalta los
-    lunes a jueves) y el plan de fin de semana arranca en el primero.
+    lunes a jueves) y el plan de fin de semana arranca en el primero. Si pulsó
+    Día de Calma, el módulo abre directamente en modo de día.
   */
   const categoriaInicial = planInicial ? categoriaDePlan(planInicial) : null;
 
@@ -171,15 +223,88 @@ export function SelectorReserva({ cabanas, planes, whatsapp, hoy }: Props) {
       : null,
   );
 
+  /** Modo «Día de Calma»: una sola fecha, sin salida y sin cabaña. */
+  const [soloUnDia, setSoloUnDia] = useState(categoriaInicial === "dia");
+  const [personasDia, setPersonasDia] = useState(2);
+
+  /** Las experiencias elegidas, por noche: `cantidad` por clave. */
+  const [seleccionExtras, setSeleccionExtras] = useState<
+    Record<string, number>
+  >({});
+
+  const [porcentaje, setPorcentaje] = useState<PorcentajeAnticipo>(
+    ANTICIPO_POR_DEFECTO,
+  );
+
   /* --- Las noches -------------------------------------------------------- */
 
   const rango = useMemo(() => validarRango(entrada, salida), [entrada, salida]);
   const noches = useMemo(
-    () => (entrada && salida ? nochesDe(entrada, salida) : []),
-    [entrada, salida],
+    () => (entrada && salida && !soloUnDia ? nochesDe(entrada, salida) : []),
+    [entrada, salida, soloUnDia],
+  );
+  const fechasDeNoche = useMemo(
+    () => noches.map((noche) => noche.fecha),
+    [noches],
   );
   const hayFinDeSemana = tieneFinDeSemana(noches);
   const hayEntreSemana = noches.some((noche) => noche.tipo === "entre_semana");
+
+  /* --- El cupo del Día de Calma ----------------------------------------- */
+
+  /*
+    EL CUPO SE PREGUNTA AL SERVIDOR.
+    `reservas` no tiene lectura pública —son datos personales— así que el
+    número sale de `/api/dia-de-calma/cupo`, que devuelve SOLO el agregado.
+    Si la consulta falla, el módulo no miente ni se bloquea: deja de prometer
+    cupos y el visitante puede escribir igual por WhatsApp.
+  */
+  const [cupo, setCupo] = useState<{
+    estado: "sin_fecha" | "cargando" | "ok" | "error";
+    restante: number | null;
+    usado: number | null;
+  }>({ estado: "sin_fecha", restante: null, usado: null });
+
+  useEffect(() => {
+    if (!soloUnDia || !entrada) {
+      setCupo({ estado: "sin_fecha", restante: null, usado: null });
+      return;
+    }
+
+    const control = new AbortController();
+    setCupo({ estado: "cargando", restante: null, usado: null });
+
+    fetch(`/api/dia-de-calma/cupo?fecha=${encodeURIComponent(entrada)}`, {
+      signal: control.signal,
+      cache: "no-store",
+    })
+      .then((respuesta) => {
+        if (!respuesta.ok) throw new Error("respuesta no válida");
+        return respuesta.json();
+      })
+      .then((datos: { usado?: number; restante?: number }) => {
+        setCupo({
+          estado: "ok",
+          usado: Number(datos.usado ?? 0),
+          restante: Number(datos.restante ?? 0),
+        });
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setCupo({ estado: "error", restante: null, usado: null });
+      });
+
+    return () => control.abort();
+  }, [soloUnDia, entrada]);
+
+  /* Si quedan menos cupos de los que pidió, se le baja el número solo: es más
+     amable que dejarle un error puesto que no sabe cómo quitar. */
+  useEffect(() => {
+    if (cupo.estado !== "ok" || cupo.restante === null) return;
+    if (cupo.restante > 0 && personasDia > cupo.restante) {
+      setPersonasDia(cupo.restante);
+    }
+  }, [cupo, personasDia]);
 
   /*
     EL AVISO DE CAMBIO DE PLAN, EN UNA FRASE.
@@ -224,36 +349,148 @@ export function SelectorReserva({ cabanas, planes, whatsapp, hoy }: Props) {
 
   const cabana = elegibles.find((fila) => fila.cabana.slug === slug)?.cabana ?? null;
 
-  /* --- La cotización ----------------------------------------------------- */
+  /* --- La cotización de la estadía -------------------------------------- */
 
   const cotizacion = useMemo(() => {
-    if (!cabana || noches.length === 0) return null;
+    if (soloUnDia || !cabana || noches.length === 0) return null;
     return cotizar({ noches, cabana, planFinDeSemana, adultos });
-  }, [cabana, noches, planFinDeSemana, adultos]);
+  }, [soloUnDia, cabana, noches, planFinDeSemana, adultos]);
 
   const desglose = cotizacion?.posible ? cotizacion : null;
 
+  /* --- Las experiencias elegidas ---------------------------------------- */
+
+  /*
+    Solo cuentan las de una noche que siga estando en la estadía (y las de
+    «toda la estadía»). Si alguien cambia las fechas, lo que había elegido para
+    una noche que ya no existe deja de sumar, pero no se borra: si vuelve a
+    esas fechas, sigue ahí.
+  */
+  const extrasElegidos: ExtraElegido[] = useMemo(() => {
+    const elegidos: ExtraElegido[] = [];
+    const nochesValidas = new Set(fechasDeNoche);
+
+    for (const [clave, cantidad] of Object.entries(seleccionExtras)) {
+      if (!cantidad || cantidad < 1) continue;
+      const separador = clave.indexOf("::");
+      if (separador < 0) continue;
+      const etiqueta = clave.slice(0, separador);
+      const id = clave.slice(separador + 2);
+      const noche = etiqueta === "estadia" ? null : etiqueta;
+      if (noche !== null && !nochesValidas.has(noche)) continue;
+
+      const extra = extras.find((item) => item.id === id);
+      if (!extra) continue;
+
+      elegidos.push({
+        extraId: extra.id,
+        nombre: extra.nombre,
+        noche,
+        cantidad,
+        precioUnitario: extra.precio,
+      });
+    }
+    return elegidos;
+  }, [seleccionExtras, extras, fechasDeNoche]);
+
+  function cambiarExtra(noche: string | null, id: string, cantidad: number) {
+    const clave = claveExtra(noche, id);
+    setSeleccionExtras((actual) => {
+      const siguiente = { ...actual };
+      if (cantidad <= 0) delete siguiente[clave];
+      else siguiente[clave] = Math.min(9, cantidad);
+      return siguiente;
+    });
+  }
+
+  /* --- El total y el anticipo ------------------------------------------- */
+
+  const pago = useMemo(
+    () =>
+      desglose
+        ? resumenDePago({
+            subtotalAlojamiento: desglose.total,
+            extras: extrasElegidos,
+            noches: fechasDeNoche,
+            porcentaje,
+          })
+        : null,
+    [desglose, extrasElegidos, fechasDeNoche, porcentaje],
+  );
+
+  /* --- El Día de Calma --------------------------------------------------- */
+
+  const cotizacionDia = useMemo(() => {
+    if (!soloUnDia || !entrada) return null;
+    return cotizarDiaDeCalma({
+      fecha: entrada,
+      personas: personasDia,
+      precioBase: planDia?.precio_base ?? null,
+      restante: cupo.estado === "ok" ? cupo.restante : null,
+    });
+  }, [soloUnDia, entrada, personasDia, planDia, cupo]);
+
   /* --- El mensaje de WhatsApp, con el desglose ya escrito ---------------- */
 
-  const enlace = enlaceWhatsapp(
-    mensajeReserva({
-      cabana: cabana?.nombre ?? null,
-      plan: desglose ? desglose.planes.join(" + ") : null,
-      entrada: entrada || null,
-      salida: rango.valido ? salida : null,
-      adultos,
-      desglose: desglose
-        ? desglose.lineas.map((linea) => ({
-            fecha: formatearFecha(linea.fecha),
-            plan: linea.plan,
-            precio: linea.precio,
-            festivo: linea.festivo,
-          }))
-        : null,
-      total: desglose?.total ?? null,
-    }),
-    whatsapp,
-  );
+  const enlace = soloUnDia
+    ? enlaceWhatsapp(
+        mensajeDiaDeCalma({
+          fecha: entrada || hoy,
+          personas: personasDia,
+          horario: planDia?.horario ?? HORARIO_DIA_POR_DEFECTO,
+          total: cotizacionDia?.precio ?? null,
+        }),
+        whatsapp,
+      )
+    : enlaceWhatsapp(
+        mensajeReserva({
+          cabana: cabana?.nombre ?? null,
+          plan: desglose ? desglose.planes.join(" + ") : null,
+          entrada: entrada || null,
+          salida: rango.valido ? salida : null,
+          adultos,
+          desglose: desglose
+            ? desglose.lineas.map((linea) => ({
+                fecha: formatearFecha(linea.fecha),
+                plan: linea.plan,
+                precio: linea.precio,
+                festivo: linea.festivo,
+              }))
+            : null,
+          extras: extrasElegidos.map((extra) => ({
+            nombre: extra.nombre,
+            cantidad: extra.cantidad,
+            importe: extra.cantidad * extra.precioUnitario,
+            noche: extra.noche ? formatearFechaCorta(extra.noche) : null,
+          })),
+          total: pago?.total ?? desglose?.total ?? null,
+          anticipo: pago
+            ? {
+                porcentaje: pago.porcentaje,
+                monto: pago.anticipo,
+                saldo: pago.saldo,
+              }
+            : null,
+        }),
+        whatsapp,
+      );
+
+  /* --- La numeración de los pasos --------------------------------------- */
+
+  /* Los pasos no son fijos: el del plan solo aparece si hay noches de fin de
+     semana, y el de experiencias solo si ya hay noches. Numerarlos a mano
+     dejaría un «3.» seguido de un «5.». */
+  let contadorPaso = 1;
+  const numeroFechas = contadorPaso++;
+  const numeroCabana = soloUnDia ? null : contadorPaso++;
+  const numeroPlan =
+    !soloUnDia && hayFinDeSemana && planesFinDeSemana.length > 0
+      ? contadorPaso++
+      : null;
+  const numeroExtras =
+    !soloUnDia && noches.length > 0 && extras.length > 0 ? contadorPaso++ : null;
+  const numeroPago = !soloUnDia && pago && pago.total > 0 ? contadorPaso++ : null;
+  const numeroDia = soloUnDia ? contadorPaso++ : null;
 
   /* ===================================================================== */
 
@@ -272,7 +509,7 @@ export function SelectorReserva({ cabanas, planes, whatsapp, hoy }: Props) {
         ---------------------------------------------------------------- */}
         <fieldset className="flex flex-col gap-4">
           <legend className="mb-4 font-titulo text-lg font-bold text-petroleo-900">
-            1. ¿Qué fechas tienes en mente?
+            {numeroFechas}. ¿Qué fechas tienes en mente?
           </legend>
 
           <div className="max-w-sm">
@@ -282,6 +519,9 @@ export function SelectorReserva({ cabanas, planes, whatsapp, hoy }: Props) {
               alCambiar={(nuevaEntrada, nuevaSalida) => {
                 setEntrada(nuevaEntrada);
                 setSalida(nuevaSalida);
+                /* Elegir una salida —o borrarlo todo— sale del modo de día:
+                   quien marca dos fechas quiere dormir. */
+                if (nuevaSalida || !nuevaEntrada) setSoloUnDia(false);
               }}
               hoy={hoy}
               preferencia={preferencia}
@@ -293,10 +533,29 @@ export function SelectorReserva({ cabanas, planes, whatsapp, hoy }: Props) {
                   : planFinDeSemana
               }
               alQuitarPreferencia={() => setPreferencia(null)}
+              diaUnico={soloUnDia}
+              alElegirDiaUnico={
+                planDia
+                  ? () => {
+                      setSoloUnDia(true);
+                      setSalida("");
+                      setPreferencia(null);
+                    }
+                  : undefined
+              }
+              alQuitarDiaUnico={() => setSoloUnDia(false)}
             />
           </div>
 
-          {noches.length > 0 ? (
+          {soloUnDia ? (
+            <p className="text-sm leading-relaxed text-crema-700">
+              Vienes <strong className="font-semibold text-petroleo-900">
+                solo ese día
+              </strong>
+              , sin hospedaje. Si prefieres quedarte a dormir, elige también una
+              fecha de salida.
+            </p>
+          ) : noches.length > 0 ? (
             <p className="text-sm leading-relaxed text-crema-700">
               Son <strong className="font-semibold text-petroleo-900">
                 {resumenEnPalabras(noches)}
@@ -307,142 +566,267 @@ export function SelectorReserva({ cabanas, planes, whatsapp, hoy }: Props) {
             <p className="text-sm leading-relaxed text-crema-700">
               Elige llegada y salida. No hay fechas prohibidas: si tu estadía
               mezcla días de semana y fin de semana, te lo desglosamos noche por
-              noche.
+              noche.{" "}
+              {planDia
+                ? "¿Vienes solo por el día? Elige la fecha y marca «Vengo solo ese día»."
+                : null}
             </p>
           )}
 
-          {avisoDeCambio ? (
+          {avisoDeCambio && !soloUnDia ? (
             <p className="rounded-[var(--radius-tarjeta)] bg-brote-100 px-4 py-3 text-sm leading-relaxed text-oliva-800">
               {avisoDeCambio}
             </p>
           ) : null}
 
-          <fieldset className="flex flex-col gap-3">
-            <legend className="mb-3 font-titulo text-sm font-semibold text-petroleo-900">
-              ¿Cuántos son?
-            </legend>
-            <div className="flex flex-wrap items-center gap-3">
-              {[1, 2].map((cantidad) => (
-                <label
-                  key={cantidad}
-                  className={[
-                    "flex min-h-11 cursor-pointer items-center rounded-full border px-5 font-titulo text-sm font-semibold transition-all duration-200",
-                    adultos === cantidad
-                      ? "border-petroleo-600 bg-petroleo-50 text-petroleo-900"
-                      : "border-crema-300/80 bg-white text-crema-700 hover:border-petroleo-300",
-                  ].join(" ")}
-                >
-                  <input
-                    type="radio"
-                    name="adultos"
-                    value={cantidad}
-                    checked={adultos === cantidad}
-                    onChange={() => setAdultos(cantidad)}
-                    className="sr-only"
-                  />
-                  {cantidad === 1 ? "1 adulto" : "2 adultos"}
-                </label>
-              ))}
-              <p className="text-sm text-crema-600">
-                Las cabañas son para dos. La Finca no recibe menores de edad.
-              </p>
-            </div>
-          </fieldset>
-        </fieldset>
-
-        {/* ---------------------------------------------------------------
-            PASO 2 — CABAÑA, solo las que sirven para esas noches.
-        ---------------------------------------------------------------- */}
-        <fieldset className="flex flex-col gap-4">
-          <legend className="mb-4 font-titulo text-lg font-bold text-petroleo-900">
-            2. Elige tu cabaña
-          </legend>
-
-          <ul className="grid gap-3 sm:grid-cols-2">
-            {elegibles.map(({ cabana: opcion }) => {
-              const activa = opcion.slug === slug;
-              const precio = precioParaLista(
-                opcion,
-                noches.length > 0,
-                hayEntreSemana,
-                hayFinDeSemana,
-                planFinDeSemana,
-                adultos,
-              );
-              return (
-                <li key={opcion.slug}>
+          {!soloUnDia ? (
+            <fieldset className="flex flex-col gap-3">
+              <legend className="mb-3 font-titulo text-sm font-semibold text-petroleo-900">
+                ¿Cuántos son?
+              </legend>
+              <div className="flex flex-wrap items-center gap-3">
+                {[1, 2].map((cantidad) => (
                   <label
+                    key={cantidad}
                     className={[
-                      "flex min-h-14 cursor-pointer items-center justify-between gap-3 rounded-[var(--radius-tarjeta)] border px-4 py-3.5 transition-all duration-200",
-                      activa
-                        ? "border-petroleo-600 bg-petroleo-50 shadow-[var(--shadow-tenue)]"
-                        : "border-crema-300/80 bg-white hover:border-petroleo-300",
+                      "flex min-h-11 cursor-pointer items-center rounded-full border px-5 font-titulo text-sm font-semibold transition-all duration-200",
+                      adultos === cantidad
+                        ? "border-petroleo-600 bg-petroleo-50 text-petroleo-900"
+                        : "border-crema-300/80 bg-white text-crema-700 hover:border-petroleo-300",
                     ].join(" ")}
                   >
                     <input
                       type="radio"
-                      name="cabana"
-                      value={opcion.slug}
-                      checked={activa}
-                      onChange={() => setSlug(opcion.slug)}
+                      name="adultos"
+                      value={cantidad}
+                      checked={adultos === cantidad}
+                      onChange={() => setAdultos(cantidad)}
                       className="sr-only"
                     />
-                    <span className="font-titulo text-sm font-semibold text-petroleo-900">
-                      {opcion.nombre}
-                    </span>
-                    <span className="flex shrink-0 items-center gap-2">
-                      {precio !== null ? (
-                        <span className="text-right text-xs text-crema-600">
-                          {precio.etiqueta}
-                        </span>
-                      ) : null}
-                      {activa ? (
-                        <IconoCheck className="size-4 text-petroleo-600" />
-                      ) : null}
-                    </span>
+                    {cantidad === 1 ? "1 adulto" : "2 adultos"}
                   </label>
-                </li>
-              );
-            })}
-          </ul>
-
-          {/*
-            LAS QUE NO SE PUEDEN, CON SU MOTIVO.
-            Que una cabaña desaparezca sin explicación se lee como un error del
-            sitio. La 02 solo se vende con el plan Estándar: hay que decirlo.
-          */}
-          {descartadas.length > 0 ? (
-            <ul className="flex flex-col gap-2">
-              {descartadas.map(({ cabana: opcion, estado }) => (
-                <li
-                  key={opcion.slug}
-                  className="rounded-[var(--radius-tarjeta)] border border-crema-200 bg-crema-50/70 px-4 py-3 text-sm leading-snug text-crema-700"
-                >
-                  <span className="font-titulo font-semibold text-crema-800">
-                    {opcion.nombre}
-                  </span>{" "}
-                  — no disponible para estas fechas.{" "}
-                  {!estado.elegible ? estado.motivo : null}
-                </li>
-              ))}
-            </ul>
-          ) : null}
-
-          {elegibles.length === 0 ? (
-            <p className="rounded-[var(--radius-tarjeta)] bg-petroleo-50 px-4 py-3 text-sm text-petroleo-800">
-              Ninguna cabaña cubre esas fechas. Prueba con otras o escríbenos por
-              WhatsApp y te armamos la estadía.
-            </p>
+                ))}
+                <p className="text-sm text-crema-600">
+                  Las cabañas son para dos. La Finca no recibe menores de edad.
+                </p>
+              </div>
+            </fieldset>
           ) : null}
         </fieldset>
 
         {/* ---------------------------------------------------------------
-            PASO 3 — PLAN DE FIN DE SEMANA. Solo si hace falta.
+            MODO DÍA DE CALMA — una sola fecha, sin cabaña y con cupo.
         ---------------------------------------------------------------- */}
-        {hayFinDeSemana && planesFinDeSemana.length > 0 ? (
+        {soloUnDia && planDia ? (
           <fieldset className="flex flex-col gap-4">
             <legend className="mb-4 font-titulo text-lg font-bold text-petroleo-900">
-              3. ¿Estándar o Premium para tus noches de fin de semana?
+              {numeroDia}. Tu {planDia.nombre}
+            </legend>
+
+            <div className="flex flex-col gap-4 rounded-[var(--radius-generoso)] bg-white p-5 shadow-[var(--shadow-tenue)] ring-1 ring-crema-200/70">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                <p className="font-titulo text-base font-bold text-petroleo-900">
+                  {planDia.horario ?? HORARIO_DIA_POR_DEFECTO}
+                </p>
+                <p className="font-titulo text-lg font-extrabold text-petroleo-700">
+                  {typeof planDia.precio_base === "number"
+                    ? formatearCOP(planDia.precio_base)
+                    : "Consultar"}
+                  <span className="ml-1 text-xs font-medium text-crema-600">
+                    para dos personas
+                  </span>
+                </p>
+              </div>
+
+              {planDia.descripcion ? (
+                <p className="text-sm leading-relaxed text-crema-700">
+                  {planDia.descripcion}
+                </p>
+              ) : null}
+
+              {planDia.incluye.length > 0 ? (
+                <ul className="grid gap-1.5 sm:grid-cols-2">
+                  {planDia.incluye.map((item) => (
+                    <li
+                      key={item}
+                      className="flex gap-1.5 text-sm leading-snug text-crema-700"
+                    >
+                      <IconoCheck className="mt-0.5 size-3.5 shrink-0 text-petroleo-500" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+
+              <p className="rounded-[var(--radius-tarjeta)] bg-brote-100/70 px-4 py-3 text-sm leading-relaxed text-oliva-800">
+                Es un día completo en La Finca, <strong>sin hospedaje</strong>:
+                llegas a las 10:00 a. m. y te vas a las 5:00 p. m. No ocupa
+                cabaña, así que no hace falta elegir una.
+              </p>
+            </div>
+
+            {/* --- Cuántas personas, con el cupo que queda --- */}
+            <fieldset className="flex flex-col gap-3">
+              <legend className="mb-3 font-titulo text-sm font-semibold text-petroleo-900">
+                ¿Cuántas personas vienen?
+              </legend>
+
+              <p
+                aria-live="polite"
+                className="text-sm leading-relaxed text-crema-700"
+              >
+                {!entrada
+                  ? "Elige primero la fecha y te decimos cuántos cupos quedan."
+                  : cupo.estado === "cargando"
+                    ? "Consultando cuántos cupos quedan ese día…"
+                    : cupo.estado === "ok" && cupo.restante !== null
+                      ? `${textoCupo(cupo.restante)} El Día de Calma recibe máximo ${CUPO_DIA_DE_CALMA} personas por día en toda la finca.`
+                      : `No pudimos comprobar el cupo ahora mismo. El Día de Calma recibe máximo ${CUPO_DIA_DE_CALMA} personas por día: te lo confirmamos por WhatsApp.`}
+              </p>
+
+              <div className="flex flex-wrap items-center gap-2">
+                {(cupo.estado === "ok" && cupo.restante !== null
+                  ? opcionesDePersonas(cupo.restante)
+                  : opcionesDePersonas(CUPO_DIA_DE_CALMA)
+                ).map((cantidad) => (
+                  <label
+                    key={cantidad}
+                    className={[
+                      "flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-full border px-4 font-titulo text-sm font-semibold transition-all duration-200",
+                      personasDia === cantidad
+                        ? "border-petroleo-600 bg-petroleo-50 text-petroleo-900"
+                        : "border-crema-300/80 bg-white text-crema-700 hover:border-petroleo-300",
+                    ].join(" ")}
+                  >
+                    <input
+                      type="radio"
+                      name="personas-dia"
+                      value={cantidad}
+                      checked={personasDia === cantidad}
+                      onChange={() => setPersonasDia(cantidad)}
+                      className="sr-only"
+                    />
+                    {cantidad}
+                  </label>
+                ))}
+              </div>
+
+              {cotizacionDia?.nota ? (
+                <p className="rounded-[var(--radius-tarjeta)] bg-crema-100 px-4 py-3 text-sm leading-relaxed text-crema-800">
+                  {cotizacionDia.nota}
+                </p>
+              ) : null}
+            </fieldset>
+
+            {/*
+              LO QUE EL HOTEL TODAVÍA NO HA CONFIRMADO NO SE ESCRIBE.
+              `TODO` (Amapola): anticipo del Día de Calma, su política de
+              cancelación, el valor por persona adicional y si se puede añadir
+              jacuzzi. Ver `src/lib/reserva/dia-de-calma.ts`. Mientras no lo
+              confirme, aquí no aparece ninguna cifra inventada.
+            */}
+            <p className="text-sm leading-relaxed text-crema-600">
+              El anticipo y las condiciones de cambio del Día de Calma te los
+              confirmamos por WhatsApp al responder tu solicitud.
+            </p>
+          </fieldset>
+        ) : null}
+
+        {/* ---------------------------------------------------------------
+            PASO 2 — CABAÑA, solo las que sirven para esas noches.
+        ---------------------------------------------------------------- */}
+        {!soloUnDia ? (
+          <fieldset className="flex flex-col gap-4">
+            <legend className="mb-4 font-titulo text-lg font-bold text-petroleo-900">
+              {numeroCabana}. Elige tu cabaña
+            </legend>
+
+            <ul className="grid gap-3 sm:grid-cols-2">
+              {elegibles.map(({ cabana: opcion }) => {
+                const activa = opcion.slug === slug;
+                const precio = precioParaLista(
+                  opcion,
+                  noches.length > 0,
+                  hayEntreSemana,
+                  hayFinDeSemana,
+                  planFinDeSemana,
+                  adultos,
+                );
+                return (
+                  <li key={opcion.slug}>
+                    <label
+                      className={[
+                        "flex min-h-14 cursor-pointer items-center justify-between gap-3 rounded-[var(--radius-tarjeta)] border px-4 py-3.5 transition-all duration-200",
+                        activa
+                          ? "border-petroleo-600 bg-petroleo-50 shadow-[var(--shadow-tenue)]"
+                          : "border-crema-300/80 bg-white hover:border-petroleo-300",
+                      ].join(" ")}
+                    >
+                      <input
+                        type="radio"
+                        name="cabana"
+                        value={opcion.slug}
+                        checked={activa}
+                        onChange={() => setSlug(opcion.slug)}
+                        className="sr-only"
+                      />
+                      <span className="font-titulo text-sm font-semibold text-petroleo-900">
+                        {opcion.nombre}
+                      </span>
+                      <span className="flex shrink-0 items-center gap-2">
+                        {precio !== null ? (
+                          <span className="text-right text-xs text-crema-600">
+                            {precio.etiqueta}
+                          </span>
+                        ) : null}
+                        {activa ? (
+                          <IconoCheck className="size-4 text-petroleo-600" />
+                        ) : null}
+                      </span>
+                    </label>
+                  </li>
+                );
+              })}
+            </ul>
+
+            {/*
+              LAS QUE NO SE PUEDEN, CON SU MOTIVO.
+              Que una cabaña desaparezca sin explicación se lee como un error del
+              sitio. La 02 solo se vende con el plan Estándar: hay que decirlo.
+            */}
+            {descartadas.length > 0 ? (
+              <ul className="flex flex-col gap-2">
+                {descartadas.map(({ cabana: opcion, estado }) => (
+                  <li
+                    key={opcion.slug}
+                    className="rounded-[var(--radius-tarjeta)] border border-crema-200 bg-crema-50/70 px-4 py-3 text-sm leading-snug text-crema-700"
+                  >
+                    <span className="font-titulo font-semibold text-crema-800">
+                      {opcion.nombre}
+                    </span>{" "}
+                    — no disponible para estas fechas.{" "}
+                    {!estado.elegible ? estado.motivo : null}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+
+            {elegibles.length === 0 ? (
+              <p className="rounded-[var(--radius-tarjeta)] bg-petroleo-50 px-4 py-3 text-sm text-petroleo-800">
+                Ninguna cabaña cubre esas fechas. Prueba con otras o escríbenos
+                por WhatsApp y te armamos la estadía.
+              </p>
+            ) : null}
+          </fieldset>
+        ) : null}
+
+        {/* ---------------------------------------------------------------
+            PASO 3 — PLAN DE FIN DE SEMANA. Solo si hace falta.
+        ---------------------------------------------------------------- */}
+        {numeroPlan !== null ? (
+          <fieldset className="flex flex-col gap-4">
+            <legend className="mb-4 font-titulo text-lg font-bold text-petroleo-900">
+              {numeroPlan}. ¿Estándar o Premium para tus noches de fin de semana?
             </legend>
 
             <p className="text-sm leading-relaxed text-crema-700">
@@ -544,6 +928,140 @@ export function SelectorReserva({ cabanas, planes, whatsapp, hoy }: Props) {
             </p>
           </fieldset>
         ) : null}
+
+        {/* ---------------------------------------------------------------
+            PASO 4 — EXPERIENCIAS, NOCHE POR NOCHE.
+        ---------------------------------------------------------------- */}
+        {numeroExtras !== null ? (
+          <fieldset className="flex flex-col gap-4">
+            <legend className="mb-4 font-titulo text-lg font-bold text-petroleo-900">
+              {numeroExtras}. ¿Añadimos algo a alguna noche?
+            </legend>
+
+            <p className="text-sm leading-relaxed text-crema-700">
+              Las experiencias se preparan para una noche concreta: dinos cuál y
+              la torta, el fondue o el arreglo llegan ese día. Puedes dejarlo en
+              blanco: nada de esto es obligatorio.
+            </p>
+
+            <ul className="flex flex-col gap-4">
+              {noches.map((noche) => (
+                <li key={noche.fecha}>
+                  <fieldset className="rounded-[var(--radius-generoso)] bg-white p-4 shadow-[var(--shadow-tenue)] ring-1 ring-crema-200/70 sm:p-5">
+                    <legend className="mb-3 font-titulo text-sm font-bold text-petroleo-900">
+                      Noche del {formatearFechaCorta(noche.fecha)}
+                      <span className="ml-2 font-normal text-crema-600">
+                        {noche.festivo ?? etiquetaTipoNoche(noche.tipo)}
+                      </span>
+                    </legend>
+
+                    <ul className="flex flex-col gap-2">
+                      {extras
+                        .filter((extra) => extra.tipo === "experiencia")
+                        .map((extra) => (
+                          <FilaExtra
+                            key={extra.id}
+                            extra={extra}
+                            cantidad={
+                              seleccionExtras[claveExtra(noche.fecha, extra.id)] ?? 0
+                            }
+                            alCambiar={(cantidad) =>
+                              cambiarExtra(noche.fecha, extra.id, cantidad)
+                            }
+                            nombreCampo={`extra-${noche.fecha}`}
+                          />
+                        ))}
+                    </ul>
+                  </fieldset>
+                </li>
+              ))}
+
+              {/*
+                LOS ADICIONALES NO SON DE UNA NOCHE.
+                La segunda mascota se cobra por la estadía, no por noche: va en
+                su propio bloque y viaja con `noche = null`, que es como lo
+                guarda `reserva_extras` desde la migración 009.
+              */}
+              {extras.some((extra) => extra.tipo === "adicional") ? (
+                <li>
+                  <fieldset className="rounded-[var(--radius-generoso)] bg-white p-4 shadow-[var(--shadow-tenue)] ring-1 ring-crema-200/70 sm:p-5">
+                    <legend className="mb-3 font-titulo text-sm font-bold text-petroleo-900">
+                      Para toda la estadía
+                    </legend>
+                    <ul className="flex flex-col gap-2">
+                      {extras
+                        .filter((extra) => extra.tipo === "adicional")
+                        .map((extra) => (
+                          <FilaExtra
+                            key={extra.id}
+                            extra={extra}
+                            cantidad={
+                              seleccionExtras[claveExtra(null, extra.id)] ?? 0
+                            }
+                            alCambiar={(cantidad) =>
+                              cambiarExtra(null, extra.id, cantidad)
+                            }
+                            nombreCampo="extra-estadia"
+                          />
+                        ))}
+                    </ul>
+                  </fieldset>
+                </li>
+              ) : null}
+            </ul>
+          </fieldset>
+        ) : null}
+
+        {/* ---------------------------------------------------------------
+            PASO 5 — CUÁNTO SE PAGA AHORA.
+        ---------------------------------------------------------------- */}
+        {numeroPago !== null && pago ? (
+          <fieldset className="flex flex-col gap-4">
+            <legend className="mb-4 font-titulo text-lg font-bold text-petroleo-900">
+              {numeroPago}. ¿Cuánto quieres pagar ahora?
+            </legend>
+
+            <ul className="grid gap-3 sm:grid-cols-2">
+              {PORCENTAJES_ANTICIPO.map((opcion) => {
+                const activo = porcentaje === opcion;
+                const monto =
+                  opcion >= 100 ? pago.total : Math.round(pago.total / 2);
+                return (
+                  <li key={opcion}>
+                    <label
+                      className={[
+                        "flex h-full cursor-pointer flex-col gap-1 rounded-[var(--radius-tarjeta)] border px-4 py-3.5 transition-all duration-200",
+                        activo
+                          ? "border-petroleo-600 bg-petroleo-50 shadow-[var(--shadow-tenue)]"
+                          : "border-crema-300/80 bg-white hover:border-petroleo-300",
+                      ].join(" ")}
+                    >
+                      <input
+                        type="radio"
+                        name="anticipo"
+                        value={opcion}
+                        checked={activo}
+                        onChange={() => setPorcentaje(opcion)}
+                        className="sr-only"
+                      />
+                      <span className="flex flex-wrap items-baseline justify-between gap-x-2">
+                        <span className="font-titulo text-sm font-semibold text-petroleo-900">
+                          {opcion === 100 ? "El total" : "La mitad (50 %)"}
+                        </span>
+                        <span className="font-titulo text-base font-bold text-petroleo-700">
+                          {formatearCOP(monto)}
+                        </span>
+                      </span>
+                      <span className="text-[0.8125rem] leading-snug text-crema-700">
+                        {explicacionAnticipo(opcion)}
+                      </span>
+                    </label>
+                  </li>
+                );
+              })}
+            </ul>
+          </fieldset>
+        ) : null}
       </div>
 
       {/* ===================================================================
@@ -555,87 +1073,205 @@ export function SelectorReserva({ cabanas, planes, whatsapp, hoy }: Props) {
             Tu solicitud
           </h3>
 
-          <dl className="flex flex-col gap-2.5 text-sm">
-            <Fila etiqueta="Cabaña" valor={cabana?.nombre ?? "Sin elegir"} />
-            <Fila
-              etiqueta="Huéspedes"
-              valor={adultos === 1 ? "1 adulto" : "2 adultos"}
-            />
-            {/* Las fechas en formato corto ("12 mar 2026"): el resumen se lee,
-                no se descifra. */}
-            <Fila
-              etiqueta="Llegada"
-              valor={entrada ? formatearFechaCorta(entrada) : "Sin definir"}
-            />
-            <Fila
-              etiqueta="Salida"
-              valor={
-                salida && rango.valido
-                  ? formatearFechaCorta(salida)
-                  : "Sin definir"
-              }
-            />
-            <Fila
-              etiqueta="Noches"
-              valor={noches.length > 0 ? String(noches.length) : "—"}
-            />
-          </dl>
+          {soloUnDia ? (
+            <>
+              <dl className="flex flex-col gap-2.5 text-sm">
+                <Fila etiqueta="Plan" valor={planDia?.nombre ?? "Día de Calma"} />
+                <Fila
+                  etiqueta="Fecha"
+                  valor={entrada ? formatearFechaCorta(entrada) : "Sin definir"}
+                />
+                <Fila
+                  etiqueta="Horario"
+                  valor={planDia?.horario ?? HORARIO_DIA_POR_DEFECTO}
+                />
+                <Fila
+                  etiqueta="Personas"
+                  valor={
+                    personasDia === 1 ? "1 persona" : `${personasDia} personas`
+                  }
+                />
+                {cupo.estado === "ok" && cupo.restante !== null ? (
+                  <Fila
+                    etiqueta="Cupo del día"
+                    valor={`${cupo.usado ?? 0}/${CUPO_DIA_DE_CALMA} ocupados`}
+                  />
+                ) : null}
+              </dl>
 
-          {/* --- El desglose --- */}
-          {desglose ? (
-            <div className="flex flex-col gap-2 border-t border-crema-200 pt-4">
-              <p className="font-titulo text-sm font-semibold text-crema-700">
-                Noche por noche
+              {cotizacionDia?.precio !== null &&
+              cotizacionDia?.precio !== undefined ? (
+                <p className="flex items-baseline justify-between gap-3 border-t border-crema-200 pt-4">
+                  <span className="font-titulo text-sm font-semibold text-crema-700">
+                    Total estimado
+                  </span>
+                  <span className="font-titulo text-2xl font-extrabold text-petroleo-700">
+                    {formatearCOP(cotizacionDia.precio)}
+                  </span>
+                </p>
+              ) : (
+                <p className="rounded-[var(--radius-tarjeta)] bg-crema-100 px-4 py-3 text-sm leading-relaxed text-crema-800">
+                  {cotizacionDia?.nota ??
+                    "Elige la fecha y te mostramos el valor del día."}
+                </p>
+              )}
+
+              <p className="text-sm leading-relaxed text-crema-600">
+                El Día de Calma no incluye hospedaje ni ocupa cabaña.
               </p>
-              <ul className="flex flex-col gap-1.5">
-                {desglose.lineas.map((linea) => (
-                  <li
-                    key={linea.fecha}
-                    className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 text-sm"
-                  >
-                    <span className="min-w-0 text-crema-700">
-                      {formatearFechaCorta(linea.fecha)}
-                      <span className="ml-1.5 text-xs text-crema-600">
-                        {linea.festivo ?? linea.plan}
+            </>
+          ) : (
+            <>
+              <dl className="flex flex-col gap-2.5 text-sm">
+                <Fila etiqueta="Cabaña" valor={cabana?.nombre ?? "Sin elegir"} />
+                <Fila
+                  etiqueta="Huéspedes"
+                  valor={adultos === 1 ? "1 adulto" : "2 adultos"}
+                />
+                {/* Las fechas en formato corto ("12 mar 2026"): el resumen se lee,
+                    no se descifra. */}
+                <Fila
+                  etiqueta="Llegada"
+                  valor={entrada ? formatearFechaCorta(entrada) : "Sin definir"}
+                />
+                <Fila
+                  etiqueta="Salida"
+                  valor={
+                    salida && rango.valido
+                      ? formatearFechaCorta(salida)
+                      : "Sin definir"
+                  }
+                />
+                <Fila
+                  etiqueta="Noches"
+                  valor={noches.length > 0 ? String(noches.length) : "—"}
+                />
+              </dl>
+
+              {/* --- El desglose --- */}
+              {desglose ? (
+                <div className="flex flex-col gap-2 border-t border-crema-200 pt-4">
+                  <p className="font-titulo text-sm font-semibold text-crema-700">
+                    Noche por noche
+                  </p>
+                  <ul className="flex flex-col gap-1.5">
+                    {desglose.lineas.map((linea) => (
+                      <li
+                        key={linea.fecha}
+                        className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 text-sm"
+                      >
+                        <span className="min-w-0 text-crema-700">
+                          {formatearFechaCorta(linea.fecha)}
+                          <span className="ml-1.5 text-xs text-crema-600">
+                            {linea.festivo ?? linea.plan}
+                          </span>
+                        </span>
+                        <span className="font-medium text-petroleo-900">
+                          {formatearCOP(linea.precio)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  {desglose.lineas.some((linea) => linea.festivo) ? (
+                    <p className="text-xs leading-snug text-crema-600">
+                      Los festivos se cobran como noche de fin de semana.
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {/* --- Las experiencias, agrupadas por noche --- */}
+              {pago && pago.grupos.length > 0 ? (
+                <div className="flex flex-col gap-2 border-t border-crema-200 pt-4">
+                  <p className="font-titulo text-sm font-semibold text-crema-700">
+                    Experiencias y adicionales
+                  </p>
+                  <ul className="flex flex-col gap-1.5">
+                    {pago.grupos.map((grupo) => (
+                      <li key={grupo.noche ?? "estadia"}>
+                        <p className="text-xs font-semibold text-crema-600">
+                          {grupo.noche
+                            ? `Noche del ${formatearFechaCorta(grupo.noche)}`
+                            : "Para toda la estadía"}
+                        </p>
+                        <ul className="flex flex-col gap-1">
+                          {grupo.lineas.map((linea) => (
+                            <li
+                              key={`${grupo.noche ?? "estadia"}-${linea.extraId}`}
+                              className="flex flex-wrap items-baseline justify-between gap-x-3 text-sm"
+                            >
+                              <span className="min-w-0 text-crema-700">
+                                {linea.nombre}
+                                {linea.cantidad > 1 ? ` ×${linea.cantidad}` : ""}
+                              </span>
+                              <span className="font-medium text-petroleo-900">
+                                {formatearCOP(linea.importe)}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+
+              {pago ? (
+                <div className="flex flex-col gap-2 border-t border-crema-200 pt-4">
+                  <p className="flex items-baseline justify-between gap-3">
+                    <span className="font-titulo text-sm font-semibold text-crema-700">
+                      Total estimado
+                    </span>
+                    <span className="font-titulo text-2xl font-extrabold text-petroleo-700">
+                      {formatearCOP(pago.total)}
+                    </span>
+                  </p>
+                  <p className="flex items-baseline justify-between gap-3 text-sm">
+                    <span className="text-crema-700">
+                      Pagas ahora ({pago.porcentaje} %)
+                    </span>
+                    <span className="font-semibold text-petroleo-900">
+                      {formatearCOP(pago.anticipo)}
+                    </span>
+                  </p>
+                  {pago.saldo > 0 ? (
+                    <p className="flex items-baseline justify-between gap-3 text-sm">
+                      <span className="text-crema-700">Antes de llegar</span>
+                      <span className="font-semibold text-petroleo-900">
+                        {formatearCOP(pago.saldo)}
                       </span>
-                    </span>
-                    <span className="font-medium text-petroleo-900">
-                      {formatearCOP(linea.precio)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              {desglose.lineas.some((linea) => linea.festivo) ? (
-                <p className="text-xs leading-snug text-crema-600">
-                  Los festivos se cobran como noche de fin de semana.
+                    </p>
+                  ) : null}
+                  <p className="text-xs leading-relaxed text-crema-600">
+                    {explicacionAnticipo(pago.porcentaje)}
+                  </p>
+                </div>
+              ) : null}
+
+              {cotizacion && !cotizacion.posible ? (
+                <p className="rounded-[var(--radius-tarjeta)] bg-crema-100 px-4 py-3 text-sm leading-relaxed text-crema-800">
+                  {cotizacion.motivo}
                 </p>
               ) : null}
-            </div>
-          ) : null}
 
-          {desglose ? (
-            <p className="flex items-baseline justify-between gap-3 border-t border-crema-200 pt-4">
-              <span className="font-titulo text-sm font-semibold text-crema-700">
-                Total estimado
-              </span>
-              <span className="font-titulo text-2xl font-extrabold text-petroleo-700">
-                {formatearCOP(desglose.total)}
-              </span>
-            </p>
-          ) : null}
+              {!cotizacion ? (
+                <p className="text-sm leading-relaxed text-crema-600">
+                  Elige fechas y cabaña y te mostramos el precio noche por noche.
+                </p>
+              ) : null}
+            </>
+          )}
 
-          {cotizacion && !cotizacion.posible ? (
-            <p className="rounded-[var(--radius-tarjeta)] bg-crema-100 px-4 py-3 text-sm leading-relaxed text-crema-800">
-              {cotizacion.motivo}
-            </p>
-          ) : null}
-
-          {!cotizacion ? (
-            <p className="text-sm leading-relaxed text-crema-600">
-              Elige fechas y cabaña y te mostramos el precio noche por noche.
-            </p>
-          ) : null}
-
+          {/*
+            AQUÍ VA EL COBRO DE WOMPI.
+            Cuando existan las llaves (§12 del plan), este botón deja de ir a
+            WhatsApp y pasa a crear la reserva en estado `pendiente` y abrir el
+            checkout de Wompi por `pago.anticipo` —el 50 % o el 100 % que el
+            visitante acaba de elegir, ya calculado arriba—. Todo lo que hace
+            falta para ese paso ya está resuelto: el desglose por noche, los
+            extras con su noche, el total y el anticipo. Lo único que cambia es
+            el destino de este enlace.
+          */}
           <a
             href={enlace}
             target="_blank"
@@ -669,6 +1305,81 @@ function Fila({ etiqueta, valor }: { etiqueta: string; valor: string }) {
         {valor}
       </dd>
     </div>
+  );
+}
+
+/**
+ * Una experiencia dentro de una noche: casilla y, si está marcada, cantidad.
+ *
+ * La casilla es un `<input type="checkbox">` de verdad dentro de un `<label>`:
+ * funciona con teclado y el lector de pantalla anuncia el nombre y el precio.
+ */
+function FilaExtra({
+  extra,
+  cantidad,
+  alCambiar,
+  nombreCampo,
+}: {
+  extra: ExtraSeleccionable;
+  cantidad: number;
+  alCambiar: (cantidad: number) => void;
+  nombreCampo: string;
+}) {
+  const marcado = cantidad > 0;
+
+  return (
+    <li
+      className={[
+        "flex flex-wrap items-center gap-3 rounded-[var(--radius-tarjeta)] border px-3.5 py-2.5 transition-colors duration-200",
+        marcado
+          ? "border-petroleo-600 bg-petroleo-50"
+          : "border-crema-300/80 bg-white hover:border-petroleo-300",
+      ].join(" ")}
+    >
+      <label className="flex min-h-11 flex-1 cursor-pointer items-center gap-3">
+        <input
+          type="checkbox"
+          name={nombreCampo}
+          value={extra.id}
+          checked={marcado}
+          onChange={() => alCambiar(marcado ? 0 : 1)}
+          className="size-5 shrink-0 accent-[var(--color-petroleo-600)]"
+        />
+        <span className="min-w-0">
+          <span className="block font-titulo text-sm font-semibold text-petroleo-900">
+            {extra.nombre}
+          </span>
+          <span className="block text-xs text-crema-600">
+            {formatearCOP(extra.precio)}
+            {extra.descripcion ? ` · ${extra.descripcion}` : ""}
+          </span>
+        </span>
+      </label>
+
+      {marcado ? (
+        <span className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => alCambiar(cantidad - 1)}
+            aria-label={`Quitar una unidad de ${extra.nombre}`}
+            className="flex size-9 items-center justify-center rounded-full border border-crema-300 text-petroleo-800 transition-colors hover:bg-crema-100"
+          >
+            −
+          </button>
+          <span className="min-w-6 text-center font-titulo text-sm font-semibold text-petroleo-900">
+            {cantidad}
+          </span>
+          <button
+            type="button"
+            onClick={() => alCambiar(cantidad + 1)}
+            aria-label={`Añadir una unidad de ${extra.nombre}`}
+            className="flex size-9 items-center justify-center rounded-full border border-crema-300 text-petroleo-800 transition-colors hover:bg-crema-100"
+          >
+            +
+          </button>
+        </span>
+      ) : null}
+    </li>
   );
 }
 

@@ -62,6 +62,26 @@ export type NocheDelMensaje = {
   festivo?: string | null;
 };
 
+/** Una experiencia o adicional elegido, con la noche a la que pertenece. */
+export type ExtraDelMensaje = {
+  nombre: string;
+  cantidad: number;
+  /** Lo que suma esa línea, entero COP. */
+  importe: number;
+  /** Noche ya formateada («18 sep 2026»); `null` = para toda la estadía. */
+  noche?: string | null;
+};
+
+/** Cómo se reparte el pago. */
+export type AnticipoDelMensaje = {
+  /** 50 o 100. */
+  porcentaje: number;
+  /** Lo que se paga ahora, entero COP. */
+  monto: number;
+  /** Lo que queda por pagar antes de llegar. */
+  saldo: number;
+};
+
 export type SolicitudReserva = {
   /** Nombre de la cabaña, si el visitante ya eligió una. */
   cabana?: string | null;
@@ -81,8 +101,18 @@ export type SolicitudReserva = {
    * poder confirmarlo sin rehacer la cuenta.
    */
   desglose?: NocheDelMensaje[] | null;
+  /**
+   * Las experiencias elegidas, **noche por noche**.
+   *
+   * En La Finca la torta de aniversario se sirve un día concreto: si el
+   * mensaje solo dijera «Aniversario con Amor», el equipo tendría que
+   * preguntar cuándo. Ver `src/lib/reserva/total.ts`.
+   */
+  extras?: ExtraDelMensaje[] | null;
   /** Total estimado, entero COP. */
   total?: number | null;
+  /** Cuánto quiere pagar ahora el huésped y cuánto queda pendiente. */
+  anticipo?: AnticipoDelMensaje | null;
 };
 
 /**
@@ -104,7 +134,9 @@ export function mensajeReserva({
   salida,
   adultos,
   desglose,
+  extras,
   total,
+  anticipo,
 }: SolicitudReserva): string {
   const partes: string[] = [
     "¡Hola! Vengo del sitio web de La Finca Eco Hotel y quiero reservar.",
@@ -137,9 +169,73 @@ export function mensajeReserva({
     bloques.push(["Noche por noche:", ...lineas].join("\n"));
   }
 
+  if (extras && extras.length > 0) {
+    const lineas = extras.map((extra) => {
+      const cuando = extra.noche ? extra.noche : "Para toda la estadía";
+      const cantidad = extra.cantidad > 1 ? ` ×${extra.cantidad}` : "";
+      return `• ${cuando} — ${extra.nombre}${cantidad}: ${formatearCOP(extra.importe)}`;
+    });
+    bloques.push(["Experiencias y adicionales:", ...lineas].join("\n"));
+  }
+
   if (typeof total === "number" && total > 0) {
     bloques.push(`Total estimado: ${formatearCOP(total)}.`);
   }
+
+  if (anticipo && anticipo.monto > 0) {
+    bloques.push(
+      anticipo.porcentaje >= 100
+        ? `Quiero pagar el 100 % ahora: ${formatearCOP(anticipo.monto)}.`
+        : `Quiero pagar el ${anticipo.porcentaje} % ahora (${formatearCOP(anticipo.monto)}) y el resto (${formatearCOP(anticipo.saldo)}) antes de llegar.`,
+    );
+  }
+
+  bloques.push("¿Me confirman disponibilidad y cómo hago el pago?");
+  return bloques.join("\n\n");
+}
+
+/* ---------------------------------------------------------------------------
+ * Día de Calma
+ * ------------------------------------------------------------------------- */
+
+export type SolicitudDiaDeCalma = {
+  /** Fecha `AAAA-MM-DD` del día. */
+  fecha: FechaISO;
+  personas: number;
+  /** Horario publicado del plan («10:00 a. m. – 5:00 p. m.»). */
+  horario?: string | null;
+  /** Total, entero COP. `null` cuando el hotel todavía no lo ha publicado. */
+  total?: number | null;
+};
+
+/**
+ * Solicitud de un **Día de Calma**: un día en La Finca, sin hospedaje.
+ *
+ * Nunca se escribe la palabra «pasadía»: el hotel la rechaza expresamente
+ * (§3 de `docs/DATOS_CLIENTE.md`). Cuando el total no se puede calcular —más
+ * de dos personas, cuyo valor adicional el hotel no ha publicado— el mensaje
+ * lo pregunta en vez de inventarlo.
+ */
+export function mensajeDiaDeCalma({
+  fecha,
+  personas,
+  horario,
+  total,
+}: SolicitudDiaDeCalma): string {
+  const partes: string[] = [
+    "¡Hola! Vengo del sitio web de La Finca Eco Hotel y quiero reservar un Día de Calma (sin hospedaje).",
+    `Fecha: ${formatearFecha(fecha)}.`,
+    personas === 1 ? "Vengo 1 persona." : `Venimos ${personas} personas.`,
+  ];
+  if (horario) partes.push(`Horario: ${horario}.`);
+
+  const bloques: string[] = [partes.join(" ")];
+
+  bloques.push(
+    typeof total === "number" && total > 0
+      ? `Total estimado: ${formatearCOP(total)}.`
+      : "¿Me confirman el valor para ese número de personas?",
+  );
 
   bloques.push("¿Me confirman disponibilidad y cómo hago el pago?");
   return bloques.join("\n\n");

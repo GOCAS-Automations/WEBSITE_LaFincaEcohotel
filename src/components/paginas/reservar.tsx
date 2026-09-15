@@ -19,6 +19,7 @@ import { RITMO, Seccion } from "@/components/ui/seccion";
 import {
   getAlojamientos,
   getContacto,
+  getExtras,
   getHeroesListados,
   getPlanesConPrecio,
   getReservar,
@@ -48,15 +49,23 @@ import { enlaceWhatsapp } from "@/lib/whatsapp";
  * `.neblina` ya tiene su propio `overflow: hidden`.
  */
 export async function PaginaReservar() {
-  const [heroes, contenido, seccionPlanes, alojamientos, planes, contacto] =
-    await Promise.all([
-      getHeroesListados(),
-      getReservar(),
-      getSeccionPlanes(),
-      getAlojamientos(),
-      getPlanesConPrecio(),
-      getContacto(),
-    ]);
+  const [
+    heroes,
+    contenido,
+    seccionPlanes,
+    alojamientos,
+    planes,
+    extras,
+    contacto,
+  ] = await Promise.all([
+    getHeroesListados(),
+    getReservar(),
+    getSeccionPlanes(),
+    getAlojamientos(),
+    getPlanesConPrecio(),
+    getExtras(),
+    getContacto(),
+  ]);
 
   /*
     LO QUE NECESITA EL MOTOR DE PRECIOS.
@@ -200,6 +209,16 @@ export async function PaginaReservar() {
                   precio_base: precio_minimo,
                   precio_varia: varia,
                   horario: plan.horario,
+                }))}
+                /* Las experiencias del paso 4: se eligen NOCHE POR NOCHE
+                   (ver `src/lib/reserva/total.ts`). Los adicionales van en su
+                   propio bloque, para toda la estadía. */
+                extras={extras.map((extra) => ({
+                  id: extra.id,
+                  tipo: extra.tipo,
+                  nombre: extra.nombre,
+                  descripcion: extra.descripcion,
+                  precio: extra.precio,
                 }))}
                 whatsapp={contacto.whatsapp}
                 hoy={hoyEnBogota()}
