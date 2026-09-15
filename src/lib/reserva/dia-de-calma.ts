@@ -14,12 +14,23 @@
  * · **Nunca se le llama «pasadía»**: el hotel rechaza esa palabra.
  *
  * ---------------------------------------------------------------------------
+ * EL CIERRE ES EL MISMO QUE EL DEL HOSPEDAJE
+ * ---------------------------------------------------------------------------
+ * Desde el 2026-09-15 (segunda ronda) el Día de Calma **se reserva y se paga
+ * por el sitio**: resumen con total, deslizante de anticipo de 50 a 100 % y el
+ * mismo botón final que el hospedaje, con una sola costura de Wompi para los
+ * dos (`src/components/sitio/selector-reserva.tsx`). El total sale de
+ * `resumenDePago()` igual que el de una estadía.
+ *
+ * ---------------------------------------------------------------------------
  * LO QUE NO SE INVENTA
  * ---------------------------------------------------------------------------
- * El anticipo y la política de cancelación del plan de día siguen sin
- * confirmar, así que no sale ningún número: el sitio dice «te lo confirmamos
- * por WhatsApp» y el visitante pasa allí con su solicitud ya escrita. Ver los
- * `TODO` de abajo.
+ * El hotel **no ha confirmado** si el Día de Calma pide el mismo mínimo del
+ * 50 % que el hospedaje. Mientras no lo diga se aplica esa misma regla —es la
+ * única que el hotel ha publicado— y el sitio lo escribe en la propia pantalla
+ * en vez de dejar el cierre a medias. La política de cancelación del plan de
+ * día sigue sin confirmar y esa sí se remite a WhatsApp. Ver los `TODO` de
+ * abajo y §3 de `docs/DATOS_CLIENTE.md`.
  *
  * ---------------------------------------------------------------------------
  * MÓDULO PURO
@@ -209,12 +220,13 @@ export function cotizarDiaDeCalma({
  * ===========================================================================
  *
  * TODO (Amapola):
- *   · ¿El Día de Calma pide anticipo? ¿Del 50 % como el hospedaje?
- *   · Política de cancelación del Día de Calma.
+ *   · ¿El Día de Calma pide el mismo anticipo mínimo del 50 % que el
+ *     hospedaje? Hasta que lo confirme, el sitio aplica esa misma regla y lo
+ *     dice en pantalla: es la única que el hotel ha publicado, y un cierre sin
+ *     anticipo obligaba a pedirlo después por WhatsApp.
+ *   · Política de cancelación del Día de Calma. Esta sí sigue sin cifra: el
+ *     sitio dice «te lo confirmamos por WhatsApp».
  *   · ¿Se puede añadir jacuzzi al Día de Calma y a qué precio?
- *
- * Mientras no estén confirmados, ninguno de los tres aparece con un número en
- * el sitio: aparecen como «te lo confirmamos por WhatsApp».
  *
  * Cerrado el 2026-09-15: el valor por persona adicional ya no hace falta,
  * porque el plan se vende solo para una o dos personas.

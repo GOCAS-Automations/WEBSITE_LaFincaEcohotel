@@ -204,8 +204,18 @@ export type SolicitudDiaDeCalma = {
   personas: number;
   /** Horario publicado del plan («10:00 a. m. – 5:00 p. m.»). */
   horario?: string | null;
+  /**
+   * Los adicionales elegidos para el día.
+   *
+   * Sin `noche`: en el Día de Calma no hay ninguna. Son los mismos adicionales
+   * que en el hospedaje viajan «para toda la estadía» (`noche = null` en
+   * `reserva_extras`).
+   */
+  extras?: Omit<ExtraDelMensaje, "noche">[] | null;
   /** Total, entero COP. `null` cuando el hotel todavía no lo ha publicado. */
   total?: number | null;
+  /** Cuánto quiere adelantar y cuánto queda, igual que en el hospedaje. */
+  anticipo?: AnticipoDelMensaje | null;
 };
 
 /**
@@ -220,7 +230,9 @@ export function mensajeDiaDeCalma({
   fecha,
   personas,
   horario,
+  extras,
   total,
+  anticipo,
 }: SolicitudDiaDeCalma): string {
   const partes: string[] = [
     "¡Hola! Vengo del sitio web de La Finca Eco Hotel y quiero reservar un Día de Calma (sin hospedaje).",
@@ -231,11 +243,29 @@ export function mensajeDiaDeCalma({
 
   const bloques: string[] = [partes.join(" ")];
 
+  if (extras && extras.length > 0) {
+    const lineas = extras.map((extra) => {
+      const cantidad = extra.cantidad > 1 ? ` ×${extra.cantidad}` : "";
+      return `• ${extra.nombre}${cantidad}: ${formatearCOP(extra.importe)}`;
+    });
+    bloques.push(["Adicionales para el día:", ...lineas].join("\n"));
+  }
+
   bloques.push(
     typeof total === "number" && total > 0
       ? `Total estimado: ${formatearCOP(total)}.`
       : "¿Me confirman el valor para ese número de personas?",
   );
+
+  /* El mismo cierre que el hospedaje: el Día de Calma también elige cuánto
+     adelanta, de 50 a 100 %. Ver `src/lib/reserva/total.ts`. */
+  if (anticipo && anticipo.monto > 0) {
+    bloques.push(
+      anticipo.porcentaje >= 100
+        ? `Quiero pagar el 100 % ahora: ${formatearCOP(anticipo.monto)}.`
+        : `Quiero pagar el ${anticipo.porcentaje} % ahora (${formatearCOP(anticipo.monto)}) y el resto (${formatearCOP(anticipo.saldo)}) antes de llegar.`,
+    );
+  }
 
   bloques.push("¿Me confirman disponibilidad y cómo hago el pago?");
   return bloques.join("\n\n");

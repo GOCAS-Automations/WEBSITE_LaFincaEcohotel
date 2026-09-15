@@ -39,7 +39,9 @@ import {
   normalizarPorcentajeAnticipo,
   resumenDePago,
   type ExtraElegido,
+  type GrupoDeExtras,
   type PorcentajeAnticipo,
+  type ResumenDePago,
 } from "@/lib/reserva/total";
 import {
   formatearCOP,
@@ -77,6 +79,15 @@ import { IconoCheck, IconoWhatsapp } from "./iconos";
  *
  * Y a la derecha, el desglose noche por noche con el total y el botón de
  * WhatsApp con ese mismo desglose ya escrito.
+ *
+ * ---------------------------------------------------------------------------
+ * EL DÍA DE CALMA RECORRE EL MISMO CIERRE
+ * ---------------------------------------------------------------------------
+ * El modo de día tiene sus propios pasos —el plan, cuántas personas y los
+ * adicionales «para el día»— pero termina exactamente igual: total, deslizante
+ * de 50 a 100 % y el mismo botón final. `pagoActual` es el resumen del modo en
+ * curso, y el botón lo lee a él: cuando entre Wompi, el cobro se escribe una
+ * vez y sirve para los dos.
  *
  * La versión anterior preguntaba el plan PRIMERO y luego apagaba días del
  * calendario. De ahí salía el fallo que reportó Cesar: con ciertas fechas
@@ -410,6 +421,20 @@ export function SelectorReserva({
     });
   }
 
+  /**
+   * Cambia al modo de día CONSERVANDO la fecha de llegada como el día elegido.
+   *
+   * Es el mismo gesto que ofrece el calendario («Vengo solo ese día»), y por
+   * eso hace lo mismo: solo se suelta la salida —no hay noche que dormir— y la
+   * preferencia de plan, que ya no significa nada. Lo llaman la nota del paso
+   * del plan y, cuando ese paso no existe, la nota suelta de más abajo.
+   */
+  function irAlDiaDeCalma() {
+    setSoloUnDia(true);
+    setSalida("");
+    setPreferencia(null);
+  }
+
   /* --- El total y el anticipo ------------------------------------------- */
 
   const pago = useMemo(
@@ -437,6 +462,36 @@ export function SelectorReserva({
     });
   }, [soloUnDia, entrada, personasDia, planDia, cupo]);
 
+  /*
+    EL DÍA DE CALMA TERMINA IGUAL QUE EL HOSPEDAJE.
+    Mismo `resumenDePago`, mismo deslizante de 50 a 100 % y mismo botón final.
+    Antes el modo de día se despedía con un «el anticipo te lo confirmamos por
+    WhatsApp»: dos cierres distintos para el mismo hotel, y el día que entre
+    Wompi habría que cablear dos cobros. El único hueco que queda es de datos,
+    no de código: el hotel no ha confirmado si el Día de Calma pide el mismo
+    50 % mínimo (ver el `TODO` de `src/lib/reserva/dia-de-calma.ts`), así que
+    mientras tanto se aplica la regla del hospedaje y se dice en pantalla.
+
+    Sin noches no hay experiencias por noche, pero los adicionales sí caben:
+    viajan con `noche = null`, que es exactamente como los guarda
+    `reserva_extras` «para toda la estadía» desde la migración 009.
+  */
+  const pagoDia = useMemo(
+    () =>
+      soloUnDia && typeof cotizacionDia?.precio === "number"
+        ? resumenDePago({
+            subtotalAlojamiento: cotizacionDia.precio,
+            extras: extrasElegidos,
+            noches: [],
+            porcentaje,
+          })
+        : null,
+    [soloUnDia, cotizacionDia, extrasElegidos, porcentaje],
+  );
+
+  /** El pago del modo en curso: uno u otro, nunca los dos. */
+  const pagoActual = soloUnDia ? pagoDia : pago;
+
   /* --- El mensaje de WhatsApp, con el desglose ya escrito ---------------- */
 
   const enlace = soloUnDia
@@ -445,7 +500,19 @@ export function SelectorReserva({
           fecha: entrada || hoy,
           personas: personasDia,
           horario: planDia?.horario ?? HORARIO_DIA_POR_DEFECTO,
-          total: cotizacionDia?.precio ?? null,
+          extras: extrasElegidos.map((extra) => ({
+            nombre: extra.nombre,
+            cantidad: extra.cantidad,
+            importe: extra.cantidad * extra.precioUnitario,
+          })),
+          total: pagoDia?.total ?? cotizacionDia?.precio ?? null,
+          anticipo: pagoDia
+            ? {
+                porcentaje: pagoDia.porcentaje,
+                monto: pagoDia.anticipo,
+                saldo: pagoDia.saldo,
+              }
+            : null,
         }),
         whatsapp,
       )
@@ -486,9 +553,17 @@ export function SelectorReserva({
 
   /* Los pasos no son fijos: el del plan solo aparece si hay noches de fin de
      semana, y el de experiencias solo si ya hay noches. Numerarlos a mano
-     dejaría un «3.» seguido de un «5.». */
+     dejaría un «3.» seguido de un «5.».
+
+     El contador se incrementa en el MISMO orden en que se pintan los bloques
+     más abajo: fechas → Día de Calma → cabaña → plan → experiencias →
+     adicionales del día → pago. Los dos modos son excluyentes, así que en cada
+     uno la cuenta sale seguida. */
+  const adicionales = extras.filter((extra) => extra.tipo === "adicional");
+
   let contadorPaso = 1;
   const numeroFechas = contadorPaso++;
+  const numeroDia = soloUnDia ? contadorPaso++ : null;
   const numeroCabana = soloUnDia ? null : contadorPaso++;
   const numeroPlan =
     !soloUnDia && hayFinDeSemana && planesFinDeSemana.length > 0
@@ -496,8 +571,14 @@ export function SelectorReserva({
       : null;
   const numeroExtras =
     !soloUnDia && noches.length > 0 && extras.length > 0 ? contadorPaso++ : null;
-  const numeroPago = !soloUnDia && pago && pago.total > 0 ? contadorPaso++ : null;
-  const numeroDia = soloUnDia ? contadorPaso++ : null;
+  const numeroExtrasDia =
+    soloUnDia &&
+    typeof cotizacionDia?.precio === "number" &&
+    adicionales.length > 0
+      ? contadorPaso++
+      : null;
+  const numeroPago =
+    pagoActual && pagoActual.total > 0 ? contadorPaso++ : null;
 
   /* ===================================================================== */
 
@@ -726,16 +807,20 @@ export function SelectorReserva({
             </fieldset>
 
             {/*
-              LO QUE EL HOTEL TODAVÍA NO HA CONFIRMADO NO SE ESCRIBE.
-              `TODO` (Amapola): anticipo del Día de Calma, su política de
-              cancelación y si se puede añadir jacuzzi. Ver
-              `src/lib/reserva/dia-de-calma.ts`. Mientras no lo confirme, aquí
-              no aparece ninguna cifra inventada. (El valor por persona
-              adicional ya no hace falta: el plan es para una o dos personas.)
+              EL ANTICIPO DEL DÍA DE CALMA SIGUE LA REGLA DEL HOSPEDAJE.
+              `TODO` (Amapola): confirmar si el Día de Calma pide el mismo 50 %
+              mínimo, su política de cancelación y si se puede añadir jacuzzi.
+              Ver `src/lib/reserva/dia-de-calma.ts` y §3 de
+              `docs/DATOS_CLIENTE.md`. Mientras no lo confirme se aplica la
+              misma regla del hospedaje —mínimo 50 %— y se dice aquí, en vez de
+              dejar el cierre a medias. Lo que sigue sin número es la política
+              de cambios, que sí se remite a WhatsApp.
             */}
             <p className="text-sm leading-relaxed text-crema-600">
-              El anticipo y las condiciones de cambio del Día de Calma te los
-              confirmamos por WhatsApp al responder tu solicitud.
+              El anticipo funciona igual que en el hospedaje: con el 50 % queda
+              confirmado y puedes adelantar más si quieres. Las condiciones de
+              cambio del Día de Calma te las confirmamos por WhatsApp al
+              responder tu solicitud.
             </p>
           </fieldset>
         ) : null}
@@ -934,7 +1019,31 @@ export function SelectorReserva({
               </Link>
               .
             </p>
+
+            {planDia ? (
+              <NotaDiaDeCalma
+                plan={planDia}
+                fecha={entrada}
+                alElegir={irAlDiaDeCalma}
+              />
+            ) : null}
           </fieldset>
+        ) : null}
+
+        {/*
+          LA MISMA NOTA CUANDO NO HAY PASO DE PLAN.
+          El paso del plan solo existe si la estadía toca fin de semana o
+          festivo: quien elija de lunes a jueves no lo ve, y se quedaría sin
+          enterarse de que el plan de día existe. Aparece en el mismo sitio del
+          flujo —justo después de la cabaña— para que se lea igual en los dos
+          casos.
+        */}
+        {!soloUnDia && numeroPlan === null && planDia ? (
+          <NotaDiaDeCalma
+            plan={planDia}
+            fecha={entrada}
+            alElegir={irAlDiaDeCalma}
+          />
         ) : null}
 
         {/* ---------------------------------------------------------------
@@ -1047,19 +1156,57 @@ export function SelectorReserva({
         ) : null}
 
         {/* ---------------------------------------------------------------
-            PASO 5 — CUÁNTO SE PAGA AHORA.
+            ADICIONALES DEL DÍA DE CALMA.
+            Sin noches no hay experiencias por noche —la torta se sirve una
+            noche concreta y aquí no se duerme—, pero los adicionales sí caben:
+            son por estadía y viajan con `noche = null`, la misma forma que
+            guarda `reserva_extras` para «toda la estadía».
         ---------------------------------------------------------------- */}
-        {numeroPago !== null && pago ? (
+        {numeroExtrasDia !== null ? (
+          <fieldset className="flex flex-col gap-4">
+            <legend className="mb-4 font-titulo text-lg font-bold text-petroleo-900">
+              {numeroExtrasDia}. ¿Añadimos algo para el día?
+            </legend>
+
+            <p className="text-sm leading-relaxed text-crema-700">
+              Puedes dejarlo en blanco: nada de esto es obligatorio.
+            </p>
+
+            <div className="rounded-[var(--radius-generoso)] bg-white p-4 shadow-[var(--shadow-tenue)] ring-1 ring-crema-200/70 sm:p-5">
+              <ul className="flex flex-col gap-2">
+                {adicionales.map((extra) => (
+                  <FilaExtra
+                    key={extra.id}
+                    extra={extra}
+                    cantidad={seleccionExtras[claveExtra(null, extra.id)] ?? 0}
+                    alCambiar={(cantidad) =>
+                      cambiarExtra(null, extra.id, cantidad)
+                    }
+                    nombreCampo="extra-dia"
+                  />
+                ))}
+              </ul>
+            </div>
+          </fieldset>
+        ) : null}
+
+        {/* ---------------------------------------------------------------
+            ÚLTIMO PASO — CUÁNTO SE PAGA AHORA.
+            El mismo para las dos formas de reservar: el Día de Calma también
+            elige con el deslizante cuánto adelanta, de 50 a 100 %.
+        ---------------------------------------------------------------- */}
+        {numeroPago !== null && pagoActual ? (
           <section className="flex flex-col gap-4">
             <h2 className="font-titulo text-lg font-bold text-petroleo-900">
               {numeroPago}. ¿Cuánto quieres pagar ahora?
             </h2>
 
             <DeslizanteAnticipo
-              porcentaje={pago.porcentaje}
-              anticipo={pago.anticipo}
-              saldo={pago.saldo}
-              total={pago.total}
+              porcentaje={pagoActual.porcentaje}
+              anticipo={pagoActual.anticipo}
+              saldo={pagoActual.saldo}
+              total={pagoActual.total}
+              etiquetaTotal={soloUnDia ? "Total del día" : "Total de la estadía"}
               alCambiar={setPorcentaje}
             />
           </section>
@@ -1101,16 +1248,14 @@ export function SelectorReserva({
                 ) : null}
               </dl>
 
-              {cotizacionDia?.precio !== null &&
-              cotizacionDia?.precio !== undefined ? (
-                <p className="flex items-baseline justify-between gap-3 border-t border-crema-200 pt-4">
-                  <span className="font-titulo text-sm font-semibold text-crema-700">
-                    Total estimado
-                  </span>
-                  <span className="font-titulo text-2xl font-extrabold text-petroleo-700">
-                    {formatearCOP(cotizacionDia.precio)}
-                  </span>
-                </p>
+              {/* Los adicionales del día, con la misma pinta que en el
+                  hospedaje: un solo grupo, el de «toda la estadía». */}
+              {pagoDia && pagoDia.grupos.length > 0 ? (
+                <BloqueExtras grupos={pagoDia.grupos} etiquetaSinNoche="Para el día" />
+              ) : null}
+
+              {pagoDia ? (
+                <BloqueTotales pago={pagoDia} />
               ) : (
                 <p className="rounded-[var(--radius-tarjeta)] bg-crema-100 px-4 py-3 text-sm leading-relaxed text-crema-800">
                   {cotizacionDia?.nota ??
@@ -1184,71 +1329,10 @@ export function SelectorReserva({
 
               {/* --- Las experiencias, agrupadas por noche --- */}
               {pago && pago.grupos.length > 0 ? (
-                <div className="flex flex-col gap-2 border-t border-crema-200 pt-4">
-                  <p className="font-titulo text-sm font-semibold text-crema-700">
-                    Experiencias y adicionales
-                  </p>
-                  <ul className="flex flex-col gap-1.5">
-                    {pago.grupos.map((grupo) => (
-                      <li key={grupo.noche ?? "estadia"}>
-                        <p className="text-xs font-semibold text-crema-600">
-                          {grupo.noche
-                            ? `Noche del ${formatearFechaCorta(grupo.noche)}`
-                            : "Para toda la estadía"}
-                        </p>
-                        <ul className="flex flex-col gap-1">
-                          {grupo.lineas.map((linea) => (
-                            <li
-                              key={`${grupo.noche ?? "estadia"}-${linea.extraId}`}
-                              className="flex flex-wrap items-baseline justify-between gap-x-3 text-sm"
-                            >
-                              <span className="min-w-0 text-crema-700">
-                                {linea.nombre}
-                                {linea.cantidad > 1 ? ` ×${linea.cantidad}` : ""}
-                              </span>
-                              <span className="font-medium text-petroleo-900">
-                                {formatearCOP(linea.importe)}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                <BloqueExtras grupos={pago.grupos} />
               ) : null}
 
-              {pago ? (
-                <div className="flex flex-col gap-2 border-t border-crema-200 pt-4">
-                  <p className="flex items-baseline justify-between gap-3">
-                    <span className="font-titulo text-sm font-semibold text-crema-700">
-                      Total estimado
-                    </span>
-                    <span className="font-titulo text-2xl font-extrabold text-petroleo-700">
-                      {formatearCOP(pago.total)}
-                    </span>
-                  </p>
-                  <p className="flex items-baseline justify-between gap-3 text-sm">
-                    <span className="text-crema-700">
-                      Pagas ahora ({pago.porcentaje} %)
-                    </span>
-                    <span className="font-semibold text-petroleo-900">
-                      {formatearCOP(pago.anticipo)}
-                    </span>
-                  </p>
-                  {pago.saldo > 0 ? (
-                    <p className="flex items-baseline justify-between gap-3 text-sm">
-                      <span className="text-crema-700">Antes de llegar</span>
-                      <span className="font-semibold text-petroleo-900">
-                        {formatearCOP(pago.saldo)}
-                      </span>
-                    </p>
-                  ) : null}
-                  <p className="text-xs leading-relaxed text-crema-600">
-                    {explicacionAnticipo(pago.porcentaje)}
-                  </p>
-                </div>
-              ) : null}
+              {pago ? <BloqueTotales pago={pago} /> : null}
 
               {cotizacion && !cotizacion.posible ? (
                 <p className="rounded-[var(--radius-tarjeta)] bg-crema-100 px-4 py-3 text-sm leading-relaxed text-crema-800">
@@ -1265,14 +1349,23 @@ export function SelectorReserva({
           )}
 
           {/*
-            AQUÍ VA EL COBRO DE WOMPI.
+            AQUÍ VA EL COBRO DE WOMPI — UNA SOLA COSTURA PARA LOS DOS PLANES.
             Cuando existan las llaves (§12 del plan), este botón deja de ir a
             WhatsApp y pasa a crear la reserva en estado `pendiente` y abrir el
-            checkout de Wompi por `pago.anticipo` —el 50 % o el 100 % que el
-            visitante acaba de elegir, ya calculado arriba—. Todo lo que hace
-            falta para ese paso ya está resuelto: el desglose por noche, los
-            extras con su noche, el total y el anticipo. Lo único que cambia es
-            el destino de este enlace.
+            checkout de Wompi por `pagoActual.anticipo` —el porcentaje de 50 a
+            100 % que el visitante acaba de elegir con el deslizante—.
+
+            `pagoActual` es el resumen del modo en curso: el del hospedaje o el
+            del Día de Calma, calculados los dos con `resumenDePago()`. Por eso
+            el cobro se escribe UNA vez y sirve para ambos; lo único que cambia
+            entre ellos es qué se guarda en la reserva (`tipo = 'hospedaje'` con
+            cabaña y noches, o `tipo = 'dia'` con `alojamiento_id` nulo). El
+            `porcentaje_anticipo` y el `monto_anticipo` se persisten igual en
+            los dos casos, como ya hace el panel.
+
+            Todo lo que hace falta para ese paso ya está resuelto: el desglose
+            por noche, los extras con su noche, el total y el anticipo. Lo único
+            que cambia es el destino de este enlace.
           */}
           <a
             href={enlace}
@@ -1300,6 +1393,140 @@ export function SelectorReserva({
  * ======================================================================== */
 
 /**
+ * Las experiencias y adicionales del resumen, agrupados.
+ *
+ * Lo usan los DOS modos. En el hospedaje los grupos son las noches; en el Día
+ * de Calma solo puede haber uno, el de `noche: null`, que allí se llama «Para
+ * el día» porque no hay estadía que valga.
+ */
+function BloqueExtras({
+  grupos,
+  etiquetaSinNoche = "Para toda la estadía",
+}: {
+  grupos: GrupoDeExtras[];
+  etiquetaSinNoche?: string;
+}) {
+  return (
+    <div className="flex flex-col gap-2 border-t border-crema-200 pt-4">
+      <p className="font-titulo text-sm font-semibold text-crema-700">
+        Experiencias y adicionales
+      </p>
+      <ul className="flex flex-col gap-1.5">
+        {grupos.map((grupo) => (
+          <li key={grupo.noche ?? "estadia"}>
+            <p className="text-xs font-semibold text-crema-600">
+              {grupo.noche
+                ? `Noche del ${formatearFechaCorta(grupo.noche)}`
+                : etiquetaSinNoche}
+            </p>
+            <ul className="flex flex-col gap-1">
+              {grupo.lineas.map((linea) => (
+                <li
+                  key={`${grupo.noche ?? "estadia"}-${linea.extraId}`}
+                  className="flex flex-wrap items-baseline justify-between gap-x-3 text-sm"
+                >
+                  <span className="min-w-0 text-crema-700">
+                    {linea.nombre}
+                    {linea.cantidad > 1 ? ` ×${linea.cantidad}` : ""}
+                  </span>
+                  <span className="font-medium text-petroleo-900">
+                    {formatearCOP(linea.importe)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/**
+ * El total, lo que se paga ahora y lo que queda.
+ *
+ * Una sola pieza para el hospedaje y para el Día de Calma: son la misma cuenta
+ * —`resumenDePago()`— y enseñarlas distinto solo conseguiría que una de las dos
+ * se quedara atrás en el próximo cambio.
+ */
+function BloqueTotales({ pago }: { pago: ResumenDePago }) {
+  return (
+    <div className="flex flex-col gap-2 border-t border-crema-200 pt-4">
+      <p className="flex items-baseline justify-between gap-3">
+        <span className="font-titulo text-sm font-semibold text-crema-700">
+          Total estimado
+        </span>
+        <span className="font-titulo text-2xl font-extrabold text-petroleo-700">
+          {formatearCOP(pago.total)}
+        </span>
+      </p>
+      <p className="flex items-baseline justify-between gap-3 text-sm">
+        <span className="text-crema-700">Pagas ahora ({pago.porcentaje} %)</span>
+        <span className="font-semibold text-petroleo-900">
+          {formatearCOP(pago.anticipo)}
+        </span>
+      </p>
+      {pago.saldo > 0 ? (
+        <p className="flex items-baseline justify-between gap-3 text-sm">
+          <span className="text-crema-700">Antes de llegar</span>
+          <span className="font-semibold text-petroleo-900">
+            {formatearCOP(pago.saldo)}
+          </span>
+        </p>
+      ) : null}
+      <p className="text-xs leading-relaxed text-crema-600">
+        {explicacionAnticipo(pago.porcentaje)}
+      </p>
+    </div>
+  );
+}
+
+/**
+ * La nota que recuerda que existe el Día de Calma.
+ *
+ * Va en el paso del plan, que es donde alguien se pregunta «¿y si no me quedo
+ * a dormir?». El botón conserva la fecha de llegada como día elegido: cambiar
+ * de idea no puede costar volver a buscar la fecha en el calendario.
+ *
+ * Nunca la palabra «pasadía»: el hotel la rechaza (§3 de
+ * `docs/DATOS_CLIENTE.md`).
+ */
+function NotaDiaDeCalma({
+  plan,
+  fecha,
+  alElegir,
+}: {
+  plan: PlanSeleccionable;
+  fecha: string;
+  alElegir: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-3 rounded-[var(--radius-tarjeta)] border border-dashed border-crema-300 bg-crema-50/70 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+      <p className="min-w-0 text-sm leading-relaxed text-crema-700">
+        ¿Vienes solo por el día? También está el{" "}
+        <strong className="font-semibold text-petroleo-900">
+          Plan {plan.nombre}
+        </strong>{" "}
+        ({plan.horario ?? HORARIO_DIA_POR_DEFECTO},{" "}
+        {typeof plan.precio_base === "number"
+          ? formatearCOP(plan.precio_base)
+          : "consultar"}{" "}
+        para dos, sin hospedaje).
+      </p>
+      <button
+        type="button"
+        onClick={alElegir}
+        className="shrink-0 self-start rounded-full border border-petroleo-300 bg-white px-4 py-2 font-titulo text-sm font-semibold text-petroleo-800 transition-colors duration-200 hover:border-petroleo-500 hover:bg-petroleo-50 sm:self-auto"
+      >
+        {fecha
+          ? `Verlo para el ${formatearFechaCorta(fecha)}`
+          : "Ver el plan de un día"}
+      </button>
+    </div>
+  );
+}
+
+/**
  * El anticipo, con un control deslizante de 50 a 100 %.
  *
  * ---------------------------------------------------------------------------
@@ -1322,12 +1549,15 @@ function DeslizanteAnticipo({
   anticipo,
   saldo,
   total,
+  etiquetaTotal = "Total de la estadía",
   alCambiar,
 }: {
   porcentaje: PorcentajeAnticipo;
   anticipo: number;
   saldo: number;
   total: number;
+  /** «Total de la estadía» o «Total del día»: el mismo control, dos planes. */
+  etiquetaTotal?: string;
   alCambiar: (porcentaje: PorcentajeAnticipo) => void;
 }) {
   const recorrido =
@@ -1381,7 +1611,7 @@ function DeslizanteAnticipo({
 
       <dl className="flex flex-col gap-1.5 border-t border-crema-200 pt-4 text-sm">
         <div className="flex items-baseline justify-between gap-3">
-          <dt className="text-crema-700">Total de la estadía</dt>
+          <dt className="text-crema-700">{etiquetaTotal}</dt>
           <dd className="font-medium text-petroleo-900">
             {formatearCOP(total)}
           </dd>
