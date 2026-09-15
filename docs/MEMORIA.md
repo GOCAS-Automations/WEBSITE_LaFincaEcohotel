@@ -33,10 +33,17 @@
   propio que apaga los días que el plan no cubre. Falta la disponibilidad real.
 - **Decisión de alcance:** primero todo el sitio + panel administrativo; motor de reservas y pagos (Wompi) después.
 - **Repo remoto:** https://github.com/GOCAS-Automations/WEBSITE_LaFincaEcohotel.git (push pendiente de confirmación de Cesar; luego se conecta a Vercel).
-- ⚠️ **Existe un usuario temporal de pruebas del panel**
-  (`panel@lafincaecohotel.com`). Se creó con la Admin API de Supabase solo para
-  verificar el panel de punta a punta. **Hay que rotarlo o borrarlo al
-  entregar**, y crear las cuentas reales del equipo del hotel.
+- **2026-09-16 · Séptima ronda (la última antes de la revisión del cliente):**
+  el **Día de Calma se reserva y se paga por el sitio**, con el mismo cierre y
+  el mismo deslizante de anticipo que el hospedaje; el paso del plan lo ofrece
+  con una tarjeta que conserva la fecha de llegada; existe la sección
+  **`/admin/usuarios`** con los roles propietario y equipo; y los **cuatro
+  documentos legales se editan desde el panel** (revierte la decisión del
+  2026-09-02).
+- **Cuentas del panel:** `fincavillarreal@gmail.com` es la cuenta del hotel
+  (**propietario**) y `panel@lafincaecohotel.com`, la temporal de pruebas, quedó
+  como **equipo**. Cesar decide si la borra desde `/admin/usuarios`: ya no hace
+  falta entrar a Supabase para eso.
 
 ## Decisiones tomadas
 
@@ -111,6 +118,12 @@
 | 2026-09-15 | **La curva grande del video de la COP16 abre ARRIBA A LA DERECHA.** La regla de no tocar esa esquina protege el sello de marca de las FOTOGRAFÍAS del bucket; el clip de la COP16 es video y su póster es un fotograma propio, sin sello. La regla sigue viva para todo lo que sí es una foto (ver `ZONA_FLAG` en `src/lib/fotos.ts`). |
 | 2026-09-15 | **La Finca NO publica en Airbnb ni en Booking**, y el calendario del hotel es un **Google Calendar llamado «la finca»**. Se retiró del sitio y de los documentos toda mención a esas plataformas y al nombre del bot (Whatsfy): la sincronización pendiente es la de ese calendario, y nada más. |
 | 2026-09-15 | **La sincronización con el Google Calendar del hotel no se implementa todavía**, pero el modelo la espera: `origen = 'google_calendar'` y `referencia_externa` (único cuando existe). |
+
+| 2026-09-16 | **El Día de Calma termina en el MISMO cierre que el hospedaje**: total, deslizante de anticipo de 50 a 100 % y una sola costura de Wompi (`pagoActual`). Dos cierres distintos habrían significado dos cobros que mantener. Como el hotel no ha confirmado si el día pide el mismo mínimo del 50 %, se aplica esa regla —la única publicada— y **se dice en pantalla**, en vez de dejar el cierre a medias. |
+| 2026-09-16 | **Los textos legales vuelven al CMS** (`legal.privacidad`, `legal.terminos`, `legal.datos`, `legal.cancelacion`), revirtiendo la decisión del 2026-09-02: el sitio entra a revisión legal con Amapola y cada vuelta era, si no, un despliegue. Se conserva el respaldo en código y la acción impide dejar un documento sin secciones. **Consecuencia:** los datos de contacto dentro del texto legal ya no se interpolan de `sitio.contacto`; si el hotel cambia de número hay que corregir los cuatro documentos. |
+| 2026-09-16 | **Las viñetas de los documentos legales son un párrafo con una convención**: si todas sus líneas empiezan por «- », se pinta como lista. Un editor de bloques habría sido más fiel al modelo y mucho peor de usar; así el documento entero se edita con cajas de texto normales y no se perdió ni una viñeta. |
+| 2026-09-16 | **El rol del panel vive en `app_metadata`**, que solo escribe la Admin API —`user_metadata` sí lo edita su dueño— y viaja dentro del JWT ya validado por `getUser()`. Quien no traiga un rol reconocido entra como `equipo`, el menos privilegiado. |
+| 2026-09-16 | **Esconder el enlace de Usuarios es cortesía, no seguridad.** El «no» lo dicen la página —que comprueba el rol ANTES de leer nada, así que no se filtra ni un correo— y cada Server Action, porque un POST directo no pasa por ninguna pantalla. |
 
 ## Registro de sesiones
 
@@ -1855,3 +1868,147 @@ ahora el 50 % es el **mínimo** y el huésped puede adelantar más.
   `$1.342.500`; tecla Fin → 100 % y el mensaje de WhatsApp dice «Quiero pagar el
   100 % ahora: $1.790.000».
 - **La base quedó sin datos de prueba**: no se creó ninguna reserva.
+
+### 2026-09-16 — Séptima ronda: el Día de Calma se paga por el sitio, usuarios del panel y legales editables
+
+Última ronda antes de la revisión del cliente. Tres encargos de Cesar y uno que
+llegó a mitad de camino.
+
+#### 1. El Día de Calma se reserva y se paga como el hospedaje
+
+Hasta hoy el modo de día terminaba en «el anticipo te lo confirmamos por
+WhatsApp»: dos cierres distintos para el mismo hotel y, el día que entre Wompi,
+dos cobros que cablear. Ahora recorre **el mismo cierre**:
+
+- Resumen con el total ($250.000 para una o dos personas), pasado por el mismo
+  `resumenDePago()` que una estadía.
+- **Paso de anticipo con el deslizante de 50 a 100 %**, con el mismo componente
+  (`DeslizanteAnticipo`), que solo cambia la etiqueta del total: «Total del día»
+  en vez de «Total de la estadía».
+- El mismo botón final, y **una sola costura de Wompi**: el enlace lee
+  `pagoActual`, que es el resumen del modo en curso. Cuando existan las llaves,
+  el cobro se escribe una vez y sirve para los dos tipos.
+- **Adicionales «para el día»**: sin noches no hay experiencias por noche, pero
+  los adicionales sí caben y viajan con `noche = null`, exactamente como los de
+  «toda la estadía» en el hospedaje (migración 009). La segunda mascota aparece
+  ahora también en el Día de Calma.
+- El mensaje de WhatsApp del día llegó a la par: enumera los adicionales y dice
+  cuánto quiere adelantar y cuánto queda.
+- `porcentaje_anticipo` y `monto_anticipo` ya se persistían igual en las
+  reservas `tipo = 'dia'` del panel (la acción los calcula fuera de la rama de
+  `esDia`); se verificó y se dejó anotado.
+
+El porcentaje mínimo del Día de Calma **sigue sin confirmar**. Se aplica la
+regla del hospedaje —50 %— porque es la única que el hotel ha publicado, y se
+dice en pantalla en vez de dejar el cierre a medias. El `TODO` está en
+`src/lib/reserva/dia-de-calma.ts` y en §3 y §9 de `docs/DATOS_CLIENTE.md`.
+
+#### 2. El paso del plan menciona el Día de Calma
+
+Tarjeta discreta al final del paso 3, con el horario y el precio, y un botón que
+**cambia al modo de día conservando la fecha de llegada** como el día elegido
+(«Verlo para el 16 de oct de 2026»). Nunca la palabra «pasadía».
+
+El paso del plan solo existe si la estadía toca fin de semana o festivo, así que
+la misma tarjeta se pinta suelta —en el mismo sitio del flujo— cuando ese paso
+no aparece. Si no, quien eligiera de lunes a jueves nunca se enteraría de que el
+plan de día existe.
+
+#### 3. Usuarios del panel
+
+Nueva sección **`/admin/usuarios`**, con dos roles: **propietario** (todo el
+panel más las cuentas) y **equipo** (todo el panel menos Usuarios). La pantalla
+explica en una frase qué puede hacer cada uno.
+
+- Cuentas creadas con la Admin API: **`fincavillarreal@gmail.com`**
+  (`rol: 'propietario'`, `email_confirm: true`) y la de pruebas
+  `panel@lafincaecohotel.com`, que pasó a `rol: 'equipo'` **sin tocarle la
+  contraseña**.
+- Funciones: listar (correo, rol, último acceso, fecha de creación), crear
+  (correo + contraseña temporal de mínimo 10 caracteres + rol), cambiar de rol,
+  restablecer contraseña y eliminar.
+- Reglas, **en el servidor**: nadie se elimina a sí mismo ni se cambia su propio
+  rol, y siempre queda al menos un propietario (ni quitándole el rol ni
+  eliminándolo). Correos validados y normalizados a minúsculas. Los errores de
+  Supabase se traducen al español («Ya hay una cuenta con ese correo…»).
+- Tres puertas, como el resto del panel: la navegación no le pinta el enlace al
+  `equipo` (comodidad), la página comprueba el rol **antes de leer nada**
+  —quien no es propietario no recibe ni un correo en la carga útil— y cada
+  Server Action lo vuelve a comprobar, porque un POST directo no pasa por
+  ninguna pantalla.
+- `service_role` **solo** dentro de Server Actions: `src/lib/admin/usuarios.ts`
+  empieza por `import "server-only"`, y el tipo `UsuarioPanel` vive en
+  `src/lib/admin/tipos.ts` para que el componente de cliente no tenga ni que
+  rozar ese módulo.
+
+#### 4. Los cuatro documentos legales pasan al CMS (revierte una decisión)
+
+**Se revierte la decisión del 2026-09-02** («los textos legales viven en código,
+no en el CMS: son documentos jurídicos y deben versionarse con fecha de
+revisión, no editarse sin historial desde un panel»). Lo pidió Cesar el
+2026-09-16, y el motivo es bueno: el sitio entra a revisión legal con Amapola y
+cada vuelta de esa revisión era, si no, un cambio de código y un despliegue.
+
+Lo que se conserva de la decisión anterior es lo que la hacía valiosa: **el
+texto de `src/lib/legal.ts` sigue siendo el valor por defecto**. Si la fila no
+existe, o alguien la vacía, el sitio publica ese texto; el CMS superpone, nunca
+sustituye a la nada. Y una sección vacía no se guarda: la acción rechaza dejar
+un documento legal sin secciones.
+
+- Cuatro claves nuevas: `legal.privacidad`, `legal.terminos`, `legal.datos`,
+  `legal.cancelacion`, cada una con `titulo`, `entrada`, `descripcion`,
+  `actualizado` y `secciones: [{ titulo, parrafos[] }]`. Documentadas en
+  `docs/CMS_CLAVES.md` (22 claves).
+- En el panel, un bloque **«Documentos legales»** dentro de Contenido del sitio,
+  con un editor por documento: añadir, quitar y reordenar secciones, y una caja
+  de texto por sección con los párrafos separados por línea en blanco. Un botón
+  de guardar por documento, como el resto del módulo.
+- Las páginas siguen **estáticas con ISR de 1 hora** y se revalidan al guardar
+  (se añadieron las cuatro rutas a `revalidarSitioPublico()`).
+- ⚠ Los datos de contacto que aparecen **dentro** del texto legal quedan
+  congelados: antes se interpolaban desde `sitio.contacto` y ahora son texto
+  plano. Si el hotel cambia de número o de dirección hay que corregir también
+  los cuatro documentos. Está avisado en la propia pantalla del panel y en
+  `docs/CMS_CLAVES.md`.
+- El seed se regeneró con `npm run seed:contenido` y sigue siendo idempotente.
+
+#### Decisiones nuevas
+
+| Fecha | Decisión |
+|---|---|
+| 2026-09-16 | **El Día de Calma termina en el mismo cierre que el hospedaje**, con una sola costura de Wompi (`pagoActual`). Dos cierres distintos habrían significado dos cobros que mantener. El mínimo del 50 % se aplica al día porque es la única regla que el hotel ha publicado, y se dice en pantalla en vez de callar. |
+| 2026-09-16 | **Las listas de viñetas de los documentos legales son un párrafo con una convención**: si todas sus líneas empiezan por «- », se pinta como lista. Un editor de bloques («párrafo» / «lista») habría sido más fiel al modelo y mucho peor de usar; con esto el documento entero se edita con cajas de texto normales y no se perdió ni una viñeta de las cuatro páginas. |
+| 2026-09-16 | **Los textos legales vuelven al CMS** (revierte la decisión del 2026-09-02). Motivo: la revisión legal con Amapola. Se conserva el respaldo en código y la acción impide dejar un documento sin secciones. |
+| 2026-09-16 | **El rol del panel vive en `app_metadata`, no en una tabla.** Solo lo escribe la Admin API —`user_metadata` sí lo edita su dueño— y viaja dentro del JWT ya validado por `getUser()`, así que leerlo no cuesta una consulta más en cada navegación. |
+| 2026-09-16 | **Quien no tiene un rol reconocido entra como `equipo`**, el menos privilegiado. Un valor inesperado no puede abrir una puerta. |
+| 2026-09-16 | **Esconder el enlace de Usuarios es cortesía, no seguridad.** El «no» lo dicen la página (que comprueba el rol antes de leer nada) y cada Server Action. Un POST directo no pasa por ninguna pantalla. |
+| 2026-09-16 | **Sin fila en la base, el formulario del panel arranca con el respaldo** y no en blanco. Antes devolvía `{}`: el sitio público sí enseñaba su texto y el panel no, y quien entrara a editar habría creído que el contenido se perdió. |
+
+#### Verificación
+
+- `tsc --noEmit` y `eslint` limpios (sigue solo la advertencia preexistente de
+  `scripts/importar-fotos-drive.mjs`).
+- **104 pruebas en verde**: ocho nuevas del cierre del Día de Calma —el total
+  por el mismo `resumenDePago()`, `anticipo + saldo === total` en cinco
+  porcentajes, los adicionales agrupados con `noche = null`, el 50 % como mínimo
+  también aquí, el 100 % sin saldo, el mensaje de WhatsApp con total y anticipo,
+  los adicionales enumerados sin hablar de noches, y que sin tarifa publicada no
+  se inventa ningún anticipo—.
+- `npm run build` limpio; las rutas públicas siguen estáticas y las cuatro
+  `/legal/*` conservan su ISR de 1 h.
+- **Capturas contra `localhost:3000`** (nunca contra Vercel) a **1440 y 390 px**:
+  `/reservar` con la tarjeta del paso del plan, `/reservar` en modo Día de Calma
+  con el deslizante y el cierre completo, y `/admin/usuarios`.
+- **Prueba real de extremo a extremo**: entrada como `fincavillarreal@gmail.com`
+  → creación de una cuenta `equipo` de prueba → restablecimiento de su
+  contraseña → entrada con ella (el `equipo` **no ve** el enlace de Usuarios y,
+  entrando por la URL, recibe «No tienes permiso» **sin que se filtre ni un
+  correo**) → vuelta como propietario y eliminación. En la propia cuenta no
+  aparece el botón de eliminar ni se deja cambiar el rol.
+- **Legales**: se guardó un párrafo de prueba en la primera sección de la
+  política de privacidad desde el panel, se comprobó que el sitio lo mostraba al
+  instante (revalidación) conservando sus 14 viñetas y sus 7 secciones, y se
+  restauró el texto original.
+- **La base quedó sin datos de prueba**: la cuenta de prueba eliminada, cero
+  reservas creadas, y solo dos usuarios (`fincavillarreal@gmail.com` propietario
+  y `panel@lafincaecohotel.com` equipo).

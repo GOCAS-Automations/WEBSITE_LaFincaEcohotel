@@ -97,10 +97,26 @@ la constante del trigger y `CUPO_DIA_DE_CALMA` en `src/lib/reserva/dia-de-calma.
 reserva vive en `MAX_PERSONAS_POR_RESERVA_DIA` (mismo archivo) y en el constraint
 `reservas_dia_maximo_dos_personas` de la migración 010.
 
-Lo que el Día de Calma **todavía no tiene confirmado** (y por eso no aparece con cifras en el sitio):
-si pide anticipo y de cuánto, su política de cancelación, y si se puede añadir jacuzzi y a qué
-precio. Mientras tanto el sitio dice «te lo confirmamos por WhatsApp». El valor por persona adicional
-ya no hace falta: el plan se vende solo para una o dos personas.
+**El Día de Calma se reserva y se paga por el sitio** (2026-09-16). Recorre el mismo cierre que el
+hospedaje: resumen con el total ($250.000 para una o dos personas), paso de anticipo con el
+deslizante de 50 a 100 % y el mismo botón final. Wompi tendrá **una sola costura** para los dos
+tipos: el botón lee `pagoActual`, que es el resumen del modo en curso
+(`src/components/sitio/selector-reserva.tsx`). No hay experiencias por noche en este modo —no hay
+noches—, pero sí los **adicionales «para el día»**, que viajan con `noche = null`, igual que los de
+«toda la estadía» en el hospedaje. `porcentaje_anticipo` y `monto_anticipo` se guardan igual en las
+reservas `tipo = 'dia'` que en las de hospedaje.
+
+`TODO` (Amapola) — lo que el Día de Calma **todavía no tiene confirmado**:
+
+- **¿Pide el mismo anticipo mínimo del 50 % que el hospedaje?** Mientras no lo diga, el sitio aplica
+  esa misma regla —es la única que el hotel ha publicado— y lo escribe en pantalla: «El anticipo
+  funciona igual que en el hospedaje: con el 50 % queda confirmado». Si el hotel confirma otro
+  mínimo, se cambia en `src/lib/reserva/dia-de-calma.ts` y en `ANTICIPO_MINIMO`.
+- **Política de cancelación del Día de Calma.** Esta sigue sin cifra: el sitio dice «te las
+  confirmamos por WhatsApp».
+- **¿Se puede añadir jacuzzi y a qué precio?**
+
+El valor por persona adicional ya no hace falta: el plan se vende solo para una o dos personas.
 
 **Experiencias por noche.** Las experiencias (Aniversario con Amor, Cumpleaños con Amor, Fondue) se
 preparan para una noche concreta, así que desde 2026-09-15 se eligen **noche por noche**: una estadía
@@ -194,6 +210,35 @@ repetida actualice en vez de duplicar—, así que cuando se haga no habrá que 
 | **Nicolás** | Anfitrión en la finca |
 | Caroline | Administradora del bot de WhatsApp (mismo número del hotel) |
 
+### Cuentas del panel (2026-09-16)
+
+El panel tiene **dos roles** y una pantalla propia para administrarlos, `/admin/usuarios`, que solo
+ve el propietario:
+
+| Rol | Qué puede hacer |
+|---|---|
+| **Propietario** | Todo el panel **más** las cuentas: crear, cambiar de rol, restablecer contraseñas y eliminar. |
+| **Equipo** | Todo el panel —reservas, bloqueos, cabañas, planes, experiencias y contenido— pero **no ve ni puede abrir Usuarios**. |
+
+Cuentas creadas:
+
+- **`fincavillarreal@gmail.com` — propietario.** Es la cuenta del hotel; la contraseña se le entrega
+  a Amapola y la cambia desde el panel cuando quiera.
+- **`panel@lafincaecohotel.com` — equipo.** Es la cuenta temporal de pruebas del desarrollo. Ya no es
+  propietaria; Cesar decide si la borra desde el panel al entregar.
+
+Reglas que protegen el acceso (están en el servidor, no solo en la pantalla):
+
+- Nadie puede **eliminarse a sí mismo** ni cambiarse su propio rol.
+- **Siempre queda al menos un propietario**: no se le puede quitar el rol ni eliminar al último.
+- Las contraseñas piden **mínimo 10 caracteres**; se crean confirmadas (`email_confirm`) porque el
+  hotel todavía no tiene correo emisor, así que no se manda ningún correo de activación.
+- Todo pasa por `service_role` **dentro** de Server Actions (`src/lib/admin/usuarios.ts`, que es
+  `server-only`): esa clave nunca llega al navegador.
+
+El rol vive en `app_metadata` del usuario de Supabase, que solo escribe la Admin API: no es un dato
+que el navegador pueda falsificar.
+
 ## 9. Pendientes que siguen abiertos (no inventar)
 
 - [ ] Logo vectorial (Santiago) — mientras tanto, el de `public/marca/` y el del manual.
@@ -204,9 +249,12 @@ repetida actualice en vez de duplicar—, así que cuando se haga no habrá que 
 - [ ] Cuenta bancaria y documentos Wompi (Amapola).
 - [ ] Video: definir con Juan Camilo; sugieren embeber links de Instagram.
 - [ ] ¿Mínimo de noches en fines de semana/festivos?
-- [ ] **Día de Calma**: anticipo, política de cancelación y si se puede añadir jacuzzi. Hoy el sitio
-      no muestra ninguna cifra de esto. (Cerrado el 2026-09-15: son 1 o 2 adultos por reserva, así
-      que no hace falta tarifa por persona adicional.)
+- [ ] **Día de Calma**: confirmar si el anticipo mínimo es el mismo 50 % del hospedaje (el sitio ya
+      lo aplica y lo dice en pantalla), la política de cancelación y si se puede añadir jacuzzi.
+      (Cerrado el 2026-09-15: son 1 o 2 adultos por reserva, así que no hace falta tarifa por persona
+      adicional. Cerrado el 2026-09-16: el plan se reserva y se paga por el sitio.)
 - [ ] Sincronización con el Google Calendar «la finca»: quién lo administra y con qué cuenta.
-- [ ] Usuarios del panel: el cliente preguntó «¿a qué se refiere con el panel?» — explicar que es el
-      administrador del sitio donde cambian textos, fotos, precios y reservas.
+- [x] Usuarios del panel — resuelto el 2026-09-16: existe `/admin/usuarios` con los roles
+      propietario y equipo, y la cuenta del hotel (`fincavillarreal@gmail.com`) ya está creada.
+      Sigue pendiente **explicarle a Amapola qué es el panel**: el administrador del sitio donde
+      cambian textos, fotos, precios y reservas.
