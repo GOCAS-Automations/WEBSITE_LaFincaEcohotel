@@ -896,16 +896,13 @@ export async function PaginaInicio() {
           alto={72}
           espejo
         />
-        {/* Y el de abajo, hacia el pie de página: los cortes van siempre en
-            pareja, o la sección parece medio terminada. */}
-        <CorteOrganico
-          perfil="loma"
-          color="fill-petroleo-900"
-          borde="inferior"
-          alto={64}
-        />
+        {/* Abajo, hacia el pie, NO hay corte: la transición es recta (petición
+            de Cesar, 2026-09-15). Ver `CierreReserva`, que es la que hace este
+            mismo remate en las ocho páginas internas. El `pb-16` se va con la
+            onda: era el aire que el dibujo se comía y que, sin él, dejaba el
+            bloque de texto descentrado hacia arriba. */}
 
-        <div className="relative min-h-[62vh] w-full pb-16 sm:min-h-[28rem]">
+        <div className="relative min-h-[62vh] w-full sm:min-h-[28rem]">
           <Foto
             src={ctaFinal.imagen}
             alt={ctaFinal.imagen_alt}
