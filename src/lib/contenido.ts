@@ -743,7 +743,7 @@ const RESPALDO_FAQ: ContenidoFaq = {
     {
       pregunta: "¿Cómo se reserva y cómo se paga?",
       respuesta:
-        "Con un anticipo del 50 % se confirma la reserva; el 50 % restante se paga el día de la llegada con un link de pago que te enviamos con anticipación. En La Finca no hay datáfono ni manejamos efectivo. Nunca te pediremos los datos de tu tarjeta por WhatsApp.",
+        "Con un anticipo del 50 % se confirma la reserva, y al reservar puedes elegir adelantar más —hasta el 100 %— si prefieres llegar sin nada pendiente. Lo que quede se paga antes de la llegada con un link de pago que te enviamos con anticipación. En La Finca no hay datáfono ni manejamos efectivo. Nunca te pediremos los datos de tu tarjeta por WhatsApp.",
     },
     {
       pregunta: "¿Puedo cancelar o cambiar la fecha?",
@@ -934,28 +934,41 @@ const RESPALDO_RESERVAR: ContenidoReservar = {
   intro:
     "Empieza por tus fechas: con ellas te mostramos las cabañas libres y el precio noche por noche. Te llevamos a WhatsApp con el mensaje ya escrito y confirmamos disponibilidad el mismo día.",
   /*
-    EL ORDEN ES EL DEL FLUJO REAL, y no al revés (corregido el 2026-09-15).
+    SON LOS CINCO PASOS DEL SELECTOR, UNO A UNO (2026-09-15).
 
-    El selector pregunta primero las FECHAS, porque de ellas sale todo lo
-    demás: qué cabañas sirven y qué planes se pueden elegir. Los tres pasos
-    decían «cabaña → plan → confirmamos», que era el flujo de antes del motor
-    de precios noche a noche y ya no describía lo que el visitante ve.
+    El orden es el del flujo real —las FECHAS primero, porque de ellas sale
+    todo lo demás— y ahora están los cinco, no tres: faltaban las experiencias
+    por noche y la elección de cuánto se paga hoy, que es justo lo último que
+    alguien quiere saber antes de pulsar. Los textos son cortos a propósito:
+    se pintan en dos columnas junto a la fotografía y la sección no puede
+    crecer de alto. Y SIN el número delante: la tarjeta ya lleva su círculo
+    numerado, y «1» junto a «1. Tus fechas» se leía como un once.
   */
   pasos: [
     {
-      titulo: "1. Elige tus fechas",
+      titulo: "Tus fechas",
       texto:
-        "Marca la llegada y la salida en el calendario. Puedes mezclar noches entre semana y de fin de semana: cada noche se cobra con la tarifa de su fecha.",
+        "Llegada y salida en el calendario. Ninguna combinación está prohibida: cada noche se cobra con la tarifa de su fecha.",
     },
     {
-      titulo: "2. Elige tu cabaña",
+      titulo: "Tu cabaña",
       texto:
-        "Te mostramos las que sirven para esas fechas, con el total de la estadía. Las cinco son independientes y para dos personas.",
+        "Te mostramos las que sirven para esas fechas, con su precio. Las cinco son independientes y para dos personas.",
     },
     {
-      titulo: "3. Elige tu plan",
+      titulo: "Tu plan",
       texto:
-        "Solo si tu estadía tiene noches de fin de semana o festivos: ahí eliges entre Estándar y Premium. Entre semana el plan es automático. Confirmamos y reservas con el 50 %.",
+        "Si tu estadía toca fin de semana o festivo, eliges entre Estándar y Premium. Entre semana el plan es automático.",
+    },
+    {
+      titulo: "Tus experiencias",
+      texto:
+        "Torta, fondue o arreglo floral, la noche que tú digas. Puedes dejarlo en blanco: nada de esto es obligatorio.",
+    },
+    {
+      titulo: "Cuánto pagas ahora",
+      texto:
+        "Eliges entre el 50 % —el mínimo que confirma— y el 100 %. El resto se paga por link antes de llegar.",
     },
   ],
   /*

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 
 import { clasesBoton } from "@/components/ui/boton";
 import {
@@ -31,9 +31,12 @@ import {
   type TipoNoche,
 } from "@/lib/reserva/noches";
 import {
+  ANTICIPO_MAXIMO,
+  ANTICIPO_MINIMO,
   ANTICIPO_POR_DEFECTO,
-  PORCENTAJES_ANTICIPO,
+  PASO_ANTICIPO,
   explicacionAnticipo,
+  normalizarPorcentajeAnticipo,
   resumenDePago,
   type ExtraElegido,
   type PorcentajeAnticipo,
@@ -68,7 +71,9 @@ import { IconoCheck, IconoWhatsapp } from "./iconos";
  *      las fechas.
  *   4. **Experiencias, noche por noche.** La torta de aniversario se sirve un
  *      día concreto: el paso pregunta cuál.
- *   5. **Cuánto se paga ahora**: el 50 % que confirma la reserva o el 100 %.
+ *   5. **Cuánto se paga ahora**: un deslizante de 50 a 100 %. El 50 % es el
+ *      mínimo que confirma la reserva; lo que sobre se paga por link antes de
+ *      llegar.
  *
  * Y a la derecha, el desglose noche por noche con el total y el botón de
  * WhatsApp con ese mismo desglose ya escrito.
@@ -94,9 +99,11 @@ import { IconoCheck, IconoWhatsapp } from "./iconos";
  * funciones (`src/lib/reserva/*.ts`, puras y probadas) se ejecutarán en el
  * servidor y ese será el número que mande.
  *
- * Accesibilidad: cada paso es un `<fieldset>` con su `<legend>`; las tarjetas
- * son `<label>` con un `<input type="radio">` real escondido, así que funcionan
- * con teclado y se anuncian como opciones.
+ * Accesibilidad: cada paso con opciones es un `<fieldset>` con su `<legend>`;
+ * las tarjetas son `<label>` con un `<input type="radio">` real escondido, así
+ * que funcionan con teclado y se anuncian como opciones. Los bloques que llevan
+ * fondo propio —las tarjetas de noche del paso 4— agrupan con `role="group"` +
+ * `aria-labelledby` en vez de `legend`: ver el comentario de ese paso.
  */
 
 export type CabanaSeleccionable = CabanaCotizable;
@@ -680,8 +687,8 @@ export function SelectorReserva({
                   : cupo.estado === "cargando"
                     ? "Consultando cuántos cupos quedan ese día…"
                     : cupo.estado === "ok" && cupo.restante !== null
-                      ? `${textoCupo(cupo.restante)} El Día de Calma recibe máximo ${CUPO_DIA_DE_CALMA} personas por día en toda la finca.`
-                      : `No pudimos comprobar el cupo ahora mismo. El Día de Calma recibe máximo ${CUPO_DIA_DE_CALMA} personas por día: te lo confirmamos por WhatsApp.`}
+                      ? `${textoCupo(cupo.restante)} Cada solicitud es para una o dos personas, y la finca recibe máximo ${CUPO_DIA_DE_CALMA} personas por día.`
+                      : `No pudimos comprobar el cupo ahora mismo. Cada solicitud es para una o dos personas, y la finca recibe máximo ${CUPO_DIA_DE_CALMA} personas por día: te lo confirmamos por WhatsApp.`}
               </p>
 
               <div className="flex flex-wrap items-center gap-2">
@@ -721,9 +728,10 @@ export function SelectorReserva({
             {/*
               LO QUE EL HOTEL TODAVÍA NO HA CONFIRMADO NO SE ESCRIBE.
               `TODO` (Amapola): anticipo del Día de Calma, su política de
-              cancelación, el valor por persona adicional y si se puede añadir
-              jacuzzi. Ver `src/lib/reserva/dia-de-calma.ts`. Mientras no lo
-              confirme, aquí no aparece ninguna cifra inventada.
+              cancelación y si se puede añadir jacuzzi. Ver
+              `src/lib/reserva/dia-de-calma.ts`. Mientras no lo confirme, aquí
+              no aparece ninguna cifra inventada. (El valor por persona
+              adicional ya no hace falta: el plan es para una o dos personas.)
             */}
             <p className="text-sm leading-relaxed text-crema-600">
               El anticipo y las condiciones de cambio del Día de Calma te los
@@ -947,13 +955,32 @@ export function SelectorReserva({
             <ul className="flex flex-col gap-4">
               {noches.map((noche) => (
                 <li key={noche.fecha}>
-                  <fieldset className="rounded-[var(--radius-generoso)] bg-white p-4 shadow-[var(--shadow-tenue)] ring-1 ring-crema-200/70 sm:p-5">
-                    <legend className="mb-3 font-titulo text-sm font-bold text-petroleo-900">
+                  {/*
+                    NI `<fieldset>` NI `<legend>` EN LAS TARJETAS DE NOCHE.
+                    Aquí había uno de cada, y de ahí salían los solapes que
+                    reportó Cesar: el navegador saca el `legend` del flujo y lo
+                    coloca SOBRE el borde superior del fieldset, así que con una
+                    tarjeta con fondo, `p-4` y `ring` el título quedaba montado
+                    encima del filo de la tarjeta —y, con dos líneas a 390 px,
+                    fuera de ella—. La agrupación se hace ahora con
+                    `role="group"` + `aria-labelledby`, que el lector de pantalla
+                    anuncia igual y el motor de maquetación trata como un div
+                    cualquiera.
+                  */}
+                  <div
+                    role="group"
+                    aria-labelledby={`noche-${noche.fecha}`}
+                    className="rounded-[var(--radius-generoso)] bg-white p-4 shadow-[var(--shadow-tenue)] ring-1 ring-crema-200/70 sm:p-5"
+                  >
+                    <p
+                      id={`noche-${noche.fecha}`}
+                      className="mb-3 font-titulo text-sm font-bold text-petroleo-900"
+                    >
                       Noche del {formatearFechaCorta(noche.fecha)}
                       <span className="ml-2 font-normal text-crema-600">
                         {noche.festivo ?? etiquetaTipoNoche(noche.tipo)}
                       </span>
-                    </legend>
+                    </p>
 
                     <ul className="flex flex-col gap-2">
                       {extras
@@ -972,7 +999,7 @@ export function SelectorReserva({
                           />
                         ))}
                     </ul>
-                  </fieldset>
+                  </div>
                 </li>
               ))}
 
@@ -984,10 +1011,17 @@ export function SelectorReserva({
               */}
               {extras.some((extra) => extra.tipo === "adicional") ? (
                 <li>
-                  <fieldset className="rounded-[var(--radius-generoso)] bg-white p-4 shadow-[var(--shadow-tenue)] ring-1 ring-crema-200/70 sm:p-5">
-                    <legend className="mb-3 font-titulo text-sm font-bold text-petroleo-900">
+                  <div
+                    role="group"
+                    aria-labelledby="extras-estadia"
+                    className="rounded-[var(--radius-generoso)] bg-white p-4 shadow-[var(--shadow-tenue)] ring-1 ring-crema-200/70 sm:p-5"
+                  >
+                    <p
+                      id="extras-estadia"
+                      className="mb-3 font-titulo text-sm font-bold text-petroleo-900"
+                    >
                       Para toda la estadía
-                    </legend>
+                    </p>
                     <ul className="flex flex-col gap-2">
                       {extras
                         .filter((extra) => extra.tipo === "adicional")
@@ -1005,7 +1039,7 @@ export function SelectorReserva({
                           />
                         ))}
                     </ul>
-                  </fieldset>
+                  </div>
                 </li>
               ) : null}
             </ul>
@@ -1016,51 +1050,19 @@ export function SelectorReserva({
             PASO 5 — CUÁNTO SE PAGA AHORA.
         ---------------------------------------------------------------- */}
         {numeroPago !== null && pago ? (
-          <fieldset className="flex flex-col gap-4">
-            <legend className="mb-4 font-titulo text-lg font-bold text-petroleo-900">
+          <section className="flex flex-col gap-4">
+            <h2 className="font-titulo text-lg font-bold text-petroleo-900">
               {numeroPago}. ¿Cuánto quieres pagar ahora?
-            </legend>
+            </h2>
 
-            <ul className="grid gap-3 sm:grid-cols-2">
-              {PORCENTAJES_ANTICIPO.map((opcion) => {
-                const activo = porcentaje === opcion;
-                const monto =
-                  opcion >= 100 ? pago.total : Math.round(pago.total / 2);
-                return (
-                  <li key={opcion}>
-                    <label
-                      className={[
-                        "flex h-full cursor-pointer flex-col gap-1 rounded-[var(--radius-tarjeta)] border px-4 py-3.5 transition-all duration-200",
-                        activo
-                          ? "border-petroleo-600 bg-petroleo-50 shadow-[var(--shadow-tenue)]"
-                          : "border-crema-300/80 bg-white hover:border-petroleo-300",
-                      ].join(" ")}
-                    >
-                      <input
-                        type="radio"
-                        name="anticipo"
-                        value={opcion}
-                        checked={activo}
-                        onChange={() => setPorcentaje(opcion)}
-                        className="sr-only"
-                      />
-                      <span className="flex flex-wrap items-baseline justify-between gap-x-2">
-                        <span className="font-titulo text-sm font-semibold text-petroleo-900">
-                          {opcion === 100 ? "El total" : "La mitad (50 %)"}
-                        </span>
-                        <span className="font-titulo text-base font-bold text-petroleo-700">
-                          {formatearCOP(monto)}
-                        </span>
-                      </span>
-                      <span className="text-[0.8125rem] leading-snug text-crema-700">
-                        {explicacionAnticipo(opcion)}
-                      </span>
-                    </label>
-                  </li>
-                );
-              })}
-            </ul>
-          </fieldset>
+            <DeslizanteAnticipo
+              porcentaje={pago.porcentaje}
+              anticipo={pago.anticipo}
+              saldo={pago.saldo}
+              total={pago.total}
+              alCambiar={setPorcentaje}
+            />
+          </section>
         ) : null}
       </div>
 
@@ -1296,6 +1298,110 @@ export function SelectorReserva({
 /* ===========================================================================
  * Piezas auxiliares
  * ======================================================================== */
+
+/**
+ * El anticipo, con un control deslizante de 50 a 100 %.
+ *
+ * ---------------------------------------------------------------------------
+ * POR QUÉ UN `<input type="range">` Y NO UNA FILA DE BOTONES
+ * ---------------------------------------------------------------------------
+ * Con veinte valores posibles (50, 55, … 100) una fila de botones ocuparía
+ * media pantalla. Y el nativo trae gratis lo que cuesta caro reimplementar:
+ * rol `slider`, flechas del teclado, Inicio/Fin, RePág/AvPág y el arrastre
+ * táctil. Solo se le cambia la piel (`.deslizante-marca` en `globals.css`).
+ *
+ * El número que se anuncia NO es «62», que no dice nada: `aria-valuetext` lo
+ * convierte en «65 % — $520.000 ahora», que es la frase que hace falta oír.
+ *
+ * El relleno del carril lo dibuja un degradado cuyo corte llega por la
+ * variable `--recorrido`: es una propiedad personalizada, así que no hace
+ * falta tocar el DOM ni medir nada al arrastrar.
+ */
+function DeslizanteAnticipo({
+  porcentaje,
+  anticipo,
+  saldo,
+  total,
+  alCambiar,
+}: {
+  porcentaje: PorcentajeAnticipo;
+  anticipo: number;
+  saldo: number;
+  total: number;
+  alCambiar: (porcentaje: PorcentajeAnticipo) => void;
+}) {
+  const recorrido =
+    ((porcentaje - ANTICIPO_MINIMO) / (ANTICIPO_MAXIMO - ANTICIPO_MINIMO)) * 100;
+
+  return (
+    <div className="flex flex-col gap-4 rounded-[var(--radius-generoso)] bg-white p-5 shadow-[var(--shadow-tenue)] ring-1 ring-crema-200/70 sm:p-6">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <label
+          htmlFor="anticipo"
+          className="font-titulo text-sm font-semibold text-petroleo-900"
+        >
+          Pagas ahora
+        </label>
+        {/* El porcentaje y el monto, en vivo. `aria-live` no hace falta: el
+            propio deslizante ya anuncia su valor al moverse, y duplicarlo
+            haría que el lector lo dijera dos veces. */}
+        <p className="flex flex-wrap items-baseline gap-x-2">
+          <span className="font-titulo text-2xl font-extrabold text-petroleo-700">
+            {porcentaje} %
+          </span>
+          <span className="font-titulo text-lg font-bold text-petroleo-900">
+            {formatearCOP(anticipo)}
+          </span>
+        </p>
+      </div>
+
+      <input
+        id="anticipo"
+        name="anticipo"
+        type="range"
+        min={ANTICIPO_MINIMO}
+        max={ANTICIPO_MAXIMO}
+        step={PASO_ANTICIPO}
+        value={porcentaje}
+        onChange={(evento) =>
+          alCambiar(normalizarPorcentajeAnticipo(evento.target.value))
+        }
+        aria-valuetext={`${porcentaje} por ciento, ${formatearCOP(anticipo)} ahora`}
+        className="deslizante-marca"
+        style={{ "--recorrido": `${recorrido}%` } as CSSProperties}
+      />
+
+      <div
+        aria-hidden="true"
+        className="-mt-2 flex justify-between text-xs font-medium text-crema-600"
+      >
+        <span>50 % (lo mínimo)</span>
+        <span>100 % (todo)</span>
+      </div>
+
+      <dl className="flex flex-col gap-1.5 border-t border-crema-200 pt-4 text-sm">
+        <div className="flex items-baseline justify-between gap-3">
+          <dt className="text-crema-700">Total de la estadía</dt>
+          <dd className="font-medium text-petroleo-900">
+            {formatearCOP(total)}
+          </dd>
+        </div>
+        <div className="flex items-baseline justify-between gap-3">
+          <dt className="text-crema-700">
+            {saldo > 0 ? "Antes de llegar" : "Pendiente al llegar"}
+          </dt>
+          <dd className="font-medium text-petroleo-900">
+            {formatearCOP(saldo)}
+          </dd>
+        </div>
+      </dl>
+
+      <p className="text-[0.8125rem] leading-relaxed text-crema-700">
+        {explicacionAnticipo(porcentaje)}
+      </p>
+    </div>
+  );
+}
 
 function Fila({ etiqueta, valor }: { etiqueta: string; valor: string }) {
   return (

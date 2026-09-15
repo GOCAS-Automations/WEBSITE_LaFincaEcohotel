@@ -278,7 +278,7 @@ insert into contenido (clave, valor) values
     },
     {
       "pregunta": "¿Cómo se reserva y cómo se paga?",
-      "respuesta": "Con un anticipo del 50 % se confirma la reserva; el 50 % restante se paga el día de la llegada con un link de pago que te enviamos con anticipación. En La Finca no hay datáfono ni manejamos efectivo. Nunca te pediremos los datos de tu tarjeta por WhatsApp."
+      "respuesta": "Con un anticipo del 50 % se confirma la reserva, y al reservar puedes elegir adelantar más —hasta el 100 %— si prefieres llegar sin nada pendiente. Lo que quede se paga antes de la llegada con un link de pago que te enviamos con anticipación. En La Finca no hay datáfono ni manejamos efectivo. Nunca te pediremos los datos de tu tarjeta por WhatsApp."
     },
     {
       "pregunta": "¿Puedo cancelar o cambiar la fecha?",
@@ -355,8 +355,8 @@ insert into contenido (clave, valor) values
     {
       "nombre": "Restaurante",
       "descripcion": "De 9:00 a. m. a 8:00 p. m. todos los días, exclusivo para huéspedes. Desayuno desde las 9:00 a. m., con opciones vegetarianas, veganas y sin gluten.",
-      "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/01.webp",
-      "imagen_alt": "Deck techado de La Finca con comedor de vidrio y sillas, frente a las montañas"
+      "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/heroes/portada-escritorio.webp",
+      "imagen_alt": "Corredor techado de La Finca Eco Hotel abierto al bosque de niebla del Km 18, con jardineras y baranda de madera"
     },
     {
       "nombre": "Decks de inmersión",
@@ -379,8 +379,9 @@ insert into contenido (clave, valor) values
     {
       "nombre": "Salón multifuncional",
       "descripcion": "Espacio para retiros, cumpleaños y reuniones, con capacidad máxima para 30 personas. Talleres de yoga o meditación desde 10 personas.",
-      "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/07.webp",
-      "imagen_alt": "Mesa y sillas de piedra bajo las farolas de La Finca, entre la neblina del atardecer"
+      "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/01.webp",
+      "imagen_alt": "Deck techado de La Finca con comedor de vidrio y sillas, frente a las montañas",
+      "imagen_posicion": "center bottom"
     }
   ],
   "llegar_titulo": "Cómo llegar",
@@ -636,16 +637,24 @@ insert into contenido (clave, valor) values
   "intro": "Empieza por tus fechas: con ellas te mostramos las cabañas libres y el precio noche por noche. Te llevamos a WhatsApp con el mensaje ya escrito y confirmamos disponibilidad el mismo día.",
   "pasos": [
     {
-      "titulo": "1. Elige tus fechas",
-      "texto": "Marca la llegada y la salida en el calendario. Puedes mezclar noches entre semana y de fin de semana: cada noche se cobra con la tarifa de su fecha."
+      "titulo": "Tus fechas",
+      "texto": "Llegada y salida en el calendario. Ninguna combinación está prohibida: cada noche se cobra con la tarifa de su fecha."
     },
     {
-      "titulo": "2. Elige tu cabaña",
-      "texto": "Te mostramos las que sirven para esas fechas, con el total de la estadía. Las cinco son independientes y para dos personas."
+      "titulo": "Tu cabaña",
+      "texto": "Te mostramos las que sirven para esas fechas, con su precio. Las cinco son independientes y para dos personas."
     },
     {
-      "titulo": "3. Elige tu plan",
-      "texto": "Solo si tu estadía tiene noches de fin de semana o festivos: ahí eliges entre Estándar y Premium. Entre semana el plan es automático. Confirmamos y reservas con el 50 %."
+      "titulo": "Tu plan",
+      "texto": "Si tu estadía toca fin de semana o festivo, eliges entre Estándar y Premium. Entre semana el plan es automático."
+    },
+    {
+      "titulo": "Tus experiencias",
+      "texto": "Torta, fondue o arreglo floral, la noche que tú digas. Puedes dejarlo en blanco: nada de esto es obligatorio."
+    },
+    {
+      "titulo": "Cuánto pagas ahora",
+      "texto": "Eliges entre el 50 % —el mínimo que confirma— y el 100 %. El resto se paga por link antes de llegar."
     }
   ],
   "nota": ""

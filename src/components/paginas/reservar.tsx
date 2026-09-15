@@ -99,7 +99,7 @@ export async function PaginaReservar() {
       />
 
       {/*
-        LOS TRES PASOS, CON EL LUGAR AL LADO.
+        LOS CINCO PASOS, CON EL LUGAR AL LADO.
         Esta sección era una franja blanca con tres cajitas de texto: la página
         que decide la reserva era la más pobre del sitio, justo donde hace falta
         que el visitante siga sintiendo dónde va a dormir. Ahora los pasos
@@ -118,7 +118,7 @@ export async function PaginaReservar() {
         {/*
           LA FOTO Y LOS PASOS, A LA MISMA ALTURA.
           Antes la foto tenía proporción fija (`aspect-4/3`) y la columna de los
-          tres pasos crecía con su texto: en escritorio quedaban descuadradas
+          pasos crecía con su texto: en escritorio quedaban descuadradas
           arriba o abajo según lo que hubiera escrito el hotel en el panel.
           Ahora la fila es `items-stretch` y la foto pierde su proporción a
           partir de `lg`: su alto lo fija la columna de al lado, y `object-cover`
@@ -139,31 +139,48 @@ export async function PaginaReservar() {
             </div>
           </Revelar>
 
-          <div className="flex flex-col justify-center gap-6">
-            <p className="text-base leading-relaxed text-crema-700 sm:text-lg">
+          {/*
+            LOS CINCO PASOS EN DOS COLUMNAS, SIN CRECER DE ALTO.
+            Eran tres tarjetas en una columna; ahora son los cinco del selector
+            —fechas, cabaña, plan, experiencias por noche y cuánto se paga
+            hoy—. Poner cinco tarjetas del tamaño de las anteriores habría
+            duplicado el alto de la sección y descolgado la fotografía, así que
+            van en dos columnas y más densas: título de una línea, texto corto,
+            `p-4` en vez de `p-5` y el número a 1.75rem. Con cinco tarjetas y
+            dos columnas la última queda sola en su fila: `sm:col-span-2` la
+            deja a lo ancho, que se lee como un cierre y no como un hueco.
+          */}
+          <div className="flex flex-col justify-center gap-5">
+            <p className="text-base leading-relaxed text-crema-700">
               {contenido.intro}
             </p>
 
             {contenido.pasos.length > 0 ? (
-              <ol className="flex flex-col gap-4">
+              <ol className="grid gap-3 sm:grid-cols-2">
                 {contenido.pasos.map((paso, indice) => (
                   <Revelar
                     key={paso.titulo}
                     como="li"
-                    retraso={indice * 90}
+                    retraso={Math.min(indice, 4) * 70}
+                    className={
+                      indice === contenido.pasos.length - 1 &&
+                      contenido.pasos.length % 2 === 1
+                        ? "sm:col-span-2"
+                        : undefined
+                    }
                   >
-                    <div className="flex gap-4 rounded-[var(--radius-generoso)] rounded-tl-[2rem] bg-white/85 p-5 ring-1 ring-white/70 backdrop-blur-sm">
+                    <div className="flex h-full gap-3 rounded-[var(--radius-tarjeta)] rounded-tl-[1.75rem] bg-white/85 p-4 ring-1 ring-white/70 backdrop-blur-sm">
                       <span
                         aria-hidden="true"
-                        className="flex size-8 shrink-0 items-center justify-center rounded-full bg-petroleo-600 font-titulo text-sm font-bold text-white"
+                        className="flex size-7 shrink-0 items-center justify-center rounded-full bg-petroleo-600 font-titulo text-xs font-bold text-white"
                       >
                         {indice + 1}
                       </span>
-                      <div className="flex flex-col gap-1">
-                        <h2 className="font-titulo text-base font-bold text-petroleo-900">
+                      <div className="flex min-w-0 flex-col gap-0.5">
+                        <h2 className="font-titulo text-sm font-bold text-petroleo-900">
                           {paso.titulo}
                         </h2>
-                        <p className="text-sm leading-relaxed text-crema-700">
+                        <p className="text-[0.8125rem] leading-snug text-crema-700">
                           {paso.texto}
                         </p>
                       </div>
