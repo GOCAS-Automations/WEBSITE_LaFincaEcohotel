@@ -49,7 +49,23 @@ export async function Pie() {
   }[];
 
   return (
-    <footer className="border-t border-petroleo-800/40 bg-petroleo-900 text-crema-100">
+    /*
+      SIN BORDE SUPERIOR.
+
+      Aquí estaba la «línea blanca» que reportó Cesar: `border-t
+      border-petroleo-800/40` pinta una fila de píxeles de `#084a48` al 40 %
+      sobre `#0a3c3b`, es decir, un tono MÁS CLARO que el propio pie, justo en
+      la costura con el corte orgánico de la sección de arriba. Se veía en
+      todas las páginas porque el pie es común.
+
+      No bastaba con que el corte llevara su `-mb-px`: la sección que lo
+      contiene tiene `overflow-hidden`, así que ese píxel de solape se recorta
+      y nunca llegaba a tapar el borde. La solución es no dibujar la línea —un
+      pie oscuro pegado a una onda del mismo color no necesita separador— y
+      subir el pie un píxel (`-mt-px`) para comerse cualquier rendija que deje
+      el redondeo subpíxel del navegador.
+    */
+    <footer className="-mt-px bg-petroleo-900 text-crema-100">
       <div className="contenedor py-14 sm:py-16">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr]">
           {/* Marca y contacto */}
