@@ -236,7 +236,15 @@ function FilaCabana({
             </p>
           ) : null}
 
-          <Boton href={ruta} variante="contorno" className="ml-auto">
+          {/* A 390 px el botón no cabe al lado del precio y salta de línea: con
+              `ml-auto` se quedaba solo, pegado al borde derecho. En el teléfono
+              ocupa la línea entera —que es como se pulsa con el pulgar— y desde
+              `sm` vuelve a su sitio, a la derecha del precio. */}
+          <Boton
+            href={ruta}
+            variante="contorno"
+            className="w-full justify-center sm:ml-auto sm:w-auto"
+          >
             Ver la cabaña
             <IconoFlecha className="size-4" />
           </Boton>
