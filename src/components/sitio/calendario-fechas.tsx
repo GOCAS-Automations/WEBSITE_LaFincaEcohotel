@@ -20,6 +20,7 @@ import { nombreDelFestivo } from "@/lib/festivos-colombia";
 import { formatearFechaCorta } from "@/lib/utils/formato";
 
 import { IconoCalendario } from "./iconos";
+import { useLadoDelPanel } from "./usar-lado-panel";
 
 /**
  * Calendario de llegada y salida, escrito a mano.
@@ -224,6 +225,28 @@ export function CalendarioFechas({
   const contenedor = useRef<HTMLDivElement>(null);
   const disparador = useRef<HTMLButtonElement>(null);
   const celdaEnfocada = useRef<HTMLButtonElement>(null);
+  const hoja = useRef<HTMLDivElement>(null);
+
+  /*
+    EN ESCRITORIO, HACIA ARRIBA CUANDO ABAJO NO CABE.
+
+    En el teléfono el panel es una hoja anclada al borde inferior de la
+    pantalla y siempre cabe. En escritorio colgaba SIEMPRE del campo hacia
+    abajo, y el módulo de reserva vive dentro del hero: medido contra
+    localhost, a 1440×900 el pie del panel caía en y = 929 —la última semana
+    del mes y los botones «Borrar fechas» y «Listo» quedaban fuera de la
+    ventana—. Ahora se mide al abrir, al desplazar y al redimensionar. Ver
+    `useLadoDelPanel`.
+
+    El alto estimado (470 px) es el del panel con sus seis semanas; en cuanto
+    existe en el árbol manda su alto real.
+  */
+  const { lado, espacio } = useLadoDelPanel({
+    abierto,
+    disparador,
+    panel: hoja,
+    altoEstimado: 470,
+  });
 
   /* --- Cierre por Escape y por clic fuera ------------------------------- */
   useEffect(() => {
@@ -427,10 +450,31 @@ export function CalendarioFechas({
             className="fixed inset-0 z-40 bg-petroleo-950/45 sm:hidden"
           />
           <div
+            ref={hoja}
             id={idPanel}
             role="group"
             aria-label="Calendario de llegada y salida"
-            className="fixed inset-x-3 bottom-3 z-50 rounded-[var(--radius-generoso)] bg-white p-4 shadow-[var(--shadow-elevada)] ring-1 ring-crema-200 sm:absolute sm:inset-x-auto sm:bottom-auto sm:top-[calc(100%+0.5rem)] sm:left-0 sm:w-[20.5rem]"
+            /*
+              El tope de alto va en una variable CSS y no en `max-height`
+              directo porque solo debe aplicarse desde `sm`: en el teléfono el
+              panel es una hoja anclada al borde inferior y ahí `espacio`
+              —medido desde el campo— no significa nada. En escritorio, si el
+              panel no cabe entero ni arriba ni abajo, se desplaza dentro de sí
+              mismo en vez de salirse de la ventana. El suelo de 320 px evita
+              que quede una rendija con dos semanas.
+            */
+            style={
+              { "--alto-hoja": `${Math.max(320, espacio)}px` } as React.CSSProperties
+            }
+            className={[
+              "fixed inset-x-3 bottom-3 z-50 rounded-[var(--radius-generoso)] bg-white p-4 shadow-[var(--shadow-elevada)] ring-1 ring-crema-200",
+              "sm:absolute sm:inset-x-auto sm:left-0 sm:w-[20.5rem]",
+              "sm:max-h-[var(--alto-hoja)] sm:overflow-y-auto sm:overscroll-contain",
+              /* Solo desde `sm`: por debajo es la hoja del borde inferior. */
+              lado === "arriba"
+                ? "sm:top-auto sm:bottom-[calc(100%+0.5rem)]"
+                : "sm:bottom-auto sm:top-[calc(100%+0.5rem)]",
+            ].join(" ")}
           >
           <div className="mb-3 flex items-center justify-between gap-2">
             <button
