@@ -24,7 +24,8 @@
     "test:mirar": "vitest",
     "imagenes:variantes": "node scripts/generar-variantes.mjs",
     "marca:iconos": "node scripts/generar-iconos.mjs",
-    "db:probar": "node scripts/verificar-dia-de-calma.mjs"
+    "db:probar": "node scripts/verificar-dia-de-calma.mjs",
+    "calendario:probar": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --conditions=react-server scripts/probar-calendario.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.5",

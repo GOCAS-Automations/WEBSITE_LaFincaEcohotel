@@ -133,10 +133,28 @@ porcentaje y el monto congelado (`reservas.porcentaje_anticipo`, `monto_anticipo
 base pasó a `between 50 and 100` en la migración 010.
 
 **Google Calendar («la finca»).** El calendario del hotel es un **Google Calendar llamado «la
-finca»**, donde el equipo anota hoy a mano las reservas que llegan por WhatsApp. Nuestro sistema lo
-**leerá** para la disponibilidad real; la integración es una fase futura: **no está implementada**. El modelo ya la espera —`reservas.origen` admite `google_calendar` y
-`reservas.referencia_externa` guarda el id del evento, con índice único para que una sincronización
-repetida actualice en vez de duplicar—, así que cuando se haga no habrá que migrar nada.
+finca»**, donde el equipo anota hoy a mano las reservas que llegan por WhatsApp.
+
+**Implementado el 2026-09-16.** El sitio lo **lee** —esas fechas cuentan como ocupadas en el panel y
+en el sitio público, junto a `reservas` y `bloqueos`, con caché de cinco minutos— y **escribe** en él
+las reservas que se crean o se confirman desde el panel (`reservas.referencia_externa` guarda el id
+del evento). Todo es «mejor si sale»: si Google falla o no está configurado, el sitio funciona igual.
+
+> **Lo único que falta y depende del hotel** (pedírselo a Amapola o a quien administre el calendario):
+>
+> 1. **Compartir** el calendario «la finca» con
+>    `lafinca-calendario@project-bdfd1411-9189-442d-84d.iam.gserviceaccount.com`, con permiso
+>    **«Hacer cambios en eventos»** (con «Ver todos los detalles» solo se podría leer, no apuntar).
+> 2. Pasarnos el **ID del calendario**: Google Calendar → «la finca» → Configuración →
+>    «Integrar calendario» → «ID del calendario». Se pone en `GOOGLE_CALENDAR_ID` y listo.
+
+Mientras tanto, el panel muestra «Calendario del hotel: sin configurar» y no se pierde nada.
+
+**Cómo se leen sus eventos** (reglas conservadoras, fáciles de ajustar cuando veamos su calendario de
+verdad): si el título dice «cabaña», «cabana» o «cab» seguido de un número del 1 al 5, el evento
+ocupa **esa** cabaña; si no se reconoce ninguna, ocupa **las cinco** —preferimos decir «no hay sitio»
+a quien sí cabía antes que vender dos veces la misma noche—; los eventos cancelados y los que crea
+nuestro propio sitio se ignoran.
 
 **Nombre de la página «El lugar»:** se renombra a **«Conócenos»** (`/conocenos`, con redirección desde
 `/el-lugar`). Alternativas consideradas: «Nuestro bosque», «El refugio», «Descubre La Finca».
@@ -253,7 +271,10 @@ que el navegador pueda falsificar.
       lo aplica y lo dice en pantalla), la política de cancelación y si se puede añadir jacuzzi.
       (Cerrado el 2026-09-15: son 1 o 2 adultos por reserva, así que no hace falta tarifa por persona
       adicional. Cerrado el 2026-09-16: el plan se reserva y se paga por el sitio.)
-- [ ] Sincronización con el Google Calendar «la finca»: quién lo administra y con qué cuenta.
+- [ ] **Google Calendar «la finca»**: la integración ya está hecha (2026-09-16). Solo falta que el
+      hotel **comparta** el calendario con
+      `lafinca-calendario@project-bdfd1411-9189-442d-84d.iam.gserviceaccount.com` dándole
+      **«Hacer cambios en eventos»**, y nos pase el **ID del calendario**. Nada más.
 - [x] Usuarios del panel — resuelto el 2026-09-16: existe `/admin/usuarios` con los roles
       propietario y equipo, y la cuenta del hotel (`fincavillarreal@gmail.com`) ya está creada.
       Sigue pendiente **explicarle a Amapola qué es el panel**: el administrador del sitio donde

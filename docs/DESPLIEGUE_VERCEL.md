@@ -35,9 +35,46 @@ defecto, activarla en los tres salvo que se diga lo contrario.
 | `IMAGENES_SIN_OPTIMIZAR` | No | — | Ver el apartado dedicado más abajo — se deja **vacía** en el primer deploy |
 | `SITIO_PUBLICADO` | No | Production, Preview, Development | **`0` o sin definir** hasta el lanzamiento — ver el apartado dedicado |
 | `GOOGLE_PLACES_API_KEY` | **Sí** | Production, Preview, Development | Llave de la Places API (New) del proyecto de Google Cloud. Sin ella el bloque de reseñas simplemente no se publica: no bloquea el deploy |
+| `GOOGLE_CALENDAR_CREDENCIALES` | **Sí** | Production, Preview, Development | JSON de la cuenta de servicio `lafinca-calendario@…` **en base64, en una sola línea** — ver el apartado dedicado más abajo |
+| `GOOGLE_CALENDAR_ID` | No | Production, Preview, Development | **Vacía** hasta que el hotel comparta su calendario «la finca». Con la variable vacía, la integración no hace nada y el sitio funciona igual |
 
 Las de Wompi y Resend (comentadas en `.env.example`) son de fases
 posteriores: no hace falta crearlas todavía.
+
+### `GOOGLE_CALENDAR_CREDENCIALES` y `GOOGLE_CALENDAR_ID`
+
+El hotel lleva su disponibilidad real en un **Google Calendar llamado «la
+finca»**. El sitio lo **lee** —para no ofrecer como libre una noche que ellos
+ya apuntaron a mano— y **escribe** en él las reservas que se crean o se
+confirman desde el panel.
+
+`GOOGLE_CALENDAR_CREDENCIALES` es el JSON de la cuenta de servicio
+`lafinca-calendario@project-bdfd1411-9189-442d-84d.iam.gserviceaccount.com`
+codificado en base64 y pegado en una sola línea:
+
+```bash
+node -e "console.log(require('fs').readFileSync('lafinca-calendario.json').toString('base64'))"
+```
+
+Va en base64 porque la clave privada lleva saltos de línea y un `.env` de una
+línea no los aguanta. **El archivo JSON original vive fuera del repositorio**
+(carpeta `_Sensible/` del cliente) y nunca debe copiarse dentro del proyecto ni
+subirse a Git.
+
+`GOOGLE_CALENDAR_ID` es el identificador del calendario del hotel. **Hoy se
+deja vacía**, porque falta que el hotel haga dos cosas:
+
+1. Compartir su calendario «la finca» con el correo de la cuenta de servicio y
+   darle el permiso **«Hacer cambios en eventos»** (no basta con «Ver todos los
+   detalles»: sin escritura, las reservas del panel no se apuntan).
+2. Pasarnos el **ID del calendario**: Google Calendar → el calendario «la
+   finca» → Configuración → «Integrar calendario» → «ID del calendario».
+
+Con las dos variables puestas, `npm run calendario:probar` verifica la
+integración de punta a punta contra la API de Google (crea un calendario de
+prueba propio de la cuenta de servicio, lo usa y lo borra; no toca el del
+hotel). Sin ellas, el panel muestra «Calendario del hotel: sin configurar» y
+todo lo demás sigue funcionando.
 
 ### `NEXT_PUBLIC_SITE_URL`
 
