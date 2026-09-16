@@ -7,15 +7,26 @@
  * le dice nada al usuario del panel: no explica CON QUÉ choca. Por eso la
  * comprobación se hace también aquí, antes de escribir, para poder decir
  * "esas fechas ya están ocupadas por la reserva de Ana, del 12 al 15".
+ *
+ * ---------------------------------------------------------------------------
+ * LA TERCERA FUENTE: EL GOOGLE CALENDAR DEL HOTEL
+ * ---------------------------------------------------------------------------
+ * El hotel sigue apuntando reservas a mano en su calendario «la finca», y esas
+ * fechas también están ocupadas aunque no estén en la base. Se leen desde
+ * `@/lib/reserva/ocupacion-externa` (con caché de cinco minutos) y se suman a
+ * los choques. A diferencia de las otras dos, esta fuente NO es obligatoria: si
+ * Google no está configurado o no responde, la comprobación sigue con reservas
+ * y bloqueos y no se bloquea ningún guardado.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { fechaCorta, leerRangoFechas, rangoCorto, seCruzan } from "./fechas";
 import { ESTADOS_QUE_OCUPAN, ETIQUETA_ESTADO } from "./tipos";
+import { choquesDelCalendario } from "@/lib/reserva/ocupacion-externa";
 import type { EstadoReserva } from "@/lib/tipos/basedatos";
 
 export type Choque = {
-  tipo: "reserva" | "bloqueo";
+  tipo: "reserva" | "bloqueo" | "calendario";
   descripcion: string;
 };
 
@@ -36,7 +47,7 @@ export async function buscarChoques(
      así que se traen las reservas y los bloqueos de ESA cabaña —son pocos por
      definición— y se comparan en memoria con la misma regla de rango
      medio-abierto que usa Postgres. */
-  const [reservas, bloqueos] = await Promise.all([
+  const [reservas, bloqueos, cabana] = await Promise.all([
     supabase
       .from("reservas")
       .select("id, codigo, huesped_nombre, estancia, estado")
@@ -46,6 +57,13 @@ export async function buscarChoques(
       .from("bloqueos")
       .select("id, rango, motivo")
       .eq("alojamiento_id", alojamientoId),
+    /* El nombre de la cabaña («Cabaña 03») es lo que empareja con el título de
+       los eventos de Google; sin él no se sabe a cuál se refieren. */
+    supabase
+      .from("alojamientos")
+      .select("nombre")
+      .eq("id", alojamientoId)
+      .maybeSingle(),
   ]);
 
   if (reservas.error) {
@@ -84,6 +102,29 @@ export async function buscarChoques(
       tipo: "bloqueo",
       descripcion: `${motivo}, del ${rangoCorto(rango.inicio, rango.fin)}`,
     });
+  }
+
+  /* El calendario del hotel, al final y sin poder romper nada: si Google falla,
+     `choquesDelCalendario` devuelve una lista vacía y aquí no se nota. */
+  const nombreCabana =
+    typeof cabana.data?.nombre === "string" ? cabana.data.nombre : "";
+  if (nombreCabana) {
+    const franjas = await choquesDelCalendario(nombreCabana, entrada, salida);
+    for (const franja of franjas) {
+      choques.push({
+        tipo: "calendario",
+        descripcion:
+          franja.motivo === "sin_cabana"
+            ? `«${franja.titulo}» en el calendario del hotel, del ${rangoCorto(
+                franja.inicio,
+                franja.fin,
+              )} (no dice qué cabaña, así que se cuentan todas como ocupadas)`
+            : `«${franja.titulo}» en el calendario del hotel, del ${rangoCorto(
+                franja.inicio,
+                franja.fin,
+              )}`,
+      });
+    }
   }
 
   return choques;

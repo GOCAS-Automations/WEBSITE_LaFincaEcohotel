@@ -324,6 +324,52 @@ export function SelectorReserva({
     }
   }, [cupo, personasDia]);
 
+  /* --- La disponibilidad de la cabaña (hospedaje) ------------------------ */
+
+  /*
+    MISMO PATRÓN QUE EL CUPO DEL DÍA DE CALMA, PERO PARA EL HOSPEDAJE.
+    `/api/disponibilidad` también es agregada y de solo lectura: dice qué
+    noches están ocupadas por cabaña, sin nombres de huéspedes. Si ya eligió
+    cabaña, se le dice si esas noches están libres EN ELLA; si todavía no
+    eligió, se cuenta cuántas cabañas del listado siguen libres. Es un AVISO,
+    no una restricción: nunca deshabilita el botón de WhatsApp ni el paso
+    siguiente, ni le cambia la cabaña que escogió — igual que el calendario de
+    fechas (`calendario-fechas.tsx`), la última palabra la tiene el hotel al
+    confirmar por WhatsApp.
+  */
+  const [disponibilidad, setDisponibilidad] = useState<{
+    estado: "sin_fechas" | "cargando" | "ok" | "error";
+    cabanas: { slug: string; ocupado: string[] }[];
+  }>({ estado: "sin_fechas", cabanas: [] });
+
+  useEffect(() => {
+    if (soloUnDia || !rango.valido) {
+      setDisponibilidad({ estado: "sin_fechas", cabanas: [] });
+      return;
+    }
+
+    const control = new AbortController();
+    setDisponibilidad({ estado: "cargando", cabanas: [] });
+
+    fetch(
+      `/api/disponibilidad?desde=${encodeURIComponent(entrada)}&hasta=${encodeURIComponent(salida)}`,
+      { signal: control.signal, cache: "no-store" },
+    )
+      .then((respuesta) => {
+        if (!respuesta.ok) throw new Error("respuesta no válida");
+        return respuesta.json();
+      })
+      .then((datos: { cabanas?: { slug: string; ocupado: string[] }[] }) => {
+        setDisponibilidad({ estado: "ok", cabanas: datos.cabanas ?? [] });
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setDisponibilidad({ estado: "error", cabanas: [] });
+      });
+
+    return () => control.abort();
+  }, [soloUnDia, rango.valido, entrada, salida]);
+
   /*
     EL AVISO DE CAMBIO DE PLAN, EN UNA FRASE.
     Quien llegó pidiendo «Entre Semana» y eligió un viernes no recibe un error:
@@ -366,6 +412,44 @@ export function SelectorReserva({
   }, [slug, cabanasConEstado]);
 
   const cabana = elegibles.find((fila) => fila.cabana.slug === slug)?.cabana ?? null;
+
+  /*
+    El texto final del aviso de disponibilidad, en una frase. El endpoint solo
+    devuelve cabañas activas, así que el total de «N de M libres» se cruza por
+    `slug` con las que llegan por props (`cabanas`): si una cabaña de la URL
+    ya no está activa, no cuenta ni como libre ni como ocupada, no se inventa
+    un dato.
+  */
+  const avisoDisponibilidad = useMemo(() => {
+    if (soloUnDia || !rango.valido) return null;
+
+    if (disponibilidad.estado === "cargando") {
+      return "Comprobando disponibilidad…";
+    }
+    if (disponibilidad.estado === "error") {
+      return "No pudimos comprobar la disponibilidad ahora mismo; te la confirmamos por WhatsApp.";
+    }
+    if (disponibilidad.estado !== "ok") return null;
+
+    if (cabana) {
+      const fila = disponibilidad.cabanas.find((item) => item.slug === cabana.slug);
+      if (!fila) return null;
+      const ocupada = fechasDeNoche.some((fecha) => fila.ocupado.includes(fecha));
+      return ocupada
+        ? `Esas noches ya están ocupadas en ${cabana.nombre}. Escríbenos y te proponemos otras fechas o cabaña.`
+        : `Esas noches están libres en ${cabana.nombre}.`;
+    }
+
+    const disponibles = cabanas.filter((fila) =>
+      disponibilidad.cabanas.some((item) => item.slug === fila.slug),
+    );
+    if (disponibles.length === 0) return null;
+    const libres = disponibles.filter((fila) => {
+      const item = disponibilidad.cabanas.find((d) => d.slug === fila.slug);
+      return item ? !fechasDeNoche.some((fecha) => item.ocupado.includes(fecha)) : false;
+    }).length;
+    return `${libres} de ${disponibles.length} cabañas libres en esas fechas.`;
+  }, [soloUnDia, rango.valido, disponibilidad, cabana, cabanas, fechasDeNoche]);
 
   /* --- La cotización de la estadía -------------------------------------- */
 
@@ -1294,6 +1378,22 @@ export function SelectorReserva({
                   valor={noches.length > 0 ? String(noches.length) : "—"}
                 />
               </dl>
+
+              {/* Aviso de disponibilidad: informa, no bloquea.
+                  El párrafo se pinta SIEMPRE, aunque esté vacío: una región
+                  `aria-live` que aparece a la vez que su texto no se anuncia
+                  —el lector de pantalla necesita que el contenedor ya estuviera
+                  ahí para notar el cambio—. Vacío no ocupa nada. */}
+              <p
+                aria-live="polite"
+                className={
+                  avisoDisponibilidad
+                    ? "text-sm leading-relaxed text-crema-700"
+                    : "sr-only"
+                }
+              >
+                {avisoDisponibilidad ?? ""}
+              </p>
 
               {/* --- El desglose --- */}
               {desglose ? (
