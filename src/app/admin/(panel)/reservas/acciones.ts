@@ -24,6 +24,11 @@ import {
   CUPO_DIA_DE_CALMA,
   MAX_PERSONAS_POR_RESERVA_DIA,
 } from "@/lib/reserva/dia-de-calma";
+import { invalidarCacheCalendario } from "@/lib/reserva/ocupacion-externa";
+import {
+  borrarEventoDeReserva,
+  sincronizarReservaEnCalendario,
+} from "@/lib/reserva/sincronizar-calendario";
 import {
   calcularAnticipo,
   normalizarPorcentajeAnticipo,
@@ -54,6 +59,25 @@ function refrescar(id?: string) {
     "/admin/bloqueos",
     ...(id ? [`${RUTA_LISTA}/${id}`] : []),
   );
+}
+
+/**
+ * «Actualizar ahora»: tira la caché de cinco minutos del calendario de Google.
+ *
+ * No consulta nada por sí misma; solo hace que la siguiente lectura —la de la
+ * pantalla que se pinta justo después— vaya a Google de verdad.
+ */
+export async function refrescarCalendarioAction(formData: FormData) {
+  await requireAdmin();
+  invalidarCacheCalendario();
+
+  const mes = String(formData.get("mes") ?? "").trim();
+  const consulta = new URLSearchParams();
+  if (/^\d{4}-\d{2}$/.test(mes)) consulta.set("mes", mes);
+  consulta.set("ok", "Calendario del hotel consultado de nuevo.");
+
+  refrescar();
+  redirect(`${RUTA_LISTA}?${consulta.toString()}`);
 }
 
 type LineaExtra = {
@@ -367,8 +391,16 @@ export async function guardarReservaAction(
 
       await guardarExtrasDeReserva(supabase, id, extras);
 
+      /* El calendario del hotel va al final y sin poder estropear nada: la
+         reserva YA está guardada. Si Google falla, solo se añade un aviso. */
+      const avisoCalendario = await sincronizarReservaEnCalendario(supabase, id);
+
       refrescar(id);
-      return estadoOk(`Reserva actualizada.${avisoCapacidad}`);
+      return estadoOk(
+        `Reserva actualizada.${avisoCapacidad}${
+          avisoCalendario ? `\n${avisoCalendario}` : ""
+        }`,
+      );
     }
 
     /* El código se genera por reintento y NO por "leer el último y sumar uno":
@@ -410,12 +442,19 @@ export async function guardarReservaAction(
 
     await guardarExtrasDeReserva(supabase, nuevaId, extras);
 
+    const avisoCalendarioNueva = await sincronizarReservaEnCalendario(
+      supabase,
+      nuevaId,
+    );
+
     refrescar(nuevaId);
     redirect(
       `${RUTA_LISTA}/${nuevaId}?ok=${encodeURIComponent(
-        esDia
-          ? `Reserva ${codigoUsado} creada. Ese Día de Calma ya cuenta para el cupo de esa fecha; no bloquea ninguna cabaña.`
-          : `Reserva ${codigoUsado} creada. Esas fechas ya quedan ocupadas en el calendario.${avisoCapacidad}`,
+        `${
+          esDia
+            ? `Reserva ${codigoUsado} creada. Ese Día de Calma ya cuenta para el cupo de esa fecha; no bloquea ninguna cabaña.`
+            : `Reserva ${codigoUsado} creada. Esas fechas ya quedan ocupadas en el calendario.${avisoCapacidad}`
+        }${avisoCalendarioNueva ? `\n${avisoCalendarioNueva}` : ""}`,
       )}`,
     );
   });
@@ -513,9 +552,18 @@ export async function cambiarEstadoReservaAction(formData: FormData) {
     redirect(`${RUTA_LISTA}/${id}?error=${encodeURIComponent(mensaje)}`);
   }
 
+  /* Confirmar apunta la reserva en el calendario del hotel; cancelar borra su
+     evento. Lo decide `sincronizarReservaEnCalendario` mirando el estado que
+     acaba de quedar guardado. */
+  const avisoCalendario = await sincronizarReservaEnCalendario(supabase, id);
+
   refrescar(id);
   redirect(
-    `${RUTA_LISTA}/${id}?ok=${encodeURIComponent("Estado de la reserva actualizado.")}`,
+    `${RUTA_LISTA}/${id}?ok=${encodeURIComponent(
+      `Estado de la reserva actualizado.${
+        avisoCalendario ? `\n${avisoCalendario}` : ""
+      }`,
+    )}`,
   );
 }
 
@@ -528,6 +576,9 @@ export async function cambiarEstadoReservaAction(formData: FormData) {
 export async function eliminarReservaAction(formData: FormData) {
   const { supabase } = await requireAdmin();
   const id = String(formData.get("id") ?? "").trim();
+
+  /* Antes del `delete`: después ya no habría de dónde sacar el id del evento. */
+  const avisoCalendario = await borrarEventoDeReserva(supabase, id);
 
   const { error: errorExtras } = await supabase
     .from("reserva_extras")
@@ -544,5 +595,9 @@ export async function eliminarReservaAction(formData: FormData) {
   }
 
   refrescar();
-  redirect(`${RUTA_LISTA}?ok=${encodeURIComponent("Reserva eliminada.")}`);
+  redirect(
+    `${RUTA_LISTA}?ok=${encodeURIComponent(
+      `Reserva eliminada.${avisoCalendario ? `\n${avisoCalendario}` : ""}`,
+    )}`,
+  );
 }

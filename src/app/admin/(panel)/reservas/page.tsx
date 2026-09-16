@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { CalendarioMes } from "./calendario";
+import { EstadoCalendarioHotel } from "./estado-calendario";
 import { Aviso } from "@/components/admin/aviso";
 import {
   CabeceraTarjeta,
@@ -35,6 +36,7 @@ import {
   ETIQUETA_ORIGEN,
   TONO_ESTADO,
 } from "@/lib/admin/tipos";
+import { ocupacionDelCalendario } from "@/lib/reserva/ocupacion-externa";
 import { formatearCOP } from "@/lib/utils/formato";
 import type { EstadoReserva } from "@/lib/tipos/basedatos";
 
@@ -71,14 +73,23 @@ export default async function PaginaReservas({
       ? (params.estado as EstadoReserva)
       : "todas";
 
-  const [alojamientos, reservasDelMes, bloqueosDelMes, reservas, cupoDelMes] =
-    await Promise.all([
-      opcionesAlojamiento(supabase),
-      reservasEnRango(supabase, primerDia, finDeMes),
-      bloqueosEnRango(supabase, primerDia, finDeMes),
-      listarReservas(supabase, { estado: estadoFiltro }),
-      personasDeDiaPorFecha(supabase, primerDia, finDeMes),
-    ]);
+  const [
+    alojamientos,
+    reservasDelMes,
+    bloqueosDelMes,
+    reservas,
+    cupoDelMes,
+    calendarioHotel,
+  ] = await Promise.all([
+    opcionesAlojamiento(supabase),
+    reservasEnRango(supabase, primerDia, finDeMes),
+    bloqueosEnRango(supabase, primerDia, finDeMes),
+    listarReservas(supabase, { estado: estadoFiltro }),
+    personasDeDiaPorFecha(supabase, primerDia, finDeMes),
+    /* La capa de Google. Nunca lanza: si no está configurada o falla, viene
+       con estado y una lista vacía, y el mes se pinta igual. */
+    ocupacionDelCalendario(primerDia, finDeMes),
+  ]);
 
   return (
     <>
@@ -98,6 +109,14 @@ export default async function PaginaReservas({
         reservas={reservasDelMes}
         bloqueos={bloqueosDelMes}
         personasDeDia={cupoDelMes}
+        ocupacionGoogle={calendarioHotel.ocupacion}
+      />
+
+      <EstadoCalendarioHotel
+        estado={calendarioHotel.estado}
+        mensaje={calendarioHotel.mensaje}
+        consultado={calendarioHotel.consultado}
+        mes={claveMes(mes)}
       />
 
       <div className="mt-8">

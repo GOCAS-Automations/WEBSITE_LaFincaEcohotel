@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { CSSProperties } from "react";
 
 import {
   DIAS_SEMANA_INICIAL,
@@ -13,6 +14,8 @@ import {
 } from "@/lib/admin/fechas";
 import { ETIQUETA_ESTADO } from "@/lib/admin/tipos";
 import { CUPO_DIA_DE_CALMA } from "@/lib/reserva/dia-de-calma";
+import { cabanasAfectadas } from "@/lib/reserva/calendario-externo";
+import type { OcupacionExterna } from "@/lib/reserva/calendario-externo";
 import type {
   BloqueoAdmin,
   OpcionAlojamiento,
@@ -41,7 +44,8 @@ import type { EstadoReserva } from "@/lib/tipos/basedatos";
 
 type Ocupacion =
   | { tipo: "reserva"; reserva: ReservaAdmin }
-  | { tipo: "bloqueo"; bloqueo: BloqueoAdmin };
+  | { tipo: "bloqueo"; bloqueo: BloqueoAdmin }
+  | { tipo: "google"; franja: OcupacionExterna };
 
 const COLOR_ESTADO: Record<EstadoReserva, string> = {
   pendiente: "bg-dorado-400 text-dorado-950",
@@ -52,12 +56,26 @@ const COLOR_ESTADO: Record<EstadoReserva, string> = {
 
 const COLOR_BLOQUEO = "bg-crema-600 text-white";
 
+/**
+ * La capa de Google se pinta RAYADA, no con un color plano.
+ *
+ * Tiene que distinguirse de un vistazo de lo que vive en la base: esas franjas
+ * no son reservas nuestras —no tienen código, ni huésped, ni total— sino lo
+ * que el hotel apuntó a mano en su calendario. Una trama diagonal dice
+ * «ocupado, pero de otra fuente» sin gastar otro color de la paleta.
+ */
+const PATRON_GOOGLE: CSSProperties = {
+  backgroundImage:
+    "repeating-linear-gradient(45deg, rgba(31,90,90,0.34) 0 3px, rgba(31,90,90,0.10) 3px 7px)",
+};
+
 export function CalendarioMes({
   mes,
   alojamientos,
   reservas,
   bloqueos,
   personasDeDia,
+  ocupacionGoogle = [],
 }: {
   mes: AnioMes;
   alojamientos: OpcionAlojamiento[];
@@ -65,6 +83,8 @@ export function CalendarioMes({
   bloqueos: BloqueoAdmin[];
   /** Personas reservadas de día, por fecha. Alimenta la fila del Día de Calma. */
   personasDeDia: Map<string, number>;
+  /** Franjas del Google Calendar del hotel. Vacío si no está conectado. */
+  ocupacionGoogle?: OcupacionExterna[];
 }) {
   const dias = diasDeMes(mes);
   const hoy = hoyISO();
@@ -78,6 +98,24 @@ export function CalendarioMes({
 
   /** Qué ocupa cada noche de cada cabaña. */
   const ocupacion = new Map<string, Ocupacion>();
+
+  /* Google va PRIMERO, o sea DEBAJO: si una noche está en las dos fuentes,
+     manda la nuestra, que es la que tiene nombre, código y teléfono. La franja
+     de Google sin cabaña reconocible se pinta en las cinco filas, que es lo
+     mismo que hace la comprobación de disponibilidad. */
+  const cabanasParaEmparejar = alojamientos.map((alojamiento) => ({
+    id: alojamiento.id,
+    nombre: alojamiento.nombre,
+  }));
+  for (const franja of ocupacionGoogle) {
+    for (const cabana of cabanasAfectadas(franja, cabanasParaEmparejar)) {
+      for (const dia of dias) {
+        if (dia >= franja.inicio && dia < franja.fin) {
+          ocupacion.set(`${cabana.id}|${dia}`, { tipo: "google", franja });
+        }
+      }
+    }
+  }
 
   for (const bloqueo of bloqueos) {
     for (const dia of dias) {
@@ -322,9 +360,9 @@ function CeldaCupo({
 /** Identidad de lo que ocupa una celda, para saber si la barra continúa. */
 function identidad(ocupacion?: Ocupacion): string | null {
   if (!ocupacion) return null;
-  return ocupacion.tipo === "reserva"
-    ? ocupacion.reserva.id
-    : ocupacion.bloqueo.id;
+  if (ocupacion.tipo === "reserva") return ocupacion.reserva.id;
+  if (ocupacion.tipo === "bloqueo") return ocupacion.bloqueo.id;
+  return `google:${ocupacion.franja.eventoId}`;
 }
 
 function Celda({
@@ -362,6 +400,35 @@ function Celda({
   const bordes = `${empieza ? "ml-0.5 rounded-l-[4px] pl-1" : ""} ${
     termina ? "mr-0.5 rounded-r-[4px]" : ""
   }`;
+
+  if (ocupacion.tipo === "google") {
+    const { franja } = ocupacion;
+    const aclaracion =
+      franja.motivo === "sin_cabana"
+        ? " — el evento no dice qué cabaña, así que se marcan todas"
+        : "";
+    return (
+      <td className={claseCelda}>
+        <div className="flex h-full items-stretch py-1">
+          <span
+            style={PATRON_GOOGLE}
+            title={`Calendario del hotel: ${franja.titulo}${aclaracion}`}
+            className={`flex flex-1 items-center overflow-hidden text-petroleo-900 ${bordes}`}
+          >
+            {empieza && (
+              <span className="truncate text-[0.5625rem] font-semibold leading-none">
+                {franja.titulo}
+              </span>
+            )}
+            <span className="sr-only">
+              Ocupado en el calendario del hotel: {franja.titulo}
+              {aclaracion}
+            </span>
+          </span>
+        </div>
+      </td>
+    );
+  }
 
   if (ocupacion.tipo === "bloqueo") {
     const { bloqueo } = ocupacion;
@@ -453,12 +520,13 @@ function FlechaMes({
 }
 
 function Leyenda() {
-  const items: { color: string; etiqueta: string }[] = [
+  const items: { color: string; etiqueta: string; estilo?: CSSProperties }[] = [
     { color: COLOR_ESTADO.confirmada, etiqueta: "Confirmada" },
     { color: COLOR_ESTADO.pendiente, etiqueta: "Pendiente" },
     { color: COLOR_ESTADO.completada, etiqueta: "Completada" },
     { color: COLOR_BLOQUEO, etiqueta: "Bloqueo" },
     { color: "bg-oliva-200", etiqueta: "Día de Calma" },
+    { color: "", etiqueta: "Google Calendar", estilo: PATRON_GOOGLE },
   ];
 
   return (
@@ -469,6 +537,7 @@ function Leyenda() {
           className="flex items-center gap-1.5 text-[0.75rem] text-crema-700"
         >
           <span
+            style={item.estilo}
             className={`h-3 w-3 rounded-[3px] ${item.color}`}
             aria-hidden="true"
           />
