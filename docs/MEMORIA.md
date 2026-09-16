@@ -2012,3 +2012,140 @@ un documento legal sin secciones.
 - **La base quedó sin datos de prueba**: la cuenta de prueba eliminada, cero
   reservas creadas, y solo dos usuarios (`fincavillarreal@gmail.com` propietario
   y `panel@lafincaecohotel.com` equipo).
+
+### 2026-09-16 — Google Calendar: el calendario del hotel entra en la disponibilidad
+
+El hotel lleva su disponibilidad real en un Google Calendar llamado **«la
+finca»**, donde el equipo anota a mano lo que llega por WhatsApp. Hasta hoy el
+sitio no lo sabía: el modelo lo esperaba (`reservas.origen = 'google_calendar'`,
+`reservas.referencia_externa` con índice único) pero no había integración. Ya la
+hay, y funciona en las dos direcciones.
+
+#### 1. El cliente de Google, sin librerías
+
+`src/lib/google/calendario.ts` (`server-only`) habla con Calendar v3 a pelo:
+firma un JWT **RS256** con `node:crypto`, lo cambia por un token en
+`oauth2.googleapis.com/token` —guardado en memoria hasta un minuto antes de
+caducar, con la petición compartida para que diez consultas no pidan diez
+tokens— y llama a la API con `fetch`. El paquete `googleapis` habría traído
+decenas de megas del catálogo entero de Google para usar tres llamadas; esto
+son setenta líneas que se leen enteras y no pesan en el arranque en frío.
+
+**Ninguna función lanza.** Todas devuelven `{ ok }` o un motivo
+(`no_configurado` / `error`) con el mensaje ya escrito en español para el panel:
+un 403 dice «hay que compartir el calendario con la cuenta de servicio y darle
+Hacer cambios en eventos», no «Forbidden». Si Google se cae, el sitio no se
+entera.
+
+#### 2. Leer: de sus eventos a ocupación por cabaña
+
+`src/lib/reserva/calendario-externo.ts` es **puro** —ni red ni base— y por eso
+se puede probar. Las reglas son adivinanzas sobre cómo escribe el hotel sus
+eventos, así que están escritas para cambiarse en una línea:
+
+- Título con «cabaña», «cabana» o «cab» + un número del **1 al 5** → esa cabaña
+  («Cabaña 03», «cab. 2», «CABANA #4», «Cabañas 4 — Ana»).
+- **Sin cabaña reconocible → bloquea las cinco.** Conservador a propósito:
+  preferimos decirle «no hay sitio» a quien sí cabía antes que vender dos veces
+  la misma noche. Lo mismo si el número no existe en la base.
+- Eventos **cancelados** y los que **creó el propio sitio** (marca
+  `extendedProperties.private.origen = 'lafinca-web'`), fuera. Sin esto una
+  reserva chocaría consigo misma.
+- Todo el día → `[inicio, fin)` tal cual, que Google ya da el fin exclusivo. Con
+  hora → días de Bogotá; un 14:00 del 12 a un 11:00 del 15 son las noches 12, 13
+  y 14. Una visita de 10:00 a 17:00 del mismo día ocupa ese día entero.
+
+`ocupacion-externa.ts` le pone **caché de cinco minutos**, y la clave no es el
+rango pedido sino **meses completos**: si fuera el rango exacto no acertaría
+casi nunca, porque cada reserva pregunta por fechas distintas. Un error de
+Google se cachea solo un minuto.
+
+#### 3. Dónde se nota
+
+- **Panel**: `buscarChoques` suma esta tercera fuente a reservas y bloqueos, y
+  la explica en español («Cabaña 2 · Marta» en el calendario del hotel, del
+  10 – 13 sep). El calendario del mes gana una **capa rayada «Google
+  Calendar»**, pintada *debajo* de lo nuestro —si una noche está en las dos,
+  manda la que tiene nombre, código y teléfono— y con su entrada en la leyenda.
+  Arriba, un indicador **«Calendario del hotel: conectado / sin configurar /
+  con problemas»** con la hora de la última lectura y un botón **«Actualizar
+  ahora»** que tira la caché.
+- **Sitio público**: `/api/disponibilidad` devuelve qué noches están ocupadas
+  por cabaña sumando las tres fuentes, y **solo eso**: ni nombres, ni códigos,
+  ni de qué fuente viene cada día (misma rendija que `/api/dia-de-calma/cupo`).
+  El selector de `/reservar` lo usa para decir «Esas noches están libres en
+  Cabaña 03» o «3 de 5 cabañas libres en esas fechas». **Informa, no bloquea**:
+  no deshabilita nada ni cambia lo que el visitante eligió, y el calendario de
+  fechas sigue sin apagar ningún día.
+
+#### 4. Escribir
+
+Al crear, confirmar o cancelar una reserva desde el panel se crea, actualiza o
+borra su evento («Cabaña 03 · Juan Pérez · Estándar», o «Día de Calma · 2 pers.
+· Ana»), con código, teléfono y total en la descripción, y el id guardado en
+`referencia_externa`. Son eventos **de todo el día** a propósito: una reserva no
+es «de las 14:00 a las 11:00», es un juego de noches, y así el rango es
+exactamente el mismo `[entrada, salida)` de Postgres.
+
+Es **best-effort**: la reserva ya está escrita cuando se llama al calendario, y
+un fallo solo añade un aviso amable al mensaje de éxito. La verdad vive en
+Postgres con sus restricciones EXCLUDE; Google es la comodidad del equipo.
+
+#### 5. Lo único que falta, y lo tiene el hotel
+
+`GOOGLE_CALENDAR_ID` está **vacía**. Para encenderlo, el hotel tiene que:
+
+1. **Compartir** el calendario «la finca» con
+   `lafinca-calendario@project-bdfd1411-9189-442d-84d.iam.gserviceaccount.com`
+   con permiso **«Hacer cambios en eventos»** (con «Ver todos los detalles» solo
+   se podría leer).
+2. Pasarnos el **ID del calendario** (Configuración → Integrar calendario).
+
+Mientras tanto el panel dice «sin configurar» y no se pierde nada. La credencial
+(`GOOGLE_CALENDAR_CREDENCIALES`, el JSON en base64) vive solo en `.env.local` y
+en Vercel; el JSON original está **fuera del repositorio**.
+
+#### Decisiones nuevas
+
+| Fecha | Decisión |
+|---|---|
+| 2026-09-16 | **Un evento sin cabaña reconocible bloquea las cinco.** No sabemos cómo escribe el hotel sus eventos; el error caro es el otro (vender dos veces una noche), no el de pedirle que confirme por WhatsApp. |
+| 2026-09-16 | **Nada de `googleapis`.** Tres llamadas REST y una firma RS256 no justifican decenas de megas en cada arranque en frío de Vercel. |
+| 2026-09-16 | **El calendario nunca puede tumbar una pantalla ni impedir un guardado.** Todas las funciones devuelven un resultado, ninguna lanza, y la sincronización va siempre DESPUÉS de escribir en la base. |
+| 2026-09-16 | **Los eventos que creamos son de todo el día.** Una reserva es un juego de noches, no un rango de horas; así el evento y el `daterange` de Postgres son el mismo rango y no hay hora que malinterpretar. |
+| 2026-09-16 | **Caché por meses completos, no por el rango pedido.** Con la clave exacta la caché no acertaría nunca: cada reserva pregunta por fechas distintas. |
+| 2026-09-16 | **El sitio público informa de la disponibilidad, no la impone.** El calendario de fechas sigue sin apagar días: la última palabra la tiene el hotel al confirmar. |
+
+#### Verificación
+
+- `tsc --noEmit` y `eslint` limpios (sigue solo la advertencia preexistente de
+  `scripts/importar-fotos-drive.mjs`). `npm run build` limpio: `/reservar` sigue
+  estática y `/api/disponibilidad` es dinámica, como debe.
+- **129 pruebas en verde**, 25 nuevas: las formas de escribir una cabaña y las
+  que NO lo son («Reserva 3 personas» no habla de la cabaña 3), el fin exclusivo
+  de los eventos de todo el día, las horas de Bogotá (incluida una escrita en
+  UTC y la medianoche, que es donde se cuela el error de un día), los eventos
+  cancelados y los propios, y el emparejamiento con los nombres de la base.
+- **`npm run calendario:probar` contra la API real de Google: 14/14.** Crea un
+  calendario de la cuenta de servicio, mete tres eventos como los escribiría el
+  hotel, comprueba la ocupación resultante, crea/actualiza/borra un evento
+  nuestro y **borra el calendario al final**. Se verificó además que no queda
+  ninguno: la lista de calendarios de la cuenta de servicio está vacía.
+- **Prueba de punta a punta contra `localhost`** (nunca contra Vercel), con un
+  calendario de prueba conectado de verdad en `GOOGLE_CALENDAR_ID`:
+  `/api/disponibilidad` devolvió «Cabaña 2 · Marta» ocupando **solo** la cabaña
+  02 y «Mantenimiento general» ocupando **las cinco**, con
+  `calendario_hotel: "conectado"`. El panel, con sesión real de
+  `fincavillarreal@gmail.com`, pintó la capa rayada con sus dos eventos, la
+  pastilla verde «Conectado», «Conectado con el calendario del hotel: 2 eventos
+  ocupan fechas», la hora de la última consulta y el botón «Actualizar ahora».
+- **Escritura probada contra la base real**: se creó una reserva, se sincronizó
+  (evento «Cabaña 03 · Prueba Calendario · Entre Semana», `origen=lafinca-web`,
+  con el id de la reserva), se guardó `referencia_externa`, se canceló (el
+  evento desapareció y la referencia quedó en `null`) y se borró la fila.
+- **Sin restos**: la base quedó con **cero reservas**, la cuenta de servicio sin
+  ningún calendario, y `GOOGLE_CALENDAR_ID` de vuelta a vacío.
+- ⚠️ **No hay capturas de pantalla**: esta sesión no tenía navegador ni
+  herramienta de captura disponible. La verificación del panel se hizo sobre el
+  **HTML servido por `localhost`** con una sesión real del propietario, que
+  contiene los textos, la leyenda y las franjas de la capa de Google.
