@@ -343,7 +343,7 @@ export async function extrasActivos(supabase: SupabaseClient): Promise<Extra[]> 
  * ======================================================================== */
 
 const COLUMNAS_RESERVA =
-  "id, codigo, tipo, alojamiento_id, plan_id, estancia, huesped_nombre, huesped_email, huesped_telefono, huesped_documento, num_personas, notas, subtotal_alojamiento, subtotal_extras, total, monto_pagado, estado, origen, porcentaje_anticipo, monto_anticipo, referencia_externa, created_at";
+  "id, codigo, tipo, alojamiento_id, plan_id, estancia, huesped_nombre, huesped_email, huesped_telefono, huesped_documento, num_personas, notas, subtotal_alojamiento, subtotal_extras, total, monto_pagado, estado, origen, porcentaje_anticipo, monto_anticipo, referencia_externa, autorizacion_datos_en, autorizacion_datos_version, autorizacion_datos_canal, created_at";
 
 type FilaReserva = Record<string, unknown>;
 
@@ -393,6 +393,18 @@ function aReservaAdmin(
         : Number(fila.monto_anticipo),
     referencia_externa:
       typeof fila.referencia_externa === "string" ? fila.referencia_externa : null,
+    autorizacion_datos_en:
+      typeof fila.autorizacion_datos_en === "string"
+        ? fila.autorizacion_datos_en
+        : null,
+    autorizacion_datos_version:
+      typeof fila.autorizacion_datos_version === "string"
+        ? fila.autorizacion_datos_version
+        : null,
+    autorizacion_datos_canal:
+      typeof fila.autorizacion_datos_canal === "string"
+        ? fila.autorizacion_datos_canal
+        : null,
     created_at: String(fila.created_at ?? ""),
   };
 }

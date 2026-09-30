@@ -519,7 +519,11 @@ export function FormularioReserva({
           />
         </Campo>
 
-        <Campo etiqueta="Documento" htmlFor="huesped_documento">
+        <Campo
+          etiqueta="Documento"
+          htmlFor="huesped_documento"
+          ayuda="Solo para el registro de huéspedes del check-in. No hace falta para reservar y el sitio nunca lo pide: déjalo vacío hasta que la persona llegue."
+        >
           <Entrada
             id="huesped_documento"
             name="huesped_documento"
@@ -541,6 +545,46 @@ export function FormularioReserva({
                 {ETIQUETA_ORIGEN[origen]}
               </option>
             ))}
+          </Desplegable>
+        </Campo>
+
+        {/* -----------------------------------------------------------------
+            AUTORIZACIÓN DE DATOS (Ley 1581 de 2012).
+
+            La ley obliga a **conservar prueba** de que el huésped autorizó el
+            tratamiento de sus datos. Quien marca aquí es quien atiende el
+            WhatsApp o el teléfono, y por eso el desplegable pregunta POR DÓNDE
+            la dio: una casilla marcada en el sitio y un «sí» dicho por
+            teléfono no valen lo mismo, y disfrazar el segundo de lo primero
+            sería peor que no registrar nada.
+
+            La solicitud que llega del sitio trae la frase de la autorización
+            escrita al final del mensaje de WhatsApp: si está, se elige
+            «WhatsApp (con la casilla del sitio)».
+        ------------------------------------------------------------------ */}
+        <Campo
+          etiqueta="Autorización de datos"
+          htmlFor="autorizacion_datos_canal"
+          className="sm:col-span-2"
+          ayuda="Por dónde autorizó el huésped el tratamiento de sus datos personales. Si la solicitud llegó del sitio, el mensaje de WhatsApp termina con la frase de la autorización."
+        >
+          <Desplegable
+            id="autorizacion_datos_canal"
+            name="autorizacion_datos_canal"
+            defaultValue={reserva?.autorizacion_datos_canal ?? ""}
+          >
+            <option value="">Sin constancia todavía</option>
+            <option value="web">
+              Casilla del sitio (reserva hecha en la web)
+            </option>
+            <option value="whatsapp">
+              WhatsApp (con la casilla del sitio)
+            </option>
+            <option value="telefono">Por teléfono (autorización verbal)</option>
+            <option value="presencial">En el hotel (autorización verbal)</option>
+            <option value="panel">
+              La apuntó el equipo sin constancia del canal
+            </option>
           </Desplegable>
         </Campo>
 

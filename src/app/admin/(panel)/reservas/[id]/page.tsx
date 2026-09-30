@@ -37,6 +37,7 @@ import {
 import {
   AYUDA_ESTADO,
   ESTADOS_RESERVA,
+  ETIQUETA_CANAL_AUTORIZACION,
   ETIQUETA_CORTA_TIPO_RESERVA,
   ETIQUETA_ESTADO,
   ETIQUETA_ORIGEN,
@@ -214,6 +215,30 @@ export default async function PaginaReserva({
                 {reserva.huesped_documento && (
                   <Dato etiqueta="Documento">{reserva.huesped_documento}</Dato>
                 )}
+                {/* Prueba de la autorización de datos (Ley 1581 de 2012). Se
+                    pinta siempre, también cuando falta: la ausencia es
+                    justamente lo que hay que ver de un vistazo. */}
+                <Dato etiqueta="Autorización de datos">
+                  {reserva.autorizacion_datos_en ? (
+                    <span>
+                      {ETIQUETA_CANAL_AUTORIZACION[
+                        reserva.autorizacion_datos_canal ?? ""
+                      ] ?? reserva.autorizacion_datos_canal}
+                      {" · "}
+                      {new Date(reserva.autorizacion_datos_en).toLocaleDateString(
+                        "es-CO",
+                        { day: "numeric", month: "long", year: "numeric" },
+                      )}
+                      {reserva.autorizacion_datos_version
+                        ? ` · texto del ${reserva.autorizacion_datos_version}`
+                        : ""}
+                    </span>
+                  ) : (
+                    <span className="text-dorado-700">
+                      Sin constancia — pídesela y márcala al editar la reserva
+                    </span>
+                  )}
+                </Dato>
                 {reserva.notas && (
                   <div className="sm:col-span-2">
                     <Dato etiqueta="Notas">

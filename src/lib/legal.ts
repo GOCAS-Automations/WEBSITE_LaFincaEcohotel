@@ -428,10 +428,16 @@ function documentosFuente(): Record<ClaveLegal, DocumentoFuente> {
           titulo: "5. Autorización del titular",
           bloques: [
             p(
-              "La autorización se obtiene antes o al momento de recolectar los datos, por el medio a través del cual te comunicas con nosotros: al enviarnos una solicitud de reserva por WhatsApp o al completar una reserva en el sitio, aceptas esta política.",
+              "La autorización es previa, expresa e informada, y se obtiene ANTES de que nos entregues tus datos. En el sitio web, antes de enviar una solicitud de reserva tienes que marcar una casilla —que nunca viene marcada— en la que autorizas el tratamiento y desde la que puedes abrir esta política.",
             ),
             p(
-              "Conservamos prueba de la autorización otorgada, en los términos del artículo 2.2.2.25.2.4 del Decreto 1074 de 2015.",
+              "Si la reserva se hace por teléfono o en el hotel, te informamos de las finalidades y te pedimos la autorización de viva voz antes de tomar tus datos. Nunca entendemos el silencio ni el simple uso del sitio como una autorización.",
+            ),
+            p(
+              "Conservamos prueba de la autorización otorgada, en los términos del artículo 2.2.2.25.2.4 del Decreto 1074 de 2015: de cada reserva queda registrada la fecha en que autorizaste, el canal por el que lo hiciste y la versión de esta política que estaba publicada en ese momento.",
+            ),
+            p(
+              "Puedes revocar la autorización en cualquier momento escribiéndonos por los canales de la sección 7, salvo que exista un deber legal o contractual que nos obligue a conservar algún dato (por ejemplo, las facturas).",
             ),
           ],
         },
@@ -471,7 +477,18 @@ function documentosFuente(): Record<ClaveLegal, DocumentoFuente> {
               "Aplicamos medidas técnicas, humanas y administrativas razonables para proteger los datos contra el acceso no autorizado, la pérdida o la alteración. El acceso está restringido al personal que lo necesita para prestar el servicio.",
             ),
             p(
-              "Los datos se conservan durante el tiempo necesario para cumplir las finalidades descritas y los plazos de conservación legales y contables aplicables.",
+              "Los datos se conservan durante el tiempo necesario para cumplir las finalidades descritas y los plazos de conservación legales y contables aplicables. Estos son los plazos que aplicamos:",
+            ),
+            lista([
+              "Solicitudes de reserva que no llegan a concretarse: se eliminan a los seis (6) meses.",
+              "Datos de una reserva cumplida (nombre, contacto y detalle de la estadía): cinco (5) años desde la salida, que es el plazo de prescripción de las obligaciones civiles y comerciales en Colombia.",
+              "Documento de identidad del registro de huéspedes: el tiempo que exija la normativa turística y tributaria aplicable, y no más.",
+              "Soportes contables y de pago: diez (10) años, por el artículo 28 de la Ley 962 de 2005 y las normas contables.",
+              "Prueba de la autorización de tratamiento: mientras conservemos los datos a los que se refiere, y dos (2) años más.",
+              "Conversaciones de WhatsApp con solicitudes de reserva: dos (2) años.",
+            ]),
+            p(
+              "Cumplido el plazo, los datos se eliminan o se anonimizan de forma que ya no permitan identificar al titular. Puedes pedir la supresión antes de esos plazos y la atenderemos salvo que exista un deber legal o contractual de conservarlos.",
             ),
           ],
         },

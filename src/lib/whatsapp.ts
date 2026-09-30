@@ -31,6 +31,33 @@ export function enlaceWhatsapp(
   return `https://wa.me/${destino}?text=${encodeURIComponent(mensaje)}`;
 }
 
+/**
+ * La línea de la autorización de datos que viaja dentro del mensaje.
+ *
+ * ---------------------------------------------------------------------------
+ * POR QUÉ VA EN EL MENSAJE Y NO SOLO EN LA PANTALLA
+ * ---------------------------------------------------------------------------
+ * La **Ley 1581 de 2012** (art. 9) exige autorización previa y expresa del
+ * titular, y el **Decreto 1074 de 2015** (art. 2.2.2.25.2.4) obliga a
+ * **conservar prueba** de ella. Mientras el cierre de la reserva sea un mensaje
+ * de WhatsApp, la casilla que el visitante marca en el sitio no llega a ninguna
+ * base de datos: la reserva la escribe después el equipo desde el panel.
+ *
+ * Si la aceptación no viaja en el mensaje, la prueba se pierde en el paso más
+ * frágil de todo el flujo: la memoria de quien atiende el WhatsApp. Con la línea
+ * escrita, el equipo la ve al copiar los datos y la marca en el panel (el
+ * formulario de reserva tiene el campo), y queda la fecha y la versión del texto
+ * que esa persona leyó — que es lo que se pide si algún día hay una queja.
+ *
+ * Cuando entre la pasarela de pagos, la reserva se creará desde el sitio y estas
+ * tres cosas se escribirán directamente en `reservas.autorizacion_datos_*`
+ * (migración 012). Esta línea seguirá sirviendo para el canal de WhatsApp, que
+ * el hotel va a conservar de todos modos.
+ */
+export function lineaAutorizacionDatos(version: string): string {
+  return `Autorizo el tratamiento de mis datos personales conforme a la Política de tratamiento de datos de La Finca Eco Hotel (versión del ${version}), que leí antes de enviar esta solicitud.`;
+}
+
 /** Mensaje del botón flotante: el mismo que usa el sitio actual. */
 export const MENSAJE_GENERAL =
   "¡Hola! Vengo del sitio web de La Finca Eco Hotel y me gustaría recibir más información sobre las opciones de hospedaje y disponibilidad. ✨";
@@ -113,6 +140,12 @@ export type SolicitudReserva = {
   total?: number | null;
   /** Cuánto quiere pagar ahora el huésped y cuánto queda pendiente. */
   anticipo?: AnticipoDelMensaje | null;
+  /**
+   * Versión de la política de datos que el visitante aceptó en la casilla.
+   *
+   * Ver `lineaAutorizacionDatos()`.
+   */
+  autorizacionDatos?: string | null;
 };
 
 /**
@@ -137,6 +170,7 @@ export function mensajeReserva({
   extras,
   total,
   anticipo,
+  autorizacionDatos,
 }: SolicitudReserva): string {
   const partes: string[] = [
     "¡Hola! Vengo del sitio web de La Finca Eco Hotel y quiero reservar.",
@@ -191,6 +225,11 @@ export function mensajeReserva({
   }
 
   bloques.push("¿Me confirman disponibilidad y cómo hago el pago?");
+
+  if (autorizacionDatos) {
+    bloques.push(lineaAutorizacionDatos(autorizacionDatos));
+  }
+
   return bloques.join("\n\n");
 }
 
@@ -216,6 +255,8 @@ export type SolicitudDiaDeCalma = {
   total?: number | null;
   /** Cuánto quiere adelantar y cuánto queda, igual que en el hospedaje. */
   anticipo?: AnticipoDelMensaje | null;
+  /** Versión de la política de datos aceptada en la casilla. */
+  autorizacionDatos?: string | null;
 };
 
 /**
@@ -233,6 +274,7 @@ export function mensajeDiaDeCalma({
   extras,
   total,
   anticipo,
+  autorizacionDatos,
 }: SolicitudDiaDeCalma): string {
   const partes: string[] = [
     "¡Hola! Vengo del sitio web de La Finca Eco Hotel y quiero reservar un Día de Calma (sin hospedaje).",
@@ -268,5 +310,10 @@ export function mensajeDiaDeCalma({
   }
 
   bloques.push("¿Me confirman disponibilidad y cómo hago el pago?");
+
+  if (autorizacionDatos) {
+    bloques.push(lineaAutorizacionDatos(autorizacionDatos));
+  }
+
   return bloques.join("\n\n");
 }

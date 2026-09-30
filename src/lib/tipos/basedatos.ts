@@ -137,6 +137,14 @@ export interface Reserva {
   porcentaje_anticipo: number;
   /** Anticipo en COP congelado al reservar. */
   monto_anticipo: number | null;
+  /**
+   * Prueba de la autorización de tratamiento de datos personales
+   * (Ley 1581 de 2012, art. 9; Decreto 1074 de 2015, art. 2.2.2.25.2.4).
+   * Migración 012. Las tres van juntas o las tres son `null`.
+   */
+  autorizacion_datos_en: string | null;
+  autorizacion_datos_version: string | null;
+  autorizacion_datos_canal: string | null;
   created_at: string;
 }
 

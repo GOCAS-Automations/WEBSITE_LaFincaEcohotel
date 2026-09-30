@@ -242,7 +242,7 @@ export const DOCUMENTOS_LEGALES: readonly EnlaceLegal[] = [
  * atado a la fecha de despliegue le diría a Google que la política de
  * privacidad cambia cada vez que se recompila el sitio.
  */
-export const LEGAL_ACTUALIZADO = "2026-09-11";
+export const LEGAL_ACTUALIZADO = "2026-09-30";
 
 /* ---------------------------------------------------------------------------
  * Imagen social por defecto

@@ -105,6 +105,21 @@ export const ETIQUETA_ORIGEN: Record<OrigenReserva, string> = {
 };
 
 /**
+ * Cómo se lee en pantalla el canal de la autorización de datos.
+ *
+ * Las claves son los valores del `check` de la migración 012. Se indexa por
+ * `string` porque la columna es texto libre en la base: un valor viejo o
+ * inesperado se pinta tal cual en vez de dejar el hueco vacío.
+ */
+export const ETIQUETA_CANAL_AUTORIZACION: Record<string, string> = {
+  web: "Casilla del sitio",
+  whatsapp: "WhatsApp, con la casilla del sitio",
+  telefono: "Verbal, por teléfono",
+  presencial: "Verbal, en el hotel",
+  panel: "Apuntada por el equipo",
+};
+
+/**
  * Estados que ocupan calendario.
  *
  * Debe coincidir con el `where` del constraint `reservas_sin_solapamiento`
@@ -161,6 +176,18 @@ export type ReservaAdmin = {
   monto_anticipo: number | null;
   /** Id del evento externo (Google Calendar) si la reserva vino de fuera. */
   referencia_externa: string | null;
+  /**
+   * Prueba de la autorización de tratamiento de datos (Ley 1581 de 2012).
+   *
+   * Las tres van juntas o las tres son `null` (lo garantiza un `check` de la
+   * migración 012). `null` significa «no consta», y es distinto de una fecha
+   * inventada: son las reservas cuya autorización habría que conseguir.
+   */
+  autorizacion_datos_en: string | null;
+  /** Fecha de revisión del texto que el titular aceptó. */
+  autorizacion_datos_version: string | null;
+  /** Por dónde la dio: `web`, `whatsapp`, `telefono`, `presencial` o `panel`. */
+  autorizacion_datos_canal: string | null;
   created_at: string;
 };
 

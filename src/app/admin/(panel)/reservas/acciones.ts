@@ -12,6 +12,7 @@ import {
   sumarDiasISO,
 } from "@/lib/admin/fechas";
 import { refrescarPanel } from "@/lib/admin/revalidar";
+import { LEGAL_ACTUALIZADO } from "@/lib/sitio";
 import {
   ESTADOS_QUE_OCUPAN,
   ESTADOS_RESERVA,
@@ -171,6 +172,61 @@ async function personasDeDiaEn(
   return (data ?? [])
     .filter((fila) => !excluirId || String(fila.id) !== excluirId)
     .reduce((suma, fila) => suma + Number(fila.num_personas ?? 0), 0);
+}
+
+/**
+ * Canales admitidos para la autorización de datos.
+ *
+ * Deben coincidir con el `check` de la migración 012 y con el desplegable de
+ * `formulario-reserva.tsx`. Vacío significa «no consta», y es un valor legítimo:
+ * la alternativa —inventar una autorización que nadie dio— es exactamente lo que
+ * la Ley 1581 castiga.
+ */
+const CANALES_AUTORIZACION = [
+  "web",
+  "whatsapp",
+  "telefono",
+  "presencial",
+  "panel",
+] as const;
+
+type CanalAutorizacion = (typeof CANALES_AUTORIZACION)[number];
+
+/** Lee el canal del formulario. Cualquier valor inesperado se trata como vacío. */
+function canalDeAutorizacion(form: FormData): CanalAutorizacion | null {
+  const valor = String(form.get("autorizacion_datos_canal") ?? "").trim();
+  return (CANALES_AUTORIZACION as readonly string[]).includes(valor)
+    ? (valor as CanalAutorizacion)
+    : null;
+}
+
+/**
+ * La autorización que ya constaba en una reserva que se está editando.
+ *
+ * Existe para NO reescribir la fecha: si el canal no cambió, la autorización se
+ * dio cuando se dio, y sellarla de nuevo cada vez que alguien corrige un
+ * teléfono convertiría la prueba en una mentira con fecha reciente.
+ */
+async function autorizacionGuardada(
+  supabase: Awaited<ReturnType<typeof requireAdmin>>["supabase"],
+  id: string,
+): Promise<{ canal: string | null; en: string | null }> {
+  const { data } = await supabase
+    .from("reservas")
+    .select("autorizacion_datos_canal, autorizacion_datos_en")
+    .eq("id", id)
+    .maybeSingle();
+
+  return {
+    canal:
+      typeof data?.autorizacion_datos_canal === "string"
+        ? data.autorizacion_datos_canal
+        : null,
+    en:
+      typeof data?.autorizacion_datos_en === "string"
+        ? data.autorizacion_datos_en
+        : null,
+  };
 }
 
 /**
@@ -349,6 +405,45 @@ export async function guardarReservaAction(
     );
     const montoAnticipo = calcularAnticipo(total, porcentajeAnticipo).anticipo;
 
+    /*
+      PRUEBA DE LA AUTORIZACIÓN DE DATOS (Ley 1581 de 2012, art. 9; Decreto
+      1074 de 2015, art. 2.2.2.25.2.4).
+
+      Se guardan las tres cosas juntas o ninguna (lo exige el `check` de la
+      migración 012): el canal, el momento y la versión del texto que el
+      huésped aceptó. La fecha es la de cuando se marca aquí, que es cuando el
+      hotel deja constancia; la versión, la del documento publicado hoy.
+
+      Lo que NO se hace: rellenar esto solo porque exista una reserva. Sin
+      canal, las tres quedan en `null`, que significa «no consta» — y eso es
+      información útil: es la lista de reservas cuya autorización habría que
+      conseguir.
+
+      Al editar una reserva que YA tenía constancia y no se toca el
+      desplegable, la fecha original se conserva: la autorización se dio
+      entonces, no hoy.
+    */
+    const canalAutorizacion = canalDeAutorizacion(formData);
+    const autorizacionPrevia = id
+      ? await autorizacionGuardada(supabase, id)
+      : { canal: null, en: null };
+
+    const autorizacion = canalAutorizacion
+      ? {
+          autorizacion_datos_canal: canalAutorizacion,
+          autorizacion_datos_en:
+            autorizacionPrevia.canal === canalAutorizacion &&
+            autorizacionPrevia.en
+              ? autorizacionPrevia.en
+              : new Date().toISOString(),
+          autorizacion_datos_version: LEGAL_ACTUALIZADO,
+        }
+      : {
+          autorizacion_datos_canal: null,
+          autorizacion_datos_en: null,
+          autorizacion_datos_version: null,
+        };
+
     const datos = {
       tipo,
       alojamiento_id: alojamientoId,
@@ -378,6 +473,7 @@ export async function guardarReservaAction(
       origen,
       porcentaje_anticipo: porcentajeAnticipo,
       monto_anticipo: montoAnticipo,
+      ...autorizacion,
     };
 
     const avisoCapacidad =

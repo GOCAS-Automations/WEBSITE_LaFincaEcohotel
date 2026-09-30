@@ -48,6 +48,7 @@ import {
   formatearFecha,
   formatearFechaCorta,
 } from "@/lib/utils/formato";
+import { LEGAL_ACTUALIZADO } from "@/lib/sitio";
 import { enlaceWhatsapp, mensajeDiaDeCalma, mensajeReserva } from "@/lib/whatsapp";
 
 import { CalendarioFechas } from "./calendario-fechas";
@@ -253,6 +254,17 @@ export function SelectorReserva({
   const [porcentaje, setPorcentaje] = useState<PorcentajeAnticipo>(
     ANTICIPO_POR_DEFECTO,
   );
+
+  /*
+    AUTORIZACIÓN DE DATOS — ARRANCA EN `false` Y NO SE PUEDE CAMBIAR ESO.
+
+    La Ley 1581 de 2012 pide autorización **previa, expresa e informada**. Una
+    casilla premarcada no es ninguna de las tres cosas: es un descuido
+    convertido en consentimiento. Arranca desapretada, el botón de enviar no
+    funciona hasta que se marca, y el enlace a la política se abre en otra
+    pestaña para que marcarla no obligue a perder la reserva a medias.
+  */
+  const [aceptaDatos, setAceptaDatos] = useState(false);
 
   /* --- Las noches -------------------------------------------------------- */
 
@@ -597,6 +609,7 @@ export function SelectorReserva({
                 saldo: pagoDia.saldo,
               }
             : null,
+          autorizacionDatos: aceptaDatos ? LEGAL_ACTUALIZADO : null,
         }),
         whatsapp,
       )
@@ -629,6 +642,7 @@ export function SelectorReserva({
                 saldo: pago.saldo,
               }
             : null,
+          autorizacionDatos: aceptaDatos ? LEGAL_ACTUALIZADO : null,
         }),
         whatsapp,
       );
@@ -1467,15 +1481,82 @@ export function SelectorReserva({
             por noche, los extras con su noche, el total y el anticipo. Lo único
             que cambia es el destino de este enlace.
           */}
-          <a
-            href={enlace}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={clasesBoton("primario", "grande", "w-full")}
-          >
-            <IconoWhatsapp className="size-5" />
-            Solicitar por WhatsApp
-          </a>
+          {/* ---------------------------------------------------------------
+              AUTORIZACIÓN DE TRATAMIENTO DE DATOS (Ley 1581 de 2012).
+
+              Va JUSTO ANTES del botón, no en el pie de la página: la
+              autorización tiene que ser previa a la entrega de los datos, y
+              los datos se entregan al pulsar. La casilla no está premarcada,
+              el texto dice para qué son los datos y quién los trata, y el
+              enlace abre la política en otra pestaña.
+          ---------------------------------------------------------------- */}
+          <div className="rounded-[var(--radius-tarjeta)] bg-crema-100/70 p-3">
+            <label className="flex cursor-pointer items-start gap-3 text-xs leading-relaxed text-crema-700">
+              <input
+                type="checkbox"
+                checked={aceptaDatos}
+                onChange={(evento) => setAceptaDatos(evento.target.checked)}
+                aria-describedby="nota-datos"
+                className="mt-0.5 size-4 shrink-0 cursor-pointer rounded border-crema-400 text-petroleo-600 focus:ring-2 focus:ring-petroleo-500"
+              />
+              <span id="nota-datos">
+                Autorizo a La Finca Eco Hotel a tratar mis datos personales
+                (nombre, teléfono y lo que escriba en la conversación) para
+                atender esta solicitud de reserva y gestionar mi estadía, según
+                la{" "}
+                <Link
+                  href="/legal/datos"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold text-petroleo-700 underline decoration-petroleo-300 underline-offset-2 hover:decoration-petroleo-600"
+                >
+                  Política de tratamiento de datos personales
+                </Link>
+                . Puedo conocerlos, actualizarlos, corregirlos o pedir que se
+                borren cuando quiera.
+              </span>
+            </label>
+          </div>
+
+          {aceptaDatos ? (
+            <a
+              href={enlace}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={clasesBoton("primario", "grande", "w-full")}
+            >
+              <IconoWhatsapp className="size-5" />
+              Solicitar por WhatsApp
+            </a>
+          ) : (
+            /* Un `<button disabled>` y no un enlace apagado: un enlace
+               deshabilitado sigue siendo pulsable con el teclado. Así el
+               navegador y el lector de pantalla anuncian que no está
+               disponible, y el texto de debajo dice por qué. */
+            <button
+              type="button"
+              disabled
+              aria-describedby="falta-autorizacion"
+              className={clasesBoton(
+                "primario",
+                "grande",
+                "w-full cursor-not-allowed opacity-50",
+              )}
+            >
+              <IconoWhatsapp className="size-5" />
+              Solicitar por WhatsApp
+            </button>
+          )}
+
+          {!aceptaDatos ? (
+            <p
+              id="falta-autorizacion"
+              className="text-xs leading-relaxed text-crema-700"
+            >
+              Marca la casilla de autorización de datos para poder enviar la
+              solicitud.
+            </p>
+          ) : null}
 
           <p className="text-xs leading-relaxed text-crema-600">
             Te llevamos a WhatsApp con el desglose ya escrito. El total es una
