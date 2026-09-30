@@ -118,6 +118,45 @@ dejarla en `0` (o sin definir) después del lanzamiento significa que Google
 nunca va a indexar el sitio, aunque el dominio ya esté conectado y todo lo
 demás funcione.
 
+### `CRON_SECRET`
+
+**Obligatoria antes del lanzamiento.** Es el secreto con el que se firma la
+llamada del cron que mantiene despierta la base.
+
+El plan gratuito de Supabase **pausa los proyectos con poca actividad al cabo de
+siete días**, y un proyecto pausado deja el sitio sin contenido, sin fotos y sin
+disponibilidad hasta que alguien entra al panel de Supabase a reactivarlo a mano.
+Para evitarlo, `vercel.json` programa un cron que llama una vez al día a
+`/api/salud`; ese handler hace **una** consulta trivial a Postgres con la clave
+anónima (`select id from planes limit 1`) y el contador de inactividad vuelve a
+cero.
+
+Cómo se configura:
+
+1. Generar un valor largo al azar:
+
+       node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+
+2. En Vercel → **Project Settings → Environment Variables**, crear `CRON_SECRET`
+   con ese valor, marcada para **Production** (y Preview si se quiere probar
+   allí). No hace falta ponerla en `.env.local`: en desarrollo el endpoint
+   funciona sin ella.
+3. Redesplegar. Desde ese momento Vercel añade sola la cabecera
+   `Authorization: Bearer <CRON_SECRET>` a las peticiones del cron, y
+   `/api/salud` responde **401** a cualquiera que no la traiga.
+
+Detalles del cron:
+
+- **En el plan Hobby, Vercel ejecuta los cron una vez al día** y a una hora
+  aproximada dentro de la ventana indicada (no al minuto exacto). Con siete días
+  de margen antes de que Supabase pause, una ejecución diaria sobra.
+- La programación está en `vercel.json` (`0 12 * * *`, mediodía UTC = 7 a.m. en
+  Colombia). Se ve y se prueba a mano en Vercel → pestaña **Cron Jobs**.
+- **Si se quita el cron o la ruta `/api/salud`**, la base se vuelve a pausar sola
+  a los siete días de que nadie visite el sitio. Antes de quitarlo hay que haber
+  pasado Supabase a un plan de pago (los planes pagos no pausan) o haber puesto
+  otro latido en su lugar.
+
 ## 3. Verificación tras el primer deploy
 
 Con la URL de Vercel ya asignada (`https://…vercel.app`), revisar:
@@ -172,3 +211,16 @@ lanzamiento, no antes.
       (`panel@lafincaecohotel.com`) antes de entregarle el proyecto al
       cliente. Es una cuenta de desarrollo, no debe quedar activa en
       producción.
+- [ ] `CRON_SECRET` creada en Vercel (sección 2) y el cron visible en la
+      pestaña **Cron Jobs** del proyecto.
+- [ ] Comprobar que las cabeceras de seguridad viajan en producción:
+
+          curl -sI https://<dominio>/ | grep -i "content-security-policy\|strict-transport\|x-frame\|referrer\|permissions\|x-content-type"
+
+      Deben aparecer las seis. Si falta la CSP, el despliegue no cogió
+      `next.config.ts`.
+- [ ] En **Supabase → Authentication → Policies/Protection**, activar
+      «Leaked password protection» y subir el mínimo de contraseña. Y en
+      **Auth → Rate limits**, revisar el límite de `/token`.
+- [ ] Repasar `docs/AUDITORIA_SEGURIDAD.md`: la sección «Pendiente» lista lo que
+      hay que decidir o configurar fuera del código.
