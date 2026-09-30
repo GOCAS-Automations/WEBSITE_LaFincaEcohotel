@@ -2,6 +2,7 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { ocupaCalendario } from "@/lib/reserva/holds";
 import { normalizarPorcentajeAnticipo } from "@/lib/reserva/total";
 
 import { leerRangoFechas, sumarDiasISO } from "./fechas";
@@ -343,7 +344,7 @@ export async function extrasActivos(supabase: SupabaseClient): Promise<Extra[]> 
  * ======================================================================== */
 
 const COLUMNAS_RESERVA =
-  "id, codigo, tipo, alojamiento_id, plan_id, estancia, huesped_nombre, huesped_email, huesped_telefono, huesped_documento, num_personas, notas, subtotal_alojamiento, subtotal_extras, total, monto_pagado, estado, origen, porcentaje_anticipo, monto_anticipo, referencia_externa, autorizacion_datos_en, autorizacion_datos_version, autorizacion_datos_canal, created_at";
+  "id, codigo, tipo, alojamiento_id, plan_id, estancia, huesped_nombre, huesped_email, huesped_telefono, huesped_documento, num_personas, notas, subtotal_alojamiento, subtotal_extras, total, monto_pagado, estado, origen, porcentaje_anticipo, monto_anticipo, referencia_externa, expira_at, autorizacion_datos_en, autorizacion_datos_version, autorizacion_datos_canal, created_at";
 
 type FilaReserva = Record<string, unknown>;
 
@@ -393,6 +394,9 @@ function aReservaAdmin(
         : Number(fila.monto_anticipo),
     referencia_externa:
       typeof fila.referencia_externa === "string" ? fila.referencia_externa : null,
+    /* El hold: cuándo deja de apartar las fechas. `null` = no vence. La regla
+       de si ocupa o no vive en `ocupaCalendario()` (@/lib/reserva/holds). */
+    expira_at: typeof fila.expira_at === "string" ? fila.expira_at : null,
     autorizacion_datos_en:
       typeof fila.autorizacion_datos_en === "string"
         ? fila.autorizacion_datos_en
@@ -527,15 +531,31 @@ export async function personasDeDiaPorFecha(
 ): Promise<Map<string, number>> {
   const { data, error } = await supabase
     .from("reservas")
-    .select("estancia, num_personas, estado")
+    .select("estancia, num_personas, estado, expira_at")
     .eq("tipo", "dia")
     .in("estado", ["pendiente", "confirmada"])
     .overlaps("estancia", `[${desde},${hasta})`);
 
   if (error) throw new Error(error.message);
 
+  const ahora = new Date();
   const porFecha = new Map<string, number>();
   for (const fila of data ?? []) {
+    /* Una solicitud de día cuyo hold venció no gasta cupo: si no se pagó, ese
+       cupo vuelve a estar libre. Misma regla que en las cabañas y en el mismo
+       sitio, para que el número que ve el panel y el que ve el sitio público
+       no puedan separarse. */
+    if (
+      !ocupaCalendario(
+        {
+          estado: String(fila.estado ?? ""),
+          expira_at: typeof fila.expira_at === "string" ? fila.expira_at : null,
+        },
+        ahora,
+      )
+    ) {
+      continue;
+    }
     const rango = leerRangoFechas(fila.estancia);
     if (!rango) continue;
     /* Una reserva de día dura un solo día por construcción (lo garantiza el

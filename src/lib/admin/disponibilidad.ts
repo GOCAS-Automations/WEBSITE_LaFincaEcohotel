@@ -22,6 +22,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { fechaCorta, leerRangoFechas, rangoCorto, seCruzan } from "./fechas";
 import { ESTADOS_QUE_OCUPAN, ETIQUETA_ESTADO } from "./tipos";
+import { ocupaCalendario } from "@/lib/reserva/holds";
 import { choquesDelCalendario } from "@/lib/reserva/ocupacion-externa";
 import type { EstadoReserva } from "@/lib/tipos/basedatos";
 
@@ -50,8 +51,11 @@ export async function buscarChoques(
   const [reservas, bloqueos, cabana] = await Promise.all([
     supabase
       .from("reservas")
-      .select("id, codigo, huesped_nombre, estancia, estado")
+      .select("id, codigo, huesped_nombre, estancia, estado, expira_at")
       .eq("alojamiento_id", alojamientoId)
+      /* El `in` solo acota la consulta; quién ocupa de verdad lo decide
+         `ocupaCalendario()` más abajo, porque una `pendiente` con el hold
+         vencido ya no aparta nada. */
       .in("estado", ESTADOS_QUE_OCUPAN),
     supabase
       .from("bloqueos")
@@ -77,8 +81,23 @@ export async function buscarChoques(
     );
   }
 
+  const ahora = new Date();
+
   for (const fila of reservas.data ?? []) {
     if (excluirReservaId && String(fila.id) === excluirReservaId) continue;
+    /* Una solicitud cuyo hold venció NO choca: esas fechas están libres aunque
+       la fila siga diciendo `pendiente` hasta que el barrido la cancele. */
+    if (
+      !ocupaCalendario(
+        {
+          estado: String(fila.estado ?? ""),
+          expira_at: typeof fila.expira_at === "string" ? fila.expira_at : null,
+        },
+        ahora,
+      )
+    ) {
+      continue;
+    }
     const rango = leerRangoFechas(fila.estancia);
     if (!rango) continue;
     if (!seCruzan(entrada, salida, rango.inicio, rango.fin)) continue;

@@ -122,6 +122,13 @@ export const ETIQUETA_CANAL_AUTORIZACION: Record<string, string> = {
 /**
  * Estados que ocupan calendario.
  *
+ * ⚠ **NO BASTA CON EL ESTADO.** Desde la migración 013 una `pendiente` puede
+ * tener el hold vencido, y entonces NO ocupa. Esta lista sirve para acotar la
+ * consulta a la base (traer menos filas); la decisión final la toma
+ * `ocupaCalendario()` de `@/lib/reserva/holds`, que es el único sitio donde
+ * vive esa regla. Filtrar solo por estado sobrevendería: apartaría noches que
+ * una solicitud caducada dejó libres.
+ *
  * Debe coincidir con el `where` del constraint `reservas_sin_solapamiento`
  * ('pendiente','confirmada') más 'completada', que ya pasó y también hay que
  * mostrar como ocupado en el calendario histórico. La base solo impide cruces
@@ -176,6 +183,15 @@ export type ReservaAdmin = {
   monto_anticipo: number | null;
   /** Id del evento externo (Google Calendar) si la reserva vino de fuera. */
   referencia_externa: string | null;
+  /**
+   * Cuándo deja de apartar las fechas una reserva `pendiente` (el «hold»).
+   *
+   * `null` = **no vence**, que es lo que llevan las confirmadas, las
+   * completadas y todo lo que el equipo apunta a mano desde el panel. Quien
+   * decida si esta reserva ocupa calendario tiene que usar `ocupaCalendario()`
+   * de `@/lib/reserva/holds`, nunca el estado a secas.
+   */
+  expira_at: string | null;
   /**
    * Prueba de la autorización de tratamiento de datos (Ley 1581 de 2012).
    *

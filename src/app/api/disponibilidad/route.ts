@@ -7,6 +7,7 @@ import {
   cabanasAfectadas,
   diasDeLaFranja,
 } from "@/lib/reserva/calendario-externo";
+import { ocupaCalendario } from "@/lib/reserva/holds";
 import { esFechaISO } from "@/lib/reserva/noches";
 import { ocupacionDelCalendario } from "@/lib/reserva/ocupacion-externa";
 import { crearClienteAdmin } from "@/lib/supabase/admin";
@@ -103,7 +104,9 @@ export async function GET(peticion: Request) {
         .order("orden", { ascending: true }),
       supabase
         .from("reservas")
-        .select("alojamiento_id, estancia")
+        /* `estado` y `expira_at` viajan para poder aplicar `ocupaCalendario()`:
+           el `in` de abajo solo acota la consulta. */
+        .select("alojamiento_id, estancia, estado, expira_at")
         .eq("tipo", "hospedaje")
         .in("estado", ESTADOS_QUE_OCUPAN)
         .overlaps("estancia", `[${desde},${hasta})`),
@@ -142,7 +145,34 @@ export async function GET(peticion: Request) {
       }
     };
 
+    /*
+      EL HOLD, CON LA MISMA REGLA QUE EL PANEL.
+
+      Una solicitud `pendiente` cuyo vencimiento ya pasó NO ocupa: quien no
+      completó el pago no se queda con la noche. `ocupaCalendario()` es el único
+      sitio donde vive esa decisión, y por eso la usan tanto este endpoint como
+      `buscarChoques()` del panel: si cada uno llevara su copia, el sitio y el
+      panel acabarían diciendo cosas distintas sobre la misma noche.
+
+      Aquí NO se barre la base (no se escribe durante una respuesta de solo
+      lectura): la comprobación en memoria da la misma respuesta. El barrido
+      ocurre antes de escribir y en el latido diario.
+    */
+    const ahora = new Date();
+
     for (const fila of reservas.data ?? []) {
+      if (
+        !ocupaCalendario(
+          {
+            estado: String(fila.estado ?? ""),
+            expira_at:
+              typeof fila.expira_at === "string" ? fila.expira_at : null,
+          },
+          ahora,
+        )
+      ) {
+        continue;
+      }
       const rango = leerRangoFechas(fila.estancia);
       if (!rango || !fila.alojamiento_id) continue;
       marcar(String(fila.alojamiento_id), rango.inicio, rango.fin);

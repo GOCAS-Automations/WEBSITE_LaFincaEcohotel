@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { frenar } from "@/lib/api/limite-peticiones";
 import { CUPO_DIA_DE_CALMA, cupoDelDia } from "@/lib/reserva/dia-de-calma";
+import { ocupaCalendario } from "@/lib/reserva/holds";
 import { esFechaISO, sumarDias } from "@/lib/reserva/noches";
 import { crearClienteAdmin } from "@/lib/supabase/admin";
 
@@ -60,17 +61,28 @@ export async function GET(peticion: Request) {
     const supabase = crearClienteAdmin();
     const { data, error } = await supabase
       .from("reservas")
-      .select("num_personas")
+      /* `estado` y `expira_at` viajan para aplicar `ocupaCalendario()`: una
+         solicitud cuyo hold venció no gasta cupo. */
+      .select("num_personas, estado, expira_at")
       .eq("tipo", "dia")
       .in("estado", ESTADOS_QUE_OCUPAN)
       .overlaps("estancia", `[${fecha},${sumarDias(fecha, 1)})`);
 
     if (error) throw new Error(error.message);
 
-    const usado = (data ?? []).reduce(
-      (suma, fila) => suma + Number(fila.num_personas ?? 0),
-      0,
-    );
+    const ahora = new Date();
+    const usado = (data ?? [])
+      .filter((fila) =>
+        ocupaCalendario(
+          {
+            estado: String(fila.estado ?? ""),
+            expira_at:
+              typeof fila.expira_at === "string" ? fila.expira_at : null,
+          },
+          ahora,
+        ),
+      )
+      .reduce((suma, fila) => suma + Number(fila.num_personas ?? 0), 0);
     const cupo = cupoDelDia(fecha, usado);
 
     return NextResponse.json(
