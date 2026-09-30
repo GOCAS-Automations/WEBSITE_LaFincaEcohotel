@@ -120,10 +120,11 @@ export async function datosDeReserva(
 /**
  * **Momento 1 — se crea una solicitud.**
  *
- * Al huésped, «recibimos tu solicitud»; al hotel, el aviso interno con el
- * teléfono y el enlace a la ficha. Los dos correos salen del mismo momento
- * porque el equipo tiene que poder responder por WhatsApp antes de que el
- * huésped pregunte.
+ * Al huésped, «recibimos tu solicitud», siempre. Al hotel, el aviso interno con
+ * el teléfono y el enlace a la ficha **solo si la solicitud llegó del sitio**
+ * (`origen = 'web'`): una reserva que alguien del equipo acaba de escribir en el
+ * panel no necesita avisar al equipo de que existe, y un correo que cuenta lo
+ * que uno acaba de hacer enseña a ignorar los correos del sistema.
  *
  * Se llama desde el alta del panel y —cuando exista— desde la creación de la
  * solicitud en el motor público.
@@ -137,11 +138,13 @@ export async function avisarSolicitudCreada(
     const datos = await datosDeReserva(supabase, reservaId, extras);
     if (!datos) return SIN_AVISOS;
 
+    const delSitio = datos.origen === "web";
+
     /* En paralelo: son dos destinatarios distintos y ninguno depende del otro.
        `allSettled` para que un fallo de uno no arrastre al otro. */
     const [huesped, administracion] = await Promise.allSettled([
       enviarSolicitudRecibida(datos),
-      enviarAvisoAdministracion(datos),
+      delSitio ? enviarAvisoAdministracion(datos) : Promise.resolve(null),
     ]);
 
     return {
