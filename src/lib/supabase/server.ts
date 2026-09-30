@@ -1,10 +1,15 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
+import { OPCIONES_COOKIE_SESION } from "./opciones-cookie";
+
 /**
  * Cliente de Supabase para el servidor (Server Components, Route Handlers,
  * Server Actions). Usa la clave pública (anon) y mantiene la sesión del
  * usuario en cookies: las políticas RLS siguen aplicando.
+ *
+ * La cookie se escribe con `httpOnly` y, en producción, `secure`. El motivo
+ * está en `opciones-cookie.ts`: aquí nadie la lee desde el navegador.
  */
 export async function crearClienteServidor() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -19,6 +24,7 @@ export async function crearClienteServidor() {
   const almacenCookies = await cookies();
 
   return createServerClient(url, claveAnon, {
+    cookieOptions: OPCIONES_COOKIE_SESION,
     cookies: {
       getAll() {
         return almacenCookies.getAll();
