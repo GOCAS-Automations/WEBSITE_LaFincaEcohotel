@@ -2369,3 +2369,29 @@ reservas.**
 Resend, los registros DNS del dominio en Hostinger y **qué correo del hotel** se
 usa como remitente y como destinatario del aviso (Amapola). Documentado en
 `.env.example` y en §2 de `docs/DESPLIEGUE_VERCEL.md`.
+
+---
+
+## Sesión 2026-09-30 — Datos fiscales y correo de contacto
+
+El cliente entregó: titular **Raquel Lenis García (persona natural)**, **NIT 66830269-5**
+(la razón social es su nombre) y el correo de contacto **`fincavillarrealcali@gmail.com`**.
+Los textos legales quedaron **aprobados por el cliente, con revisión posterior pendiente**.
+Registrado en `docs/DATOS_CLIENTE.md` §7.
+
+**Base vs. seed.** Antes de tocar nada se comparó la fila real de las cinco claves
+(`sitio.contacto`, `legal.privacidad|terminos|datos|cancelacion`) con `002_contenido.sql`:
+**las cinco eran idénticas, sin ediciones hechas desde el panel.** Por eso se actualizaron
+ambos: el código (`SITIO`, `legal.ts`) → `npm run seed:contenido` → y en la base, una
+transacción puntual con `UPDATE ... WHERE clave = ... AND valor = <valor anterior>` solo sobre
+esas cinco claves (no se ejecutó `db:aplicar`). Verificado después: base = seed, las cinco IGUAL.
+
+**Cambios.** `SITIO.responsable` (nombre y NIT) y `SITIO.contacto.correo` en `src/lib/sitio.ts`;
+los cuatro textos legales identifican al titular con «persona natural · NIT 66830269-5 · RNT»,
+y el correo es el canal para ejercer derechos de datos personales (Ley 1581 de 2012); el pie
+muestra el correo y «Raquel Lenis García · NIT 66830269-5 · RNT 114565»; `/contacto` muestra el
+correo (ya lo soportaba) y la misma línea legal; el JSON-LD `LodgingBusiness` añade `email`,
+`legalName` y `taxID`. `LEGAL_ACTUALIZADO` ya era 2026-09-30.
+
+**Pendiente.** Revisión jurídica de los textos. Sigue abierto el correo **emisor** de Resend
+y el destinatario del aviso interno (¿se usa este mismo correo?) — decisión de Cesar/Amapola.

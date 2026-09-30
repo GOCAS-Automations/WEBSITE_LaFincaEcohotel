@@ -216,6 +216,17 @@ nuestro propio sitio se ignoran.
 - Nombre oficial: **La Finca Eco Hotel** (nunca «Finca Villarreal», que aparece en toallas viejas).
 - El pin exacto y el video de llegada se envían solo tras confirmar el pago.
 
+### Datos legales y de contacto (confirmados por el cliente, 2026-09-30)
+
+- **Titular / responsable:** Raquel Lenis García — **persona natural**.
+- **NIT:** 66830269, **DV 5** (se publica «66830269-5»). En persona natural el NIT es la cédula; el RUT
+  no trae razón social, así que la **razón social es el nombre de la persona**.
+- **Correo de contacto del hotel:** `fincavillarrealcali@gmail.com`. Es también el canal para ejercer
+  derechos sobre datos personales (Ley 1581 de 2012). El nombre comercial sigue siendo **La Finca Eco
+  Hotel**, aunque el correo contenga «villarreal».
+- **Textos legales** (privacidad, términos, tratamiento de datos, cancelación): **aprobados por el
+  cliente el 2026-09-30, con revisión posterior pendiente.**
+
 ## 8. Quién es quién en el cliente
 
 | Persona | Rol |
@@ -224,7 +235,7 @@ nuestro propio sitio se ignoran.
 | **Juan Camilo Mejía** | Arquitecto; creó el Drive y reparte los requerimientos; revisa descripciones y textos con Amapola |
 | **Camilo** | Accesos y Drive |
 | **Santiago** | Diseñador: logo vectorial, identidad de marca, licencia de Intro |
-| **Raquel Lenis** | Razón social y NIT |
+| **Raquel Lenis García** | Titular del hotel (persona natural): razón social y NIT |
 | **Nicolás** | Anfitrión en la finca |
 | Caroline | Administradora del bot de WhatsApp (mismo número del hotel) |
 
@@ -261,9 +272,9 @@ que el navegador pueda falsificar.
 
 - [ ] Logo vectorial (Santiago) — mientras tanto, el de `public/marca/` y el del manual.
 - [ ] Licencia Intro (Santiago).
-- [ ] Clave Hostinger, correo del hotel, Google Business, Analytics (Amapola).
-- [ ] Razón social y NIT (Raquel Lenis).
-- [ ] Aprobación de textos legales (Amapola) — ahora con la política de cancelación real.
+- [ ] Clave Hostinger, Google Business, Analytics (Amapola).
+- [x] Razón social, NIT y correo de contacto: entregados el 2026-09-30 (ver §7).
+- [ ] Revisión posterior de los textos legales (aprobados por el cliente el 2026-09-30; queda la revisión jurídica).
 - [ ] Cuenta bancaria y documentos Wompi (Amapola).
 - [ ] Video: definir con Juan Camilo; sugieren embeber links de Instagram.
 - [ ] ¿Mínimo de noches en fines de semana/festivos?

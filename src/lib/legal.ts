@@ -38,8 +38,9 @@
  * `docs/DATOS_CLIENTE.md`. Lo que sigue pendiente es la revisión jurídica y la
  * aprobación de Amapola sobre la REDACCIÓN.
  *
- * Datos que faltan y hay que completar cuando el cliente los entregue:
- * razón social y NIT (Raquel Lenis) y el correo de notificaciones (Amapola).
+ * Los datos fiscales y el correo de contacto llegaron el 2026-09-30 (persona
+ * natural: Raquel Lenis García, NIT 66830269-5) y el cliente aprobó los
+ * textos; la revisión jurídica posterior sigue pendiente.
  */
 import { LEGAL_ACTUALIZADO, SITIO } from "./sitio";
 
@@ -149,9 +150,10 @@ const lista = (items: string[]): BloqueFuente => ({ tipo: "lista", items });
  * está en el CMS, dejan de estar ligados: ver el aviso de la cabecera.
  */
 function documentosFuente(): Record<ClaveLegal, DocumentoFuente> {
-  const canal = `WhatsApp ${SITIO.contacto.whatsappVisible}`;
+  const correo = SITIO.contacto.correo;
+  const canal = `WhatsApp ${SITIO.contacto.whatsappVisible} o el correo ${correo}`;
   const domicilio = SITIO.contacto.direccionCompleta;
-  const responsable = `${SITIO.nombre} (RNT ${SITIO.rnt})`;
+  const responsable = `${SITIO.nombre} (titular: ${SITIO.responsable.nombre}, persona natural · NIT ${SITIO.responsable.nit} · RNT ${SITIO.rnt})`;
 
   return {
     /* ------------------------------------------------------------------ */
@@ -233,7 +235,7 @@ function documentosFuente(): Record<ClaveLegal, DocumentoFuente> {
             p(
               "Puedes conocer, actualizar, rectificar y suprimir tu información, y revocar la autorización que nos diste para tratarla, en los términos de la Ley 1581 de 2012. El detalle del procedimiento está en nuestra política de tratamiento de datos personales.",
             ),
-            p(`Para ejercerlos, escríbenos por ${canal}.`),
+            p(`Para ejercerlos, escríbenos al correo ${correo}.`),
           ],
         },
         {
@@ -385,7 +387,7 @@ function documentosFuente(): Record<ClaveLegal, DocumentoFuente> {
               `${responsable}, con domicilio en ${domicilio}, es el responsable del tratamiento de los datos personales que recolecta en desarrollo de su actividad de alojamiento turístico. Canal de atención: ${canal}.`,
             ),
             p(
-              "Nota: la razón social y el NIT se incorporarán a este documento una vez se confirmen; hasta entonces, el prestador se identifica con su Registro Nacional de Turismo.",
+              `Razón social: ${SITIO.responsable.nombre}, persona natural. NIT ${SITIO.responsable.nit}. Nombre comercial: ${SITIO.nombre}. Registro Nacional de Turismo (RNT): ${SITIO.rnt}.`,
             ),
           ],
         },
@@ -461,7 +463,7 @@ function documentosFuente(): Record<ClaveLegal, DocumentoFuente> {
           titulo: "7. Consultas y reclamos",
           bloques: [
             p(
-              `Toda consulta o reclamo puede presentarse por ${canal}, indicando tu nombre, tu documento, la descripción de los hechos y los datos de contacto para responderte.`,
+              `Toda consulta o reclamo puede presentarse al correo ${correo}, que es el canal dispuesto para que los titulares ejerzan sus derechos sobre sus datos personales (Ley 1581 de 2012), o por WhatsApp ${SITIO.contacto.whatsappVisible}, indicando tu nombre, tu documento, la descripción de los hechos y los datos de contacto para responderte.`,
             ),
             lista([
               "Consultas: se atienden en un término máximo de diez (10) días hábiles. Si no fuera posible, te informaremos los motivos y la fecha en que se atenderá, dentro de los cinco (5) días hábiles siguientes al vencimiento del primer plazo.",

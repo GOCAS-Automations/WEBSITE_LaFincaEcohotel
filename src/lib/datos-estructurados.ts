@@ -79,6 +79,8 @@ export function grafoHotel({
         "@type": "LodgingBusiness",
         "@id": ID_HOTEL,
         name: SITIO.nombre,
+        legalName: SITIO.responsable.nombre,
+        taxID: SITIO.responsable.nit,
         description: descripcion,
         url: SITIO.url,
         image: imagenes,

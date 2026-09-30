@@ -106,7 +106,7 @@ respaldo).
   "whatsapp": "573160476671",              // solo dígitos con indicativo, para wa.me
   "whatsapp_visible": "+57 316 047 6671",  // como se muestra en pantalla
   "mensaje_whatsapp": "¡Hola! …",          // texto prellenado del botón flotante
-  "correo": "",                            // vacío = no se muestra
+  "correo": "fincavillarrealcali@gmail.com",  // vacío = no se muestra (pie, contacto, JSON-LD)
   "direccion": "Km 18 vía Cali–Buenaventura, Vereda Loma Alta",
   "ciudad": "Cali",
   "region": "Valle del Cauca",
@@ -672,6 +672,7 @@ Notas:
   `RUTA_LEGAL` (`src/lib/legal.ts`).
 - El **texto por defecto** —el que publica el sitio si la fila no existe o queda
   vacía— también está en `src/lib/legal.ts`, y de ahí sale el seed.
+- El responsable (Raquel Lenis García · NIT 66830269-5) y el correo también están en texto plano dentro de estos documentos; el pie y el JSON-LD los leen de `SITIO.responsable` (`src/lib/sitio.ts`), no del CMS.
 - ⚠ El número de WhatsApp y la dirección que aparecen **dentro** del texto legal
   son texto plano. Antes se interpolaban desde `sitio.contacto`; al pasar el
   texto al CMS dejaron de estar ligados. Si el hotel cambia de número, hay que

@@ -25,11 +25,22 @@ export const SITIO = {
    */
   rnt: "114565",
 
+  /**
+   * Quién es el prestador ante la ley. Confirmado por el cliente el 2026-09-30:
+   * es una **persona natural**, así que el NIT es su cédula (con dígito de
+   * verificación) y la razón social es su nombre. El nombre comercial sigue
+   * siendo "La Finca Eco Hotel". Es un dato legal: vive en código, no en el CMS.
+   */
+  responsable: {
+    nombre: "Raquel Lenis García",
+    nit: "66830269-5",
+  },
+
   contacto: {
     /** Solo dígitos con indicativo, para enlaces `wa.me` y `tel:+`. */
     whatsapp: "573160476671",
     whatsappVisible: "+57 316 047 6671",
-    correo: "",
+    correo: "fincavillarrealcali@gmail.com",
     direccion: "Km 18 vía Cali–Buenaventura, Vereda Loma Alta",
     ciudad: "Cali",
     region: "Valle del Cauca",

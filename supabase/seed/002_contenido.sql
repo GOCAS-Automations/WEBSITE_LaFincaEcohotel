@@ -29,7 +29,7 @@ insert into contenido (clave, valor) values
   "whatsapp": "573160476671",
   "whatsapp_visible": "+57 316 047 6671",
   "mensaje_whatsapp": "¡Hola! Vengo del sitio web de La Finca Eco Hotel y me gustaría recibir más información sobre las opciones de hospedaje y disponibilidad. ✨",
-  "correo": "",
+  "correo": "fincavillarrealcali@gmail.com",
   "direccion": "Km 18 vía Cali–Buenaventura, Vereda Loma Alta",
   "ciudad": "Cali",
   "region": "Valle del Cauca",
@@ -678,7 +678,7 @@ insert into contenido (clave, valor) values
     {
       "titulo": "1. Quiénes somos",
       "parrafos": [
-        "La Finca Eco Hotel (RNT 114565) es el responsable de la información personal que se recoge a través de este sitio web. Nuestro domicilio es Km 18 vía Cali–Buenaventura, Vereda Loma Alta, Valle del Cauca, Colombia y nuestro canal de atención es WhatsApp +57 316 047 6671."
+        "La Finca Eco Hotel (titular: Raquel Lenis García, persona natural · NIT 66830269-5 · RNT 114565) es el responsable de la información personal que se recoge a través de este sitio web. Nuestro domicilio es Km 18 vía Cali–Buenaventura, Vereda Loma Alta, Valle del Cauca, Colombia y nuestro canal de atención es WhatsApp +57 316 047 6671 o el correo fincavillarrealcali@gmail.com."
       ]
     },
     {
@@ -714,7 +714,7 @@ insert into contenido (clave, valor) values
       "titulo": "6. Tus derechos",
       "parrafos": [
         "Puedes conocer, actualizar, rectificar y suprimir tu información, y revocar la autorización que nos diste para tratarla, en los términos de la Ley 1581 de 2012. El detalle del procedimiento está en nuestra política de tratamiento de datos personales.",
-        "Para ejercerlos, escríbenos por WhatsApp +57 316 047 6671."
+        "Para ejercerlos, escríbenos al correo fincavillarrealcali@gmail.com."
       ]
     },
     {
@@ -735,7 +735,7 @@ insert into contenido (clave, valor) values
     {
       "titulo": "1. Objeto y aceptación",
       "parrafos": [
-        "Estos términos regulan el uso del sitio web de La Finca Eco Hotel (RNT 114565) y la contratación de los servicios de alojamiento y experiencias que ofrecemos. Al usar el sitio o al hacer una reserva, aceptas estas condiciones."
+        "Estos términos regulan el uso del sitio web de La Finca Eco Hotel (titular: Raquel Lenis García, persona natural · NIT 66830269-5 · RNT 114565) y la contratación de los servicios de alojamiento y experiencias que ofrecemos. Al usar el sitio o al hacer una reserva, aceptas estas condiciones."
       ]
     },
     {
@@ -809,8 +809,8 @@ insert into contenido (clave, valor) values
     {
       "titulo": "1. Responsable del tratamiento",
       "parrafos": [
-        "La Finca Eco Hotel (RNT 114565), con domicilio en Km 18 vía Cali–Buenaventura, Vereda Loma Alta, Valle del Cauca, Colombia, es el responsable del tratamiento de los datos personales que recolecta en desarrollo de su actividad de alojamiento turístico. Canal de atención: WhatsApp +57 316 047 6671.",
-        "Nota: la razón social y el NIT se incorporarán a este documento una vez se confirmen; hasta entonces, el prestador se identifica con su Registro Nacional de Turismo."
+        "La Finca Eco Hotel (titular: Raquel Lenis García, persona natural · NIT 66830269-5 · RNT 114565), con domicilio en Km 18 vía Cali–Buenaventura, Vereda Loma Alta, Valle del Cauca, Colombia, es el responsable del tratamiento de los datos personales que recolecta en desarrollo de su actividad de alojamiento turístico. Canal de atención: WhatsApp +57 316 047 6671 o el correo fincavillarrealcali@gmail.com.",
+        "Razón social: Raquel Lenis García, persona natural. NIT 66830269-5. Nombre comercial: La Finca Eco Hotel. Registro Nacional de Turismo (RNT): 114565."
       ]
     },
     {
@@ -851,7 +851,7 @@ insert into contenido (clave, valor) values
     {
       "titulo": "7. Consultas y reclamos",
       "parrafos": [
-        "Toda consulta o reclamo puede presentarse por WhatsApp +57 316 047 6671, indicando tu nombre, tu documento, la descripción de los hechos y los datos de contacto para responderte.",
+        "Toda consulta o reclamo puede presentarse al correo fincavillarrealcali@gmail.com, que es el canal dispuesto para que los titulares ejerzan sus derechos sobre sus datos personales (Ley 1581 de 2012), o por WhatsApp +57 316 047 6671, indicando tu nombre, tu documento, la descripción de los hechos y los datos de contacto para responderte.",
         "- Consultas: se atienden en un término máximo de diez (10) días hábiles. Si no fuera posible, te informaremos los motivos y la fecha en que se atenderá, dentro de los cinco (5) días hábiles siguientes al vencimiento del primer plazo.\n- Reclamos: se atienden en un término máximo de quince (15) días hábiles contados desde el día siguiente a su recepción. Si no fuera posible, te informaremos los motivos y la nueva fecha, que no superará los ocho (8) días hábiles siguientes al vencimiento del primer término.\n- Si el reclamo llega incompleto, te pediremos que lo completes dentro de los cinco (5) días siguientes; transcurridos dos (2) meses sin respuesta, se entenderá desistido."
       ]
     },
@@ -936,7 +936,7 @@ insert into contenido (clave, valor) values
     {
       "titulo": "8. Cómo solicitarlo",
       "parrafos": [
-        "Escríbenos por WhatsApp +57 316 047 6671 indicando el nombre de la reserva, las fechas y el motivo. Te confirmaremos por el mismo canal el trámite y el valor que corresponda."
+        "Escríbenos por WhatsApp +57 316 047 6671 o el correo fincavillarrealcali@gmail.com indicando el nombre de la reserva, las fechas y el motivo. Te confirmaremos por el mismo canal el trámite y el valor que corresponda."
       ]
     }
   ]

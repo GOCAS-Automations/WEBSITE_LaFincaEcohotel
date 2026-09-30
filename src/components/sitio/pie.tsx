@@ -127,6 +127,22 @@ export async function Pie() {
                 <IconoReloj className="mt-0.5 size-4.5 shrink-0 text-brote-200" />
                 <span>Restaurante: {contacto.horario_restaurante}</span>
               </li>
+              {contacto.correo ? (
+                <li className="flex gap-3">
+                  <span
+                    aria-hidden="true"
+                    className="mt-0.5 w-4.5 shrink-0 text-center font-titulo text-sm font-bold text-brote-200"
+                  >
+                    @
+                  </span>
+                  <a
+                    href={`mailto:${contacto.correo}`}
+                    className="inline-flex min-h-11 items-center break-all underline-offset-4 transition-colors duration-200 hover:text-white hover:underline"
+                  >
+                    {contacto.correo}
+                  </a>
+                </li>
+              ) : null}
               <li className="flex gap-3">
                 <IconoWhatsapp className="mt-0.5 size-4.5 shrink-0 text-brote-200" />
                 <a
@@ -222,7 +238,8 @@ export async function Pie() {
           </p>
           {/* Obligación legal: el RNT debe estar visible en el sitio. */}
           <p className="font-titulo tracking-wide">
-            Registro Nacional de Turismo (RNT) {contacto.rnt}
+            {SITIO.responsable.nombre} · NIT {SITIO.responsable.nit} · RNT{" "}
+            {contacto.rnt}
           </p>
         </div>
       </div>

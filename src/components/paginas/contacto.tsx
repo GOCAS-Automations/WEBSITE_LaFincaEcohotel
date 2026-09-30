@@ -18,16 +18,17 @@ import {
   getSeccionPlanes,
 } from "@/lib/contenido";
 import { direccionDeMapa } from "@/lib/mapa-embebido";
+import { SITIO } from "@/lib/sitio";
 import { enlaceWhatsapp } from "@/lib/whatsapp";
 
 /**
  * Contacto.
  *
  * **No hay formulario a propósito.** El hotel atiende por WhatsApp y no tiene
- * hoy un buzón de correo publicado ni un destino verificado para un formulario
- * (§12 del plan: el correo emisor sigue pendiente). Un formulario que no llega
- * a ninguna parte es peor que no tenerlo: el visitante cree que escribió y
- * nadie le responde. Cuando el cliente confirme el correo, se añade aquí.
+ * un flujo de respuesta montado para un formulario: el correo de contacto ya
+ * se publica (2026-09-30), pero el envío automático (Resend) sigue pendiente.
+ * Un formulario que no llega a ninguna parte es peor que no tenerlo: el
+ * visitante cree que escribió y nadie le responde.
  */
 export async function PaginaContacto() {
   const [heroes, contacto, seccionPlanes] = await Promise.all([
@@ -183,6 +184,7 @@ export async function PaginaContacto() {
             ) : null}
 
             <p className="text-xs text-crema-600">
+              {SITIO.responsable.nombre} · NIT {SITIO.responsable.nit} ·
               Registro Nacional de Turismo (RNT) {contacto.rnt}
             </p>
           </Revelar>
