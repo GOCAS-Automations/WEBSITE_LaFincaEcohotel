@@ -69,18 +69,22 @@ revoke all on all sequences in schema public from anon;
 alter default privileges in schema public revoke all on tables from anon;
 alter default privileges in schema public revoke all on sequences from anon;
 
--- Los mismos valores por defecto existen a nombre de `supabase_admin`, que es
--- quien crea las tablas cuando se usa el editor SQL del panel de Supabase. Se
--- intenta también para ese rol; si el rol conectado no tiene permiso para
--- cambiarlos, la migración NO falla: se avisa y se sigue, porque lo importante
--- (las tablas que crea `postgres`, que es quien corre `npm run db:aplicar`) ya
--- quedó cubierto arriba.
+-- Los mismos valores por defecto existen a nombre de `supabase_admin`, el rol
+-- interno de la plataforma. Se intenta también para él, por si algún día crea
+-- una tabla en `public`; si el rol conectado no tiene permiso para cambiar sus
+-- valores por defecto —y normalmente no lo tiene—, la migración **NO falla**:
+-- avisa y sigue.
+--
+-- Lo que de verdad importa ya quedó cubierto arriba: las tablas que crea
+-- `postgres`, que es el rol con el que se conecta `npm run db:aplicar` y también
+-- el editor SQL del panel de Supabase. Se comprobó creando una tabla de prueba
+-- después de aplicar esta migración: `anon` no recibe ni `select`.
 do $$
 begin
   execute 'alter default privileges for role supabase_admin in schema public revoke all on tables from anon';
   execute 'alter default privileges for role supabase_admin in schema public revoke all on sequences from anon';
 exception when insufficient_privilege or undefined_object then
-  raise notice 'No se pudieron cambiar los privilegios por defecto de supabase_admin (hace falta ese rol). Las tablas creadas desde el editor SQL de Supabase seguirán naciendo con permisos para anon: revócalos a mano.';
+  raise notice 'No se pudieron cambiar los privilegios por defecto de supabase_admin: hace falta ser miembro de ese rol. No es un problema: las tablas que crea postgres (db:aplicar y el editor SQL) ya no conceden nada a anon.';
 end $$;
 
 -- ----------------------------------------------------------------------------
