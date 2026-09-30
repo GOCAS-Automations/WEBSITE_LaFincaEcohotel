@@ -673,7 +673,7 @@ insert into contenido (clave, valor) values
   "titulo": "Política de privacidad",
   "entrada": "Cómo tratamos la información de quienes visitan este sitio y se comunican con nosotros.",
   "descripcion": "Política de privacidad de La Finca Eco Hotel: qué información recogemos en el sitio web, para qué la usamos y con quién la compartimos.",
-  "actualizado": "2026-09-11",
+  "actualizado": "2026-09-30",
   "secciones": [
     {
       "titulo": "1. Quiénes somos",
@@ -730,7 +730,7 @@ insert into contenido (clave, valor) values
   "titulo": "Términos y condiciones",
   "entrada": "Las reglas de uso del sitio y las condiciones de la reserva y la estadía.",
   "descripcion": "Términos y condiciones de La Finca Eco Hotel: uso del sitio, reservas, tarifas, pagos y normas de la estadía en la reserva natural.",
-  "actualizado": "2026-09-11",
+  "actualizado": "2026-09-30",
   "secciones": [
     {
       "titulo": "1. Objeto y aceptación",
@@ -804,7 +804,7 @@ insert into contenido (clave, valor) values
   "titulo": "Política de tratamiento de datos personales",
   "entrada": "Política adoptada conforme a la Ley 1581 de 2012 y al Decreto 1074 de 2015.",
   "descripcion": "Política de tratamiento de datos personales de La Finca Eco Hotel, conforme a la Ley 1581 de 2012: finalidades, derechos del titular y procedimiento de consultas y reclamos.",
-  "actualizado": "2026-09-11",
+  "actualizado": "2026-09-30",
   "secciones": [
     {
       "titulo": "1. Responsable del tratamiento",
@@ -835,8 +835,10 @@ insert into contenido (clave, valor) values
     {
       "titulo": "5. Autorización del titular",
       "parrafos": [
-        "La autorización se obtiene antes o al momento de recolectar los datos, por el medio a través del cual te comunicas con nosotros: al enviarnos una solicitud de reserva por WhatsApp o al completar una reserva en el sitio, aceptas esta política.",
-        "Conservamos prueba de la autorización otorgada, en los términos del artículo 2.2.2.25.2.4 del Decreto 1074 de 2015."
+        "La autorización es previa, expresa e informada, y se obtiene ANTES de que nos entregues tus datos. En el sitio web, antes de enviar una solicitud de reserva tienes que marcar una casilla —que nunca viene marcada— en la que autorizas el tratamiento y desde la que puedes abrir esta política.",
+        "Si la reserva se hace por teléfono o en el hotel, te informamos de las finalidades y te pedimos la autorización de viva voz antes de tomar tus datos. Nunca entendemos el silencio ni el simple uso del sitio como una autorización.",
+        "Conservamos prueba de la autorización otorgada, en los términos del artículo 2.2.2.25.2.4 del Decreto 1074 de 2015: de cada reserva queda registrada la fecha en que autorizaste, el canal por el que lo hiciste y la versión de esta política que estaba publicada en ese momento.",
+        "Puedes revocar la autorización en cualquier momento escribiéndonos por los canales de la sección 7, salvo que exista un deber legal o contractual que nos obligue a conservar algún dato (por ejemplo, las facturas)."
       ]
     },
     {
@@ -857,7 +859,9 @@ insert into contenido (clave, valor) values
       "titulo": "8. Seguridad y conservación",
       "parrafos": [
         "Aplicamos medidas técnicas, humanas y administrativas razonables para proteger los datos contra el acceso no autorizado, la pérdida o la alteración. El acceso está restringido al personal que lo necesita para prestar el servicio.",
-        "Los datos se conservan durante el tiempo necesario para cumplir las finalidades descritas y los plazos de conservación legales y contables aplicables."
+        "Los datos se conservan durante el tiempo necesario para cumplir las finalidades descritas y los plazos de conservación legales y contables aplicables. Estos son los plazos que aplicamos:",
+        "- Solicitudes de reserva que no llegan a concretarse: se eliminan a los seis (6) meses.\n- Datos de una reserva cumplida (nombre, contacto y detalle de la estadía): cinco (5) años desde la salida, que es el plazo de prescripción de las obligaciones civiles y comerciales en Colombia.\n- Documento de identidad del registro de huéspedes: el tiempo que exija la normativa turística y tributaria aplicable, y no más.\n- Soportes contables y de pago: diez (10) años, por el artículo 28 de la Ley 962 de 2005 y las normas contables.\n- Prueba de la autorización de tratamiento: mientras conservemos los datos a los que se refiere, y dos (2) años más.\n- Conversaciones de WhatsApp con solicitudes de reserva: dos (2) años.",
+        "Cumplido el plazo, los datos se eliminan o se anonimizan de forma que ya no permitan identificar al titular. Puedes pedir la supresión antes de esos plazos y la atenderemos salvo que exista un deber legal o contractual de conservarlos."
       ]
     },
     {
@@ -869,7 +873,7 @@ insert into contenido (clave, valor) values
     {
       "titulo": "10. Vigencia",
       "parrafos": [
-        "Esta política rige desde el 2026-09-11 y permanecerá vigente mientras desarrollemos nuestra actividad. Las bases de datos se conservarán por el tiempo necesario para cumplir las finalidades autorizadas."
+        "Esta política rige desde el 2026-09-30 y permanecerá vigente mientras desarrollemos nuestra actividad. Las bases de datos se conservarán por el tiempo necesario para cumplir las finalidades autorizadas."
       ]
     }
   ]
@@ -879,7 +883,7 @@ insert into contenido (clave, valor) values
   "titulo": "Política de cancelación y reembolsos",
   "entrada": "Qué pasa si necesitas cambiar tu reserva, y en qué casos no hay devolución.",
   "descripcion": "Política de cancelación de La Finca Eco Hotel: cambios de fecha, no presentación y derecho de retracto.",
-  "actualizado": "2026-09-11",
+  "actualizado": "2026-09-30",
   "secciones": [
     {
       "titulo": "1. Antes de reservar",
