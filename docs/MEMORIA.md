@@ -40,6 +40,14 @@
   **`/admin/usuarios`** con los roles propietario y equipo; y los **cuatro
   documentos legales se editan desde el panel** (revierte la decisión del
   2026-09-02).
+- **2026-09-30 · Auditoría de seguridad completa** antes del lanzamiento
+  comercial: `docs/AUDITORIA_SEGURIDAD.md`. Sin hallazgos críticos; los cuatro
+  altos (cookie de sesión abierta, cero cabeceras de seguridad, login sin freno
+  de fuerza bruta y tablas futuras escribibles por anónimos) están corregidos y
+  verificados, y el sitio ya pide **autorización expresa de datos personales**
+  con constancia, como exige la Ley 1581 de 2012. En la misma ronda se añadió el
+  **latido diario** que evita que Supabase pause la base. Lo que queda son ocho
+  pendientes, casi todos de configuración o del cliente (§Pendientes del informe).
 - **Cuentas del panel:** `fincavillarreal@gmail.com` es la cuenta del hotel
   (**propietario**) y `panel@lafincaecohotel.com`, la temporal de pruebas, quedó
   como **equipo**. Cesar decide si la borra desde `/admin/usuarios`: ya no hace
@@ -124,6 +132,13 @@
 | 2026-09-16 | **Las viñetas de los documentos legales son un párrafo con una convención**: si todas sus líneas empiezan por «- », se pinta como lista. Un editor de bloques habría sido más fiel al modelo y mucho peor de usar; así el documento entero se edita con cajas de texto normales y no se perdió ni una viñeta. |
 | 2026-09-16 | **El rol del panel vive en `app_metadata`**, que solo escribe la Admin API —`user_metadata` sí lo edita su dueño— y viaja dentro del JWT ya validado por `getUser()`. Quien no traiga un rol reconocido entra como `equipo`, el menos privilegiado. |
 | 2026-09-16 | **Esconder el enlace de Usuarios es cortesía, no seguridad.** El «no» lo dicen la página —que comprueba el rol ANTES de leer nada, así que no se filtra ni un correo— y cada Server Action, porque un POST directo no pasa por ninguna pantalla. |
+| 2026-09-30 | **La cookie de sesión del panel es `httpOnly`.** Ningún componente usa `crearClienteNavegador()`, así que nada en el navegador necesita leer el token; dejarlo legible solo añadía una forma de perder el panel ante un XSS. Si algún día hace falta un cliente de navegador con sesión, hay que quitarlo a conciencia en `src/lib/supabase/opciones-cookie.ts`. **`@supabase/ssr` ignora el `maxAge` de `cookieOptions`:** la duración se recorta al escribir la cookie. |
+| 2026-09-30 | **La CSP acepta `'unsafe-inline'` en `script-src` y no se va a arreglar con un `nonce`.** Un `nonce` exige middleware en las rutas públicas, y eso las volvería dinámicas: el sitio perdería el prerenderizado y el ISR de sus 18 páginas. Se elige el sitio estático; lo que la CSP sí impide es cargar un script de un host ajeno. HSTS va **sin `includeSubDomains` ni `preload`** hasta confirmar que todos los subdominios del hotel son HTTPS. |
+| 2026-09-30 | **En `public`, `anon` no recibe nada por defecto.** Se invirtieron los `alter default privileges` de Supabase, que concedían TODO al rol anónimo sobre cualquier tabla futura. **Una tabla nueva que deba leerse desde el sitio público necesita su `grant select … to anon` a mano**, además de su política RLS. Se prefiere un `select` que falta a un `insert` que sobra. |
+| 2026-09-30 | **El freno del login usa una ventana corta (10 intentos / 5 min por cuenta) y no una larga.** Cualquier bloqueo por cuenta se puede volver contra el hotel: quien conozca el correo del dueño puede dejarlo sin ver las reservas del día. La ventana se cura sola, y 120 intentos por hora contra una contraseña de 10 caracteres no llegan a ninguna parte. |
+| 2026-09-30 | **La autorización de datos se pide con una casilla sin premarcar y se guarda con fecha, versión y canal.** La Ley 1581 exige autorización previa, expresa e informada, y el Decreto 1074 obliga a conservar prueba. Sin canal, las tres columnas quedan en `null`: «no consta» es la verdad y además es la lista de reservas cuya autorización habría que conseguir. |
+| 2026-09-30 | **Editar `src/lib/legal.ts` NO cambia lo publicado:** los cuatro documentos viven en el CMS. Hay que regenerar el seed y aplicarlo, y **antes comparar las filas de `contenido` con el seed versionado**, porque en cuanto el cliente edite un texto desde el panel, aplicar el seed se lo borraría. |
+| 2026-09-30 | **Existe un latido diario (`/api/salud` + cron de `vercel.json`) porque el plan gratuito de Supabase pausa los proyectos inactivos a los siete días.** Si se quita, la base se vuelve a pausar sola y el sitio se queda sin contenido ni fotos. Antes de quitarlo: plan de pago de Supabase u otro latido. |
 
 ## Registro de sesiones
 
@@ -2149,3 +2164,112 @@ en Vercel; el JSON original está **fuera del repositorio**.
   herramienta de captura disponible. La verificación del panel se hizo sobre el
   **HTML servido por `localhost`** con una sesión real del propietario, que
   contiene los textos, la leyenda y las franjas de la capa de Google.
+
+### 2026-09-30 — Auditoría de seguridad completa antes del lanzamiento
+
+Informe con toda la evidencia en **`docs/AUDITORIA_SEGURIDAD.md`**. Resumen: 0
+hallazgos críticos, 4 altos (todos corregidos), 6 medios (5 corregidos) y 6 bajos.
+Todo se verificó contra `localhost`; las pruebas de base de datos van contra la
+base real porque es la única que hay, y no dejaron residuos.
+
+**Lo que estaba bien** y conviene no volver a tocar: las políticas RLS de las diez
+tablas se probaron una por una con la clave anónima (SELECT, INSERT, UPDATE y
+DELETE) y son correctas — `reservas`, `pagos`, `reserva_extras` y `bloqueos` son
+invisibles e inescribibles desde fuera, y los catálogos solo muestran lo activo.
+Las tres capas del panel funcionan, incluida la separación `propietario` / `equipo`
+probada **en servidor** con la cuenta de equipo real contra las cinco Server
+Actions de `/admin/usuarios`. No hay credenciales en el repo ni en el historial de
+git, la clave de servicio no aparece en ningún archivo de `.next`, y los dos
+endpoints públicos devuelven solo agregados.
+
+**Lo corregido:**
+
+1. **La cookie de sesión del panel era legible por JavaScript y duraba 400 días.**
+   Ahora `httpOnly`, `secure` en producción y 30 días. Ojo con esto:
+   `@supabase/ssr` **ignora el `maxAge` de `cookieOptions`** (lo pisa a mano en
+   `cookies.js`), así que se recorta al escribir la cookie —solo hacia abajo y
+   solo si es positivo, porque la librería usa `maxAge` negativo para borrarla al
+   cerrar sesión—. Verificado en el `Set-Cookie` real.
+2. **No había ninguna cabecera de seguridad.** Se añadieron seis en
+   `next.config.ts` más `poweredByHeader: false`. La CSP se escribió a partir de
+   los nueve hosts que el sitio carga de verdad (comprobados en el HTML
+   prerenderizado). Lleva `'unsafe-inline'` en `script-src` **a propósito**: la
+   alternativa es un `nonce`, que exigiría middleware en las rutas públicas y
+   costaría el prerenderizado de las 18 páginas. El build confirma que las 19
+   rutas públicas siguen estáticas.
+3. **El login no tenía freno de fuerza bruta** (12 intentos en 5,4 s). Ahora 10
+   por cuenta cada 5 min y 30 por IP cada 15. **La primera versión fue peor que el
+   problema**: con 5 intentos cada 15 min, quien conozca el correo del dueño lo
+   deja sin ver las reservas del día. La ventana corta es deliberada: se cura sola.
+4. **Cualquier tabla futura de `public` nacía escribible por anónimos** (los
+   `alter default privileges` de Supabase conceden todo a `anon`), y `anon` tenía
+   `TRUNCATE`, que **no pasa por RLS**. Migración `011`. Verificado creando una
+   tabla de prueba: `anon` no tiene ni `select`. ⚠️ **Consecuencia para la próxima
+   migración:** una tabla nueva que deba leerse desde el sitio público necesita su
+   `grant select … to anon` a mano, además de su política RLS.
+5. **El `mapa_embed` del CMS entraba sin validar en un `<iframe src>` público**, así
+   que una cuenta de `equipo` podía dejar un marco a una pasarela falsa en la
+   página del hotel. Validado en los dos extremos (`src/lib/mapa-embebido.ts`) y
+   cerrado otra vez por la CSP.
+6. **Consentimiento de datos (Ley 1581 de 2012).** La política decía que
+   autorizabas «por usar el sitio» —consentimiento tácito, que no vale— y prometía
+   conservar prueba de la autorización sin conservarla. Ahora: casilla obligatoria
+   sin premarcar antes del botón, con enlace a la política; la constancia viaja en
+   el mensaje de WhatsApp; tres columnas en `reservas` (migración `012`) con
+   cuándo, qué versión y por qué canal; y el panel lo pregunta y lo muestra
+   siempre, también cuando falta. Se publicó además una **política de retención con
+   plazos concretos**.
+7. **Freno de peticiones** en `/api/disponibilidad` (30/min) y
+   `/api/dia-de-calma/cupo` (60/min), que consultan con `service_role` y llaman al
+   Google Calendar.
+
+**Descubrimiento importante que afecta a cualquier cambio legal futuro:** los
+cuatro documentos legales viven en el CMS, así que **editar `src/lib/legal.ts` NO
+cambia lo publicado**. Hay que regenerar el seed (`npm run seed:contenido`) y
+aplicarlo (`npm run db:aplicar`). Antes de hacerlo se comparó cada una de las 22
+filas de `contenido` con el seed versionado —todas iguales, ninguna editada desde
+el panel— para no pisar trabajo del cliente. **Repetir esa comparación la próxima
+vez**, porque en cuanto Amapola edite un texto desde el panel, aplicar el seed se
+lo borraría.
+
+**Latido para que Supabase no pause la base** (encargo aparte de la misma ronda):
+el plan gratuito pausa los proyectos con poca actividad a los siete días, y un
+proyecto pausado deja el sitio sin contenido, sin fotos y sin disponibilidad.
+`src/app/api/salud/route.ts` hace **una** consulta trivial con la clave anónima
+—nunca `service_role`— y devuelve `{ok, base, hora}` sin filtrar nada del error;
+`vercel.json` programa el cron diario (en Hobby, Vercel lo ejecuta una vez al día
+y a hora aproximada). Si existe `CRON_SECRET` se exige la cabecera que Vercel
+manda sola, y en todo caso hay freno de peticiones. **Si se quita el cron o la
+ruta, la base se vuelve a pausar sola a los siete días**: antes hay que pasar
+Supabase a un plan de pago (los pagos no pausan) o poner otro latido. La variable
+está documentada en `.env.example` y en `docs/DESPLIEGUE_VERCEL.md` con el paso de
+crearla en Vercel.
+
+**Verificación:** `tsc` y `eslint` en verde (queda el aviso previo de
+`scripts/importar-fotos-drive.mjs`), `npm run build` con las 19 rutas públicas
+estáticas y **149 pruebas en verde** (20 nuevas: 9 del validador del mapa, 11 del
+freno de peticiones). `vitest.config.ts` ahora resuelve `server-only` al módulo
+vacío que usa Next en el servidor; sin eso no se puede probar ningún módulo
+marcado como solo-servidor.
+
+**Pendientes que necesitan decisión o al cliente** (detalle en §Pendientes del
+informe): reglas de Rate Limiting del firewall de Vercel (P-1, es configuración);
+ejecutar de verdad la política de retención con una tarea programada, tras
+confirmar los plazos contables (P-2); honeypot y freno en el endpoint de reserva
+cuando entre Wompi (P-3); ampliar HSTS a subdominios cuando se confirme que todos
+son HTTPS (P-4); **razón social, NIT y sobre todo un correo de notificaciones**,
+porque `sitio.contacto.correo` está vacío y el canal para ejercer los derechos del
+titular no debería depender de un solo móvil (P-5); activar en Supabase la
+protección de contraseñas filtradas, subir el mínimo a 10 y valorar MFA para el
+propietario (P-6); revisión jurídica de Amapola (P-7); y un registro de auditoría
+del panel cuando haya más de dos cuentas (P-8).
+
+**Requisitos de seguridad para la pasarela**, documentados en el informe para que
+no se dejen para después: el precio **siempre** se recalcula en servidor; la
+reserva se confirma **solo por webhook**, nunca por la redirección del navegador;
+el webhook verifica firma, es idempotente y consulta el estado real contra Wompi;
+y no entra ni un dato de tarjeta en la base.
+
+**Sin residuos:** `reservas` 0, `pagos` 0, `bloqueos` 0, las dos cuentas de auth
+correctas y ninguna intrusa, sin tablas ni claves de prueba, sin objetos de prueba
+en los buckets.
