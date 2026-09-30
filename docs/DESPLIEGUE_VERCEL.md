@@ -37,9 +37,59 @@ defecto, activarla en los tres salvo que se diga lo contrario.
 | `GOOGLE_PLACES_API_KEY` | **Sí** | Production, Preview, Development | Llave de la Places API (New) del proyecto de Google Cloud. Sin ella el bloque de reseñas simplemente no se publica: no bloquea el deploy |
 | `GOOGLE_CALENDAR_CREDENCIALES` | **Sí** | Production, Preview, Development | JSON de la cuenta de servicio `lafinca-calendario@…` **en base64, en una sola línea** — ver el apartado dedicado más abajo |
 | `GOOGLE_CALENDAR_ID` | No | Production, Preview, Development | **Vacía** hasta que el hotel comparta su calendario «la finca». Con la variable vacía, la integración no hace nada y el sitio funciona igual |
+| `RESEND_API_KEY` | **Sí** | Production, Preview, Development | **Vacía** hasta que exista la cuenta de Resend y el dominio esté verificado — ver el apartado dedicado más abajo |
+| `EMAIL_FROM` | No | Production, Preview, Development | **Vacía** por ahora. Después: `La Finca Eco Hotel <reservas@lafincaecohotel.com>` |
+| `EMAIL_NOTIFY_TO` | No | Production, Preview, Development | **Vacía** por ahora. Después: el correo (o los correos, separados por coma) del hotel que reciben el aviso de cada reserva |
 
-Las de Wompi y Resend (comentadas en `.env.example`) son de fases
-posteriores: no hace falta crearlas todavía.
+Las de Bold/Wompi (comentadas en `.env.example`) son de la fase de pagos: no
+hace falta crearlas todavía.
+
+### `RESEND_API_KEY`, `EMAIL_FROM` y `EMAIL_NOTIFY_TO`
+
+El sitio ya tiene escritos y probados sus **tres correos transaccionales**
+(`src/lib/email/`): «recibimos tu solicitud» y «tu reserva está confirmada» al
+huésped, y el aviso interno a la administración.
+
+**Están listos pero dormidos.** Sin `RESEND_API_KEY`, las funciones de envío no
+hacen nada y **no fallan**: registran en el log de Vercel qué habrían enviado, a
+quién y con qué asunto, y devuelven `{enviado:false, motivo:'no_configurado'}`.
+Es deliberado: estas funciones se llaman desde el webhook de pagos, y un fallo de
+correo nunca puede tumbar una reserva que el huésped ya pagó.
+
+Se pueden revisar sin clave, en el navegador:
+
+    npm run correos:probar
+
+deja los seis archivos (tres correos × HTML y texto plano, con sus variantes del
+Día de Calma) en una carpeta temporal, con un `index.html` para abrirlos.
+
+**Para encenderlos, en este orden:**
+
+1. **Crear la cuenta en Resend** y añadir el dominio `lafincaecohotel.com`.
+2. **Verificar el dominio**: Resend da tres o cuatro registros DNS (un TXT de
+   verificación, el SPF y las claves DKIM) que hay que crear en **Hostinger**,
+   donde vive el DNS. ⚠ **Sin dominio verificado no se puede enviar desde
+   `@lafincaecohotel.com`**: Gmail y Outlook comprueban que el dominio autorice a
+   Resend y, si no, marcan el correo como spam o lo rechazan.
+   *Añadir estos registros no afecta al sitio ni al correo actual del hotel, así
+   que se puede hacer hoy, antes del lanzamiento.* Si el hotel ya usa otro
+   servicio de correo, hay que **fusionar** el SPF en un solo registro TXT y no
+   crear un segundo: dos SPF invalidan los dos.
+3. Crear la clave de API en Resend y ponerla en `RESEND_API_KEY`.
+4. Poner `EMAIL_FROM` (`La Finca Eco Hotel <reservas@lafincaecohotel.com>`) y
+   `EMAIL_NOTIFY_TO` con el correo del hotel. `EMAIL_NOTIFY_TO` **admite varios
+   separados por coma** — no hace falta crear una lista de distribución.
+5. Redesplegar y probar de verdad:
+
+       npm run correos:probar -- --enviar tu@correo.com
+
+   (con `RESEND_API_KEY` en `.env.local`). Revisar los seis en el teléfono.
+
+**Lo que bloquea esto es el cliente, no el código**: hace falta que Amapola
+confirme **qué correo del hotel** se usa como remitente y como destinatario del
+aviso interno (§12 del plan). Mientras no llegue, el panel avisa en pantalla
+—«Todavía no se envían correos automáticos: avísale tú por WhatsApp»— para que
+el equipo no dé por hecho que el huésped ya recibió su confirmación.
 
 ### `GOOGLE_CALENDAR_CREDENCIALES` y `GOOGLE_CALENDAR_ID`
 
@@ -199,11 +249,24 @@ lanzamiento, no antes.
    `/robots.txt` ya NO debe decir `Disallow: /` (debe volver el
    `Allow: /` con las exclusiones de `/admin` y `/api/`), y las canónicas
    deben apuntar a `lafincaecohotel.com`.
-7. **Pendiente sin resolver todavía:** las redirecciones 301 desde las URLs
-   del WordPress viejo hacia las nuevas rutas del sitio. Está anotado como
-   pendiente en `docs/MEMORIA.md`; hay que resolverlo antes o el mismo día
-   del cambio de DNS, no después, para no perder el posicionamiento que ya
-   tienen las URLs viejas.
+7. **Redirecciones 301 del sitio viejo: ya están hechas** (`next.config.ts`,
+   2026-09-30). El `wp-sitemap` del WordPress publicaba seis direcciones y las
+   cinco que no son la portada redirigen:
+
+   | Vieja | Nueva |
+   |---|---|
+   | `/services` | `/experiencias` |
+   | `/about-us` | `/conocenos` |
+   | `/contact` | `/contacto` |
+   | `/hello-world` | `/` |
+   | `/category/uncategorized` | `/` |
+
+   Más `/el-lugar` → `/conocenos`, que es un cambio nuestro. Con barra final
+   (`/services/`, que es como las publica el sitio viejo) son **dos saltos**:
+   el 308 de normalización de Next y luego el 301. Es lo esperado y Google lo
+   sigue sin problema. Comprobarlo el día del cambio:
+
+       curl -sI https://lafincaecohotel.com/services | grep -i "^HTTP\|^location"
 
 ## 5. Seguridad antes de entregar
 

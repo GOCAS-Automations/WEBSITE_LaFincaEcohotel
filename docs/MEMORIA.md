@@ -139,6 +139,14 @@
 | 2026-09-30 | **La autorización de datos se pide con una casilla sin premarcar y se guarda con fecha, versión y canal.** La Ley 1581 exige autorización previa, expresa e informada, y el Decreto 1074 obliga a conservar prueba. Sin canal, las tres columnas quedan en `null`: «no consta» es la verdad y además es la lista de reservas cuya autorización habría que conseguir. |
 | 2026-09-30 | **Editar `src/lib/legal.ts` NO cambia lo publicado:** los cuatro documentos viven en el CMS. Hay que regenerar el seed y aplicarlo, y **antes comparar las filas de `contenido` con el seed versionado**, porque en cuanto el cliente edite un texto desde el panel, aplicar el seed se lo borraría. |
 | 2026-09-30 | **Existe un latido diario (`/api/salud` + cron de `vercel.json`) porque el plan gratuito de Supabase pausa los proyectos inactivos a los siete días.** Si se quita, la base se vuelve a pausar sola y el sitio se queda sin contenido ni fotos. Antes de quitarlo: plan de pago de Supabase u otro latido. |
+| 2026-09-30 | ⚠ **TODA creación o reactivación de reserva llama antes a `liberarReservasVencidas()`.** `reservas_sin_solapamiento` es una restricción EXCLUDE y su predicado tiene que ser inmutable: **no puede llamar a `now()`**. Para ella, una `pendiente` con el hold vencido sigue apartando las fechas y rechazaría una reserva nueva sobre unas noches que en realidad están libres. Sin el barrido previo, el motor empieza a rechazar reservas que sí caben. Ya está en `guardarReservaAction`, `cambiarEstadoReservaAction`, el calendario del panel y el cron de `/api/salud`; **cualquier camino nuevo que escriba en `reservas` tiene que hacerlo también** (el primero será el webhook de pagos). |
+| 2026-09-30 | **`ocupaCalendario()` (`src/lib/reserva/holds.ts`) es el ÚNICO sitio donde se decide si una reserva ocupa fechas.** La usan `/api/disponibilidad`, `/api/dia-de-calma/cupo`, `buscarChoques()`, el calendario del panel y el conteo del cupo. Filtrar solo por `estado` —como se hacía— sobrevendería en cuanto existan holds: apartaría noches que una solicitud caducada dejó libres. Si dos consumidores dejaran de usarla, la diferencia entre ellos se llamaría sobreventa. |
+| 2026-09-30 | **El hold son 30 minutos y `expira_at is null` significa «no vence».** Lo que el equipo apunta a mano desde el panel **nunca** vence: detrás hay una conversación por WhatsApp o una llamada, no un checkout abandonado. Por eso el formulario del panel escribe `expira_at: null` siempre, y confirmar o cambiar el estado desde el panel también lo borra: una decisión que tomó una persona del hotel no puede caducar sola. |
+| 2026-09-30 | **El barrido ANEXA el motivo a `notas`, no lo sobrescribe.** Ahí está lo que escribió el huésped (una alergia, una hora de llegada), y perderlo por una tarea automática sería destruir información del cliente para dejar una etiqueta técnica. La función no duplica la nota si ya la encuentra, y esa comprobación es **por contenido**: `MOTIVO_VENCIDA` (en `holds.ts`) y el `default` de la migración 013 tienen que ser el mismo texto — hay una prueba que lo vigila. |
+| 2026-09-30 | **Los correos están «listos pero dormidos», y eso no es provisionalidad: es el contrato.** Sin `RESEND_API_KEY` registran lo que habrían enviado y devuelven `{enviado:false}`; **nunca lanzan**. Se llaman desde el webhook de pagos, donde un `throw` sería desastroso: el huésped ya pagó y la reserva ya está creada. Un fallo de correo no puede impedir guardar ni confirmar una reserva, y el panel lo dice en pantalla («Todavía no se envían correos automáticos: avísale tú por WhatsApp») para que el equipo no dé por hecho que el huésped ya sabe. |
+| 2026-09-30 | **Los correos NO reparten el subtotal entre las noches para fingir un desglose.** La fila de `reservas` guarda un único `plan_id` y un subtotal; el desglose real noche a noche lo tiene `cotizar()`, y las plantillas lo aceptan por `noches` cuando quien envía lo trae. Sin él pintan una sola línea con el plan y el número de noches, que es verdad. Un número inventado en un correo de cobro es peor que un número menos detallado. |
+| 2026-09-30 | **El logo de los correos es un PNG del bucket (`sitio/marca/icono-correo.png`), no el WebP del sitio.** Outlook de escritorio no pinta WebP: dejaría un cuadro roto en la cabecera de cada correo. Y la cabecera repite el nombre **en texto**, porque casi todos los clientes bloquean las imágenes hasta que el lector las pide. |
+| 2026-09-30 | **Las redirecciones de `next.config` GANAN a las rutas del App Router**, así que una `source` que coincida con una página existente la deja inalcanzable sin ningún aviso en el build. Con barra final son dos saltos (308 de normalización + 301) y se acepta: quitarlos exigiría `skipTrailingSlashRedirect: true`, que dejaría cada página del sitio accesible con y sin barra —contenido duplicado— a cambio de ahorrar un salto que Google sigue sin problema. |
 
 ## Registro de sesiones
 
@@ -2273,3 +2281,91 @@ y no entra ni un dato de tarjeta en la base.
 **Sin residuos:** `reservas` 0, `pagos` 0, `bloqueos` 0, las dos cuentas de auth
 correctas y ninguna intrusa, sin tablas ni claves de prueba, sin objetos de prueba
 en los buckets.
+
+### 2026-09-30 — Correos, reservas que expiran y redirecciones del sitio viejo
+
+Bloque «Hoy, miércoles 30 — GOCAS» de `docs/PLAN_CIERRE.md`: lo que se podía
+terminar sin esperar ninguna entrega del cliente.
+
+**1. Tres correos transaccionales con Resend (`src/lib/email/`).** Tres capas:
+`plantillas.ts` es **puro** (redacta asunto, HTML y texto plano, sin red ni
+claves), `send.ts` habla con Resend y es `server-only`, y `avisos.ts` lee la
+reserva de la base y dispara lo que toque. **Ni `send.ts` ni `avisos.ts` lanzan
+nunca**, porque los va a llamar el webhook de pagos.
+
+- **Solicitud recibida** (huésped): código, detalle noche por noche, experiencias
+  con su noche, total, anticipo y saldo, y qué sigue. Dice explícitamente que
+  **todavía no está confirmada**.
+- **Reserva confirmada** (huésped): lo anterior más cómo llegar (Km 18, Vereda
+  Loma Alta, parqueadero externo), check-in 3:00 p. m., check-out 1:00 p. m.,
+  llegada desde la 1:00 p. m., qué llevar (ropa abrigada, vestido de baño) y
+  Nicolás como anfitrión. El **Día de Calma tiene su propia variante**: sin
+  check-in ni check-out, de 10:00 a. m. a 5:00 p. m. y sin hospedaje.
+- **Aviso a la administración**: huésped, teléfono con enlace de WhatsApp, total,
+  anticipo, saldo, origen, notas y **el enlace directo a la ficha del panel**.
+  Destinatarios desde `EMAIL_NOTIFY_TO`, que admite varios separados por coma.
+
+HTML de correo de verdad: tablas anidadas, estilos en línea, 600 px, cabecera en
+verde claro con el isotipo en petróleo y pie en petróleo. Se revisaron los seis
+(tres correos × las dos variantes) en captura a 700 y a 390 px, y **también en
+texto plano**, que es lo que ven los clientes que bloquean HTML.
+
+Se disparan: al crear una reserva desde el panel (`pendiente` → solicitud +
+aviso interno; `confirmada` → confirmación), y al **confirmar** una reserva, sea
+desde el botón de la ficha o guardando el formulario con otro estado. Solo si
+antes no estaba confirmada: pulsar dos veces no manda dos correos. Para la
+pasarela queda escrita y documentada `avisarPagoAprobado()`, que manda la
+confirmación al huésped y el aviso interno con el método y el id de transacción;
+**el webhook solo tiene que llamarla**.
+
+`npm run correos:probar` renderiza los seis a HTML y texto en una carpeta
+temporal (con índice) y, si hay clave, los envía de verdad. Importa el mismo
+`plantillas.ts` que corre en producción, no una copia.
+
+**2. Reservas que expiran (migración 013).** `reservas.expira_at timestamptz`,
+índice parcial sobre las pendientes con vencimiento, y
+`liberar_reservas_vencidas(motivo text)` — `security invoker`, `search_path`
+fijo, permisos solo a `authenticated` y `service_role`, un solo `UPDATE` atómico
+que cancela y **anexa** el motivo a `notas`.
+
+`src/lib/reserva/holds.ts` (puro, 29 pruebas) tiene `MINUTOS_HOLD = 30`,
+`calcularVencimiento`, `estaVencida`, `minutosRestantes`, `vencePronto`,
+`cuentaAtras` y **`ocupaCalendario()`, que es la regla del motor y está en un
+solo sitio**. Ya la usan `/api/disponibilidad`, `/api/dia-de-calma/cupo`,
+`buscarChoques()`, el calendario del panel y el conteo del cupo del día.
+
+El barrido (`liberar-vencidas.ts`, `server-only`) corre antes de **toda**
+escritura de reserva, al entrar al calendario del panel y en el cron diario de
+`/api/salud` (que ahora devuelve `reservas_liberadas`). En el panel, las
+pendientes que vencen muestran la cuenta atrás en el listado y un aviso
+explicándolo en la ficha, destacadas cuando les quedan menos de diez minutos.
+
+`npm run db:probar-holds` (16 comprobaciones contra la base real): que la
+restricción EXCLUDE bloquea aunque el hold esté vencido —la razón de que haya
+que barrer—, que el barrido cancela solo lo que debe y conserva la nota del
+huésped, que es idempotente, que después del barrido esas fechas se pueden
+reservar, que una cancelada no bloquea, que no toca ni una confirmada con
+`expira_at` heredado ni una pendiente sin vencimiento, y **la creación
+concurrente con dos conexiones de verdad**: una gana, la otra recibe el 23P01 y
+ese 23P01 se traduce a español. La base queda en cero reservas.
+
+**3. Redirecciones 301 del sitio viejo (`next.config.ts`).** El `wp-sitemap` del
+WordPress publica seis URLs; las cinco que no son la portada redirigen:
+`/services` → `/experiencias`, `/about-us` → `/conocenos`, `/contact` →
+`/contacto`, y `/hello-world` y `/category/uncategorized` → `/`. Verificadas una
+a una con `curl -I` contra `localhost`, y comprobado que ninguna tapa una ruta
+del App Router (los cuatro destinos siguen respondiendo 200).
+
+**Verificación.** `tsc`, `eslint` y `build` limpios; 178 pruebas en verde (29
+nuevas de holds); **las rutas públicas siguen estáticas** con ISR de una hora.
+Panel con sesión real (`fincavillarreal@gmail.com`, Playwright): la cuenta atrás
+aparece en el listado y en la ficha, confirmar deja la reserva `confirmada` con
+`expira_at` en null y sin tocar las notas, el banner dice «Todavía no se envían
+correos automáticos: avísale tú por WhatsApp», y el log del servidor registra el
+correo dormido con destinatario y asunto. **La base quedó sin datos de prueba: 0
+reservas.**
+
+**Lo único que falta para encender los correos** no es código: la cuenta de
+Resend, los registros DNS del dominio en Hostinger y **qué correo del hotel** se
+usa como remitente y como destinatario del aviso (Amapola). Documentado en
+`.env.example` y en §2 de `docs/DESPLIEGUE_VERCEL.md`.
