@@ -41,13 +41,50 @@
 /** Un mes. Lo que dura la cookie de sesión del panel sin volver a entrar. */
 export const DIAS_DE_SESION = 30;
 
+/** El mismo número en segundos, que es lo que entiende `Max-Age`. */
+export const SEGUNDOS_DE_SESION = DIAS_DE_SESION * 24 * 60 * 60;
+
 export const OPCIONES_COOKIE_SESION = {
   path: "/",
   sameSite: "lax" as const,
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
-  maxAge: DIAS_DE_SESION * 24 * 60 * 60,
+  maxAge: SEGUNDOS_DE_SESION,
 };
+
+/**
+ * Recorta la duración de una cookie que va a escribir `@supabase/ssr`.
+ *
+ * Hace falta porque **la librería ignora el `maxAge` de `cookieOptions`**: en
+ * varios de sus caminos escribe `maxAge: DEFAULT_COOKIE_OPTIONS.maxAge` a mano
+ * (ver `node_modules/@supabase/ssr/dist/main/cookies.js`, líneas 233 y 464), así
+ * que la cookie salía con los 400 días de la librería aunque aquí pidiéramos 30.
+ * Se comprobó en el `Set-Cookie` real de un login antes de escribir esto.
+ *
+ * Solo recorta hacia abajo, y **solo cuando la duración es positiva**: la
+ * librería usa `maxAge` cero o negativo para BORRAR la cookie al cerrar sesión,
+ * y pisarlo dejaría al panel sin poder cerrar sesión.
+ */
+export function recortarDuracion<
+  T extends { maxAge?: number; expires?: Date | number | string },
+>(opciones: T): T {
+  const recortadas = { ...opciones };
+
+  if (typeof recortadas.maxAge === "number" && recortadas.maxAge > 0) {
+    recortadas.maxAge = Math.min(recortadas.maxAge, SEGUNDOS_DE_SESION);
+  }
+
+  /* Si además viene una fecha absoluta, se recorta igual: la más cercana gana. */
+  if (recortadas.expires !== undefined) {
+    const tope = Date.now() + SEGUNDOS_DE_SESION * 1000;
+    const pedida = new Date(recortadas.expires).getTime();
+    if (Number.isFinite(pedida) && pedida > tope) {
+      recortadas.expires = new Date(tope);
+    }
+  }
+
+  return recortadas;
+}
 
 /**
  * Cabeceras que `@supabase/ssr` pide poner en cualquier respuesta que escriba

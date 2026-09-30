@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
-import { OPCIONES_COOKIE_SESION } from "./opciones-cookie";
+import { OPCIONES_COOKIE_SESION, recortarDuracion } from "./opciones-cookie";
 
 /**
  * Cliente de Supabase para el servidor (Server Components, Route Handlers,
@@ -32,7 +32,9 @@ export async function crearClienteServidor() {
       setAll(cookiesNuevas) {
         try {
           for (const { name, value, options } of cookiesNuevas) {
-            almacenCookies.set(name, value, options);
+            /* `recortarDuracion` porque la librería pisa el `maxAge` que se le
+               pasa en `cookieOptions`: ver `opciones-cookie.ts`. */
+            almacenCookies.set(name, value, recortarDuracion(options));
           }
         } catch {
           // Desde un Server Component no se pueden escribir cookies.

@@ -27,6 +27,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import {
   CABECERAS_SIN_CACHE,
   OPCIONES_COOKIE_SESION,
+  recortarDuracion,
 } from "./opciones-cookie";
 
 export const RUTA_LOGIN_ADMIN = "/admin/login";
@@ -76,7 +77,7 @@ export async function actualizarSesion(peticion: NextRequest) {
         }
         respuesta = NextResponse.next({ request: peticion });
         for (const { name, value, options } of cookiesNuevas) {
-          respuesta.cookies.set(name, value, options);
+          respuesta.cookies.set(name, value, recortarDuracion(options));
         }
         /* Una respuesta que lleva la sesión de alguien no puede quedarse en
            ninguna caché intermedia: ver `CABECERAS_SIN_CACHE`. */
