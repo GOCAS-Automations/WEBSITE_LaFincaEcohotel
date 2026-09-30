@@ -1,10 +1,12 @@
 import { frenar } from "@/lib/api/limite-peticiones";
+import { liberarReservasVencidas } from "@/lib/reserva/liberar-vencidas";
+import { crearClienteAdmin } from "@/lib/supabase/admin";
 
 /**
- * LATIDO: mantiene despierta la base de Supabase.
+ * LATIDO: mantiene despierta la base de Supabase y barre las reservas vencidas.
  *
  *     GET /api/salud
- *     → 200 { "ok": true, "base": "activa", "hora": "2026-09-30T12:00:00.000Z" }
+ *     → 200 { "ok": true, "base": "activa", "reservas_liberadas": 0, "hora": "…" }
  *     → 503 { "ok": false }
  *
  * ---------------------------------------------------------------------------
@@ -29,11 +31,12 @@ import { frenar } from "@/lib/api/limite-peticiones";
  * ---------------------------------------------------------------------------
  * CÓMO ESTÁ PROTEGIDO
  * ---------------------------------------------------------------------------
- *   1. **Clave anónima, nunca `service_role`.** La consulta es `select id from
+ *   1. **El latido va con la clave anónima.** La consulta es `select id from
  *      planes limit 1`: una tabla de catálogo con lectura pública por RLS. Si
  *      alguien llegara a esta ruta, lo más que consigue es saber que la base
- *      responde. Usar la clave de servicio para un latido sería dar permisos de
- *      dios a la ruta más llamada del sitio.
+ *      responde. La clave de servicio se usa **solo** en el barrido de reservas
+ *      vencidas —que necesita escribir— y en ningún otro punto del handler;
+ *      está comentado en su sitio.
  *   2. **`CRON_SECRET`.** Si la variable existe, se exige la cabecera
  *      `Authorization: Bearer <CRON_SECRET>` — la que Vercel Cron manda sola
  *      cuando la variable está definida en el proyecto. Sin la variable el
@@ -114,8 +117,47 @@ export async function GET(peticion: Request) {
        mira: da igual si hay planes o no, lo que importa es que contestó. */
     await respuesta.json().catch(() => null);
 
+    /*
+      EL MISMO CRON BARRE LAS RESERVAS VENCIDAS.
+
+      Sin él, una solicitud que caducó de madrugada seguiría diciendo
+      `pendiente` en el listado del panel hasta que alguien creara otra reserva.
+      El calendario y la disponibilidad ya no la cuentan —`ocupaCalendario()` lo
+      decide en memoria—, así que esto no arregla una sobreventa: arregla que el
+      panel enseñe la verdad y que la tabla no acumule solicitudes zombis.
+
+      Por qué aquí y no en un cron propio: es el único cron que el proyecto
+      tiene, corre una vez al día y la operación cuesta un `UPDATE`. Un segundo
+      cron sería una entrada más en `vercel.json` para el mismo trabajo.
+
+      **Usa `service_role`, a diferencia del latido de arriba**, porque hay que
+      ESCRIBIR y la función es `security invoker`: con la clave anónima no
+      tendría permiso. Eso está acotado a esta línea, y la ruta está protegida
+      por `CRON_SECRET` y por el freno de peticiones. Lo peor que puede hacer
+      esta llamada es cancelar holds que ya estaban vencidos, que es
+      exactamente su trabajo; no toca ninguna otra tabla ni devuelve nada.
+    */
+    let liberadas = 0;
+    try {
+      liberadas = await liberarReservasVencidas(crearClienteAdmin());
+    } catch (error) {
+      /* `liberarReservasVencidas` no lanza, pero crear el cliente sí puede si
+         falta la clave de servicio. El latido no se cae por eso. */
+      console.error(
+        "[salud] no se pudo barrer las reservas vencidas:",
+        error instanceof Error ? error.message : error,
+      );
+    }
+
     return json(
-      { ok: true, base: "activa", hora: new Date().toISOString() },
+      {
+        ok: true,
+        base: "activa",
+        /* Cuántas cayeron, para poder mirarlo en los registros de Vercel sin
+           entrar a la base. No sale ni un dato de ningún huésped. */
+        reservas_liberadas: liberadas,
+        hora: new Date().toISOString(),
+      },
       200,
     );
   } catch (error) {

@@ -22,9 +22,16 @@ import {
   type EstadoAccion,
 } from "@/lib/admin/tipos";
 import {
+  avisarReservaConfirmada,
+  avisarSolicitudCreada,
+  type ResumenAvisos,
+} from "@/lib/email";
+import {
   CUPO_DIA_DE_CALMA,
   MAX_PERSONAS_POR_RESERVA_DIA,
 } from "@/lib/reserva/dia-de-calma";
+import { ocupaCalendario } from "@/lib/reserva/holds";
+import { liberarReservasVencidas } from "@/lib/reserva/liberar-vencidas";
 import { invalidarCacheCalendario } from "@/lib/reserva/ocupacion-externa";
 import {
   borrarEventoDeReserva,
@@ -162,15 +169,27 @@ async function personasDeDiaEn(
 ): Promise<number> {
   const { data, error } = await supabase
     .from("reservas")
-    .select("id, num_personas")
+    .select("id, num_personas, estado, expira_at")
     .eq("tipo", "dia")
     .in("estado", ["pendiente", "confirmada"])
     .overlaps("estancia", `[${fecha},${sumarDiasISO(fecha, 1)})`);
 
   if (error) throw new Error(error.message);
 
+  const ahora = new Date();
   return (data ?? [])
     .filter((fila) => !excluirId || String(fila.id) !== excluirId)
+    /* Una solicitud de día con el hold vencido no gasta cupo. Misma regla que
+       el sitio público y el calendario, y en el mismo sitio. */
+    .filter((fila) =>
+      ocupaCalendario(
+        {
+          estado: String(fila.estado ?? ""),
+          expira_at: typeof fila.expira_at === "string" ? fila.expira_at : null,
+        },
+        ahora,
+      ),
+    )
     .reduce((suma, fila) => suma + Number(fila.num_personas ?? 0), 0);
 }
 
@@ -250,6 +269,21 @@ export async function guardarReservaAction(
 ): Promise<EstadoAccion> {
   return ejecutarAccion(async () => {
     const { supabase } = await requireAdmin();
+
+    /*
+      EL BARRIDO VA PRIMERO, Y NO ES OPCIONAL.
+
+      `reservas_sin_solapamiento` es una restricción EXCLUDE y su predicado no
+      puede llamar a `now()`: para ella, una solicitud `pendiente` con el hold
+      vencido sigue apartando las fechas, y rechazaría esta reserva sobre unas
+      noches que en realidad están libres. Lo mismo vale para el trigger del
+      cupo del Día de Calma.
+
+      Es la regla que no se puede olvidar (§ del hold en `docs/MEMORIA.md`):
+      **toda creación o reactivación de reserva llama antes a
+      `liberarReservasVencidas`.** Nunca lanza, así que no puede impedir guardar.
+    */
+    await liberarReservasVencidas(supabase);
 
     const id = String(formData.get("id") ?? "").trim();
     const tipo = enumRequerido(formData, "tipo", "Tipo de reserva", TIPOS_RESERVA);
@@ -473,6 +507,17 @@ export async function guardarReservaAction(
       origen,
       porcentaje_anticipo: porcentajeAnticipo,
       monto_anticipo: montoAnticipo,
+      /*
+        EL PANEL NUNCA CREA HOLDS, Y AL TOCAR UNA RESERVA LE QUITA EL QUE TENGA.
+
+        El vencimiento existe para una cosa: un checkout abandonado. Lo que el
+        equipo apunta a mano detrás de una conversación por WhatsApp o una
+        llamada no caduca a los treinta minutos, y una reserva que una persona
+        del hotel acaba de abrir y guardar tampoco es un abandono. Si algún día
+        el panel quisiera apartar fechas con plazo, tendría que ser una casilla
+        explícita y no un efecto secundario de este formulario.
+      */
+      expira_at: null,
       ...autorizacion,
     };
 
@@ -482,6 +527,17 @@ export async function guardarReservaAction(
         : "";
 
     if (id) {
+      /* El estado anterior, para saber si esta edición ES la confirmación (y
+         mandar entonces el correo al huésped). Se lee ANTES del update: después
+         ya no hay con qué comparar. */
+      const { data: antes } = await supabase
+        .from("reservas")
+        .select("estado")
+        .eq("id", id)
+        .maybeSingle();
+      const estadoAnterior =
+        typeof antes?.estado === "string" ? antes.estado : null;
+
       const { error } = await supabase.from("reservas").update(datos).eq("id", id);
       if (error) throw traducirErrorPostgres(error);
 
@@ -491,11 +547,19 @@ export async function guardarReservaAction(
          reserva YA está guardada. Si Google falla, solo se añade un aviso. */
       const avisoCalendario = await sincronizarReservaEnCalendario(supabase, id);
 
+      /* Si esta edición es la que confirma la reserva, sale el correo. Nunca
+         lanza: la reserva ya está guardada y un fallo de correo no puede
+         convertir un guardado correcto en un error en pantalla. */
+      const avisoCorreo =
+        estado === "confirmada" && estadoAnterior !== "confirmada"
+          ? resumirCorreo(await avisarReservaConfirmada(supabase, id), datos.huesped_email)
+          : "";
+
       refrescar(id);
       return estadoOk(
         `Reserva actualizada.${avisoCapacidad}${
           avisoCalendario ? `\n${avisoCalendario}` : ""
-        }`,
+        }${avisoCorreo ? `\n${avisoCorreo}` : ""}`,
       );
     }
 
@@ -543,6 +607,32 @@ export async function guardarReservaAction(
       nuevaId,
     );
 
+    /*
+      LOS CORREOS, AL FINAL Y SIN PODER ROMPER NADA.
+
+      La reserva ya está escrita y los extras también. Si Resend no está
+      configurado —hoy no lo está— esto solo deja una línea en el registro del
+      servidor. Si estuviera configurado y fallara, tampoco pasa nada: el
+      resultado se resume en el banner y la reserva sigue creada.
+
+      Qué se manda depende del estado con el que nace:
+        · `pendiente`  → «recibimos tu solicitud» + aviso a la administración.
+        · `confirmada` → la confirmación, con horarios y cómo llegar.
+        · otra         → nada: nadie quiere un correo de una reserva cancelada.
+    */
+    const avisoCorreoNueva =
+      estado === "pendiente"
+        ? resumirCorreo(
+            await avisarSolicitudCreada(supabase, nuevaId),
+            datos.huesped_email,
+          )
+        : estado === "confirmada"
+          ? resumirCorreo(
+              await avisarReservaConfirmada(supabase, nuevaId),
+              datos.huesped_email,
+            )
+          : "";
+
     refrescar(nuevaId);
     redirect(
       `${RUTA_LISTA}/${nuevaId}?ok=${encodeURIComponent(
@@ -550,10 +640,43 @@ export async function guardarReservaAction(
           esDia
             ? `Reserva ${codigoUsado} creada. Ese Día de Calma ya cuenta para el cupo de esa fecha; no bloquea ninguna cabaña.`
             : `Reserva ${codigoUsado} creada. Esas fechas ya quedan ocupadas en el calendario.${avisoCapacidad}`
-        }${avisoCalendarioNueva ? `\n${avisoCalendarioNueva}` : ""}`,
+        }${avisoCalendarioNueva ? `\n${avisoCalendarioNueva}` : ""}${
+          avisoCorreoNueva ? `\n${avisoCorreoNueva}` : ""
+        }`,
       )}`,
     );
   });
+}
+
+/**
+ * Traduce a una línea de panel lo que pasó con los correos.
+ *
+ * El equipo del hotel tiene que poder saber, sin mirar registros, si el huésped
+ * recibió su correo. Mientras Resend no esté configurado la respuesta honesta es
+ * «todavía no se envían correos», y decirlo es mejor que el silencio: si no, el
+ * hotel da por hecho que el huésped ya sabe y no le escribe por WhatsApp.
+ *
+ * Devuelve cadena vacía cuando no hay nada que contar.
+ */
+function resumirCorreo(
+  resumen: ResumenAvisos,
+  correoHuesped: string,
+): string {
+  const huesped = resumen.huesped;
+  if (!huesped) return "";
+
+  if (huesped.enviado) {
+    return `Le enviamos el correo a ${correoHuesped}.`;
+  }
+
+  switch (huesped.motivo) {
+    case "no_configurado":
+      return "Todavía no se envían correos automáticos (falta conectar el correo del hotel): avísale tú por WhatsApp.";
+    case "sin_destinatario":
+      return "Esta reserva no tiene correo del huésped, así que no se envió ningún correo.";
+    default:
+      return "No se pudo enviar el correo al huésped. Avísale por WhatsApp y revísalo con GOCAS.";
+  }
 }
 
 /** Reescribe los extras de una reserva. */
@@ -599,9 +722,14 @@ export async function cambiarEstadoReservaAction(formData: FormData) {
   }
   const estado = estadoCrudo as EstadoReserva;
 
+  /* Reactivar una cancelada es una escritura que la restricción EXCLUDE tiene
+     que juzgar, y esa restricción no puede leer la hora: el barrido va antes.
+     Ver la nota del hold en `guardarReservaAction`. */
+  await liberarReservasVencidas(supabase);
+
   const { data: reserva, error: errorLectura } = await supabase
     .from("reservas")
-    .select("alojamiento_id, estancia")
+    .select("alojamiento_id, estancia, estado, huesped_email")
     .eq("id", id)
     .maybeSingle();
 
@@ -631,9 +759,14 @@ export async function cambiarEstadoReservaAction(formData: FormData) {
     }
   }
 
+  const estadoAnterior =
+    typeof reserva.estado === "string" ? reserva.estado : null;
+
   const { error } = await supabase
     .from("reservas")
-    .update({ estado })
+    /* Al pasar por aquí, el vencimiento se va: una decisión que tomó una
+       persona del hotel no puede caducar sola treinta minutos después. */
+    .update({ estado, expira_at: null })
     .eq("id", id);
 
   if (error) {
@@ -653,12 +786,30 @@ export async function cambiarEstadoReservaAction(formData: FormData) {
      acaba de quedar guardado. */
   const avisoCalendario = await sincronizarReservaEnCalendario(supabase, id);
 
+  /*
+    CONFIRMAR DISPARA EL CORREO DEL HUÉSPED.
+
+    Solo al pasar a `confirmada` y solo si antes no lo estaba: pulsar dos veces
+    «Confirmar» no puede mandar dos correos idénticos al huésped. Y solo a él, no
+    a la administración: quien acaba de pulsar el botón ES la administración.
+
+    Va después de escribir y nunca lanza: el estado ya cambió, y un fallo de
+    correo no puede convertir una confirmación correcta en un error en pantalla.
+  */
+  const avisoCorreo =
+    estado === "confirmada" && estadoAnterior !== "confirmada"
+      ? resumirCorreo(
+          await avisarReservaConfirmada(supabase, id),
+          typeof reserva.huesped_email === "string" ? reserva.huesped_email : "",
+        )
+      : "";
+
   refrescar(id);
   redirect(
     `${RUTA_LISTA}/${id}?ok=${encodeURIComponent(
       `Estado de la reserva actualizado.${
         avisoCalendario ? `\n${avisoCalendario}` : ""
-      }`,
+      }${avisoCorreo ? `\n${avisoCorreo}` : ""}`,
     )}`,
   );
 }

@@ -44,6 +44,7 @@ import {
   TONO_ESTADO,
 } from "@/lib/admin/tipos";
 import { CUPO_DIA_DE_CALMA } from "@/lib/reserva/dia-de-calma";
+import { cuentaAtras, vencePronto } from "@/lib/reserva/holds";
 import { esUuid } from "@/lib/admin/validacion";
 import { formatearCOP } from "@/lib/utils/formato";
 
@@ -117,6 +118,11 @@ export default async function PaginaReserva({
       })),
   ];
 
+  /* El hold de esta reserva, si vence. `null` cuando no vence (las del panel). */
+  const ahora = new Date();
+  const restanteHold = cuentaAtras(reserva.expira_at, ahora);
+  const holdUrgente = vencePronto(reserva, ahora);
+
   return (
     <>
       <EncabezadoPagina
@@ -149,10 +155,26 @@ export default async function PaginaReserva({
                   <Pastilla tono={TONO_ESTADO[reserva.estado]}>
                     {ETIQUETA_ESTADO[reserva.estado]}
                   </Pastilla>
+                  {/* El hold, solo si esta reserva vence: las que apunta el
+                      equipo a mano no vencen y no muestran nada. */}
+                  {reserva.estado === "pendiente" && restanteHold ? (
+                    <Pastilla tono={holdUrgente ? "ambar" : "gris"}>
+                      {restanteHold}
+                    </Pastilla>
+                  ) : null}
                 </span>
               }
             />
             <CuerpoTarjeta>
+              {reserva.estado === "pendiente" && restanteHold ? (
+                <p className="mb-4 rounded-[var(--radius-tarjeta)] bg-dorado-100/60 px-3.5 py-2.5 text-[0.8125rem] leading-relaxed text-dorado-800">
+                  Esta solicitud llegó del sitio y está apartando las fechas
+                  mientras el huésped paga. <strong>{restanteHold}</strong>: si no
+                  llega el pago, se cancela sola y esas noches vuelven al
+                  calendario. Si ya la cerraste con el huésped, confírmala aquí
+                  abajo y deja de vencer.
+                </p>
+              ) : null}
               <dl className="grid gap-4 sm:grid-cols-2">
                 {esDia ? (
                   <>

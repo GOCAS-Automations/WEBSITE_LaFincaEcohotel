@@ -1480,6 +1480,37 @@ export function SelectorReserva({
             Todo lo que hace falta para ese paso ya está resuelto: el desglose
             por noche, los extras con su noche, el total y el anticipo. Lo único
             que cambia es el destino de este enlace.
+
+            ---------------------------------------------------------------
+            LO QUE YA ESTÁ ESCRITO Y ESPERANDO A ESTA COSTURA (2026-09-30)
+            ---------------------------------------------------------------
+            Quien cablee el cobro NO tiene que escribir ni los correos ni la
+            expiración: las dos están hechas, probadas y documentadas.
+
+            · **Al CREAR la solicitud** (Server Action o Route Handler, con
+              `service_role`), en este orden:
+
+                await liberarReservasVencidas(supabase);   // @/lib/reserva/liberar-vencidas
+                …insert con expira_at: vencimientoISO()    // @/lib/reserva/holds
+                await avisarSolicitudCreada(supabase, id); // @/lib/email
+
+              El barrido va ANTES del insert y no es opcional: la restricción
+              EXCLUDE no puede leer la hora, y sin barrer rechaza fechas que
+              están libres (ver §hold de `docs/MEMORIA.md`).
+
+            · **Al aprobarse el pago** (webhook, nunca la redirección del
+              navegador):
+
+                await avisarPagoAprobado(supabase, id, {
+                  monto, saldo, metodo, transaccionId,
+                });                                        // @/lib/email
+
+              Sin `try/catch` alrededor: esa función ya no lanza nunca. Un
+              fallo de correo no puede tumbar un pago que el huésped ya hizo.
+
+            El desglose por noche que ya calcula esta pantalla se le puede
+            pasar a los correos por `{ noches }` para que el correo enseñe el
+            mismo detalle que vio el huésped aquí.
           */}
           {/* ---------------------------------------------------------------
               AUTORIZACIÓN DE TRATAMIENTO DE DATOS (Ley 1581 de 2012).

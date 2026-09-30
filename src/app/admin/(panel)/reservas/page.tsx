@@ -36,6 +36,8 @@ import {
   ETIQUETA_ORIGEN,
   TONO_ESTADO,
 } from "@/lib/admin/tipos";
+import { cuentaAtras, vencePronto } from "@/lib/reserva/holds";
+import { liberarReservasVencidas } from "@/lib/reserva/liberar-vencidas";
 import { ocupacionDelCalendario } from "@/lib/reserva/ocupacion-externa";
 import { formatearCOP } from "@/lib/utils/formato";
 import type { EstadoReserva } from "@/lib/tipos/basedatos";
@@ -72,6 +74,24 @@ export default async function PaginaReservas({
     params.estado && ESTADOS_RESERVA.includes(params.estado as EstadoReserva)
       ? (params.estado as EstadoReserva)
       : "todas";
+
+  /*
+    AL ENTRAR AL CALENDARIO SE BARREN LAS VENCIDAS.
+
+    Es la pantalla que el hotel abre para saber qué días tiene libres, así que es
+    justo donde una solicitud caducada que siguiera diciendo «pendiente» haría
+    más daño: el equipo rechazaría por teléfono una noche que está libre.
+
+    El barrido cancela las que ya vencieron, así que lo que se lee justo después
+    ya está limpio. `ocupaCalendario()` sigue aplicándose encima —el barrido
+    puede fallar y la página no puede depender de él—, pero con las dos cosas el
+    listado y el calendario dicen lo mismo. Nunca lanza.
+  */
+  await liberarReservasVencidas(supabase);
+
+  /* Un solo instante para toda la pantalla: dos `new Date()` distintos podrían
+     dejar el calendario y el listado a lados opuestos de un vencimiento. */
+  const ahora = new Date();
 
   const [
     alojamientos,
@@ -180,7 +200,26 @@ export default async function PaginaReservas({
             </CuerpoTarjeta>
           ) : (
             <ul className="divide-y divide-crema-900/[0.07]">
-              {reservas.map((reserva) => (
+              {reservas.map((reserva) => {
+                /*
+                  LA CUENTA ATRÁS DEL HOLD.
+
+                  Solo aparece en las pendientes que vencen —las del sitio, que
+                  esperan un pago—. Las que el equipo apunta a mano no vencen y
+                  no muestran nada: una cuenta atrás donde no hay plazo asusta
+                  sin motivo.
+
+                  El plazo son treinta minutos y esta página no se refresca
+                  sola, así que el texto va en minutos y no en segundos: a los
+                  segundos estaría mintiendo desde el primer instante.
+                */
+                const restante =
+                  reserva.estado === "pendiente"
+                    ? cuentaAtras(reserva.expira_at, ahora)
+                    : null;
+                const urgente = vencePronto(reserva, ahora);
+
+                return (
                 <li key={reserva.id}>
                   <Link
                     href={`/admin/reservas/${reserva.id}`}
@@ -194,6 +233,17 @@ export default async function PaginaReservas({
                         <Pastilla tono={TONO_ESTADO[reserva.estado]}>
                           {ETIQUETA_ESTADO[reserva.estado]}
                         </Pastilla>
+                        {restante ? (
+                          <span
+                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[0.6875rem] font-semibold ${
+                              urgente
+                                ? "bg-dorado-100 text-dorado-800 ring-1 ring-dorado-500/40"
+                                : "bg-crema-900/[0.06] text-crema-700"
+                            }`}
+                          >
+                            {restante}
+                          </span>
+                        ) : null}
                       </div>
                       <p className="mt-0.5 text-[0.75rem] text-crema-600">
                         {reserva.codigo}
@@ -219,7 +269,8 @@ export default async function PaginaReservas({
                     </div>
                   </Link>
                 </li>
-              ))}
+                );
+              })}
             </ul>
           )}
         </Tarjeta>

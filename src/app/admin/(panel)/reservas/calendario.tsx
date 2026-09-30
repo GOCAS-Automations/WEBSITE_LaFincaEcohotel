@@ -14,6 +14,7 @@ import {
 } from "@/lib/admin/fechas";
 import { ETIQUETA_ESTADO } from "@/lib/admin/tipos";
 import { CUPO_DIA_DE_CALMA } from "@/lib/reserva/dia-de-calma";
+import { ocupaCalendario } from "@/lib/reserva/holds";
 import { cabanasAfectadas } from "@/lib/reserva/calendario-externo";
 import type { OcupacionExterna } from "@/lib/reserva/calendario-externo";
 import type {
@@ -130,11 +131,20 @@ export function CalendarioMes({
 
   // Las reservas se pintan encima de los bloqueos: si por lo que sea coexisten,
   // manda la información del huésped.
+  /* Un solo instante para todo el mes: si cada fila leyera su propio `new
+     Date()`, dos celdas de la misma reserva podrían caer a lados distintos del
+     vencimiento y la barra saldría partida. */
+  const ahora = new Date();
+
   for (const reserva of reservas) {
     /* Las de Día de Calma no ocupan cabaña: van en su propia fila, abajo. */
     if (reserva.tipo === "dia") continue;
     if (!reserva.alojamiento_id) continue;
-    if (reserva.estado === "cancelada") continue;
+    /* La MISMA regla que el sitio público y que la comprobación de choques:
+       una cancelada no ocupa, y tampoco una solicitud cuyo hold venció. Pintar
+       una noche como ocupada cuando el sitio la vende libre sería enseñarle al
+       hotel un calendario que no es el que tienen los huéspedes. */
+    if (!ocupaCalendario(reserva, ahora)) continue;
     for (const dia of dias) {
       if (dia >= reserva.entrada && dia < reserva.salida) {
         ocupacion.set(`${reserva.alojamiento_id}|${dia}`, {
