@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { frenar } from "@/lib/api/limite-peticiones";
 import { CUPO_DIA_DE_CALMA, cupoDelDia } from "@/lib/reserva/dia-de-calma";
 import { esFechaISO, sumarDias } from "@/lib/reserva/noches";
 import { crearClienteAdmin } from "@/lib/supabase/admin";
@@ -32,7 +33,19 @@ export const revalidate = 0;
 /** Estados que ocupan cupo. Coincide con el `where` del trigger. */
 const ESTADOS_QUE_OCUPAN = ["pendiente", "confirmada"];
 
+/**
+ * Freno de peticiones.
+ *
+ * Aquí el riesgo no es solo el coste: el número que devuelve es **agregado**,
+ * pero pedirlo día a día durante meses permitiría dibujar la ocupación completa
+ * del hotel. Sesenta por minuto sobran para alguien eligiendo una fecha.
+ */
+const LIMITE = { peticiones: 60, segundos: 60 };
+
 export async function GET(peticion: Request) {
+  const frenada = frenar(peticion, "cupo-dia", LIMITE);
+  if (frenada) return frenada;
+
   const { searchParams } = new URL(peticion.url);
   const fecha = searchParams.get("fecha") ?? "";
 

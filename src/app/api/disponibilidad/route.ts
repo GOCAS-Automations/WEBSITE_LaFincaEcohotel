@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { frenar } from "@/lib/api/limite-peticiones";
 import { leerRangoFechas, sumarDiasISO } from "@/lib/admin/fechas";
 import { ESTADOS_QUE_OCUPAN } from "@/lib/admin/tipos";
 import {
@@ -49,6 +50,17 @@ export const revalidate = 0;
 /** Tope de la ventana consultable: tres meses. Más es un abuso, no una consulta. */
 const MAXIMO_DIAS = 92;
 
+/**
+ * Freno de peticiones.
+ *
+ * Esta consulta es la más cara del sitio: lee `reservas` y `bloqueos` con
+ * `service_role` y ADEMÁS llama al Google Calendar del hotel. Sin tope, un
+ * script puede agotar la cuota de la API de Google y dejar al hotel sin
+ * calendario. Treinta por minuto dan de sobra para el uso real: el calendario
+ * del navegador pide una vez por mes visible y al cambiar de cabaña.
+ */
+const LIMITE = { peticiones: 30, segundos: 60 };
+
 function diasEntre(desde: string, hasta: string): number {
   const [ad, md, dd] = desde.split("-").map(Number);
   const [ah, mh, dh] = hasta.split("-").map(Number);
@@ -58,6 +70,9 @@ function diasEntre(desde: string, hasta: string): number {
 }
 
 export async function GET(peticion: Request) {
+  const frenada = frenar(peticion, "disponibilidad", LIMITE);
+  if (frenada) return frenada;
+
   const { searchParams } = new URL(peticion.url);
   const desde = searchParams.get("desde") ?? "";
   const hasta = searchParams.get("hasta") ?? "";
