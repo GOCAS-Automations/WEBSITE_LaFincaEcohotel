@@ -1,3 +1,5 @@
+import { fileURLToPath } from "node:url";
+
 import { defineConfig } from "vitest/config";
 
 /**
@@ -14,5 +16,23 @@ export default defineConfig({
   test: {
     include: ["src/lib/**/*.test.ts"],
     environment: "node",
+    alias: {
+      /**
+       * `server-only` es un paquete que EXISTE para romperse: su punto de
+       * entrada lanza si alguien lo importa desde un bundle de cliente, y Next
+       * lo resuelve a un módulo vacío en el servidor mediante la condición
+       * `react-server`. Vitest no aplica esa condición, así que cualquier módulo
+       * marcado como «solo servidor» —el freno de peticiones, por ejemplo— no se
+       * podría probar.
+       *
+       * Aquí se apunta al mismo archivo vacío que usa Next en el servidor. Se
+       * resuelve por ruta absoluta y no por nombre de paquete porque el
+       * `exports` de `server-only` no publica ese archivo. No afecta al sitio
+       * compilado: esto es solo la configuración de las pruebas.
+       */
+      "server-only": fileURLToPath(
+        new URL("node_modules/server-only/empty.js", import.meta.url),
+      ),
+    },
   },
 });
