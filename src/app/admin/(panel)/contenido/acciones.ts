@@ -17,6 +17,7 @@ import {
   listaGaleria,
   listaObjetos,
   listaTexto,
+  mapaEmbebido,
   textoOpcional,
   textoRequerido,
   urlImagenOpcional,
@@ -501,7 +502,10 @@ export async function guardarContactoAction(
         tiktok: textoOpcional(formData, "tiktok", 300) ?? "",
         tiktok_usuario: textoOpcional(formData, "tiktok_usuario", 100) ?? "",
         mapa_url: textoOpcional(formData, "mapa_url", 800) ?? "",
-        mapa_embed: textoOpcional(formData, "mapa_embed", 800) ?? "",
+        /* El mapa embebido acaba en un `<iframe src>` de dos páginas públicas:
+           se comprueba que sea de Google o no se guarda. Ver
+           `src/lib/mapa-embebido.ts`. */
+        mapa_embed: mapaEmbebido(formData, "mapa_embed"),
         mapa_como_llegar:
           textoOpcional(formData, "mapa_como_llegar", 800) ?? "",
       },

@@ -16,6 +16,7 @@ import {
   getReconocimiento,
   getSeccionPlanes,
 } from "@/lib/contenido";
+import { direccionDeMapa } from "@/lib/mapa-embebido";
 
 /**
  * Conócenos: quiénes somos, el reconocimiento de la COP16, instalaciones y
@@ -321,15 +322,19 @@ export async function PaginaConocenos() {
           </Revelar>
 
           <Revelar retraso={110}>
-            <div className="h-80 overflow-hidden rounded-[var(--radius-generoso)] shadow-[var(--shadow-tarjeta)] ring-1 ring-crema-200/70 sm:h-96 lg:h-full lg:min-h-[26rem]">
-              <iframe
-                src={contacto.mapa_embed}
-                title="Mapa con la ubicación de La Finca Eco Hotel"
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                className="h-full w-full border-0"
-              />
-            </div>
+            {/* Solo se pinta si la dirección es un mapa embebido de Google:
+                ver `src/lib/mapa-embebido.ts`. */}
+            {direccionDeMapa(contacto.mapa_embed) ? (
+              <div className="h-80 overflow-hidden rounded-[var(--radius-generoso)] shadow-[var(--shadow-tarjeta)] ring-1 ring-crema-200/70 sm:h-96 lg:h-full lg:min-h-[26rem]">
+                <iframe
+                  src={direccionDeMapa(contacto.mapa_embed) ?? undefined}
+                  title="Mapa con la ubicación de La Finca Eco Hotel"
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  className="h-full w-full border-0"
+                />
+              </div>
+            ) : null}
           </Revelar>
         </div>
       </Seccion>

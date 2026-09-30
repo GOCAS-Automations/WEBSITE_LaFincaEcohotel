@@ -10,6 +10,7 @@
 import { estadoError, type EstadoAccion } from "./tipos";
 import { esFechaISO } from "./fechas";
 import { LARGO_MINIMO_CONTRASENA } from "./roles";
+import { direccionDeMapa } from "@/lib/mapa-embebido";
 
 export class ErrorDeValidacion extends Error {
   constructor(mensaje: string) {
@@ -330,6 +331,29 @@ export function listaGaleria(form: FormData, campo: string): EntradaGaleria[] {
       },
     ];
   });
+}
+
+/**
+ * Dirección del mapa embebido del CMS.
+ *
+ * Se valida aquí, al guardar, además de al pintar: este valor acaba en un
+ * `<iframe src>` de `/conocenos` y `/contacto`, y un marco a un sitio ajeno en
+ * la página del hotel es una pasarela falsa esperando. Vacío está permitido
+ * (la sección se pinta sin mapa). Ver `src/lib/mapa-embebido.ts`.
+ */
+export function mapaEmbebido(form: FormData, campo: string): string {
+  const valor = String(form.get(campo) ?? "").trim();
+  if (!valor) return "";
+  const direccion = direccionDeMapa(valor);
+  if (!direccion) {
+    throw new ErrorDeValidacion(
+      "La dirección del mapa tiene que ser un mapa embebido de Google Maps " +
+        "(de la forma «https://maps.google.com/maps?q=…&output=embed» o " +
+        "«https://www.google.com/maps/embed?pb=…»). Cópiala de Google Maps → " +
+        "Compartir → Insertar un mapa.",
+    );
+  }
+  return direccion.slice(0, 800);
 }
 
 /** Campo de imagen única: cadena vacía si no hay imagen. */

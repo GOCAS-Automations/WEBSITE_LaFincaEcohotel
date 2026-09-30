@@ -17,6 +17,7 @@ import {
   getHeroesListados,
   getSeccionPlanes,
 } from "@/lib/contenido";
+import { direccionDeMapa } from "@/lib/mapa-embebido";
 import { enlaceWhatsapp } from "@/lib/whatsapp";
 
 /**
@@ -188,15 +189,20 @@ export async function PaginaContacto() {
 
           {/* Mapa */}
           <Revelar retraso={110} className="flex flex-col gap-4">
-            <div className="h-80 overflow-hidden rounded-[var(--radius-generoso)] shadow-[var(--shadow-tarjeta)] ring-1 ring-crema-200/70 sm:h-96 lg:h-full lg:min-h-[28rem]">
-              <iframe
-                src={contacto.mapa_embed}
-                title="Mapa con la ubicación de La Finca Eco Hotel"
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                className="h-full w-full border-0"
-              />
-            </div>
+            {/* El marco solo se pinta si la dirección es un mapa embebido de
+                Google: un valor del CMS no puede meter un iframe ajeno en la
+                página del hotel. Ver `src/lib/mapa-embebido.ts`. */}
+            {direccionDeMapa(contacto.mapa_embed) ? (
+              <div className="h-80 overflow-hidden rounded-[var(--radius-generoso)] shadow-[var(--shadow-tarjeta)] ring-1 ring-crema-200/70 sm:h-96 lg:h-full lg:min-h-[28rem]">
+                <iframe
+                  src={direccionDeMapa(contacto.mapa_embed) ?? undefined}
+                  title="Mapa con la ubicación de La Finca Eco Hotel"
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  className="h-full w-full border-0"
+                />
+              </div>
+            ) : null}
             {/* «Cómo llegar» abre indicaciones DESDE CALI, no una búsqueda:
                 es el trayecto que va a hacer quien lo pulse. */}
             <Boton
