@@ -242,12 +242,43 @@ const nextConfig: NextConfig = {
   },
 
   /**
-   * Redirecciones permanentes.
+   * ==========================================================================
+   * REDIRECCIONES PERMANENTES (301)
+   * ==========================================================================
    *
-   * `/el-lugar` existió y se indexó: la página se llama ahora «Conócenos» y
-   * vive en `/conocenos`. El 301 traslada el historial de la dirección vieja a
-   * la nueva y evita que quien llegue desde un enlace antiguo, desde Google o
-   * desde el WhatsApp del hotel se encuentre un 404.
+   * Dos grupos, por dos motivos distintos:
+   *
+   * **1. Direcciones propias que cambiaron de nombre.** `/el-lugar` existió y
+   * se indexó: la página se llama ahora «Conócenos» y vive en `/conocenos`.
+   *
+   * **2. Las URLs del WordPress que hay hoy en producción.** El sitio viejo es
+   * casi un *one-page*, y su `wp-sitemap` publica exactamente seis direcciones:
+   * `/`, `/services/`, `/about-us/`, `/contact/`, `/hello-world/` y
+   * `/category/uncategorized/`. Las tres primeras son páginas del tema Divi sin
+   * personalizar (textos en inglés, dirección de Los Ángeles, teléfono
+   * ficticio) y las dos últimas son los restos de la instalación de WordPress,
+   * pero **están indexadas**: el día que el dominio apunte a Vercel, sin estos
+   * 301 cada una devolvería un 404 y se perdería la autoridad que hayan
+   * acumulado. Se llevan a la página nueva que les corresponde por intención,
+   * no por parecido de nombre.
+   *
+   * ⚠ **Las redirecciones de `next.config` GANAN a las rutas del App Router.**
+   * Una `source` que coincida con una página existente la deja inalcanzable, sin
+   * ningún aviso en el build. Ninguna de las de aquí lo hace —`/services`,
+   * `/about-us`, `/contact`, `/hello-world` y `/category/...` no existen como
+   * rutas, y los destinos (`/experiencias`, `/conocenos`, `/contacto`, `/`) sí—,
+   * y eso se comprobó con `curl -I` contra localhost, ruta por ruta.
+   *
+   * **Sobre la barra final: el sitio viejo publica sus URLs con barra
+   * (`/services/`) y eso son DOS saltos, a propósito.** Next normaliza la barra
+   * final ANTES de mirar estas reglas, así que `/services/` devuelve primero un
+   * 308 a `/services` y ese un 301 a `/experiencias`. Declarar también
+   * `source: "/services/"` no lo evita —la normalización va antes y nunca se
+   * llega a esa regla, se comprobó con `curl`— y la única forma de quitar el
+   * salto sería `skipTrailingSlashRedirect: true`, que apagaría la
+   * normalización de TODO el sitio y dejaría cada página accesible con y sin
+   * barra: contenido duplicado a cambio de ahorrar un salto que Google sigue
+   * sin problema. Se queda la cadena 308 → 301.
    *
    * Se fija `statusCode: 301` a mano. `permanent: true` habría devuelto un
    * **308**, que para Google significa exactamente lo mismo y además conserva
@@ -256,13 +287,41 @@ const nextConfig: NextConfig = {
    * no se gana nada con el 308 y sí se pierde claridad.
    */
   async redirects() {
-    return [
-      {
-        source: "/el-lugar",
-        destination: "/conocenos",
-        statusCode: 301,
-      },
+    const permanentes: { de: string; a: string }[] = [
+      /* Nuestra propia página renombrada. */
+      { de: "/el-lugar", a: "/conocenos" },
+
+      /*
+        WordPress → sitio nuevo.
+
+        `/services` → `/experiencias`: en el sitio viejo esa página iba a
+        contener los servicios del hotel. Lo que el hotel vende como «servicios»
+        son hoy las experiencias (aniversario, cumpleaños, fondue), así que es
+        ahí donde aterriza quien venía buscando eso.
+
+        `/about-us` → `/conocenos` y `/contact` → `/contacto` son la misma
+        página en español.
+      */
+      { de: "/services", a: "/experiencias" },
+      { de: "/about-us", a: "/conocenos" },
+      { de: "/contact", a: "/contacto" },
+
+      /*
+        Los restos de la instalación de WordPress. `hello-world` es la entrada
+        de ejemplo que crea WordPress solo, y `category/uncategorized` su
+        archivo: no tienen equivalente porque no tenían contenido. Van a la
+        portada, que es lo único honesto — un 404 sería peor para quien llega
+        desde un resultado de Google que todavía las muestre.
+      */
+      { de: "/hello-world", a: "/" },
+      { de: "/category/uncategorized", a: "/" },
     ];
+
+    return permanentes.map(({ de, a }) => ({
+      source: de,
+      destination: a,
+      statusCode: 301 as const,
+    }));
   },
 };
 
