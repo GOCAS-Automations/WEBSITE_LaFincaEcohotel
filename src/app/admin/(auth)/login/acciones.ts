@@ -24,24 +24,37 @@ import { crearClienteServidor } from "@/lib/supabase/server";
  *
  * Se cuentan dos ventanas a la vez, porque cada una tapa un ataque distinto:
  *
- *   · **Por cuenta:** cinco intentos cada quince minutos. Es lo que frena el
- *     ataque clásico —probar mil contraseñas contra el correo del dueño— y no
- *     depende de la IP, así que no se evita saltando de proxy.
- *   · **Por IP:** veinte intentos cada quince minutos. Frena el «password
+ *   · **Por cuenta:** diez intentos cada cinco minutos. Frena el ataque clásico
+ *     —probar contraseñas contra el correo del dueño— y no depende de la IP, así
+ *     que no se evita saltando de proxy.
+ *   · **Por IP:** treinta intentos cada quince minutos. Frena el «password
  *     spraying»: probar la misma contraseña floja contra muchos correos.
  *
- * Con cinco intentos por cuenta, una contraseña de diez caracteres es
- * inalcanzable por fuerza bruta. Y quien acierta sale del contador de inmediato
- * (`olvidarPeticiones`), así que a un administrador que se equivoca dos veces y
- * luego entra no le pasa nada.
+ * ---------------------------------------------------------------------------
+ * POR QUÉ LA VENTANA POR CUENTA ES CORTA Y NO LARGA
+ * ---------------------------------------------------------------------------
+ * Un bloqueo por cuenta se puede volver contra el hotel: quien conozca el correo
+ * del dueño puede gastar los intentos a propósito para dejarlo fuera del panel.
+ * Y el panel es donde se ven las reservas del día, así que dejar al hotel sin
+ * entrar es un daño real, no teórico.
+ *
+ * De ahí la forma de estos números: la ventana **se cura sola en cinco minutos**
+ * —el peor caso es esperar un café— y a cambio el atacante no pasa de 120
+ * intentos por hora contra una contraseña de diez caracteres como mínimo, que es
+ * no pasar de ningún sitio. La primera versión de esta auditoría puso cinco
+ * intentos cada quince minutos y se probó: dejaba al propietario fuera después
+ * de ocho fallos, incluso escribiendo luego la contraseña correcta. Se corrigió.
+ *
+ * Quien acierta sale del contador de inmediato (`olvidarPeticiones`), así que
+ * equivocarse dos veces y entrar a la tercera no deja rastro.
  *
  * Límite conocido: el contador vive en la memoria de la instancia (ver
  * `src/lib/api/limite-peticiones.ts`). Es un freno, no una cerradura; la
  * cerradura de verdad se pone en el firewall de Vercel y está anotada en
  * `docs/AUDITORIA_SEGURIDAD.md`.
  */
-const LIMITE_POR_CUENTA = { peticiones: 5, segundos: 15 * 60 };
-const LIMITE_POR_IP = { peticiones: 20, segundos: 15 * 60 };
+const LIMITE_POR_CUENTA = { peticiones: 10, segundos: 5 * 60 };
+const LIMITE_POR_IP = { peticiones: 30, segundos: 15 * 60 };
 
 function minutos(segundos: number): string {
   const m = Math.ceil(segundos / 60);
