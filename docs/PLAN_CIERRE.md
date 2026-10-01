@@ -1,10 +1,31 @@
 # Plan de cierre — La Finca Eco Hotel
 
-> Actualizado el **jueves 1 de octubre de 2026**. Documento de trabajo de GOCAS. El del cliente es `Checklist_Estado_Sitio_LaFinca.pdf`; las preguntas abiertas van en `Preguntas_Finales_LaFinca.pdf`.
+> Actualizado el **jueves 1 de octubre de 2026** (tarde). Documento de trabajo de GOCAS. El del cliente es `Checklist_Estado_Sitio_LaFinca.pdf`; las preguntas abiertas van en `Preguntas_Finales_LaFinca.pdf`.
 
 ## Dónde estamos
 
+**El sitio nuevo ES el sitio en producción.** `lafincaecohotel.com` apunta a Vercel y el hosting viejo quedó cancelado. Eso cambia tres cosas de golpe y las tres están resueltas o identificadas aquí abajo: las direcciones absolutas tienen que ser las del dominio real (lo estaban mal: el sitio publicado se declaraba canónico en `localhost`), el cobro en línea necesita un interruptor propio para que nadie pague en una pasarela de pruebas, y **el `noindex` dejó de ser una precaución para convertirse en el problema**: el hotel no aparece en Google.
+
 Las tres entregas que bloqueaban el lanzamiento ya llegaron: **datos fiscales** (Raquel Lenis García · NIT 66830269-5), **textos legales aprobados** y **llaves de prueba de Bold**. La cuenta de Bold sigue en verificación de identidad, así que los pagos se construyen y prueban en ambiente de pruebas; el día que Bold apruebe, solo se cambian las llaves.
+
+## 🔴 Lo más urgente: el hotel está invisible en Google
+
+`SITIO_PUBLICADO` no está en `1`, así que el sitio se publica con
+`<meta name="robots" content="noindex, nofollow">` y un `robots.txt` que dice
+`Disallow: /`. Esa variable existía para proteger al WordPress viejo mientras era
+la web real; **ese sitio ya no existe**, y el nuevo se está prohibiendo a sí
+mismo.
+
+**Basta con esto** (no hay nada que tocar en el código, está todo preparado):
+
+1. Vercel → `website-la-finca-ecohotel` → **Settings → Environment Variables** →
+   `SITIO_PUBLICADO = 1` en **Production**.
+2. **Redesplegar** (el valor se hornea en el build: editarlo sin redesplegar no
+   cambia nada).
+3. Comprobar que `/robots.txt` ya no dice `Disallow: /` y enviar
+   `https://lafincaecohotel.com/sitemap.xml` a Google Search Console.
+
+No se activó desde aquí a propósito: es una decisión de Cesar.
 
 ## Estado del sitio
 
@@ -23,9 +44,11 @@ Las tres entregas que bloqueaban el lanzamiento ya llegaron: **datos fiscales** 
 | Redirecciones 301 del sitio viejo | Listas y verificadas |
 | Datos fiscales, legales y correo de contacto | Aplicados |
 | Google Calendar (lectura y escritura) | Construido; falta el ID del calendario del hotel |
-| **Pagos con Bold** | **Listo en ambiente de pruebas** — falta la pasada visual por la pasarela con las tarjetas de prueba (5 min en el navegador) y cambiar las llaves el día que Bold apruebe la cuenta |
+| **Pagos con Bold** | **Checkout abriendo en pruebas** — el error BTN-001 está corregido (ver abajo). Falta pagar con las tarjetas de prueba (5 min en el navegador), registrar el webhook en el panel de Bold y cambiar las llaves el día que Bold apruebe la cuenta |
+| Interruptor de pagos (`PAGOS_ACTIVOS`) | Listo — **apagado**, como debe estar hasta el lanzamiento |
 | **Activar los correos** | **Pendiente — falta cuenta Resend + DNS** |
-| **Dominio** | **Pendiente** |
+| **Dominio** | **Listo** — `lafincaecohotel.com` apunta a Vercel, `www` redirige al apex, hosting viejo cancelado |
+| **Indexación en Google** | 🔴 **Bloqueada**: falta `SITIO_PUBLICADO=1` en Vercel |
 
 ---
 
@@ -64,9 +87,9 @@ Esto habilita el rate limiting del firewall que pide la auditoría, libera el l�
 
 ## 4 · Hostinger: dominio y hosting (10 minutos)
 
-1. hPanel → **Domains** → `lafincaecohotel.com` → **renovar** (vence el **4 de noviembre de 2026**; sin esto se cae todo, nuevo y viejo).
-2. hPanel → **Billing** o **Subscriptions** → el plan de **hosting** → **desactivar la renovación automática**. No lo canceles: el sitio viejo debe seguir en línea hasta el lanzamiento.
-3. Opcional y recomendable para que el cliente revise en su propio dominio: crea el subdominio `nuevo.lafincaecohotel.com` y apúntalo a Vercel. En **Vercel → el proyecto → Settings → Domains** añade `nuevo.lafincaecohotel.com` y Vercel te dirá qué registro CNAME poner en Hostinger.
+1. hPanel → **Domains** → `lafincaecohotel.com` → **renovar** (vence el **4 de noviembre de 2026**). ⚠ Ahora es crítico: el hosting viejo está cancelado y el dominio es lo único que lleva a la gente al sitio. Si vence, el hotel se queda sin web.
+2. ~~Desactivar la renovación automática del hosting~~ — hecho: el plan está cancelado y el WordPress ya no responde.
+3. ~~Subdominio `nuevo.lafincaecohotel.com`~~ — ya no hace falta: el cliente revisa en su propio dominio, que es el sitio nuevo.
 
 ## 5 · Tope de gasto de Google Places (5 minutos, ya no urgente)
 
@@ -95,15 +118,36 @@ Con el caché propio el consumo es de unas 30 llamadas al mes contra 1.000 gratu
 - [x] El saldo pendiente queda registrado y se refleja en el panel y en el correo.
 - Reseñas: las **5 mejores del último año**.
 
+## Hecho el 1 de octubre (tarde)
+
+- [x] **BTN-001 resuelto.** La pasarela devolvía «Something went wrong… BTN-001» y la
+      causa no eran las llaves ni el monto: **Bold solo acepta URLs de retorno con
+      `https://`**, y en local el sitio le mandaba `http://localhost:3000/…`. El detalle
+      estaba en la consola del navegador, literal: *«'http://localhost:3000/reservar/confirmacion?ref=…'
+      is not a valid value for the 'data-redirection-url' attribute»*. Ahora las URLs de
+      retorno se construyen siempre en https (`origenParaBold()`), el servidor **falla con
+      un mensaje legible** si alguna no lo es, y hay pruebas que lo vigilan. Comprobado en
+      el navegador: el checkout de Bold abre con el resumen correcto («Test mode ·
+      La Finca Eco Hotel · 2 noches · $350.000 COP»).
+- [x] **Las llaves de Bold son las dos de pruebas**, del mismo ambiente (ver abajo).
+- [x] **Dominio real aplicado**: `NEXT_PUBLIC_SITE_URL` corregida en Vercel y en local.
+- [x] **Interruptor `PAGOS_ACTIVOS`**, apagado por defecto.
+
 ### Lo único que falta de Bold antes de producción
 
 - [ ] **Una pasada visual por la pasarela de pruebas** (5 minutos, en el navegador): abrir
-      `/reservar`, completar una reserva, pulsar «Pagar», y pagar con la tarjeta de prueba
+      `/reservar` **en local** (`npm run dev`, con `PAGOS_ACTIVOS=1`, que es como queda el
+      `.env.local`), completar una reserva, pulsar «Pagar», y pagar con la tarjeta de prueba
       `4111 1111 1111 1111` (aprobado) y con `4970 1100 0000 0062` (rechazado). Al terminar,
       usar el botón **«Probar el webhook»** del comprobante apuntando a la URL del webhook.
       No se puede automatizar: el formulario de la tarjeta vive en el dominio de Bold.
-- [ ] Registrar el webhook en el panel de Bold (Integraciones → Webhooks) con la URL del
-      despliegue: `https://<dominio>/api/pagos/bold/webhook`.
+      Al terminar el pago el navegador vuelve a **`lafincaecohotel.com`**, no a localhost:
+      Bold exige https en el retorno y la base de datos es la misma, así que el comprobante
+      se ve igual. Las reservas de prueba hay que borrarlas del panel después.
+- [ ] **Registrar el webhook en el panel de Bold** (Integraciones → Webhooks →
+      «Configurar webhook»), ahora que la URL ya es definitiva:
+
+          https://lafincaecohotel.com/api/pagos/bold/webhook
 
 ## Cuando llegue la clave de Resend
 
@@ -118,13 +162,17 @@ Con el caché propio el consumo es de unas 30 llamadas al mes contra 1.000 gratu
 
 ## Día del lanzamiento (cuando Bold apruebe la cuenta)
 
-1. Llaves de **producción** de Bold en Vercel; una compra real pequeña y su reembolso.
-2. Cargar las reservas futuras ya confirmadas, o conectar el calendario con su ID.
-3. Bajar el TTL del DNS unas horas antes.
-4. Apuntar `lafincaecohotel.com` a Vercel; verificar certificado y redirecciones.
-5. `SITIO_PUBLICADO=1` para quitar el `noindex`; enviar el sitemap a Google.
-6. Verificar que el sitio viejo ya no responde.
-7. Capacitación del equipo y entrega de credenciales.
+1. Llaves de **producción** de Bold en Vercel (las dos, del **mismo** ambiente) y borrar
+   `BOLD_MODO` de Production.
+2. **`PAGOS_ACTIVOS=1`** — el último interruptor, y va **en el mismo movimiento** que las
+   llaves de producción, nunca antes. Redesplegar.
+3. Una compra real pequeña y su reembolso.
+4. Cargar las reservas futuras ya confirmadas, o conectar el calendario con su ID.
+5. Capacitación del equipo y entrega de credenciales.
+
+~~Bajar el TTL del DNS, apuntar el dominio a Vercel y verificar que el sitio viejo ya no
+responde~~ — hecho el 2026-10-01. `SITIO_PUBLICADO=1` ya no es parte del lanzamiento: es
+urgente **hoy** (ver el primer apartado).
 
 ---
 
@@ -136,7 +184,9 @@ Todo esto está en `Preguntas_Finales_LaFinca.pdf`. Lo que condiciona el motor d
 
 | Riesgo | Mitigación |
 |---|---|
-| La verificación de Bold se demora | Todo queda probado en sandbox; pasar a producción son minutos. Si urge lanzar, el sitio puede salir cobrando por WhatsApp y activar pagos después |
-| El dominio vence el 4 de noviembre | Renovarlo esta semana |
+| La verificación de Bold se demora | Todo queda probado en sandbox; pasar a producción son minutos. **Es justo lo que está pasando y por eso el sitio sale con `PAGOS_ACTIVOS=0`:** cierra por WhatsApp, con el mismo desglose, y los pagos se encienden después sin tocar código |
+| Un huésped real paga en la pasarela de pruebas | Imposible con `PAGOS_ACTIVOS=0`: el botón no se pinta y el endpoint responde 503. Y si un evento del sandbox llegara al webhook en producción, no confirma nada y lo deja en el log |
+| El sitio sigue con `noindex` y nadie lo nota | El hotel ya no tiene otra web: cada día cuenta. Está como primer punto de este documento |
+| El dominio vence el 4 de noviembre | Renovarlo esta semana. **Ahora tumba el sitio de verdad**, no solo el viejo |
 | Reaplicar los seeds borraría ediciones del panel | Nunca ejecutar `npm run db:aplicar` sin comparar antes la base con el seed |
 | Google entrega solo 5 reseñas y algunas son viejas | El criterio relaja la ventana a 24 meses antes de quedarse corto |

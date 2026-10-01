@@ -53,6 +53,16 @@
   como **equipo**. Cesar decide si la borra desde `/admin/usuarios`: ya no hace
   falta entrar a Supabase para eso.
 
+- **2026-10-01 · El sitio nuevo ES el sitio en producción.** `lafincaecohotel.com`
+  apunta a Vercel y el hosting viejo quedó cancelado. Ese mismo día: se resolvió el
+  **BTN-001** de Bold (las URLs de retorno tienen que ser `https://`), se corrigió
+  `NEXT_PUBLIC_SITE_URL` —estaba en `http://localhost:3000` **en Vercel**, así que el
+  sitio publicado se declaraba canónico en localhost— y nació **`PAGOS_ACTIVOS`**, el
+  interruptor que impide que un huésped real pague en la pasarela de pruebas.
+  🔴 **Pendiente que bloquea de verdad: `SITIO_PUBLICADO=1` en Vercel.** Sin eso el
+  sitio sale con `noindex` y, como el sitio viejo ya no existe, **el hotel está
+  invisible en Google**.
+
 ## Decisiones tomadas
 
 | Fecha | Decisión |
@@ -146,6 +156,11 @@
 | 2026-09-30 | **Los correos están «listos pero dormidos», y eso no es provisionalidad: es el contrato.** Sin `RESEND_API_KEY` registran lo que habrían enviado y devuelven `{enviado:false}`; **nunca lanzan**. Se llaman desde el webhook de pagos, donde un `throw` sería desastroso: el huésped ya pagó y la reserva ya está creada. Un fallo de correo no puede impedir guardar ni confirmar una reserva, y el panel lo dice en pantalla («Todavía no se envían correos automáticos: avísale tú por WhatsApp») para que el equipo no dé por hecho que el huésped ya sabe. |
 | 2026-09-30 | **Los correos NO reparten el subtotal entre las noches para fingir un desglose.** La fila de `reservas` guarda un único `plan_id` y un subtotal; el desglose real noche a noche lo tiene `cotizar()`, y las plantillas lo aceptan por `noches` cuando quien envía lo trae. Sin él pintan una sola línea con el plan y el número de noches, que es verdad. Un número inventado en un correo de cobro es peor que un número menos detallado. |
 | 2026-09-30 | **El logo de los correos es un PNG del bucket (`sitio/marca/icono-correo.png`), no el WebP del sitio.** Outlook de escritorio no pinta WebP: dejaría un cuadro roto en la cabecera de cada correo. Y la cabecera repite el nombre **en texto**, porque casi todos los clientes bloquean las imágenes hasta que el lector las pide. |
+| 2026-10-01 | ⚠ **Bold solo acepta URLs de retorno `https://`, y eso incluye a `localhost`.** Es la causa del BTN-001: `data-redirection-url` y `data-origin-url` piden «Valid HTTPS URL» y con `http://` la pasarela ni se abre. Las URLs se construyen con `origenParaBold()` y `configuracionCheckout()` **lanza con un mensaje legible** si no son https, porque el error de Bold no dice cuál es el atributo: lo dice la consola del navegador, y solo si alguien la mira. |
+| 2026-10-01 | **El código no da por hecho que `NEXT_PUBLIC_SITE_URL` esté bien puesta.** Estuvo valiendo `http://localhost:3000` en Vercel y el sitio publicado se declaró canónico en localhost durante semanas sin que nada fallara a la vista. El respaldo en `src/lib/sitio.ts` es ahora el dominio real —el **apex**, sin `www`, que es el principal en Vercel— y las URLs de Bold tienen además su propio último recurso https. |
+| 2026-10-01 | **Las 301 del sitio viejo NO se retiran al desaparecer el sitio viejo.** Justo al revés: mientras existía, él mismo respondía esas direcciones; ahora las sirve este sitio y son lo único que separa de un 404 a quien llegue desde un resultado de Google. Google tarda meses en dejar de pedirlas. |
+| 2026-10-01 | **Tener llaves de Bold no es poder cobrar: `PAGOS_ACTIVOS` es un interruptor aparte y nace en `0`.** Con el dominio real sirviendo el sitio, unas llaves de pruebas significan un huésped real pasando por una pasarela que no cobra; y un evento de ese sandbox confirmaría la reserva **sin pago**. Es lo último que se enciende, y se enciende junto a las llaves de producción. |
+| 2026-10-01 | **El webhook usa `ambienteDeclarado()`, no `modoBold()`, para decidir si puede confirmar.** `modoBold()` devuelve `produccion` a propósito cuando `VERCEL_ENV=production`, para no firmar nunca con la llave vacía; aquí hace falta lo contrario, saber qué llaves dice la configuración que hay. Pruebas declaradas + producción = evento registrado y **cero cambios** en `pagos` y `reservas`. |
 | 2026-09-30 | **Las redirecciones de `next.config` GANAN a las rutas del App Router**, así que una `source` que coincida con una página existente la deja inalcanzable sin ningún aviso en el build. Con barra final son dos saltos (308 de normalización + 301) y se acepta: quitarlos exigiría `skipTrailingSlashRedirect: true`, que dejaría cada página del sitio accesible con y sin barra —contenido duplicado— a cambio de ahorrar un salto que Google sigue sin problema. |
 
 ## Registro de sesiones
@@ -2685,3 +2700,114 @@ evento y de la API, y la idempotencia con sus dos reglas.
    borrar `BOLD_MODO` de Production, y hacer **una compra real pequeña y su reembolso**.
 3. `RESEND_API_KEY`: hoy el correo de confirmación del pago se escribe en el registro del
    servidor en vez de enviarse. El webhook ya lo llama; no hay que tocar código.
+
+### 2026-10-01 (tarde) — El dominio real, el BTN-001 y el interruptor de pagos
+
+**El cambio de contexto:** `lafincaecohotel.com` ya apunta a Vercel y el hosting
+viejo se canceló. **El sitio nuevo es el sitio en producción**, y eso convierte
+tres cosas que eran «pendientes de lanzamiento» en problemas de hoy.
+
+#### 1. El BTN-001 de Bold: la causa exacta
+
+El botón «Reservar y pagar» abría la pasarela y Bold devolvía su pantalla
+genérica: *«Something went wrong… BTN-001»*. Su documentación dice que BTN-001
+son «atributos de configuración incorrectos» y que el detalle está en la consola
+del navegador. Se reprodujo con Chrome por CDP sobre una página de diagnóstico
+aislada —sin tocar la base— y la consola lo dijo literal:
+
+```
+Bold Payment Button: 'http://localhost:3000/reservar/confirmacion?ref=…'
+is not a valid value for the 'data-redirection-url' attribute.
+```
+
+**La causa: Bold solo acepta URLs de retorno `https://`.** Su tabla de atributos
+lo pide para `data-redirection-url` y `data-origin-url` («Valid HTTPS URL») y es
+literal: no hay excepción para desarrollo, ni siquiera para `localhost` (sí la
+hay para la forma del host —«para pruebas locales no usar 127.0.0.1, en vez debe
+usar localhost»— pero el esquema tiene que ser https igual). El sitio construía
+esas dos URLs desde el origen de la petición, que en local es `http://`.
+
+Lo que **no** era: las llaves, el monto, la firma ni la referencia. Se
+descartaron una por una con tres variantes del mismo checkout, cambiando un solo
+atributo cada vez. Con la URL en https el checkout abre; con todo lo demás igual
+y la URL en http, BTN-001.
+
+**Las llaves están bien y son del mismo ambiente** (las dos de pruebas): la
+secreta tiene 22 caracteres, igual que el ejemplo de la documentación de Bold
+(`kgfq2nN0o52XqnuXZWIN2F`), y la de identidad 43, el formato de sus llaves
+públicas. Si fueran de ambientes distintos el error sería **BTN-000** («llave de
+identidad incorrecta»), no BTN-001. **Bold no exige registrar el dominio ni la
+URL de retorno en su panel**: lo único que se registra ahí es el webhook.
+
+**La corrección** es `origenParaBold()` (`src/lib/pagos/origen.ts`): devuelve
+siempre un origen https —`BOLD_URL_RETORNO` si está puesta, el origen de la
+petición si ya es https, y si no el dominio real— y `configuracionCheckout()`
+**lanza con un mensaje legible** si alguna de las dos URLs no es https, en vez de
+dejar que el fallo aparezca como una pantalla roja de Bold. En local eso
+significa volver al dominio real tras pagar, y funciona: **la base de datos es la
+misma**, así que la página de retorno encuentra la referencia y pinta el
+comprobante correcto.
+
+**Comprobado en el navegador** (Chrome por CDP, `/reservar` en local con
+`PAGOS_ACTIVOS=1`): el checkout abre en `checkout.bold.co/payment/BTN_…` con
+«Test mode · La Finca Eco Hotel · LF-2026-0002 · Cabaña 01 · 2 noches ·
+$350,000 COP» y sus métodos de pago. **Sin BTN-001.**
+
+#### 2. El dominio real
+
+- `NEXT_PUBLIC_SITE_URL` **estaba en `http://localhost:3000` en Vercel**, y el
+  sitio publicado llevaba semanas sirviendo `<link rel="canonical"
+  href="http://localhost:3000">` y el mismo `og:url`. Corregida a
+  `https://lafincaecohotel.com` en Vercel y en `.env.local`. **Es el apex, sin
+  `www`:** `www.lafincaecohotel.com` devuelve un 308 al apex, que es el dominio
+  principal del proyecto. El respaldo en código (`src/lib/sitio.ts`) pasó de
+  `https://www.…` al apex, para que un despliegue sin la variable publique lo
+  correcto.
+- Verificado en el build: canónicas, `sitemap.xml` y JSON-LD salen con el dominio
+  real, y las **19 rutas públicas siguen estáticas**.
+- **Las 301 del sitio viejo se quedan.** Que el WordPress ya no exista no las
+  vuelve innecesarias: las vuelve imprescindibles, porque ahora las sirve este
+  sitio y son lo único que separa de un 404 a quien llegue desde un resultado de
+  Google todavía indexado. Comprobadas contra el build: `/about-us`, `/contact`,
+  `/hello-world`, `/category/uncategorized` y `/el-lugar` devuelven 301, y
+  `/services/` la cadena 308 → 301 ya documentada.
+- `docs/DESPLIEGUE_VERCEL.md` deja la URL definitiva del webhook de Bold:
+  `https://lafincaecohotel.com/api/pagos/bold/webhook`.
+
+#### 3. `PAGOS_ACTIVOS`: el interruptor del negocio
+
+Con el dominio real vivo y Bold en pruebas, un huésped de verdad podía entrar a
+`/reservar` y pasar por una pasarela que no cobra nada; y si un evento de ese
+sandbox llegara al webhook, la reserva quedaría **confirmada sin pago real**.
+Nace `PAGOS_ACTIVOS`, **por defecto `0`**:
+
+- El sitio público **no pinta el botón de pagar** y cierra por WhatsApp con el
+  mismo resumen y el mismo desglose noche a noche (`pagoEnLineaDisponible()`).
+- `POST /api/reservar` responde 503 y **no crea ninguna reserva**.
+- El webhook sigue vivo —hace falta para probarlo desde el panel de Bold— pero si
+  `BOLD_MODO=pruebas` y `VERCEL_ENV=production` registra el evento, deja un error
+  en el log y **no toca `pagos` ni `reservas`**.
+
+#### 4. El sitio está invisible en Google
+
+`SITIO_PUBLICADO` no está en `1`, así que el sitio se publica con `noindex,
+nofollow` y `robots.txt` con `Disallow: /`. Esa variable protegía al WordPress
+viejo; **ya no hay WordPress viejo**. No se activó desde aquí (es decisión de
+Cesar) y queda documentado en `docs/PLAN_CIERRE.md` y en
+`docs/DESPLIEGUE_VERCEL.md` que basta con poner la variable en `1` en Vercel y
+**redesplegar** —el valor se hornea en el build—.
+
+### Verificación
+
+`tsc` y `eslint` limpios (queda el aviso previo de
+`scripts/importar-fotos-drive.mjs`); `build` correcto con las **19 rutas públicas
+estáticas**; **272 pruebas en verde**, 3 nuevas sobre las URLs de retorno.
+Comprobado en el navegador a 1440 y 390: con `PAGOS_ACTIVOS=0` no hay botón de
+pago y el cierre por WhatsApp sale con el desglose completo; con `1`, el checkout
+de Bold abre. `POST /api/reservar` con el interruptor apagado: 503.
+
+**Sin residuos.** Se borraron las dos reservas de prueba del día (`LF-2026-0001`,
+la que produjo el BTN-001, y `LF-2026-0002`, la del checkout que sí abrió) con
+sus pagos y extras. Al terminar: `reservas` 0, `pagos` 0, `pagos_eventos` 0,
+`reserva_extras` 0, `bloqueos` 0; catálogo intacto (5 cabañas, 4 planes, 13
+tarifas, 4 extras, 22 filas de contenido, 39 imágenes).
