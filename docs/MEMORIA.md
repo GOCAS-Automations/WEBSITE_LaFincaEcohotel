@@ -2507,3 +2507,181 @@ el cron `/api/salud` devuelve `resenas_devueltas` y `resenas_ventana_meses` y de
 «selección: Google devolvió N, pasaron el filtro M, ventana X meses». Estado al 2026-10-01: Google
 devolvió 5, pasaron 4, ventana de 12 meses (4 publicadas, de hace 2 a 8 meses). `aggregateRating`
 (4,8 / 52) no cambia.
+
+---
+
+## Sesión 2026-10-01 (tarde) — Pagos en línea con Bold
+
+Llegaron las **llaves de pruebas de Bold** y la pasarela quedó cableada de punta a punta en
+ambiente de pruebas. La cuenta del hotel sigue en verificación de identidad, así que todo lo
+que hay aquí es sandbox; el día que Bold apruebe, **solo se cambian las dos llaves**.
+
+### Qué dice la documentación de Bold (y qué no)
+
+Todo lo implementado sale de cuatro páginas de `developers.bold.co`, consultadas el 2026-10-01
+(«Last updated on September 28, 2026»). Se deja escrito porque **son dos firmas distintas y es
+el error más fácil de cometer**:
+
+| | Qué firma | Algoritmo | Qué se firma |
+|---|---|---|---|
+| **Hash de integridad** | lo que mandamos al abrir el checkout | `SHA256` hex | `{Identificador}{Monto}{Divisa}{LlaveSecreta}` concatenado, sin separadores. «El orden de esta información es crucial» |
+| **Firma del webhook** | lo que Bold manda a nuestro endpoint | `HMAC-SHA256` hex, cabecera `x-bold-signature` | el **Base64 del cuerpo crudo**, no el cuerpo |
+
+Lo demás que fija el contrato:
+
+- **El monto va en PESOS enteros, no en centavos.** «Si deseas cobrar $95.000 COP, deberás
+  ingresar: 95000». Mínimo **$1.000 COP**. Es lo contrario de Wompi, que era lo que estaba
+  reservado en `.env.example`; por eso `aCentavos()` **no** se usa aquí.
+- **`order-id`**: alfanumérico más `-` y `_`, **máximo 60 caracteres**, y Bold pide no
+  reutilizar identificadores de ventas ya pagadas. La referencia es
+  `LF-AAAA-NNNN-<milisegundos>`: el código delante para que se lea en el panel de Bold, la
+  marca de tiempo detrás para que un segundo intento de pago sea su propia fila en `pagos`.
+- **La referencia vuelve en `data.metadata.reference`.** Literal para esta integración:
+  «Botón de pagos → valor del atributo `order-id`». Es lo que une el evento con nuestra fila.
+- **Estados**: en proceso `PROCESSING` y `PENDING` (solo PSE); finales `APPROVED`, `REJECTED`,
+  `FAILED`, `VOIDED`; y `NO_TRANSACTION_FOUND` cuando la venta no tiene ningún intento.
+- **Consulta de estado**: `GET https://payments.api.bold.co/v2/payment-voucher/<referencia>`
+  con `Authorization: x-api-key <llave_de_identidad>` (la de identidad, **no** la secreta).
+  Solo sirve para Botón de pagos, no para link de pago.
+- **Reintentos del webhook**: hasta 5, a los 15 min, 1 h, 4 h, 8 h y 24 h, sobre cualquier
+  respuesta que no sea `200`, y con un tope de **2 segundos** para responder.
+- **`expiration-date` va en NANOSEGUNDOS** desde la época Unix (milisegundos × 1e6).
+
+**Tres cosas que la documentación deja ambiguas o incómodas**, y cómo se resolvieron:
+
+1. **Qué llave firma el webhook.** Una página de Bold dice «Llave de identidad» y otra, la
+   canónica del webhook, «la **llave secreta**». Manda la segunda: sus cinco ejemplos de
+   código usan `secret_key`.
+2. **En modo pruebas la firma usa la llave VACÍA.** Literal: «el atributo donde va tu
+   LLAVE_SECRETA no se ingresa, debe ir como un String vacío». O sea que **en sandbox
+   cualquiera puede firmar un evento**. De ahí `BOLD_MODO`, y de ahí que el webhook, además
+   de la firma, **vuelva a consultar el estado contra la API** antes de dar nada por pagado.
+   `BOLD_MODO=pruebas` **se ignora** cuando `VERCEL_ENV=production`: olvidarse de quitarlo no
+   abre un agujero.
+3. **En sandbox Bold NO envía webhooks automáticos** para botón/link de pago. Hay que usar el
+   botón «Probar el webhook» del comprobante. Y las referencias de prueba **se borran a las
+   12 horas**.
+
+### Lo que se escribió
+
+- **`src/lib/pagos/bold.ts`** (`server-only`) — el contrato entero: las dos firmas (puras, con
+  la llave por parámetro, para poder probarlas contra el ejemplo oficial), la referencia, los
+  estados, la lectura del evento, la configuración del checkout y la consulta de estado. **Es
+  el único archivo que toca la llave secreta.**
+- **`src/lib/pagos/cotizar-en-servidor.ts`** — el requisito 1 de la auditoría hecho código: del
+  navegador llegan **decisiones**, nunca cifras, y el precio se recalcula aquí con las **mismas
+  funciones puras** (`nochesDe`, `cotizar`, `resumenDePago`, `cotizarDiaDeCalma`) sobre las
+  tarifas recién leídas con `service_role` (sin la Data Cache de Next: cobrar la tarifa de hace
+  una hora no es lo mismo que mirarla). Si el cuerpo trae un `total`, no se lee.
+- **`src/lib/pagos/crear-reserva.ts`** — los seis pasos en orden: recalcular →
+  `liberar_reservas_vencidas` → disponibilidad → reserva `pendiente` con `expira_at` a 30 min →
+  fila en `pagos` → checkout firmado. Si algo falla después de crear la reserva, **se suelta**
+  (`cancelada` con el motivo): mejor una fila cancelada que una cabaña bloqueada media hora por
+  un error nuestro.
+- **`src/lib/pagos/transiciones.ts`** — la idempotencia como función pura y probada.
+- **`POST /api/reservar`** — primer endpoint público que **escribe** en la base, así que trae lo
+  que la auditoría dejó en su pendiente P-3: **honeypot** (`companiaWeb`, con respuesta 200 falsa
+  para no educar al bot) y **freno de 6 peticiones/minuto por IP**. Y la autorización de datos es
+  una puerta: sin ella la reserva ni se intenta.
+- **`POST /api/pagos/bold/webhook`** — firma primero, cuerpo después; idempotente; guarda el
+  payload; y según el estado confirma, cancela o deja vencer. Los correos y el Google Calendar
+  van en `after()` para responder dentro de los 2 segundos de Bold.
+- **`/reservar/confirmacion`** — lee la referencia, **consulta el estado real** y muestra cuatro
+  caras: aprobado, pendiente de confirmación, rechazado y **caducado**. Nunca confirma nada.
+- **Panel** — la ficha muestra estado del pago, abonado, saldo, referencia, identificador de Bold
+  y método, con **todos** los intentos (es lo que contesta un «me cobraron dos veces»); el listado
+  distingue pagadas de pendientes con una segunda pastilla.
+- **Migración `015_pagos_bold.sql`**, aplicada a la base real con un script puntual (**no**
+  `db:aplicar`, que reaplicaría los seeds). Añade a `pagos` las columnas `pasarela`, `evento_id`,
+  `actualizado_at` y `procesado_at`, y crea `pagos_eventos` con RLS y **cero políticas**: solo
+  `service_role` entra. El `revoke` a `authenticated` es explícito porque la 011 endureció los
+  defaults de `anon` pero no los de `authenticated` (es el aviso del hallazgo A-4 para «la
+  primera tabla que se cree después», y esta lo es). A `pagos` **no** se le toca el permiso de
+  `authenticated`: la ficha del panel lo lee con la sesión del panel.
+
+### La idempotencia, en dos capas, y por qué una no basta
+
+1. **El `id` de la notificación** es la clave primaria de `pagos_eventos`, así que
+   `insert … on conflict do nothing returning` es a la vez el registro y el candado.
+2. **La transición de estado**: `update pagos set … where referencia = $1 and estado <> $2`.
+   Hace falta porque Bold documenta el `id` como único **por notificación enviada**, no por
+   transacción: un reintento podría traer otro `id` del mismo pago.
+
+Y una regla que no es obvia y está probada: **de `APPROVED` no se sale hacia atrás**. El rechazo
+del *primer* intento puede llegar reintentado 24 horas después de que el segundo fuera aprobado;
+sin esa regla, ese evento tardío cancelaría una reserva pagada y nadie lo notaría hasta que el
+huésped llegara a la finca. La única salida legítima de un pago aprobado es `VOID_APPROVED`, que
+sí cancela **y descuenta el dinero anulado de `monto_pagado`**: dejar «abonado $362.500» en una
+reserva anulada haría creer al equipo que conserva un anticipo que se devolvió.
+
+### Decisiones de diseño que conviene conocer
+
+- **Modo redirección, no checkout embebido.** La librería de Bold hace
+  `window.location.href = https://checkout.bold.co/btn?…`. Por eso la CSP solo necesita ese host
+  en **`script-src`**: ni `frame-src` (no hay iframe) ni `form-action` (no hay formulario;
+  comprobado leyendo su código). El día que se quiera el checkout embebido habrá que añadirlo a
+  `frame-src`.
+- **El script de Bold se carga al pulsar, no en cada visita.** `/reservar` la abre mucha gente
+  solo para mirar precios; el que paga espera unas décimas y el que mira no paga una petición a
+  un dominio externo. Verificado: la llave secreta **no aparece en ningún archivo de `.next`**,
+  y la de identidad tampoco (viaja solo en la respuesta del endpoint, en tiempo de petición).
+- **Datos del huésped como último paso.** Nombre, correo y celular se piden **después** del
+  anticipo: pedirlos al principio es la forma más rápida de perder a quien estaba mirando. No se
+  pide documento (hallazgo B-3: el registro de huéspedes lo exige en el check-in, no al reservar).
+- **Ningún correo al crear la solicitud.** El huésped está mirando la pasarela; un «la tenemos»
+  treinta segundos antes de que el pago falle es ruido. El correo sale **cuando el webhook aprueba**.
+- **WhatsApp sigue visible** como alternativa secundaria. Y sin las llaves de Bold el sitio cierra
+  por WhatsApp exactamente como antes: `boldConfigurado()` devuelve `false` y nada se rompe.
+- **`REJECTED` y `FAILED` no cancelan la reserva.** El huésped sigue dentro de su media hora y lo
+  normal tras una tarjeta rechazada es intentarlo con otra; cancelarla le quitaría las fechas que
+  está a punto de pagar. El barrido la recoge sola a los 30 minutos.
+
+### Las pruebas (contra `localhost:3112`, build de producción, sandbox de Bold)
+
+| Escenario | Resultado |
+|---|---|
+| **Aprobado** | reserva `confirmada`, `monto_pagado` 362 500 de 725 000, `expira_at` a `null`, método «Tarjeta», `transaccion_id` guardado, autorización `web` + versión del texto. **Un solo correo** (anotado en el registro: Resend sigue dormido) |
+| **Rechazado** | pago `REJECTED`, reserva **sigue `pendiente`** con su `expira_at`: se deja vencer sola |
+| **Abandonado** | con el hold vivo, `/api/disponibilidad` da las dos noches ocupadas; con el hold vencido las da libres **antes** del barrido (la regla se aplica en memoria), y `liberar_reservas_vencidas()` la cancela anexando el motivo **sin borrar lo que escribió el huésped** |
+| **Evento duplicado** | mismo `id` → «evento repetido» (capa 1); mismo pago con **otro** `id` → «sin cambios» (capa 2). `monto_pagado` y `procesado_at` sin moverse, **cero correos nuevos** |
+| **Firma inválida** | las cuatro variantes dan **401** y no escriben nada: firma inventada, sin cabecera, cuerpo alterado con la firma del original, y firmado con la llave de producción estando en modo pruebas |
+| **Anulación** | `VOID_APPROVED` → reserva `cancelada`, `monto_pagado` a 0, motivo anexado; repetirla → «sin cambios» |
+| **Rechazo tardío** | `SALE_REJECTED` sobre un pago ya `APPROVED` → «sin cambios», la reserva confirmada no se toca |
+| **El total del navegador** | se mandó `total: 1` en el cuerpo: se cobró **362 500**. Un extra inexistente se ignora y no se cobra |
+| **Doble reserva** | la segunda sobre fechas solapadas → **409** con el choque explicado en español |
+| **Honeypot** | `companiaWeb` lleno → `200 {ok:true, ignorado:true}` y **nada** en la base |
+| **Freno de peticiones** | el 7.º intento en el minuto → **429** con `retry-after` |
+| **Firma de integridad** | recalculada aparte con la llave secreta: **coincide**. Y la llave **no viaja** en la respuesta |
+| **Tiempo de respuesta del webhook** | 693–1 330 ms, por debajo del tope de 2 s de Bold |
+| **Página de retorno** | aprobado → «Tu reserva está confirmada»; rechazado → «El pago no se completó»; en proceso → «Estamos confirmando tu pago»; caducada → «Esa solicitud ya caducó»; y `?bold-order-id=NO-EXISTE&bold-tx-status=approved` → «No encontramos esa reserva», **sin decir confirmada en ningún momento** |
+| **Panel** | la ficha pinta los intentos con su referencia e identificador de Bold; el listado, las pastillas «Pagada / Anticipo pagado / Pago rechazado / Pago en curso / Sin cobro». Ni un número de tarjeta, ni un CVV, ni el PAN enmascarado del payload |
+
+**Lo único que no se pudo automatizar**, y queda anotado: **completar el pago en la pasarela de
+Bold con las tarjetas de prueba** (`4111 1111 1111 1111` aprobado, `4970 1100 0000 0062`
+rechazado). El formulario de la tarjeta vive en el dominio de Bold y hace falta un navegador. Lo
+que sí se verificó sin navegador: la librería **oficial** de Bold, ejecutada en un DOM mínimo con
+nuestra configuración firmada, construye la URL `https://checkout.bold.co/btn?…` y esa URL
+responde **200** con la pasarela («Completa tu compra con el link de pago Bold»). Son cinco
+minutos de ratón para Cesar; está en `docs/PLAN_CIERRE.md`.
+
+**Sin residuos.** Al terminar: `reservas` 0, `pagos` 0, `pagos_eventos` 0, `reserva_extras` 0,
+`bloqueos` 0; `contenido` 22, `alojamientos` 5 y `cache_externo` 2 intactos; dos cuentas de auth.
+Las ocho reservas de prueba (`prueba.bold@lafinca.test`) se borraron.
+
+### Verificación
+
+`tsc` y `eslint` limpios (queda el aviso previo de `scripts/importar-fotos-drive.mjs`);
+`build` correcto y **las 19 rutas públicas siguen estáticas** —`/reservar` sigue `○ … 1h`—;
+**269 pruebas en verde, 72 nuevas** (47 de `bold.test.ts` y 25 de `transiciones.test.ts`):
+la firma de integridad contra el ejemplo literal de la documentación, la del webhook contra sus
+cinco ejemplos, la referencia, el anticipo en pesos y no en centavos, los estados, la lectura del
+evento y de la API, y la idempotencia con sus dos reglas.
+
+### Qué falta para producción
+
+1. La pasada visual por la pasarela de pruebas (5 min, navegador) y registrar el webhook en el
+   panel de Bold. Ver `docs/PLAN_CIERRE.md`.
+2. El día que Bold apruebe la cuenta: cambiar las dos llaves por las de producción en Vercel,
+   borrar `BOLD_MODO` de Production, y hacer **una compra real pequeña y su reembolso**.
+3. `RESEND_API_KEY`: hoy el correo de confirmación del pago se escribe en el registro del
+   servidor en vez de enviarse. El webhook ya lo llama; no hay que tocar código.

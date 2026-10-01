@@ -40,9 +40,68 @@ defecto, activarla en los tres salvo que se diga lo contrario.
 | `RESEND_API_KEY` | **Sí** | Production, Preview, Development | **Vacía** hasta que exista la cuenta de Resend y el dominio esté verificado — ver el apartado dedicado más abajo |
 | `EMAIL_FROM` | No | Production, Preview, Development | **Vacía** por ahora. Después: `La Finca Eco Hotel <reservas@lafincaecohotel.com>` |
 | `EMAIL_NOTIFY_TO` | No | Production, Preview, Development | **Vacía** por ahora. Después: el correo (o los correos, separados por coma) del hotel que reciben el aviso de cada reserva |
+| `BOLD_IDENTITY_KEY` | No (es **pública** por diseño: Bold dice «no hay problema en que alguien pueda verla ya que sólo sirve para identificarte») | Production, Preview, Development | Llave de **identidad**. De **pruebas** en Preview y Development; de **producción** solo en Production — ver el apartado dedicado |
+| `BOLD_PRIVATE_KEY` | **Sí. Solo servidor, jamás al navegador** | Production, Preview, Development | Llave **secreta** del mismo ambiente que la de identidad |
+| `BOLD_MODO` | No | Preview, Development (**no** en Production) | `pruebas` mientras se usen las llaves de prueba. En Production se deja vacía o se borra — ver el apartado dedicado |
 
-Las de Bold/Wompi (comentadas en `.env.example`) son de la fase de pagos: no
-hace falta crearlas todavía.
+### `BOLD_IDENTITY_KEY`, `BOLD_PRIVATE_KEY` y `BOLD_MODO`
+
+La pasarela es el **Botón de pagos de Bold**, con integración personalizada (el
+botón es nuestro y abre su checkout). Toda la lógica vive en
+`src/lib/pagos/bold.ts`, que está marcado con `server-only`.
+
+**Las dos llaves van siempre en pareja y del mismo ambiente.** Mezclar una de
+pruebas con una de producción da un error en la pasarela, y la documentación de
+Bold lo avisa explícitamente: «Asegúrate de que ambas llaves (de identidad y
+secreta) correspondan al ambiente de pruebas. Verás un error si usas llaves de
+ambientes distintos».
+
+Dónde se sacan: **bold.co → Panel de comercios → Integraciones → «+ Activar
+llaves»**. Ahí salen las cuatro (identidad y secreta, de pruebas y de
+producción). Las de pruebas suelen estar disponibles **antes** de que Bold
+termine de verificar la identidad del comercio; las de producción, después.
+
+| Llave | ¿Secreta? | Qué hace |
+|---|---|---|
+| **Identidad** (`BOLD_IDENTITY_KEY`) | No | Identifica el comercio. Viaja al navegador dentro de la configuración del checkout —es inevitable, el checkout corre ahí— y autentica la API con la que el sitio consulta el estado de una transacción. |
+| **Secreta** (`BOLD_PRIVATE_KEY`) | **Sí** | Firma el **hash de integridad** de cada venta (lo que impide cambiar el monto desde el navegador) y verifica la **firma de los eventos del webhook** (`x-bold-signature`). Sin esto, cualquiera confirmaría reservas gratis con un `curl`. |
+
+**`BOLD_MODO=pruebas` solo en Preview y Development.** Existe por una rareza
+documentada del sandbox: «En modo pruebas la firma usa una clave vacía, es decir
+cuando se quiere verificar una transacción que se realizó con las llaves de
+pruebas, el atributo donde va tu LLAVE_SECRETA no se ingresa, debe ir como un
+String vacío». Como las llaves de prueba son indistinguibles a la vista de las de
+producción, hay que decírselo al código.
+
+> Hay una **red de seguridad**: en el despliegue de producción de Vercel
+> (`VERCEL_ENV=production`) esta variable **se ignora** y siempre se usa la llave
+> secreta de verdad. Olvidarse de quitarla no abre ningún agujero; como máximo,
+> un webhook de pruebas rechazado.
+
+**El webhook se registra en el panel de Bold**, no en Vercel: Integraciones →
+Webhooks → «Configurar webhook», apuntando a
+
+    https://<dominio>/api/pagos/bold/webhook
+
+Se pueden registrar hasta cinco endpoints, y hay un «webhook de pruebas» aparte
+(Integraciones → Webhooks → *webhooks de prueba*). Dos cosas que conviene saber
+antes de probar:
+
+- **En el ambiente de pruebas de botón/link de pago, Bold NO envía webhooks
+  automáticos.** Hay que usar el botón **«Probar el webhook»** que aparece en el
+  comprobante al terminar una compra simulada, pegando ahí la URL.
+- **Bold reintenta hasta 5 veces** lo que no responda `200` (a los 15 min, 1 h,
+  4 h, 8 h y 24 h). El endpoint es idempotente: el mismo evento dos veces no
+  duplica nada ni reenvía correos.
+
+**El día del lanzamiento**, cuando Bold apruebe la cuenta: cambiar las dos llaves
+de Production por las de producción, borrar `BOLD_MODO` de Production si estaba,
+registrar el webhook con el dominio real, y hacer **una compra real pequeña y su
+reembolso** para comprobar el circuito completo con dinero de verdad.
+
+**Sin las dos llaves el sitio no se rompe:** el motor de reservas cierra por
+WhatsApp igual que antes de la fase de pagos (`boldConfigurado()` devuelve
+`false` y el selector pinta el botón de WhatsApp como principal). Es deliberado.
 
 ### `RESEND_API_KEY`, `EMAIL_FROM` y `EMAIL_NOTIFY_TO`
 
