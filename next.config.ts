@@ -284,15 +284,20 @@ const nextConfig: NextConfig = {
    * **1. Direcciones propias que cambiaron de nombre.** `/el-lugar` existió y
    * se indexó: la página se llama ahora «Conócenos» y vive en `/conocenos`.
    *
-   * **2. Las URLs del WordPress que hay hoy en producción.** El sitio viejo es
-   * casi un *one-page*, y su `wp-sitemap` publica exactamente seis direcciones:
+   * **2. Las URLs del WordPress que estuvo en producción hasta el 2026-10-01.**
+   * ⚠ **Que el sitio viejo ya no exista no las vuelve innecesarias: las vuelve
+   * imprescindibles.** Mientras estaba en línea, él mismo respondía esas
+   * direcciones; ahora las sirve este sitio, y lo único que separa a quien llega
+   * desde un resultado de Google de un 404 son estas reglas. Google tarda
+   * semanas o meses en dejar de pedirlas, así que se quedan. El sitio viejo era
+   * casi un *one-page*, y su `wp-sitemap` publicaba exactamente seis direcciones:
    * `/`, `/services/`, `/about-us/`, `/contact/`, `/hello-world/` y
    * `/category/uncategorized/`. Las tres primeras son páginas del tema Divi sin
    * personalizar (textos en inglés, dirección de Los Ángeles, teléfono
    * ficticio) y las dos últimas son los restos de la instalación de WordPress,
-   * pero **están indexadas**: el día que el dominio apunte a Vercel, sin estos
-   * 301 cada una devolvería un 404 y se perdería la autoridad que hayan
-   * acumulado. Se llevan a la página nueva que les corresponde por intención,
+   * pero **siguen indexadas**: sin estos 301 cada una devolvería un 404 y se
+   * perdería la autoridad que hayan acumulado. Se llevan a la página nueva que
+   * les corresponde por intención,
    * no por parecido de nombre.
    *
    * ⚠ **Las redirecciones de `next.config` GANAN a las rutas del App Router.**
@@ -302,7 +307,7 @@ const nextConfig: NextConfig = {
    * rutas, y los destinos (`/experiencias`, `/conocenos`, `/contacto`, `/`) sí—,
    * y eso se comprobó con `curl -I` contra localhost, ruta por ruta.
    *
-   * **Sobre la barra final: el sitio viejo publica sus URLs con barra
+   * **Sobre la barra final: el sitio viejo publicaba sus URLs con barra
    * (`/services/`) y eso son DOS saltos, a propósito.** Next normaliza la barra
    * final ANTES de mirar estas reglas, así que `/services/` devuelve primero un
    * 308 a `/services` y ese un 301 a `/experiencias`. Declarar también

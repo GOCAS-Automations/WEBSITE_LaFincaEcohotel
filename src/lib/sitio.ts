@@ -7,9 +7,18 @@
  * aunque la base de datos no responda durante el build.
  */
 
-/** URL canónica de producción. Se sobreescribe con `NEXT_PUBLIC_SITE_URL`. */
+/**
+ * URL canónica de producción. Se sobreescribe con `NEXT_PUBLIC_SITE_URL`.
+ *
+ * **Es el apex, sin `www`** (verificado el 2026-10-01 contra el dominio real:
+ * `https://www.lafincaecohotel.com` devuelve un 308 a `https://lafincaecohotel.com`,
+ * que es el dominio principal del proyecto en Vercel). El respaldo en código
+ * importa más de lo que parece: alimenta canónicas, OpenGraph, el sitemap, el
+ * JSON-LD, los enlaces de los correos y las URLs de retorno de Bold, así que si
+ * la variable de entorno falta o queda mal puesta, esto es lo que se publica.
+ */
 const URL_SITIO = (
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.lafincaecohotel.com"
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://lafincaecohotel.com"
 ).replace(/\/+$/, "");
 
 export const SITIO = {
