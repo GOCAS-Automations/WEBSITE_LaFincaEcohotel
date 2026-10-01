@@ -18,6 +18,7 @@ import {
   leerEventoBold,
   normalizarEstadoBold,
   referenciaValida,
+  urlDeRetornoValida,
   verificarFirmaDeEvento,
 } from "./bold";
 import { calcularAnticipo, resumenDePago } from "../reserva/total";
@@ -548,5 +549,39 @@ describe("textos para la pasarela y el panel", () => {
     /* Lo que no esté en el mapa se devuelve tal cual, que es más útil que
        «Otro»: al menos se puede buscar en la documentación de Bold. */
     expect(etiquetaMetodoPago("METODO_NUEVO")).toBe("METODO_NUEVO");
+  });
+});
+
+describe("las URLs de retorno (la causa del BTN-001)", () => {
+  /*
+    EL CASO REAL, 2026-10-01.
+
+    El botón de Bold mostraba «Something went wrong… BTN-001» y la consola del
+    navegador decía exactamente:
+
+      Bold Payment Button: 'http://localhost:3000/reservar/confirmacion?ref=…'
+      is not a valid value for the 'data-redirection-url' attribute.
+
+    `data-redirection-url` y `data-origin-url` tienen que ser URLs https. Estas
+    pruebas existen para que nadie vuelva a mandar una http pensando que el
+    problema son las llaves o el monto.
+  */
+  it("acepta una URL https absoluta", () => {
+    expect(
+      urlDeRetornoValida("https://lafincaecohotel.com/reservar/confirmacion?ref=LF-1"),
+    ).toBe(true);
+  });
+
+  it("rechaza http, incluido localhost", () => {
+    expect(urlDeRetornoValida("http://localhost:3000/reservar/confirmacion")).toBe(
+      false,
+    );
+    expect(urlDeRetornoValida("http://lafincaecohotel.com/")).toBe(false);
+  });
+
+  it("rechaza lo que no es una URL absoluta", () => {
+    expect(urlDeRetornoValida("/reservar/confirmacion")).toBe(false);
+    expect(urlDeRetornoValida("")).toBe(false);
+    expect(urlDeRetornoValida("lafincaecohotel.com")).toBe(false);
   });
 });

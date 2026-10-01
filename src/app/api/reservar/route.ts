@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 
 import { frenar } from "@/lib/api/limite-peticiones";
-import { boldConfigurado } from "@/lib/pagos/bold";
+import { boldConfigurado, pagosActivos } from "@/lib/pagos/bold";
 import { crearReservaYCobro } from "@/lib/pagos/crear-reserva";
 import type { SolicitudDeReserva } from "@/lib/pagos/cotizar-en-servidor";
-import { origenDeLaPeticion } from "@/lib/pagos/origen";
+import { origenParaBold } from "@/lib/pagos/origen";
 import { crearClienteAdmin } from "@/lib/supabase/admin";
 
 /**
@@ -117,6 +117,23 @@ export async function POST(peticion: Request) {
     );
   }
 
+  /*
+    EL INTERRUPTOR DE PAGOS (`PAGOS_ACTIVOS`).
+
+    Las llaves pueden estar puestas y el cobro seguir apagado: mientras sean las
+    de pruebas, un huésped real pasaría por una pasarela que no cobra nada. El
+    sitio público ya pinta el cierre por WhatsApp cuando el interruptor está en
+    `0` —lo decide `pagoEnLineaDisponible()` en el servidor—, así que llegar aquí
+    significa una petición directa al endpoint o un despliegue a medio camino. En
+    los dos casos la respuesta es la misma: no se crea ninguna reserva.
+  */
+  if (!pagosActivos()) {
+    return error(
+      "Los pagos en línea no están habilitados todavía. Escríbenos por WhatsApp y cerramos tu reserva.",
+      503,
+    );
+  }
+
   let cuerpo: unknown;
   try {
     cuerpo = await peticion.json();
@@ -219,7 +236,9 @@ export async function POST(peticion: Request) {
     const resultado = await crearReservaYCobro(supabase, {
       solicitud,
       huesped: { nombre, correo, telefono, notas: notas || null },
-      origen: origenDeLaPeticion(peticion),
+      /* Siempre https: Bold rechaza con BTN-001 cualquier URL de retorno que no
+         lo sea, y en local el origen real es `http://localhost:3000`. */
+      origen: origenParaBold(peticion),
     });
 
     if (!resultado.ok) {

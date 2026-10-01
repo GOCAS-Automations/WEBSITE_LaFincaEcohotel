@@ -168,12 +168,74 @@ export function modoBold(): ModoBold {
     : "produccion";
 }
 
+/**
+ * El ambiente **declarado** en la configuración, sin el blindaje de `modoBold()`.
+ *
+ * `modoBold()` miente a propósito en producción: devuelve `produccion` aunque
+ * `BOLD_MODO=pruebas` siga puesto, para que un olvido no abra el agujero de la
+ * firma con llave vacía. Eso está bien para firmar, y está mal para decidir si
+ * **se puede confirmar una reserva**: ahí lo que importa es qué llaves hay de
+ * verdad, y la única pista honesta que tenemos es lo que diga la variable.
+ *
+ * Se usa en el webhook: ambiente de pruebas declarado + `VERCEL_ENV=production`
+ * es un sitio real cobrando por una pasarela de juguete, y ninguna reserva puede
+ * confirmarse así.
+ */
+export function ambienteDeclarado(): ModoBold {
+  return leerEntorno("BOLD_MODO")?.toLowerCase() === "pruebas"
+    ? "pruebas"
+    : "produccion";
+}
+
 /** ¿Están las dos llaves puestas? Sin ellas el sitio cierra por WhatsApp. */
 export function boldConfigurado(): boolean {
   return (
     leerEntorno("BOLD_IDENTITY_KEY") !== null &&
     leerEntorno("BOLD_PRIVATE_KEY") !== null
   );
+}
+
+/**
+ * EL INTERRUPTOR DEL NEGOCIO: `PAGOS_ACTIVOS`.
+ *
+ * ---------------------------------------------------------------------------
+ * POR QUÉ NO BASTA `boldConfigurado()`
+ * ---------------------------------------------------------------------------
+ * Tener llaves no significa poder cobrar. Desde que el dominio real apunta a
+ * Vercel, el sitio publicado es el del hotel: un huésped de verdad puede entrar
+ * a `/reservar` cualquier tarde. Si las llaves puestas son las de **pruebas**,
+ * ese huésped pasaría por una pasarela que no cobra nada, y el día que un evento
+ * de ese sandbox llegara al webhook la reserva quedaría **confirmada sin pago
+ * real**: una cabaña bloqueada por una venta que nunca existió.
+ *
+ * Por eso el cobro en línea tiene su propio interruptor, separado de las llaves,
+ * y **nace apagado**. Con `PAGOS_ACTIVOS` distinto de `1`:
+ *
+ *   · El sitio público **no muestra el botón de pagar**: el cierre es WhatsApp,
+ *     con el mismo resumen y el mismo desglose que antes de la fase de pagos.
+ *   · `POST /api/reservar` responde que los pagos no están habilitados, así que
+ *     nadie crea reservas `pendiente` por esa puerta.
+ *   · El **webhook sigue vivo** —hace falta para probarlo desde el panel de
+ *     Bold— pero no confirma nada si el ambiente declarado es de pruebas y
+ *     `VERCEL_ENV=production`.
+ *
+ * Es el **último interruptor que se activa en el lanzamiento**, y se activa solo
+ * junto a las llaves de producción.
+ */
+export function pagosActivos(): boolean {
+  return leerEntorno("PAGOS_ACTIVOS") === "1";
+}
+
+/**
+ * ¿Se puede pagar en línea ahora mismo? Las llaves **y** el interruptor.
+ *
+ * Es lo que mira el sitio público y el endpoint que crea la reserva. La página
+ * de retorno y el webhook NO la usan: los dos tienen que seguir funcionando con
+ * los pagos apagados, porque un huésped que pagó mientras el interruptor estaba
+ * encendido merece ver su comprobante aunque se apague después.
+ */
+export function pagoEnLineaDisponible(): boolean {
+  return pagosActivos() && boldConfigurado();
 }
 
 /** La llave de identidad (pública). Lanza si falta: es un error de despliegue. */
@@ -254,6 +316,40 @@ export function construirReferencia(codigo: string, ahora: Date = new Date()): s
 /** ¿Esta cadena cumple lo que Bold admite como `order-id`? */
 export function referenciaValida(referencia: string): boolean {
   return REFERENCIA_VALIDA.test(referencia);
+}
+
+/* ===========================================================================
+ * Las URLs de retorno
+ * ======================================================================== */
+
+/**
+ * ⚠ **BOLD SOLO ACEPTA `https://` EN LAS URLS DE RETORNO.** (2026-10-01)
+ *
+ * Esto costó un «Something went wrong… BTN-001» en la pasarela, y el detalle
+ * estaba —como dice su documentación— en la consola del navegador:
+ *
+ *     Bold Payment Button: 'http://localhost:3000/reservar/confirmacion?ref=…'
+ *     is not a valid value for the 'data-redirection-url' attribute.
+ *
+ * La tabla de atributos de la integración manual lo dice en una línea
+ * («`data-redirection-url` → Valid HTTPS URL») y es **literal**: con `http://`
+ * el checkout no se abre, devuelve la pantalla de error genérica con el código
+ * BTN-001, y ni el monto ni la firma ni las llaves tienen nada que ver.
+ *
+ * `configuracionCheckout` lo comprueba **antes de abrir nada**, para que el
+ * fallo sea un error legible del servidor —con el nombre del atributo y el valor
+ * que lo rompe— en vez de una pantalla roja de Bold sin explicación. Quien
+ * construye las URLs es `origenParaBold()` (`src/lib/pagos/origen.ts`), que
+ * garantiza el `https://`.
+ */
+export function urlDeRetornoValida(url: string): boolean {
+  let parseada: URL;
+  try {
+    parseada = new URL(url);
+  } catch {
+    return false;
+  }
+  return parseada.protocol === "https:";
 }
 
 /* ===========================================================================
@@ -541,6 +637,19 @@ export function configuracionCheckout(
   if (!Number.isFinite(monto) || monto < MONTO_MINIMO_BOLD) {
     throw new Error(
       `Bold no admite cobros por debajo de $${MONTO_MINIMO_BOLD} COP y este sería de $${monto}.`,
+    );
+  }
+
+  /* Las dos URLs de retorno, con `https://` obligatorio. Ver
+     `urlDeRetornoValida`: esto es exactamente el BTN-001 del 2026-10-01. */
+  if (!urlDeRetornoValida(entrada.urlRetorno)) {
+    throw new Error(
+      `Bold rechaza «${entrada.urlRetorno}» como redirectionUrl: tiene que ser una URL absoluta con https://. Una dirección http (localhost, por ejemplo) produce el error BTN-001 en la pasarela.`,
+    );
+  }
+  if (!urlDeRetornoValida(entrada.urlAbandono)) {
+    throw new Error(
+      `Bold rechaza «${entrada.urlAbandono}» como originUrl: tiene que ser una URL absoluta con https://. Una dirección http (localhost, por ejemplo) produce el error BTN-001 en la pasarela.`,
     );
   }
 
