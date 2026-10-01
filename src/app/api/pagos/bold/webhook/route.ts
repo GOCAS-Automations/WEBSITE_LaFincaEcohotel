@@ -2,6 +2,7 @@ import { after } from "next/server";
 
 import {
   CABECERA_FIRMA_BOLD,
+  ambienteDeclarado,
   boldConfigurado,
   consultarEstadoPago,
   esAprobado,
@@ -207,6 +208,37 @@ export async function POST(peticion: Request) {
         },
         { onConflict: "id" },
       );
+  }
+
+  /* ---------------------------------------------------------------------
+     3-bis. EL CANDADO DEL AMBIENTE: pruebas no confirma nada en producción
+     ------------------------------------------------------------------ */
+  /*
+    EL PEOR ESCENARIO DE TODA ESTA INTEGRACIÓN, Y SE CIERRA AQUÍ.
+
+    Desde que `lafincaecohotel.com` apunta a Vercel, el sitio publicado es el del
+    hotel. Si las llaves de Production fueran todavía las de PRUEBAS, un evento
+    del sandbox de Bold —que en ese ambiente se firma con la **llave vacía**, o
+    sea que cualquiera puede fabricarlo— dejaría una reserva `confirmada` **sin
+    un peso cobrado**: una cabaña bloqueada por una venta que no existió.
+
+    Así que el webhook sigue recibiendo y REGISTRANDO el evento (hace falta para
+    probarlo desde el panel de Bold, con el botón «Probar el webhook»), pero no
+    toca `pagos` ni `reservas`. Se usa `ambienteDeclarado()` y no `modoBold()`: el
+    segundo devuelve `produccion` a propósito en producción para no firmar con la
+    llave vacía, y aquí lo que hace falta saber es justo lo contrario, qué llaves
+    dice la configuración que hay.
+
+    Esto es la red, no el interruptor: el que impide de verdad que un huésped
+    llegue a pagar en pruebas es `PAGOS_ACTIVOS` (`src/lib/pagos/bold.ts`).
+  */
+  if (ambienteDeclarado() === "pruebas" && process.env.VERCEL_ENV === "production") {
+    console.error(
+      `[bold/webhook] ${evento.referencia ?? "sin referencia"}: BOLD_MODO=pruebas en un despliegue de producción. ` +
+        "El evento queda registrado pero NO se confirma ninguna reserva: una pasarela de pruebas no cobra nada. " +
+        "Hay que poner las llaves de producción y borrar BOLD_MODO en Vercel.",
+    );
+    return ok("ambiente de pruebas en producción: no se confirma nada");
   }
 
   if (!evento.referencia) {

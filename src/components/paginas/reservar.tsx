@@ -26,7 +26,7 @@ import {
   getSeccionPlanes,
 } from "@/lib/contenido";
 import { CLASE_FOTO_CON_FLAG, FOTO } from "@/lib/fotos";
-import { boldConfigurado } from "@/lib/pagos/bold";
+import { pagoEnLineaDisponible } from "@/lib/pagos/bold";
 import { hoyEnBogota } from "@/lib/utils/formato";
 import { enlaceWhatsapp } from "@/lib/whatsapp";
 
@@ -243,19 +243,28 @@ export async function PaginaReservar() {
                 /*
                   ¿HAY PAGO EN LÍNEA? LO DECIDE EL SERVIDOR.
 
-                  `boldConfigurado()` solo mira si las dos llaves están puestas,
-                  y vive en un módulo `server-only`: la llave secreta no puede
-                  acercarse al navegador. Lo que cruza es un booleano.
+                  `pagoEnLineaDisponible()` son DOS cosas: que las llaves estén
+                  puestas (`boldConfigurado()`) y que el interruptor del negocio
+                  esté encendido (`PAGOS_ACTIVOS=1`). Vive en un módulo
+                  `server-only` —la llave secreta no puede acercarse al
+                  navegador— y lo que cruza es un booleano.
 
-                  Se evalúa aquí, en el render de una página estática con ISR de
-                  una hora. Es correcto porque las llaves son configuración del
+                  El interruptor existe porque desde que el dominio real apunta
+                  aquí, el sitio publicado es el del hotel: con las llaves de
+                  PRUEBAS puestas, un huésped de verdad pasaría por una pasarela
+                  que no cobra nada. Mientras esté en `0`, el botón de pagar no
+                  se pinta.
+
+                  Se evalúa en el render de una página estática con ISR de una
+                  hora. Es correcto porque las dos cosas son configuración del
                   despliegue, no un dato que cambie entre visitas: el día que se
-                  pongan en Vercel, el despliegue las trae.
+                  cambien en Vercel, el despliegue las trae.
 
                   Con `false` el selector cierra por WhatsApp igual que antes de
-                  la fase de pagos. Nada se queda a medias.
+                  la fase de pagos, con el mismo resumen y el mismo desglose.
+                  Nada se queda a medias.
                 */
-                pagoEnLinea={boldConfigurado()}
+                pagoEnLinea={pagoEnLineaDisponible()}
               />
             </Suspense>
           ) : (
