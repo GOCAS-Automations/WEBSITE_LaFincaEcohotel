@@ -1,5 +1,9 @@
 import "server-only";
 
+import { cache } from "react";
+
+import { guardarCache, leerCache, tomarTurno } from "./cache-externo";
+
 /**
  * Reseñas de Google — capa de datos.
  *
@@ -37,6 +41,41 @@ import "server-only";
  * · Los términos exigen mostrar la **atribución al autor** y dejar claro que
  *   las reseñas vienen de Google. Eso lo resuelve el componente.
  * · Se permite cachear los datos hasta 30 días.
+ *
+ * ---------------------------------------------------------------------------
+ * DE DÓNDE SALEN LAS LLAMADAS, Y CUÁNTAS SON
+ * ---------------------------------------------------------------------------
+ * Google retiró el crédito universal de Maps. Las reseñas están en el tramo más
+ * caro de Place Details: **1.000 llamadas gratis al mes**, y 20 USD por cada
+ * millar siguiente. Así que el número de llamadas no puede ser una consecuencia
+ * del tráfico; tiene que ser una decisión.
+ *
+ * Antes este módulo pedía la ficha con `next: { revalidate: 86400 }`. Sobre el
+ * papel, una llamada al día. En la práctica, la Data Cache de Next vive **por
+ * instancia y por región**: con tres instancias en dos regiones son hasta seis
+ * llamadas el mismo día, y mañana pueden ser dos. Un número que nadie puede
+ * presupuestar.
+ *
+ * Ahora manda la base de datos (`cache_externo`, migración 014):
+ *
+ *   · `getResenasGoogle()` —lo que usa la portada— **LEE DE LA BASE**. Una visita
+ *     no llama a Google. Nunca. La única excepción es el arranque en frío (la
+ *     tabla vacía): entonces se hace UNA llamada, se guarda y se sirve, y para
+ *     que diez visitas simultáneas no hagan diez llamadas hay que ganar antes un
+ *     turno (`tomarTurno()` en `src/lib/cache-externo.ts`).
+ *   · `refrescarResenasGoogle()` —lo que usa el cron diario de `/api/salud`— es
+ *     el ÚNICO camino que llama a Google de forma rutinaria, y corre una vez al
+ *     día.
+ *
+ *       1 llamada/día × 30 días = 30 llamadas/mes   frente a 1.000 gratis
+ *
+ *     Es el 3 % de la cuota gratuita, y es un número determinista: no depende de
+ *     Vercel ni de que alguien recuerde fijar el tope de cuota en la consola de
+ *     Google Cloud (ese tope sigue siendo buena idea, pero ya no es lo único que
+ *     separa al hotel de una factura sorpresa).
+ *
+ * **Si se quita el cron**, el sitio no se rompe: sigue mostrando lo último que
+ * guardó, indefinidamente. Lo que se pierde es que las reseñas nuevas aparezcan.
  */
 
 /**
@@ -62,12 +101,29 @@ const ENDPOINT = `https://places.googleapis.com/v1/places/${PLACE_ID_LA_FINCA}?l
 /** Campos pedidos. Cualquier campo extra encarece la llamada: no añadir. */
 const MASCARA_CAMPOS = "rating,userRatingCount,reviews,googleMapsUri";
 
+/** Clave de la fila de `cache_externo` donde vive el resumen ya cocinado. */
+export const CLAVE_CACHE_RESENAS = "resenas_google";
+
 /**
- * 24 horas de caché (`revalidate`). Google permite hasta 30 días, pero un día
- * es el equilibrio: la portada refleja una reseña nueva al día siguiente y el
- * sitio hace una sola llamada diaria a la API, no una por visita.
+ * Cortes de tiempo de la llamada a Google, distintos según quién llame.
+ *
+ * No es una cifra de adorno: medido contra `places.googleapis.com`, el
+ * handshake TLS de una conexión nueva puede irse a ocho o nueve segundos según
+ * la red desde la que se salga. Un solo número tendría que elegir entre
+ * sacrificar al visitante o sacrificar el refresco.
+ *
+ *   · `cron-diario`: diez segundos. Corre sin nadie esperando, dentro de los
+ *     treinta de `maxDuration` de `/api/salud`, y si falla el sitio se queda un
+ *     día más con las reseñas de ayer. Vale la pena esperar.
+ *   · `arranque-en-frio`: cuatro segundos. Aquí hay una persona con la portada
+ *     en blanco. Mejor caer a los testimonios del CMS —que es instantáneo— que
+ *     tenerla mirando una pantalla vacía. El turno se podrá retomar en diez
+ *     minutos, y de todas formas el cron llenará la fila.
  */
-const REVALIDAR_SEGUNDOS = 60 * 60 * 24;
+const ESPERA_MS = {
+  "cron-diario": 10_000,
+  "arranque-en-frio": 4000,
+} as const;
 
 /** Solo se publican reseñas de 4 o 5 estrellas. */
 const CALIFICACION_MINIMA = 4;
@@ -206,57 +262,32 @@ function normalizarResena(crudo: unknown): ResenaGoogle | null {
   };
 }
 
+
 /* ===========================================================================
- * Función pública
+ * Normalización de la respuesta de Google
+ * ---------------------------------------------------------------------------
+ * Separada del `fetch` a propósito: es la parte con reglas de negocio —qué
+ * reseñas se publican y en qué orden— y es la única que merece pruebas. Se
+ * exporta solo para poder probarla.
  * ======================================================================== */
 
 /**
- * Trae el promedio, el total y hasta cinco reseñas de la ficha de Google.
+ * Convierte la respuesta cruda de Places API en el resumen que usa el sitio, o
+ * `null` si no hay nada publicable.
  *
- * NUNCA lanza. Si no hay clave, si Google responde mal, si el JSON no tiene la
- * forma esperada o si no queda ninguna reseña de 4+ estrellas, devuelve `null`
- * y deja un `console.error` explicando el motivo. La razón es simple: este
- * bloque es un adorno social, y un adorno jamás puede impedir que el sitio del
- * hotel se construya o se muestre. Quien la consume solo tiene que hacer
- * `if (!resumen) return null;`.
+ * Reglas, en este orden:
+ *   1. Sin `rating` o sin `userRatingCount` no hay resumen: las estrellas de la
+ *      portada y el `aggregateRating` del JSON-LD saldrían de la nada.
+ *   2. Cada reseña pasa por `normalizarResena()`; a las que les falta algo
+ *      imprescindible se caen.
+ *   3. Solo 4★ o más.
+ *   4. De más reciente a más antigua. Google las devuelve por «relevancia», pero
+ *      una reseña de hace tres semanas convence más que una de hace tres años.
+ *   5. Cinco como máximo.
+ *   6. Si no queda ninguna, `null`: mejor los testimonios del CMS que una
+ *      sección vacía con un promedio huérfano.
  */
-export async function getResenasGoogle(): Promise<ResumenGoogle | null> {
-  const clave = process.env.GOOGLE_PLACES_API_KEY;
-
-  if (!clave) {
-    console.error(
-      "[resenas-google] Falta GOOGLE_PLACES_API_KEY: el bloque de reseñas no se publica.",
-    );
-    return null;
-  }
-
-  let datos: unknown;
-
-  try {
-    const respuesta = await fetch(ENDPOINT, {
-      headers: {
-        "X-Goog-Api-Key": clave,
-        "X-Goog-FieldMask": MASCARA_CAMPOS,
-      },
-      next: { revalidate: REVALIDAR_SEGUNDOS },
-    });
-
-    if (!respuesta.ok) {
-      // El cuerpo del error de Google explica el motivo real (clave sin
-      // permisos, API no habilitada, cuota agotada). Sin él, depurar es a ciegas.
-      const detalle = await respuesta.text().catch(() => "");
-      console.error(
-        `[resenas-google] Google respondió ${respuesta.status}: ${detalle.slice(0, 400)}`,
-      );
-      return null;
-    }
-
-    datos = await respuesta.json();
-  } catch (error) {
-    console.error("[resenas-google] No se pudo consultar Places API:", error);
-    return null;
-  }
-
+export function normalizarRespuestaGoogle(datos: unknown): ResumenGoogle | null {
   if (!esObjeto(datos)) {
     console.error("[resenas-google] La respuesta no es un objeto JSON.");
     return null;
@@ -278,8 +309,6 @@ export async function getResenasGoogle(): Promise<ResumenGoogle | null> {
     .map(normalizarResena)
     .filter((resena): resena is ResenaGoogle => resena !== null)
     .filter((resena) => resena.calificacion >= CALIFICACION_MINIMA)
-    // Más recientes primero: una reseña de hace tres semanas convence más que
-    // una de hace tres años, aunque Google las ordene por "relevancia".
     .sort((a, b) => Date.parse(b.publicadaEn) - Date.parse(a.publicadaEn))
     .slice(0, MAXIMO_RESENAS);
 
@@ -296,4 +325,214 @@ export async function getResenasGoogle(): Promise<ResumenGoogle | null> {
     mapsUrl: enlaceValido(datos.googleMapsUri) ?? MAPS_URL_RESPALDO,
     resenas,
   };
+}
+
+/**
+ * Revalida lo que salió de la columna `jsonb`.
+ *
+ * Es nuestro propio dato, sí, pero `jsonb` no tiene tipos de TypeScript: lo que
+ * vuelve es `unknown`. Una fila guardada por una versión anterior del código, o
+ * editada a mano en el editor SQL del panel de Supabase, no puede tumbar la
+ * portada. Cuesta microsegundos y convierte una promesa en una garantía.
+ *
+ * Deliberadamente **no** vuelve a filtrar por calificación ni a reordenar: eso
+ * ya se hizo al guardar. Aquí solo se comprueba la forma.
+ */
+export function normalizarResumenGuardado(valor: unknown): ResumenGoogle | null {
+  if (!esObjeto(valor)) return null;
+
+  const promedio = numeroValido(valor.promedio);
+  const total = numeroValido(valor.total);
+  const mapsUrl = enlaceValido(valor.mapsUrl);
+
+  if (promedio === null || total === null || !mapsUrl) return null;
+  if (!Array.isArray(valor.resenas)) return null;
+
+  const resenas = valor.resenas
+    .map((resena) => normalizarResenaGuardada(resena))
+    .filter((resena): resena is ResenaGoogle => resena !== null);
+
+  if (resenas.length === 0) return null;
+
+  return { promedio, total: Math.round(total), mapsUrl, resenas };
+}
+
+/**
+ * Una reseña tal como quedó guardada (en español, ya normalizada), no como la
+ * manda Google. Por eso no reutiliza `normalizarResena()`: los nombres de los
+ * campos son otros.
+ */
+function normalizarResenaGuardada(crudo: unknown): ResenaGoogle | null {
+  if (!esObjeto(crudo)) return null;
+
+  const autor = textoValido(crudo.autor);
+  const texto = textoValido(crudo.texto);
+  const calificacion = numeroValido(crudo.calificacion);
+  const publicadaEn = textoValido(crudo.publicadaEn);
+
+  if (!autor || !texto || calificacion === null || !publicadaEn) return null;
+  if (Number.isNaN(Date.parse(publicadaEn))) return null;
+
+  return {
+    autor,
+    foto: fotoValida(crudo.foto),
+    perfil: enlaceValido(crudo.perfil),
+    calificacion: Math.round(calificacion),
+    texto,
+    tiempoRelativo:
+      textoValido(crudo.tiempoRelativo) ??
+      `En ${new Date(publicadaEn).getFullYear()}`,
+    publicadaEn,
+  };
+}
+
+/* ===========================================================================
+ * La llamada a Google (la que se paga)
+ * ======================================================================== */
+
+/**
+ * Pide la ficha a Places API. **Este es el único punto del proyecto que gasta
+ * cuota de Google.**
+ *
+ * NUNCA lanza: devuelve `null` y deja un `console.error` con el motivo real
+ * (falta la clave, la API no está habilitada, la cuota se agotó, el JSON vino
+ * raro). Sin `next: { revalidate }` y con `cache: "no-store"` a propósito: cuántas
+ * llamadas se hacen ya no lo decide el caché de Next sino quién llama a esta
+ * función y cuándo. Un caché escondido aquí solo serviría para que el número
+ * volviera a ser imposible de razonar.
+ */
+async function consultarPlacesApi(
+  motivo: "cron-diario" | "arranque-en-frio",
+): Promise<ResumenGoogle | null> {
+  const clave = process.env.GOOGLE_PLACES_API_KEY;
+
+  if (!clave) {
+    console.error(
+      "[resenas-google] Falta GOOGLE_PLACES_API_KEY: no se puede refrescar.",
+    );
+    return null;
+  }
+
+  /*
+    ESTA LÍNEA ES EL CONTADOR DE LA FACTURA.
+
+    Queda a propósito en `info` y no en `debug`: buscar
+    «llamada a Places API» en los registros de Vercel tiene que dar el número
+    exacto de llamadas del mes, sin tener que fiarse de la consola de Google. Lo
+    normal es ver una al día con `motivo=cron-diario`; un `arranque-en-frio`
+    significa que la fila de `cache_externo` no estaba (base nueva, fila borrada,
+    build desde cero) y debería ser rarísimo.
+  */
+  console.info(`[resenas-google] llamada a Places API (motivo: ${motivo}).`);
+
+  let datos: unknown;
+
+  try {
+    const respuesta = await fetch(ENDPOINT, {
+      headers: {
+        "X-Goog-Api-Key": clave,
+        "X-Goog-FieldMask": MASCARA_CAMPOS,
+      },
+      cache: "no-store",
+      signal: AbortSignal.timeout(ESPERA_MS[motivo]),
+    });
+
+    if (!respuesta.ok) {
+      // El cuerpo del error de Google explica el motivo real (clave sin
+      // permisos, API no habilitada, cuota agotada). Sin él, depurar es a ciegas.
+      const detalle = await respuesta.text().catch(() => "");
+      console.error(
+        `[resenas-google] Google respondió ${respuesta.status}: ${detalle.slice(0, 400)}`,
+      );
+      return null;
+    }
+
+    datos = await respuesta.json();
+  } catch (error) {
+    console.error("[resenas-google] No se pudo consultar Places API:", error);
+    return null;
+  }
+
+  return normalizarRespuestaGoogle(datos);
+}
+
+/* ===========================================================================
+ * Lo que usa el sitio
+ * ======================================================================== */
+
+/**
+ * El resumen que pinta la portada. **Lee de la base, no de Google.**
+ *
+ * Camino normal (prácticamente todas las visitas): una lectura de
+ * `cache_externo`, que además va por la Data Cache de Next, así que la mayoría
+ * de las visitas no tocan ni la base.
+ *
+ * Arranque en frío (la fila no existe: base nueva, fila borrada a mano, build
+ * desde cero): se pide el turno y **solo quien lo gana** llama a Google, una vez,
+ * y guarda. Quien no lo gana devuelve `null` en ese render —la portada cae a los
+ * testimonios del CMS— y en la siguiente revalidación ya encuentra el dato. Es
+ * deliberado: reintentar aquí dentro significaría o una segunda llamada de pago,
+ * o una lectura sin caché que volvería dinámica la portada entera.
+ *
+ * Va envuelta en `cache()` de React: la portada la llama dos veces (la página,
+ * para el `aggregateRating` del JSON-LD, y `PaginaInicio`, para las estrellas en
+ * pantalla) y las dos tienen que ver EXACTAMENTE lo mismo. Sin esto, en un
+ * arranque en frío una podría ver el dato y la otra no.
+ *
+ * NUNCA lanza. Quien la consume solo tiene que hacer `if (!resumen) return null;`.
+ */
+export const getResenasGoogle = cache(
+  async (): Promise<ResumenGoogle | null> => {
+    const fila = await leerCache(CLAVE_CACHE_RESENAS);
+    const guardado = normalizarResumenGuardado(fila?.valor);
+    if (guardado) return guardado;
+
+    /* Arranque en frío. Sin turno, no se llama: es la decisión segura. */
+    if (!(await tomarTurno(CLAVE_CACHE_RESENAS))) {
+      console.error(
+        "[resenas-google] Caché vacío y el turno lo tiene otro: esta vez se usan los testimonios del CMS.",
+      );
+      return null;
+    }
+
+    const resumen = await consultarPlacesApi("arranque-en-frio");
+    if (!resumen) return null;
+
+    await guardarCache(CLAVE_CACHE_RESENAS, resumen);
+    return resumen;
+  },
+);
+
+/* ===========================================================================
+ * Lo que usa el cron
+ * ======================================================================== */
+
+export type RefrescoResenas = {
+  /** `true` solo si Google respondió bien Y se guardó. */
+  refrescado: boolean;
+  /** Cuántas reseñas quedaron guardadas. `0` si no se refrescó. */
+  resenas: number;
+};
+
+/**
+ * El refresco diario. Lo llama el cron de `/api/salud`, y es la única llamada a
+ * Google que el proyecto hace de forma rutinaria: **una al día, unas 30 al mes**,
+ * contra las 1.000 gratuitas.
+ *
+ * DEGRADACIÓN: si Google falla —cuota, red, clave revocada, respuesta rara— no se
+ * borra ni se toca nada. La fila anterior sigue en su sitio con su
+ * `actualizado_at` sin mover, y el sitio sigue mostrando exactamente lo mismo
+ * que mostraba ayer. Un refresco que falla no es un incidente visible: es un
+ * `false` en la respuesta del cron y una línea en los registros de Vercel.
+ *
+ * NUNCA lanza.
+ */
+export async function refrescarResenasGoogle(): Promise<RefrescoResenas> {
+  const resumen = await consultarPlacesApi("cron-diario");
+  if (!resumen) return { refrescado: false, resenas: 0 };
+
+  const guardado = await guardarCache(CLAVE_CACHE_RESENAS, resumen);
+  if (!guardado) return { refrescado: false, resenas: 0 };
+
+  return { refrescado: true, resenas: resumen.resenas.length };
 }
