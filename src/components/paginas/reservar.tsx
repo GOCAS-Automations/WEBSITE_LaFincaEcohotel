@@ -26,6 +26,7 @@ import {
   getSeccionPlanes,
 } from "@/lib/contenido";
 import { CLASE_FOTO_CON_FLAG, FOTO } from "@/lib/fotos";
+import { boldConfigurado } from "@/lib/pagos/bold";
 import { hoyEnBogota } from "@/lib/utils/formato";
 import { enlaceWhatsapp } from "@/lib/whatsapp";
 
@@ -239,6 +240,22 @@ export async function PaginaReservar() {
                 }))}
                 whatsapp={contacto.whatsapp}
                 hoy={hoyEnBogota()}
+                /*
+                  ¿HAY PAGO EN LÍNEA? LO DECIDE EL SERVIDOR.
+
+                  `boldConfigurado()` solo mira si las dos llaves están puestas,
+                  y vive en un módulo `server-only`: la llave secreta no puede
+                  acercarse al navegador. Lo que cruza es un booleano.
+
+                  Se evalúa aquí, en el render de una página estática con ISR de
+                  una hora. Es correcto porque las llaves son configuración del
+                  despliegue, no un dato que cambie entre visitas: el día que se
+                  pongan en Vercel, el despliegue las trae.
+
+                  Con `false` el selector cierra por WhatsApp igual que antes de
+                  la fase de pagos. Nada se queda a medias.
+                */
+                pagoEnLinea={boldConfigurado()}
               />
             </Suspense>
           ) : (

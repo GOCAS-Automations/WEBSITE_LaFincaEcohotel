@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 
-import { clasesBoton } from "@/components/ui/boton";
 import {
   cotizar,
   categoriaDePlan,
@@ -52,7 +51,15 @@ import { LEGAL_ACTUALIZADO } from "@/lib/sitio";
 import { enlaceWhatsapp, mensajeDiaDeCalma, mensajeReserva } from "@/lib/whatsapp";
 
 import { CalendarioFechas } from "./calendario-fechas";
-import { IconoCheck, IconoWhatsapp } from "./iconos";
+import { IconoCheck } from "./iconos";
+import {
+  BotonPagar,
+  EnlacePoliticaDatos,
+  HUESPED_VACIO,
+  PasoDatosHuesped,
+  type DatosHuesped,
+  type SolicitudEnviable,
+} from "./pago-en-linea";
 
 /**
  * Selector de reserva — el motor de precios, con cara.
@@ -150,6 +157,16 @@ type Props = {
   whatsapp: string;
   /** Fecha mínima seleccionable (`AAAA-MM-DD`), calculada en el servidor. */
   hoy: string;
+  /**
+   * ¿Hay pago en línea?
+   *
+   * Lo decide el SERVIDOR (`boldConfigurado()` en `src/lib/pagos/bold.ts`), que
+   * es el único que puede ver las llaves. Si llega `false` —llaves sin poner,
+   * cuenta de Bold todavía en verificación— el cierre sigue siendo WhatsApp,
+   * exactamente como antes de esta fase: el sitio no se queda a medias por una
+   * variable de entorno que falta.
+   */
+  pagoEnLinea?: boolean;
 };
 
 /** Clave de una elección de extra: el mismo extra puede ir en varias noches. */
@@ -170,6 +187,7 @@ export function SelectorReserva({
   extras,
   whatsapp,
   hoy,
+  pagoEnLinea = false,
 }: Props) {
   const parametros = useSearchParams();
 
@@ -265,6 +283,16 @@ export function SelectorReserva({
     pestaña para que marcarla no obligue a perder la reserva a medias.
   */
   const [aceptaDatos, setAceptaDatos] = useState(false);
+
+  /*
+    LOS DATOS DE CONTACTO, SOLO CUANDO HAY PAGO EN LÍNEA.
+
+    Con el cierre por WhatsApp no hacían falta: el nombre y el teléfono los
+    recoge la conversación. Con la pasarela sí, porque la reserva se crea en la
+    base antes de cobrar y `reservas` exige nombre, correo y teléfono — y porque
+    la confirmación del pago se manda por correo.
+  */
+  const [huesped, setHuesped] = useState<DatosHuesped>(HUESPED_VACIO);
 
   /* --- Las noches -------------------------------------------------------- */
 
@@ -677,6 +705,72 @@ export function SelectorReserva({
       : null;
   const numeroPago =
     pagoActual && pagoActual.total > 0 ? contadorPaso++ : null;
+  /* Los datos de contacto solo son un paso si se va a pagar en línea: con el
+     cierre por WhatsApp los recoge la conversación. */
+  const numeroDatos =
+    pagoEnLinea && pagoActual && pagoActual.total > 0 ? contadorPaso++ : null;
+
+  /* ---------------------------------------------------------------------
+     LO QUE SE LE MANDA AL SERVIDOR PARA COBRAR
+
+     DECISIONES, NUNCA CIFRAS. El servidor vuelve a leer `tarifas` y `extras` y
+     recalcula el total con las mismas funciones puras que acaba de usar esta
+     pantalla (`src/lib/pagos/cotizar-en-servidor.ts`). Si este objeto llevara un
+     total, no se leería.
+
+     `null` mientras la reserva no esté completa: eso es lo que apaga el botón.
+  ------------------------------------------------------------------------ */
+  const solicitudEnviable: SolicitudEnviable | null = useMemo(() => {
+    if (!pagoActual || pagoActual.total <= 0) return null;
+
+    const lineasExtras = extrasElegidos.map((extra) => ({
+      extraId: extra.extraId,
+      noche: extra.noche,
+      cantidad: extra.cantidad,
+    }));
+
+    if (soloUnDia) {
+      if (!entrada) return null;
+      return {
+        tipo: "dia",
+        entrada,
+        salida: null,
+        cabana: null,
+        planFinDeSemana: null,
+        personas: personasDia,
+        porcentajeAnticipo: pagoActual.porcentaje,
+        extras: lineasExtras,
+      };
+    }
+
+    if (!cabana || !rango.valido || noches.length === 0) return null;
+
+    return {
+      tipo: "hospedaje",
+      entrada,
+      salida,
+      cabana: cabana.slug,
+      /* Solo se manda si la estadía lo necesita: para una estadía de lunes a
+         jueves, un plan de fin de semana no significa nada. */
+      planFinDeSemana: hayFinDeSemana ? planFinDeSemana : null,
+      personas: adultos,
+      porcentajeAnticipo: pagoActual.porcentaje,
+      extras: lineasExtras,
+    };
+  }, [
+    pagoActual,
+    soloUnDia,
+    entrada,
+    salida,
+    cabana,
+    rango.valido,
+    noches.length,
+    hayFinDeSemana,
+    planFinDeSemana,
+    adultos,
+    personasDia,
+    extrasElegidos,
+  ]);
 
   /* ===================================================================== */
 
@@ -1309,6 +1403,21 @@ export function SelectorReserva({
             />
           </section>
         ) : null}
+
+        {/* ---------------------------------------------------------------
+            A NOMBRE DE QUIÉN — solo cuando se va a pagar en línea.
+
+            Va DESPUÉS del anticipo y no antes: escribir el correo es lo último
+            que alguien quiere hacer, y pedirlo al principio es la forma más
+            rápida de perder a quien solo estaba mirando precios.
+        ---------------------------------------------------------------- */}
+        {numeroDatos !== null ? (
+          <PasoDatosHuesped
+            numero={numeroDatos}
+            datos={huesped}
+            alCambiar={setHuesped}
+          />
+        ) : null}
       </div>
 
       {/* ===================================================================
@@ -1462,56 +1571,32 @@ export function SelectorReserva({
             </>
           )}
 
-          {/*
-            AQUÍ VA EL COBRO DE WOMPI — UNA SOLA COSTURA PARA LOS DOS PLANES.
-            Cuando existan las llaves (§12 del plan), este botón deja de ir a
-            WhatsApp y pasa a crear la reserva en estado `pendiente` y abrir el
-            checkout de Wompi por `pagoActual.anticipo` —el porcentaje de 50 a
-            100 % que el visitante acaba de elegir con el deslizante—.
+          {/* ---------------------------------------------------------------
+              EL CIERRE: PAGAR EN LÍNEA CON BOLD (o WhatsApp si no hay llaves).
 
-            `pagoActual` es el resumen del modo en curso: el del hospedaje o el
-            del Día de Calma, calculados los dos con `resumenDePago()`. Por eso
-            el cobro se escribe UNA vez y sirve para ambos; lo único que cambia
-            entre ellos es qué se guarda en la reserva (`tipo = 'hospedaje'` con
-            cabaña y noches, o `tipo = 'dia'` con `alojamiento_id` nulo). El
-            `porcentaje_anticipo` y el `monto_anticipo` se persisten igual en
-            los dos casos, como ya hace el panel.
+              Esta era la costura marcada para la pasarela, y ya está cableada.
+              Lo que la hacía fácil sigue siendo lo mismo: `pagoActual` es el
+              resumen del modo en curso —hospedaje o Día de Calma, los dos
+              calculados con `resumenDePago()`—, así que el cobro se escribió
+              UNA vez y sirve para ambos. Lo único que cambia entre ellos es qué
+              se guarda en la reserva (`tipo = 'hospedaje'` con cabaña y noches,
+              o `tipo = 'dia'` con `alojamiento_id` nulo), y de eso se encarga
+              el servidor.
 
-            Todo lo que hace falta para ese paso ya está resuelto: el desglose
-            por noche, los extras con su noche, el total y el anticipo. Lo único
-            que cambia es el destino de este enlace.
+              DOS COSAS QUE NO SE VEN Y SOSTIENEN TODO:
 
-            ---------------------------------------------------------------
-            LO QUE YA ESTÁ ESCRITO Y ESPERANDO A ESTA COSTURA (2026-09-30)
-            ---------------------------------------------------------------
-            Quien cablee el cobro NO tiene que escribir ni los correos ni la
-            expiración: las dos están hechas, probadas y documentadas.
+                · El total que se enseña aquí NO es el que se cobra. Este lo
+                  calcula el navegador para poder mostrarlo sin latencia; el que
+                  se cobra lo recalcula el servidor leyendo `tarifas` y `extras`
+                  (`src/lib/pagos/cotizar-en-servidor.ts`). Si no coinciden,
+                  gana el servidor.
+                · La reserva se confirma SOLO por el webhook
+                  (`/api/pagos/bold/webhook`), nunca por la vuelta del
+                  navegador. La página de retorno pregunta y muestra; no escribe.
 
-            · **Al CREAR la solicitud** (Server Action o Route Handler, con
-              `service_role`), en este orden:
-
-                await liberarReservasVencidas(supabase);   // @/lib/reserva/liberar-vencidas
-                …insert con expira_at: vencimientoISO()    // @/lib/reserva/holds
-                await avisarSolicitudCreada(supabase, id); // @/lib/email
-
-              El barrido va ANTES del insert y no es opcional: la restricción
-              EXCLUDE no puede leer la hora, y sin barrer rechaza fechas que
-              están libres (ver §hold de `docs/MEMORIA.md`).
-
-            · **Al aprobarse el pago** (webhook, nunca la redirección del
-              navegador):
-
-                await avisarPagoAprobado(supabase, id, {
-                  monto, saldo, metodo, transaccionId,
-                });                                        // @/lib/email
-
-              Sin `try/catch` alrededor: esa función ya no lanza nunca. Un
-              fallo de correo no puede tumbar un pago que el huésped ya hizo.
-
-            El desglose por noche que ya calcula esta pantalla se le puede
-            pasar a los correos por `{ noches }` para que el correo enseñe el
-            mismo detalle que vio el huésped aquí.
-          */}
+              Y WhatsApp no desaparece: queda como alternativa visible debajo,
+              con el desglose ya escrito, para quien prefiere hablar con alguien.
+          ---------------------------------------------------------------- */}
           {/* ---------------------------------------------------------------
               AUTORIZACIÓN DE TRATAMIENTO DE DATOS (Ley 1581 de 2012).
 
@@ -1520,6 +1605,12 @@ export function SelectorReserva({
               los datos se entregan al pulsar. La casilla no está premarcada,
               el texto dice para qué son los datos y quién los trata, y el
               enlace abre la política en otra pestaña.
+
+              Con la pasarela, lo que se entrega es más que antes —el correo y
+              el celular viajan al servidor y se guardan en `reservas`— así que
+              el texto lo nombra. El canal y la versión del documento se
+              escriben en las tres columnas `autorizacion_datos_*` al crear la
+              reserva (requisito 10 de la auditoría).
           ---------------------------------------------------------------- */}
           <div className="rounded-[var(--radius-tarjeta)] bg-crema-100/70 p-3">
             <label className="flex cursor-pointer items-start gap-3 text-xs leading-relaxed text-crema-700">
@@ -1532,68 +1623,24 @@ export function SelectorReserva({
               />
               <span id="nota-datos">
                 Autorizo a La Finca Eco Hotel a tratar mis datos personales
-                (nombre, teléfono y lo que escriba en la conversación) para
-                atender esta solicitud de reserva y gestionar mi estadía, según
-                la{" "}
-                <Link
-                  href="/legal/datos"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-semibold text-petroleo-700 underline decoration-petroleo-300 underline-offset-2 hover:decoration-petroleo-600"
-                >
-                  Política de tratamiento de datos personales
-                </Link>
-                . Puedo conocerlos, actualizarlos, corregirlos o pedir que se
-                borren cuando quiera.
+                (nombre, correo, celular y lo que escriba aquí) para atender esta
+                reserva, cobrarla y gestionar mi estadía, según la{" "}
+                <EnlacePoliticaDatos />. Puedo conocerlos, actualizarlos,
+                corregirlos o pedir que se borren cuando quiera.
               </span>
             </label>
           </div>
 
-          {aceptaDatos ? (
-            <a
-              href={enlace}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={clasesBoton("primario", "grande", "w-full")}
-            >
-              <IconoWhatsapp className="size-5" />
-              Solicitar por WhatsApp
-            </a>
-          ) : (
-            /* Un `<button disabled>` y no un enlace apagado: un enlace
-               deshabilitado sigue siendo pulsable con el teclado. Así el
-               navegador y el lector de pantalla anuncian que no está
-               disponible, y el texto de debajo dice por qué. */
-            <button
-              type="button"
-              disabled
-              aria-describedby="falta-autorizacion"
-              className={clasesBoton(
-                "primario",
-                "grande",
-                "w-full cursor-not-allowed opacity-50",
-              )}
-            >
-              <IconoWhatsapp className="size-5" />
-              Solicitar por WhatsApp
-            </button>
-          )}
-
-          {!aceptaDatos ? (
-            <p
-              id="falta-autorizacion"
-              className="text-xs leading-relaxed text-crema-700"
-            >
-              Marca la casilla de autorización de datos para poder enviar la
-              solicitud.
-            </p>
-          ) : null}
-
-          <p className="text-xs leading-relaxed text-crema-600">
-            Te llevamos a WhatsApp con el desglose ya escrito. El total es una
-            estimación con la tarifa publicada: el equipo confirma
-            disponibilidad y precio final antes de cobrar.
-          </p>
+          <BotonPagar
+            disponible={pagoEnLinea}
+            solicitud={solicitudEnviable}
+            huesped={huesped}
+            autoriza={aceptaDatos}
+            anticipo={pagoActual?.anticipo ?? 0}
+            saldo={pagoActual?.saldo ?? 0}
+            porcentaje={pagoActual?.porcentaje ?? ANTICIPO_POR_DEFECTO}
+            enlaceWhatsapp={enlace}
+          />
         </div>
       </aside>
     </div>

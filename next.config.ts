@@ -42,6 +42,37 @@ const MARCOS_PERMITIDOS = [
 ];
 
 /**
+ * El checkout de Bold. **Es el único host externo que añadió la fase de pagos.**
+ *
+ * De aquí sale `boldPaymentButton.js`, la librería oficial que construye la URL
+ * de la pasarela a partir de la configuración ya firmada en el servidor
+ * (`src/lib/pagos/bold.ts`). Se carga **solo cuando alguien pulsa «pagar»**, no
+ * en cada visita a `/reservar` (ver `cargarBold()` en
+ * `src/components/sitio/pago-en-linea.tsx`), pero la CSP se declara igual: el
+ * navegador comprueba el origen en el momento de la carga, no en el del render.
+ *
+ * Va en `script-src` y **en ningún otro sitio**:
+ *
+ *   · NO en `frame-src`, porque esta integración usa el modo de **redirección**,
+ *     no el `renderMode: 'embedded'`. Al pulsar, la librería hace
+ *     `window.location.href = 'https://checkout.bold.co/btn?…'`: una navegación,
+ *     no un iframe. El día que se quiera el checkout embebido —que sí monta un
+ *     `<iframe>` en el `<body>`— habrá que añadir ese host a `frame-src`, y solo
+ *     ese.
+ *   · NO en `form-action`, porque la librería no envía ningún formulario.
+ *     (Comprobado leyendo su código: dos `location.href` y ni un `.submit()`.)
+ *   · NO en `style-src` ni en `font-src`. El botón con el diseño de Bold importa
+ *     una fuente de Google desde dentro de su shadow DOM; este sitio **no usa
+ *     ese botón**, usa la integración personalizada con su propio botón, así que
+ *     esa hoja de estilo nunca se pide.
+ *
+ * Que un solo host externo entre y esté explicado es exactamente el valor que la
+ * auditoría le atribuía a esta política (A-2): lo que sigue siendo imposible es
+ * cargar un script de un dominio que nadie declaró aquí.
+ */
+const CHECKOUT_BOLD = "https://checkout.bold.co";
+
+/**
  * En una vista previa de Vercel se inyecta la barra de herramientas
  * (`vercel.live`). No se permite en producción: allí no existe.
  */
@@ -68,6 +99,8 @@ function politicaDeContenido(): string {
       dominio ajeno inyectado por el CMS o por una dependencia no se ejecuta.
     */
     "'unsafe-inline'",
+    /* La librería del checkout de Bold. Ver `CHECKOUT_BOLD` arriba. */
+    CHECKOUT_BOLD,
     ...(esVistaPrevia ? ["https://vercel.live"] : []),
     /* `next dev` compila con `eval`. En producción nunca se permite. */
     ...(enDesarrollo ? ["'unsafe-eval'"] : []),
