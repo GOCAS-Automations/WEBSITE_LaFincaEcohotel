@@ -25,6 +25,7 @@ día de la aprobación solo se cambian por las de producción.
 | Base de datos, RLS y anti doble reserva | Listo y auditado |
 | Seguridad (cookies, cabeceras, fuerza bruta, permisos, consentimiento Ley 1581) | Auditada y corregida |
 | Latido anti-pausa de Supabase | Listo |
+| Reseñas de Google guardadas en la base, 1 llamada/día (~30 al mes de 1.000 gratis) | Listo |
 | Google Calendar (lectura y escritura) | Construido; falta el ID del calendario del hotel |
 | Correos de confirmación (3 plantillas) | **Escritos y probados, dormidos** hasta tener Resend |
 | Reservas que expiran a los 30 minutos | Listo |
@@ -50,7 +51,8 @@ Repositorio sincronizado con GitHub; la vista previa en Vercel está al día.
       segundo factor para la cuenta propietaria.
 - [ ] **Hostinger**: renovar el dominio (vence el 4 de noviembre) y desactivar la renovación
       automática del plan de hosting, sin darlo de baja.
-- [ ] Tope de cuota de Places (ver §Google Cloud más abajo).
+- [ ] Tope de cuota de Places (ver §Google Cloud más abajo). **Ya no urge**: desde el 2026-10-01 el
+      sitio hace ~30 llamadas al mes contra 1.000 gratis, y el número no depende de la consola.
 
 **GOCAS — con las llaves de Bold:**
 - [ ] Integración de **Bold**: referencia única, **firma en el servidor**, checkout, retorno del
@@ -108,9 +110,15 @@ La ruta no está en «APIs & Services», sino en el panel propio de Maps:
 5. Si la API solo expone cuota **por minuto**, poner **2 por minuto**: acota los picos, aunque no
    fija el techo mensual.
 
-Red de seguridad adicional, por si la cuota diaria no estuviera disponible: guardar las reseñas en
-la base y refrescarlas una sola vez al día desde el cron de `/api/salud`. Así el número de llamadas
-a Google es exactamente 30 al mes, sin depender de la configuración de la consola.
+**Hecho el 2026-10-01 (ya no depende de la consola).** Las reseñas se guardan en la base
+(`cache_externo`, migración 014) y se refrescan **una sola vez al día** desde el cron de
+`/api/salud`. El sitio lee de la base y **no llama a Google durante una visita**: el número de
+llamadas es exactamente **~30 al mes contra 1.000 gratis** (3 % de la cuota), y es determinista —
+antes dependía de cuántas instancias y regiones levantara Vercel con el `revalidate` de Next.
+
+El tope de cuota de la consola sigue siendo buena idea como segundo cinturón, pero ya no es lo
+único que separa al hotel de una factura sorpresa. Si se pone, **20 al día** deja holgura de sobra
+para el refresco diario más alguna prueba a mano.
 
 ## Riesgos
 

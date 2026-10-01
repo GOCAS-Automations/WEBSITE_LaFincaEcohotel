@@ -2395,3 +2395,95 @@ correo (ya lo soportaba) y la misma línea legal; el JSON-LD `LodgingBusiness` a
 
 **Pendiente.** Revisión jurídica de los textos. Sigue abierto el correo **emisor** de Resend
 y el destinatario del aviso interno (¿se usa este mismo correo?) — decisión de Cesar/Amapola.
+
+---
+
+## Sesión 2026-10-01 — Las reseñas de Google dejan de depender del caché de Next
+
+**El problema.** La portada pedía la ficha de Google con `next: { revalidate: 86400 }`. Sobre el
+papel, una llamada al día; en la práctica, **el número no existía**: la Data Cache de Next vive por
+instancia y por región, así que con tres instancias en dos regiones podían ser seis llamadas el
+mismo día, y al día siguiente dos. Google retiró el crédito universal de Maps y las reseñas están
+en el tramo más caro de Place Details: **1.000 llamadas gratis al mes y 20 USD por millar después**.
+Un número que no se puede presupuestar no puede quedar enchufado a una tarjeta.
+
+**La salida: la base manda, Google solo refresca.**
+
+- **Migración `014_cache_externo.sql`** — tabla genérica `cache_externo(clave text primary key,
+  valor jsonb, actualizado_at timestamptz)`. **RLS activo y sin ninguna política**: en Postgres eso
+  no deja pasar a nadie salvo a quien se salta RLS, que es `service_role`. `revoke all` explícito
+  para `anon` **y para `authenticated`** (la 011 endureció los defaults de `anon`, pero no los de
+  `authenticated`: una tabla nueva los habría heredado todos). El sitio lee en el servidor, así que
+  no hace falta lectura anónima. Genérica y no `resenas_google` porque la forma del problema se
+  repetirá (clima, tasa de cambio, Instagram), igual que `contenido` absorbe todas las secciones.
+- **Dos claves.** `resenas_google` guarda el resumen **ya cocinado** (promedio, total, enlace a la
+  ficha y las reseñas filtradas a 4★+, ordenadas de más reciente a más antigua y recortadas a cinco)
+  y `resenas_google:turno` es el candado del arranque en frío. El candado es una fila aparte y no
+  una columna `estado` para que el dato nunca esté «a medio escribir».
+- **`src/lib/cache-externo.ts`** — `leerCache`, `guardarCache` y `tomarTurno`. Ninguna lanza.
+- **Antiestampida.** Con la tabla vacía, «si no hay dato llámalo» serían diez llamadas de pago si
+  entran diez visitas en el mismo segundo. El turno se gana con **una sola sentencia atómica**:
+  `insert … on conflict do nothing returning` (en supabase-js, `upsert` con
+  `ignoreDuplicates: true` + `.select()`). Si devuelve fila, el turno es mío y llamo; si no, **no
+  llamo**. Un turno que nadie cerró (red caída a mitad) se puede retomar a los **10 minutos** con
+  `update … where actualizado_at < límite returning`, también una sola sentencia.
+- **`src/lib/resenas-google.ts`** — `getResenasGoogle()` mantiene su firma
+  (`Promise<ResumenGoogle | null>`), así que **la portada, el componente y el `aggregateRating` del
+  JSON-LD no se tocaron**. Ahora lee de la base; la única llamada que puede salir de un render es el
+  arranque en frío. Nuevo `refrescarResenasGoogle()` para el cron. Se extrajo
+  `normalizarRespuestaGoogle()` (las reglas: 4★+, más reciente primero, tope 5) y se añadió
+  `normalizarResumenGuardado()`, que **revalida lo que sale del `jsonb`**: es nuestro dato, pero
+  `jsonb` devuelve `unknown` y una fila vieja o editada a mano no puede tumbar la portada.
+- **Dos cortes de tiempo, no uno.** Medido contra `places.googleapis.com`, el handshake TLS de una
+  conexión nueva se puede ir a nueve segundos. El cron espera **10 s** (corre sin nadie delante); el
+  arranque en frío, **4 s** (hay una persona con la portada en blanco: mejor caer a los testimonios
+  del CMS, que es instantáneo). `/api/salud` declara `maxDuration = 30`.
+- **`/api/salud`** — el cron diario que ya mantenía despierta la base y barría reservas vencidas
+  ahora hace también el refresco, y lo informa: `resenas_refrescadas` y `resenas_guardadas`. Cuando
+  refresca de verdad llama a `revalidatePath("/")`, para que una reseña nueva no espere hasta una
+  hora más por el ISR. Solo `/`, que es la única página con reseñas.
+- **Contador de la factura.** `consultarPlacesApi()` deja un `console.info` con el motivo
+  (`cron-diario` / `arranque-en-frio`). Buscar «llamada a Places API» en los registros de Vercel da
+  el número exacto de llamadas del mes sin entrar a la consola de Google.
+
+**La trampa que apareció en la prueba (y por qué la lectura NO se cachea).** La primera versión leía
+la tabla con `next: { revalidate: 3600, tags }`. En el arranque en frío, la lectura que ocurre
+**antes** de guardar devuelve «no hay fila» y **Next cachea ese vacío una hora**: la primera visita
+traía las reseñas y las guardaba, y la segunda seguía viendo el hueco cacheado, así que la portada
+mostraba los testimonios del CMS y el `aggregateRating` desaparecía del JSON-LD. El mismo vacío se
+colaba en el `build` desde `.next/cache/fetch-cache`. La lectura quedó **sin opciones de caché**: las
+páginas públicas ya son estáticas con ISR de una hora, así que solo se lee cuando la página se
+regenera, y un `select` por clave primaria no es lo que hay que racionar. Verificado que `/` sigue
+saliendo `○ (Static) · Revalidate 1h` y que su HTML prerenderizado trae el `aggregateRating`.
+
+**Cuentas.** 1 llamada/día × 30 días = **~30 llamadas al mes contra 1.000 gratis** (3 % de la cuota),
+y el número no depende de Vercel ni de la consola de Google. Si se quita el cron el sitio no se
+rompe: se queda con lo último guardado indefinidamente; lo que se pierde es ver las reseñas nuevas.
+
+**Degradación.** Si Google falla —cuota, red, clave revocada, respuesta rara— **no se toca nada**: la
+fila anterior se queda con su `actualizado_at` sin mover y el visitante ve exactamente lo mismo que
+ayer. Solo si nunca hubo datos se cae a los testimonios del CMS. Ningún error visible.
+
+**Migración aplicada a la base real** con un script puntual (**no** `npm run db:aplicar`, que
+reaplicaría los seeds y borraría ediciones del panel). Verificado por SQL: la tabla existe, RLS
+activo, **0 políticas**, `anon` y `authenticated` sin `select/insert/update/delete/truncate`,
+`service_role` con todo. `reservas` 0, `contenido` 22 y `alojamientos` 5 sin tocar.
+
+**Verificación.** `tsc`, `eslint` y `build` limpios; **197 pruebas en verde (19 nuevas)**, entre ellas
+las que cuentan llamadas a `fetch`: caché lleno = 0 llamadas, arranque en frío con turno = 1 y se
+guarda, arranque en frío sin turno = 0, fila corrupta = se trata como vacío. Prueba real contra
+`localhost` desde la tabla vacía:
+
+| Qué | Resultado |
+|---|---|
+| 3 visitas seguidas a la portada | **1 sola** llamada a Places (la primera); las tres muestran `ratingValue 4.8 / reviewCount 52` y los autores de Google |
+| `GET /api/salud` | `resenas_refrescadas: true`, `resenas_guardadas: 5`; `actualizado_at` avanza (16:53:57 → 16:54:12) |
+| `GET /api/salud` con la clave de Google rota | `resenas_refrescadas: false`; `actualizado_at` **sin moverse**; la portada sigue con 4,8 y 52 |
+| `build` | `/` sigue `○ (Static) · 1h`; el HTML prerenderizado trae el `aggregateRating` |
+
+La base quedó con las dos filas legítimas (`resenas_google` con 5 reseñas reales y su candado) y sin
+datos de prueba.
+
+**Lo mismo se aplicó en La Maima** (proyecto hermano, repositorio y Supabase aparte), con sus
+nombres en inglés: `external_cache`, `src/lib/external-cache.ts`, cron diario propio y además el
+latido anti-pausa de Supabase, que allí no existía.
