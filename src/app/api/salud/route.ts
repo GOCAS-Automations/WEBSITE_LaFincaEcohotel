@@ -204,7 +204,10 @@ export async function GET(peticion: Request) {
       muestra reseñas; invalidar de más obligaría a regenerar el sitio entero por
       un bloque social.
     */
-    let resenas = { refrescado: false, resenas: 0 };
+    let resenas: Awaited<ReturnType<typeof refrescarResenasGoogle>> = {
+      refrescado: false,
+      resenas: 0,
+    };
     try {
       resenas = await refrescarResenasGoogle();
       if (resenas.refrescado) revalidatePath("/");
@@ -228,6 +231,10 @@ export async function GET(peticion: Request) {
            los textos ni los nombres de quienes reseñaron: solo el conteo. */
         resenas_refrescadas: resenas.refrescado,
         resenas_guardadas: resenas.resenas,
+        /* Diagnóstico del criterio: cuántas devolvió Google y qué ventana de
+           meses se aplicó (null = sin filtro de fecha). */
+        resenas_devueltas: resenas.devueltas ?? null,
+        resenas_ventana_meses: resenas.ventanaMeses ?? null,
         hora: new Date().toISOString(),
       },
       200,

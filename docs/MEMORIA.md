@@ -2417,7 +2417,7 @@ Un número que no se puede presupuestar no puede quedar enchufado a una tarjeta.
   no hace falta lectura anónima. Genérica y no `resenas_google` porque la forma del problema se
   repetirá (clima, tasa de cambio, Instagram), igual que `contenido` absorbe todas las secciones.
 - **Dos claves.** `resenas_google` guarda el resumen **ya cocinado** (promedio, total, enlace a la
-  ficha y las reseñas filtradas a 4★+, ordenadas de más reciente a más antigua y recortadas a cinco)
+  ficha y las reseñas elegidas con el criterio vigente: ver «Criterio de selección» al final)
   y `resenas_google:turno` es el candado del arranque en frío. El candado es una fila aparte y no
   una columna `estado` para que el dato nunca esté «a medio escribir».
 - **`src/lib/cache-externo.ts`** — `leerCache`, `guardarCache` y `tomarTurno`. Ninguna lanza.
@@ -2487,3 +2487,23 @@ datos de prueba.
 **Lo mismo se aplicó en La Maima** (proyecto hermano, repositorio y Supabase aparte), con sus
 nombres en inglés: `external_cache`, `src/lib/external-cache.ts`, cron diario propio y además el
 latido anti-pausa de Supabase, que allí no existía.
+
+## Criterio de selección de reseñas de Google (ajuste posterior)
+
+**Pedido de Cesar:** publicar «las 5 mejores del último año». **Implementado** en `seleccionarResenas()`
+(`src/lib/resenas-google.ts`): solo 4★+; publicadas en los últimos 12 meses; orden por puntuación
+descendente y, a igual puntuación, la más reciente primero; máximo 5. Si tras filtrar quedan menos de 3,
+la ventana sube a 24 meses; si aun así hay menos de 3, se usan las mejores disponibles sin filtro de
+fecha (la sección nunca queda casi vacía).
+
+**LIMITACIÓN (no prometer al cliente lo que la API no permite):** Google Places API (New) entrega como
+máximo 5 reseñas por lugar, elegidas por Google («más relevantes»), y la API clásica con
+`reviews_sort=newest` está deshabilitada en esta cuenta (`REQUEST_DENIED`). No podemos elegir entre todas
+las reseñas del hotel: solo filtramos y ordenamos esas 5, así que si alguna tiene más de un año se
+publican menos de 5.
+
+**Diagnóstico:** la fila `resenas_google` guarda `seleccion` (`devueltas`, `aprobadas`, `ventanaMeses`);
+el cron `/api/salud` devuelve `resenas_devueltas` y `resenas_ventana_meses` y deja en los registros
+«selección: Google devolvió N, pasaron el filtro M, ventana X meses». Estado al 2026-10-01: Google
+devolvió 5, pasaron 4, ventana de 12 meses (4 publicadas, de hace 2 a 8 meses). `aggregateRating`
+(4,8 / 52) no cambia.

@@ -37,7 +37,10 @@ import { guardarCache, leerCache, tomarTurno } from "./cache-externo";
  * ---------------------------------------------------------------------------
  * · Devuelve como máximo **5 reseñas**, las que su algoritmo considera más
  *   relevantes. No hay paginación ni forma de pedir más: un "ver todas" solo
- *   puede ser un enlace a Google Maps.
+ *   puede ser un enlace a Google Maps. La API clásica con `reviews_sort=newest`
+ *   está deshabilitada en esta cuenta (`REQUEST_DENIED`). Por tanto NO se puede
+ *   elegir "las 5 mejores del último año" entre todas las del hotel: solo se
+ *   filtra y ordena lo que Google entrega (ver `seleccionarResenas()`).
  * · Los términos exigen mostrar la **atribución al autor** y dejar claro que
  *   las reseñas vienen de Google. Eso lo resuelve el componente.
  * · Se permite cachear los datos hasta 30 días.
@@ -131,6 +134,15 @@ const CALIFICACION_MINIMA = 4;
 /** Tope duro por si Google algún día devolviera más de cinco. */
 const MAXIMO_RESENAS = 5;
 
+/** Ventana normal: reseñas publicadas en los últimos 12 meses. */
+const VENTANA_MESES = 12;
+
+/** Ventana relajada cuando la normal deja menos de `MINIMO_RESENAS`. */
+const VENTANA_RELAJADA_MESES = 24;
+
+/** Por debajo de esto la sección se vería casi vacía: se relaja el criterio. */
+const MINIMO_RESENAS = 3;
+
 /* ===========================================================================
  * Tipos propios
  * ---------------------------------------------------------------------------
@@ -161,6 +173,21 @@ export type ResumenGoogle = {
   total: number;
   mapsUrl: string;
   resenas: ResenaGoogle[];
+  /** Constancia de cómo se eligieron las reseñas (diagnóstico). */
+  seleccion?: SeleccionResenas;
+};
+
+/**
+ * Cómo se llegó a las reseñas publicadas. Se guarda junto a ellas para poder
+ * diagnosticar, sin volver a llamar a Google, por qué hoy hay N y no cinco.
+ */
+export type SeleccionResenas = {
+  /** Cuántas devolvió Google (antes de cualquier filtro). */
+  devueltas: number;
+  /** Cuántas pasaron el filtro de 4★+ y de la ventana aplicada. */
+  aprobadas: number;
+  /** Ventana aplicada en meses (12, 24) o `null` si se usó "sin filtro de fecha". */
+  ventanaMeses: number | null;
 };
 
 /* ===========================================================================
@@ -271,6 +298,57 @@ function normalizarResena(crudo: unknown): ResenaGoogle | null {
  * exporta solo para poder probarla.
  * ======================================================================== */
 
+/** Resta `meses` a una fecha, en UTC. Pura, para poder probar la ventana. */
+function restarMeses(fecha: Date, meses: number): Date {
+  const limite = new Date(fecha.getTime());
+  limite.setUTCMonth(limite.getUTCMonth() - meses);
+  return limite;
+}
+
+/**
+ * El criterio de selección: «las mejores del último año».
+ *
+ * LÍMITE DE LA API: Places API (New) entrega como máximo 5 reseñas, elegidas por
+ * Google. Aquí no se elige entre todas las del hotel: solo se filtra y ordena lo
+ * que llegó, así que si alguna es vieja se publican menos de cinco.
+ *
+ *   1. Solo 4★ o más.
+ *   2. Publicadas en los últimos 12 meses.
+ *   3. Si quedan menos de 3, la ventana sube a 24 meses.
+ *   4. Si aun así quedan menos de 3, las mejores disponibles sin filtro de fecha.
+ *   5. Orden: puntuación descendente; a igual puntuación, la más reciente primero.
+ *   6. Cinco como máximo.
+ */
+export function seleccionarResenas(
+  candidatas: ResenaGoogle[],
+  ahora: Date = new Date(),
+): { resenas: ResenaGoogle[]; ventanaMeses: number | null } {
+  const buenas = candidatas.filter(
+    (resena) => resena.calificacion >= CALIFICACION_MINIMA,
+  );
+
+  const mejores = (lista: ResenaGoogle[]) =>
+    [...lista]
+      .sort(
+        (a, b) =>
+          b.calificacion - a.calificacion ||
+          Date.parse(b.publicadaEn) - Date.parse(a.publicadaEn),
+      )
+      .slice(0, MAXIMO_RESENAS);
+
+  for (const meses of [VENTANA_MESES, VENTANA_RELAJADA_MESES]) {
+    const desde = restarMeses(ahora, meses).getTime();
+    const enVentana = buenas.filter(
+      (resena) => Date.parse(resena.publicadaEn) >= desde,
+    );
+    if (enVentana.length >= MINIMO_RESENAS) {
+      return { resenas: mejores(enVentana), ventanaMeses: meses };
+    }
+  }
+
+  return { resenas: mejores(buenas), ventanaMeses: null };
+}
+
 /**
  * Convierte la respuesta cruda de Places API en el resumen que usa el sitio, o
  * `null` si no hay nada publicable.
@@ -280,14 +358,16 @@ function normalizarResena(crudo: unknown): ResenaGoogle | null {
  *      portada y el `aggregateRating` del JSON-LD saldrían de la nada.
  *   2. Cada reseña pasa por `normalizarResena()`; a las que les falta algo
  *      imprescindible se caen.
- *   3. Solo 4★ o más.
- *   4. De más reciente a más antigua. Google las devuelve por «relevancia», pero
- *      una reseña de hace tres semanas convence más que una de hace tres años.
- *   5. Cinco como máximo.
- *   6. Si no queda ninguna, `null`: mejor los testimonios del CMS que una
+ *   3. Selección con `seleccionarResenas()`: 4★+, últimos 12 meses (24 y luego
+ *      sin límite si quedan menos de 3), por puntuación y luego por fecha,
+ *      cinco como máximo.
+ *   4. Si no queda ninguna, `null`: mejor los testimonios del CMS que una
  *      sección vacía con un promedio huérfano.
  */
-export function normalizarRespuestaGoogle(datos: unknown): ResumenGoogle | null {
+export function normalizarRespuestaGoogle(
+  datos: unknown,
+  ahora: Date = new Date(),
+): ResumenGoogle | null {
   if (!esObjeto(datos)) {
     console.error("[resenas-google] La respuesta no es un objeto JSON.");
     return null;
@@ -305,12 +385,12 @@ export function normalizarRespuestaGoogle(datos: unknown): ResumenGoogle | null 
 
   const crudas = Array.isArray(datos.reviews) ? datos.reviews : [];
 
-  const resenas = crudas
-    .map(normalizarResena)
-    .filter((resena): resena is ResenaGoogle => resena !== null)
-    .filter((resena) => resena.calificacion >= CALIFICACION_MINIMA)
-    .sort((a, b) => Date.parse(b.publicadaEn) - Date.parse(a.publicadaEn))
-    .slice(0, MAXIMO_RESENAS);
+  const { resenas, ventanaMeses } = seleccionarResenas(
+    crudas
+      .map(normalizarResena)
+      .filter((resena): resena is ResenaGoogle => resena !== null),
+    ahora,
+  );
 
   if (resenas.length === 0) {
     console.error(
@@ -324,6 +404,11 @@ export function normalizarRespuestaGoogle(datos: unknown): ResumenGoogle | null 
     total: Math.round(total),
     mapsUrl: enlaceValido(datos.googleMapsUri) ?? MAPS_URL_RESPALDO,
     resenas,
+    seleccion: {
+      devueltas: crudas.length,
+      aprobadas: resenas.length,
+      ventanaMeses,
+    },
   };
 }
 
@@ -354,7 +439,25 @@ export function normalizarResumenGuardado(valor: unknown): ResumenGoogle | null 
 
   if (resenas.length === 0) return null;
 
-  return { promedio, total: Math.round(total), mapsUrl, resenas };
+  const sel = esObjeto(valor.seleccion) ? valor.seleccion : null;
+  const devueltas = numeroValido(sel?.devueltas);
+  const aprobadas = numeroValido(sel?.aprobadas);
+  const seleccion: SeleccionResenas | undefined =
+    devueltas !== null && aprobadas !== null
+      ? {
+          devueltas,
+          aprobadas,
+          ventanaMeses: numeroValido(sel?.ventanaMeses),
+        }
+      : undefined;
+
+  return {
+    promedio,
+    total: Math.round(total),
+    mapsUrl,
+    resenas,
+    ...(seleccion ? { seleccion } : {}),
+  };
 }
 
 /**
@@ -512,6 +615,10 @@ export type RefrescoResenas = {
   refrescado: boolean;
   /** Cuántas reseñas quedaron guardadas. `0` si no se refrescó. */
   resenas: number;
+  /** Cuántas devolvió Google (máximo 5). Ausente si no se refrescó. */
+  devueltas?: number;
+  /** Ventana aplicada en meses; `null` = sin filtro de fecha. */
+  ventanaMeses?: number | null;
 };
 
 /**
@@ -534,5 +641,17 @@ export async function refrescarResenasGoogle(): Promise<RefrescoResenas> {
   const guardado = await guardarCache(CLAVE_CACHE_RESENAS, resumen);
   if (!guardado) return { refrescado: false, resenas: 0 };
 
-  return { refrescado: true, resenas: resumen.resenas.length };
+  const { seleccion } = resumen;
+  console.info(
+    `[resenas-google] selección: Google devolvió ${seleccion?.devueltas ?? "?"}, ` +
+      `pasaron el filtro ${seleccion?.aprobadas ?? resumen.resenas.length}, ` +
+      `ventana ${seleccion?.ventanaMeses ?? "sin límite"} meses.`,
+  );
+
+  return {
+    refrescado: true,
+    resenas: resumen.resenas.length,
+    devueltas: seleccion?.devueltas,
+    ventanaMeses: seleccion?.ventanaMeses,
+  };
 }

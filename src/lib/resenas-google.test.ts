@@ -105,20 +105,85 @@ describe("normalizarRespuestaGoogle", () => {
     expect(resumen?.resenas.map((r) => r.autor)).toEqual(["Buena"]);
   });
 
-  it("ordena de más reciente a más antigua, aunque Google las mande por relevancia", () => {
+  const AHORA = new Date("2026-10-01T12:00:00Z");
+
+  it("ordena por puntuación descendente y, a igual puntuación, la más reciente primero", () => {
     const resumen = normalizarRespuestaGoogle(
       respuestaGoogle([
-        resenaCruda({ autor: "Vieja", publicada: "2024-01-01T00:00:00Z" }),
-        resenaCruda({ autor: "Nueva", publicada: "2026-09-01T00:00:00Z" }),
-        resenaCruda({ autor: "Media", publicada: "2025-05-01T00:00:00Z" }),
+        resenaCruda({ autor: "Cuatro nueva", rating: 4, publicada: "2026-09-20T00:00:00Z" }),
+        resenaCruda({ autor: "Cinco vieja", rating: 5, publicada: "2025-11-01T00:00:00Z" }),
+        resenaCruda({ autor: "Cinco nueva", rating: 5, publicada: "2026-08-01T00:00:00Z" }),
       ]),
+      AHORA,
     );
 
     expect(resumen?.resenas.map((r) => r.autor)).toEqual([
-      "Nueva",
-      "Media",
-      "Vieja",
+      "Cinco nueva",
+      "Cinco vieja",
+      "Cuatro nueva",
     ]);
+    expect(resumen?.seleccion).toEqual({
+      devueltas: 3,
+      aprobadas: 3,
+      ventanaMeses: 12,
+    });
+  });
+
+  it("filtra a los últimos 12 meses cuando quedan al menos 3", () => {
+    const resumen = normalizarRespuestaGoogle(
+      respuestaGoogle([
+        resenaCruda({ autor: "A", publicada: "2026-09-01T00:00:00Z" }),
+        resenaCruda({ autor: "B", publicada: "2026-03-01T00:00:00Z" }),
+        resenaCruda({ autor: "C", publicada: "2025-11-01T00:00:00Z" }),
+        resenaCruda({ autor: "Vieja", publicada: "2025-06-01T00:00:00Z" }),
+        resenaCruda({ autor: "Antigua", publicada: "2023-01-01T00:00:00Z" }),
+      ]),
+      AHORA,
+    );
+
+    expect(resumen?.resenas.map((r) => r.autor)).toEqual(["A", "B", "C"]);
+    expect(resumen?.seleccion).toEqual({
+      devueltas: 5,
+      aprobadas: 3,
+      ventanaMeses: 12,
+    });
+  });
+
+  it("si 12 meses deja menos de 3, relaja la ventana a 24 meses", () => {
+    const resumen = normalizarRespuestaGoogle(
+      respuestaGoogle([
+        resenaCruda({ autor: "A", publicada: "2026-09-01T00:00:00Z" }),
+        resenaCruda({ autor: "B", publicada: "2025-03-01T00:00:00Z" }),
+        resenaCruda({ autor: "C", publicada: "2024-12-01T00:00:00Z" }),
+        resenaCruda({ autor: "Antigua", publicada: "2023-01-01T00:00:00Z" }),
+      ]),
+      AHORA,
+    );
+
+    expect(resumen?.resenas.map((r) => r.autor)).toEqual(["A", "B", "C"]);
+    expect(resumen?.seleccion?.ventanaMeses).toBe(24);
+  });
+
+  it("sin reseñas recientes suficientes, usa las mejores disponibles sin filtro de fecha", () => {
+    const resumen = normalizarRespuestaGoogle(
+      respuestaGoogle([
+        resenaCruda({ autor: "Vieja 4", rating: 4, publicada: "2022-01-01T00:00:00Z" }),
+        resenaCruda({ autor: "Vieja 5", rating: 5, publicada: "2021-01-01T00:00:00Z" }),
+        resenaCruda({ autor: "Reciente", publicada: "2026-09-01T00:00:00Z" }),
+      ]),
+      AHORA,
+    );
+
+    expect(resumen?.resenas.map((r) => r.autor)).toEqual([
+      "Reciente",
+      "Vieja 5",
+      "Vieja 4",
+    ]);
+    expect(resumen?.seleccion).toEqual({
+      devueltas: 3,
+      aprobadas: 3,
+      ventanaMeses: null,
+    });
   });
 
   it("nunca publica más de cinco", () => {
@@ -337,7 +402,7 @@ describe("refrescarResenasGoogle: el refresco diario", () => {
     );
     vi.mocked(guardarCache).mockResolvedValue(true);
 
-    expect(await refrescarResenasGoogle()).toEqual({
+    expect(await refrescarResenasGoogle()).toMatchObject({
       refrescado: true,
       resenas: 2,
     });
