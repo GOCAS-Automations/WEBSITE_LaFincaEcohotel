@@ -36,6 +36,7 @@ import {
   ETIQUETA_ORIGEN,
   TONO_ESTADO,
 } from "@/lib/admin/tipos";
+import { resumirPagoDeReserva, ultimoPagoPorReserva } from "@/lib/admin/pagos";
 import { cuentaAtras, vencePronto } from "@/lib/reserva/holds";
 import { liberarReservasVencidas } from "@/lib/reserva/liberar-vencidas";
 import { ocupacionDelCalendario } from "@/lib/reserva/ocupacion-externa";
@@ -110,6 +111,19 @@ export default async function PaginaReservas({
        con estado y una lista vacía, y el mes se pinta igual. */
     ocupacionDelCalendario(primerDia, finDeMes),
   ]);
+
+  /*
+    EL ÚLTIMO PAGO DE CADA RESERVA DEL LISTADO, EN UNA SOLA CONSULTA.
+
+    Una por fila serían hasta 300 viajes a la base para pintar una pastilla. Esto
+    es un `in (…)` y un `Map`. Nunca lanza: si la consulta falla, el mapa viene
+    vacío y el listado se pinta igual, con la pastilla que salga de lo que ya
+    tiene la reserva (`monto_pagado`).
+  */
+  const pagosPorReserva = await ultimoPagoPorReserva(
+    supabase,
+    reservas.map((reserva) => reserva.id),
+  );
 
   return (
     <>
@@ -219,6 +233,23 @@ export default async function PaginaReservas({
                     : null;
                 const urgente = vencePronto(reserva, ahora);
 
+                /*
+                  PAGADA O PENDIENTE DE COBRO, DE UN VISTAZO.
+
+                  El estado de la reserva («confirmada») y el del dinero son dos
+                  cosas distintas: una confirmada puede tener la mitad por cobrar,
+                  y una pendiente puede tener un pago en curso en la pasarela
+                  ahora mismo. El equipo necesita las dos, así que hay dos
+                  pastillas y no una que las mezcle.
+                */
+                const dinero = resumirPagoDeReserva(
+                  reserva.total,
+                  reserva.monto_pagado,
+                  pagosPorReserva.get(reserva.id),
+                  reserva.estado,
+                );
+                const falta = reserva.total - reserva.monto_pagado;
+
                 return (
                 <li key={reserva.id}>
                   <Link
@@ -233,6 +264,11 @@ export default async function PaginaReservas({
                         <Pastilla tono={TONO_ESTADO[reserva.estado]}>
                           {ETIQUETA_ESTADO[reserva.estado]}
                         </Pastilla>
+                        {/* «Sin pago» en una cancelada es ruido: ahí no hay nada
+                            que cobrar y la pastilla del estado ya lo dice. */}
+                        {reserva.estado !== "cancelada" ? (
+                          <Pastilla tono={dinero.tono}>{dinero.etiqueta}</Pastilla>
+                        ) : null}
                         {restante ? (
                           <span
                             className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[0.6875rem] font-semibold ${
@@ -261,11 +297,17 @@ export default async function PaginaReservas({
                       <p className="text-[0.9375rem] font-semibold text-crema-900">
                         {formatearCOP(reserva.total)}
                       </p>
-                      {reserva.monto_pagado > 0 && (
+                      {/* Lo que falta pesa más que lo abonado: es la acción
+                          pendiente, no el dato histórico. */}
+                      {reserva.monto_pagado > 0 && falta > 0 ? (
+                        <p className="text-[0.75rem] text-dorado-700">
+                          falta {formatearCOP(falta)}
+                        </p>
+                      ) : reserva.monto_pagado > 0 ? (
                         <p className="text-[0.75rem] text-crema-600">
                           abonado {formatearCOP(reserva.monto_pagado)}
                         </p>
-                      )}
+                      ) : null}
                     </div>
                   </Link>
                 </li>

@@ -45,6 +45,8 @@ import {
 } from "@/lib/admin/tipos";
 import { CUPO_DIA_DE_CALMA } from "@/lib/reserva/dia-de-calma";
 import { cuentaAtras, vencePronto } from "@/lib/reserva/holds";
+import { pagosDeReserva, resumirPagoDeReserva } from "@/lib/admin/pagos";
+import { ETIQUETA_ESTADO_BOLD, esAprobado, esRechazado } from "@/lib/pagos/bold";
 import { esUuid } from "@/lib/admin/validacion";
 import { formatearCOP } from "@/lib/utils/formato";
 
@@ -67,17 +69,36 @@ export default async function PaginaReserva({
   const reserva = await obtenerReserva(supabase, id);
   if (!reserva) notFound();
 
-  const [alojamientos, planes, tarifas, extras, elegidos] = await Promise.all([
-    opcionesAlojamiento(supabase),
-    opcionesPlan(supabase),
-    mapaDeTarifas(supabase),
-    extrasActivos(supabase),
-    extrasDeReserva(supabase, id),
-  ]);
+  const [alojamientos, planes, tarifas, extras, elegidos, pagos] =
+    await Promise.all([
+      opcionesAlojamiento(supabase),
+      opcionesPlan(supabase),
+      mapaDeTarifas(supabase),
+      extrasActivos(supabase),
+      extrasDeReserva(supabase, id),
+      /*
+        LOS PAGOS SE LEEN CON LA SESIÓN DEL PANEL, NO CON `service_role`.
+
+        `pagos` tiene RLS activo y la política «solo panel» de la migración 002,
+        así que el rol `authenticated` la ve. No hace falta el cliente
+        privilegiado para una pantalla que ya exige sesión de administrador, y no
+        usarlo es una superficie menos.
+      */
+      pagosDeReserva(supabase, id),
+    ]);
 
   const noches = nochesEntre(reserva.entrada, reserva.salida);
   const pendiente = reserva.total - reserva.monto_pagado;
   const esDia = reserva.tipo === "dia";
+
+  /* Cómo se resume el dinero de esta reserva. El más reciente de los pagos es
+     el que manda para la pastilla; los demás se listan igual más abajo. */
+  const resumen = resumirPagoDeReserva(
+    reserva.total,
+    reserva.monto_pagado,
+    pagos[0],
+    reserva.estado,
+  );
 
   /*
     Las experiencias se agrupan por la noche a la que se añadieron: en una
@@ -314,7 +335,10 @@ export default async function PaginaReserva({
 
         <div className="space-y-6">
           <Tarjeta>
-            <CabeceraTarjeta titulo="Pago" />
+            <CabeceraTarjeta
+              titulo="Pago"
+              accion={<Pastilla tono={resumen.tono}>{resumen.etiqueta}</Pastilla>}
+            />
             <CuerpoTarjeta>
               <dl className="space-y-2 text-[0.875rem]">
                 <div className="flex justify-between">
@@ -364,6 +388,120 @@ export default async function PaginaReserva({
                   </dd>
                 </div>
               </dl>
+
+              {/*
+                EL SALDO, DICHO CON PALABRAS Y NO SOLO CON UNA CIFRA.
+
+                Una línea que dice «Falta por pagar $175.000» no le dice a quien
+                atiende QUÉ tiene que hacer. Esto sí: el saldo de una reserva
+                pagada en línea se cobra **por link antes de la llegada**, porque
+                en la finca no hay datáfono ni se maneja efectivo (§5 de
+                `docs/DATOS_CLIENTE.md`), y eso es lo mismo que se le prometió al
+                huésped en el correo de confirmación.
+
+                ⚠ Solo cuando hay un **pago parcial**. En una reserva sin un peso
+                abonado, «queda un saldo» es toda la reserva y la frase «el
+                huésped ya lo sabe, está en su correo» sería falsa: no se le ha
+                mandado ninguna confirmación porque no ha pagado nada.
+              */}
+              {pendiente > 0 && reserva.monto_pagado > 0 ? (
+                <p className="mt-4 rounded-tarjeta bg-dorado-100/60 px-3.5 py-2.5 text-[0.8125rem] leading-relaxed text-dorado-800">
+                  Queda un saldo de{" "}
+                  <strong>{formatearCOP(Math.max(0, pendiente))}</strong> por
+                  cobrar. Se le envía un link de pago antes de su llegada: en la
+                  finca no hay datáfono ni se maneja efectivo. El huésped ya lo
+                  sabe — está en su correo de confirmación.
+                </p>
+              ) : null}
+
+              {/* ---------------------------------------------------------
+                  LOS INTENTOS DE PAGO EN LÍNEA.
+
+                  Se pintan TODOS, del más reciente al más antiguo, y no solo el
+                  que salió bien. Es lo que contesta la llamada de «me cobraron
+                  dos veces»: casi siempre hay un rechazado y un aprobado, y
+                  verlos juntos lo explica en cinco segundos.
+
+                  La REFERENCIA es lo que se busca en el panel de Bold y el
+                  identificador de Bold es lo que pide su soporte, así que los dos
+                  se pueden seleccionar y copiar (`select-all`, tipografía
+                  monoespaciada: son cadenas que alguien va a dictar o pegar).
+
+                  Nada de datos de tarjeta: no los recibimos y no los guardamos.
+              ---------------------------------------------------------- */}
+              {pagos.length > 0 ? (
+                <div className="mt-5 flex flex-col gap-3 border-t border-crema-900/10 pt-4">
+                  <p className="text-[0.75rem] font-semibold tracking-wide text-crema-600 uppercase">
+                    {pagos.length === 1
+                      ? "Pago en línea"
+                      : `Intentos de pago (${pagos.length})`}
+                  </p>
+
+                  {pagos.map((pago) => (
+                    <div
+                      key={pago.id}
+                      className="flex flex-col gap-1.5 rounded-tarjeta bg-crema-900/[0.03] px-3.5 py-3"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <Pastilla
+                          tono={
+                            esAprobado(pago.estado)
+                              ? "verde"
+                              : esRechazado(pago.estado)
+                                ? "rojo"
+                                : "ambar"
+                          }
+                        >
+                          {ETIQUETA_ESTADO_BOLD[pago.estado]}
+                        </Pastilla>
+                        <span className="font-titulo text-[0.9375rem] font-semibold text-crema-900">
+                          {formatearCOP(pago.monto)}
+                        </span>
+                      </div>
+
+                      <dl className="flex flex-col gap-1 text-[0.8125rem]">
+                        <div className="flex flex-wrap justify-between gap-x-3">
+                          <dt className="text-crema-700">Método</dt>
+                          <dd className="text-crema-900">{pago.metodo ?? "—"}</dd>
+                        </div>
+                        <div className="flex flex-col gap-0.5">
+                          <dt className="text-crema-700">Referencia</dt>
+                          <dd className="font-mono text-[0.75rem] break-all text-crema-900 select-all">
+                            {pago.referencia}
+                          </dd>
+                        </div>
+                        {pago.transaccionId ? (
+                          <div className="flex flex-col gap-0.5">
+                            <dt className="text-crema-700">
+                              Identificador en Bold
+                            </dt>
+                            <dd className="font-mono text-[0.75rem] break-all text-crema-900 select-all">
+                              {pago.transaccionId}
+                            </dd>
+                          </div>
+                        ) : null}
+                        <div className="flex flex-wrap justify-between gap-x-3">
+                          <dt className="text-crema-700">Intentado</dt>
+                          <dd className="text-crema-900">
+                            {fechaHora(pago.creadoEn)}
+                          </dd>
+                        </div>
+                      </dl>
+                    </div>
+                  ))}
+
+                  <p className="text-[0.75rem] leading-snug text-crema-600">
+                    El cobro lo procesa Bold. Este sitio no recibe ni guarda
+                    datos de la tarjeta.
+                  </p>
+                </div>
+              ) : (
+                <p className="mt-5 border-t border-crema-900/10 pt-4 text-[0.8125rem] leading-relaxed text-crema-600">
+                  Sin pagos en línea. {resumen.etiqueta === "Pagada"
+                    ? "Lo que está abonado se registró a mano desde el panel."
+                    : "Esta reserva no se cobró por la pasarela: o la escribió el equipo, o el huésped nunca completó el pago."}
+                </p>
+              )}
             </CuerpoTarjeta>
           </Tarjeta>
 
