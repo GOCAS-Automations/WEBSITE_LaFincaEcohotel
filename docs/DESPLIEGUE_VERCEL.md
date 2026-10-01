@@ -31,7 +31,7 @@ defecto, activarla en los tres salvo que se diga lo contrario.
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | No (es pública por diseño, pero no compartirla fuera de Vercel/Supabase) | Production, Preview, Development | Llave `anon` del mismo proyecto |
 | `SUPABASE_SERVICE_ROLE_KEY` | **Sí** | Production, Preview, Development | Llave `service_role` del proyecto. Nunca lleva `NEXT_PUBLIC_` — si algún día apareciera con ese prefijo, sería un error grave: quedaría expuesta en el navegador |
 | `SUPABASE_DB_URL` | **Sí** | Production, Preview, Development (solo hace falta si algún Route Handler o script corre migraciones en runtime; si no, puede omitirse en Vercel y usarse solo en local) | Cadena de conexión directa a Postgres del proyecto |
-| `NEXT_PUBLIC_SITE_URL` | No | Production, Preview, Development | Ver el apartado dedicado más abajo — en el primer deploy se deja **vacía** |
+| `NEXT_PUBLIC_SITE_URL` | No | Production, Preview, Development | **`https://lafincaecohotel.com`** — el dominio real ya apunta a Vercel (2026-10-01). Ver el apartado dedicado |
 | `IMAGENES_SIN_OPTIMIZAR` | No | — | Ver el apartado dedicado más abajo — se deja **vacía** en el primer deploy |
 | `SITIO_PUBLICADO` | No | Production, Preview, Development | **`0` o sin definir** hasta el lanzamiento — ver el apartado dedicado |
 | `GOOGLE_PLACES_API_KEY` | **Sí** | Production, Preview, Development | Llave de la Places API (New) del proyecto de Google Cloud. Sin ella el bloque de reseñas simplemente no se publica: no bloquea el deploy |
@@ -43,6 +43,8 @@ defecto, activarla en los tres salvo que se diga lo contrario.
 | `BOLD_IDENTITY_KEY` | No (es **pública** por diseño: Bold dice «no hay problema en que alguien pueda verla ya que sólo sirve para identificarte») | Production, Preview, Development | Llave de **identidad**. De **pruebas** en Preview y Development; de **producción** solo en Production — ver el apartado dedicado |
 | `BOLD_PRIVATE_KEY` | **Sí. Solo servidor, jamás al navegador** | Production, Preview, Development | Llave **secreta** del mismo ambiente que la de identidad |
 | `BOLD_MODO` | No | Preview, Development (**no** en Production) | `pruebas` mientras se usen las llaves de prueba. En Production se deja vacía o se borra — ver el apartado dedicado |
+| `PAGOS_ACTIVOS` | No | Production, Preview, Development | **`0` o sin definir.** Es el **último interruptor del lanzamiento** y se enciende solo junto a las llaves de producción — ver el apartado dedicado |
+| `BOLD_URL_RETORNO` | No | — | **Vacía.** Solo para depurar el retorno del pago desde local con un túnel https — ver el apartado dedicado |
 
 ### `BOLD_IDENTITY_KEY`, `BOLD_PRIVATE_KEY` y `BOLD_MODO`
 
@@ -81,7 +83,11 @@ producción, hay que decírselo al código.
 **El webhook se registra en el panel de Bold**, no en Vercel: Integraciones →
 Webhooks → «Configurar webhook», apuntando a
 
-    https://<dominio>/api/pagos/bold/webhook
+    https://lafincaecohotel.com/api/pagos/bold/webhook
+
+Esa es **la URL definitiva**: el dominio real apunta a Vercel desde el
+2026-10-01, así que ya no hay que esperar a nada para registrarla. Es lo único
+que queda por hacer en el panel de Bold.
 
 Se pueden registrar hasta cinco endpoints, y hay un «webhook de pruebas» aparte
 (Integraciones → Webhooks → *webhooks de prueba*). Dos cosas que conviene saber
@@ -102,6 +108,45 @@ reembolso** para comprobar el circuito completo con dinero de verdad.
 **Sin las dos llaves el sitio no se rompe:** el motor de reservas cierra por
 WhatsApp igual que antes de la fase de pagos (`boldConfigurado()` devuelve
 `false` y el selector pinta el botón de WhatsApp como principal). Es deliberado.
+
+### `PAGOS_ACTIVOS` — el último interruptor del lanzamiento
+
+**Por defecto `0`.** Tener llaves de Bold no es poder cobrar, y desde que el
+dominio real apunta a Vercel la diferencia importa: el sitio publicado es el del
+hotel, y un huésped de verdad puede entrar a `/reservar` cualquier tarde. Con las
+llaves de **pruebas** puestas pasaría por una pasarela que no cobra nada; y si un
+evento de ese sandbox llegara al webhook, la reserva quedaría **confirmada sin
+pago real** — una cabaña bloqueada por una venta que no existió.
+
+Con `PAGOS_ACTIVOS` distinto de `1`:
+
+- El sitio público **no muestra el botón de pagar**. El cierre es WhatsApp, con
+  el mismo resumen y el mismo desglose noche a noche de siempre.
+- `POST /api/reservar` responde **503** («Los pagos en línea no están habilitados
+  todavía») y **no crea ninguna reserva**.
+- El **webhook sigue funcionando**, porque hace falta para probarlo desde el
+  panel de Bold. Lo que no hace es confirmar: si `BOLD_MODO=pruebas` y
+  `VERCEL_ENV=production`, registra el evento, deja un error en el log y **no
+  toca `pagos` ni `reservas`**.
+
+Se pone en `1` **el día del lanzamiento y en el mismo movimiento** que las llaves
+de producción. Nunca antes, y nunca con llaves de prueba. Hay que **redesplegar**
+después de cambiarla: el sitio público es estático y el valor se hornea en el
+build.
+
+### `BOLD_URL_RETORNO`
+
+Normalmente **vacía**. Existe por una regla de Bold que cuesta media tarde
+descubrir: **las URLs de retorno tienen que ser `https://`**
+(`data-redirection-url` y `data-origin-url` → «Valid HTTPS URL»). Una dirección
+`http://localhost` hace que el checkout no abra y la pasarela muestre
+«Something went wrong… **BTN-001**».
+
+Por eso el servidor nunca manda el origen de la petición a secas: `origenParaBold()`
+(`src/lib/pagos/origen.ts`) exige https y, en local, cae al dominio real. Como la
+base de datos es la misma, el comprobante se ve igual al volver. Esta variable
+solo hace falta para depurar ese retorno sin salir del equipo (un túnel de ngrok,
+una vista previa de Vercel); si lo que trae no es https, se ignora.
 
 ### `RESEND_API_KEY`, `EMAIL_FROM` y `EMAIL_NOTIFY_TO`
 
@@ -187,21 +232,26 @@ todo lo demás sigue funcionando.
 
 ### `NEXT_PUBLIC_SITE_URL`
 
-En el primer deploy **todavía no se conoce la URL final**, porque Vercel la
-asigna al crear el proyecto. El procedimiento es:
+**Valor definitivo: `https://lafincaecohotel.com`** (sin barra final y **sin
+`www`** — `www.lafincaecohotel.com` devuelve un 308 al apex, que es el dominio
+principal del proyecto en Vercel).
 
-1. Desplegar con `NEXT_PUBLIC_SITE_URL` vacía (el código cae a
-   `https://www.lafincaecohotel.com` por defecto, que no es la URL real pero
-   no rompe el build).
-2. Copiar la URL que Vercel asignó al proyecto (algo como
-   `website-la-finca-ecohotel.vercel.app`, visible en el dashboard del
-   proyecto).
-3. Editar la variable con esa URL completa (`https://…vercel.app`, **sin**
-   barra final) y volver a desplegar (**Deployments → ⋯ → Redeploy**, o hacer
-   un commit nuevo).
+⚠ **Esto ya mordió una vez.** El 2026-10-01, con el dominio real sirviendo el
+sitio, la variable en Vercel seguía valiendo `http://localhost:3000` del
+desarrollo, y el sitio publicado se declaraba canónico en localhost:
 
-Cuando más adelante se conecte el dominio propio, esta variable cambia a
-`https://lafincaecohotel.com` (ver la sección 4).
+    <link rel="canonical" href="http://localhost:3000"/>
+    <meta property="og:url" content="http://localhost:3000"/>
+
+Nada falla a la vista —las páginas cargan igual— y mientras tanto cada canónica,
+cada OpenGraph, el sitemap, el JSON-LD y los enlaces de los correos apuntan a una
+dirección que no existe fuera del equipo de quien la configuró. Se corrigió ese
+mismo día, y el respaldo en código (`src/lib/sitio.ts`) pasó a ser el dominio
+real: si la variable volviera a faltar, lo que se publica es correcto.
+
+**Hay que redesplegar después de cambiarla.** Lleva el prefijo `NEXT_PUBLIC_`:
+su valor se hornea en el build, y editarla en el panel de Vercel no cambia nada
+hasta el siguiente despliegue.
 
 ### `IMAGENES_SIN_OPTIMIZAR`
 
@@ -214,18 +264,31 @@ redesplegar después de cambiarla.
 
 ### `SITIO_PUBLICADO`
 
-Controla si el sitio se indexa o no. Con `0` o sin definir (el valor por
-defecto, pensado para durar todo el desarrollo, el primer deploy y todo el
-tiempo que el WordPress viejo siga siendo la web real):
+Controla si el sitio se indexa o no. Con `0` o sin definir:
 
 - `/robots.txt` bloquea el sitio completo (`Disallow: /`).
 - Cada página se publica con `<meta name="robots" content="noindex, nofollow">`.
 
-Se cambia a `1` **el mismo día** que el dominio apunte a Vercel y el
-WordPress deje de estar en producción (sección 4) — nunca antes. **Advertencia:**
-dejarla en `0` (o sin definir) después del lanzamiento significa que Google
-nunca va a indexar el sitio, aunque el dominio ya esté conectado y todo lo
-demás funcione.
+🔴 **Hoy esto es un problema abierto, no una precaución.** La variable existía
+para proteger al WordPress viejo mientras era la web real; ese sitio **ya no
+existe** (hosting cancelado) y el dominio apunta a Vercel. Mientras
+`SITIO_PUBLICADO` no valga `1`, **el hotel está invisible en Google**: el sitio
+nuevo se prohíbe a sí mismo y el viejo ya no responde.
+
+**Para arreglarlo basta con esto**, y no hay nada más que tocar en el código:
+
+1. Vercel → proyecto `website-la-finca-ecohotel` → **Settings → Environment
+   Variables** → añadir `SITIO_PUBLICADO` con valor **`1`** (Production; de
+   Preview conviene dejarla fuera, para que las vistas previas sigan sin
+   indexarse).
+2. **Redesplegar** (Deployments → ⋯ → Redeploy, o cualquier commit nuevo).
+   `/robots.txt` y las metaetiquetas son estáticos: se hornean en el build.
+3. Comprobar que `https://lafincaecohotel.com/robots.txt` ya **no** dice
+   `Disallow: /` y que la portada ya no trae `noindex`.
+4. Enviar `https://lafincaecohotel.com/sitemap.xml` desde Google Search Console.
+
+No lo activa nadie por su cuenta: es una decisión de Cesar, y conviene tomarla
+pronto — cada día con `noindex` es un día que el hotel no aparece en Google.
 
 ### `CRON_SECRET`
 
@@ -285,14 +348,19 @@ Con la URL de Vercel ya asignada (`https://…vercel.app`), revisar:
       `/faq`, `/galeria`, `/reservar`, las 4 páginas de `/legal/*`,
       `/robots.txt` y `/sitemap.xml`. Las rutas de `/admin/*` sí son
       dinámicas (`ƒ`) — eso es lo esperado, no un error.
-- [ ] `/sitemap.xml` y las etiquetas `<link rel="canonical">` de las páginas
-      apuntan a la URL de Vercel recién configurada (`NEXT_PUBLIC_SITE_URL`),
-      no a `localhost` ni a `lafincaecohotel.com` todavía.
+- [ ] `/sitemap.xml` y las etiquetas `<link rel="canonical">` apuntan a
+      `https://lafincaecohotel.com`. **Es la comprobación que se saltó** y por la
+      que el sitio estuvo publicado declarándose canónico en `http://localhost:3000`:
+      mirar el HTML, no solo que la página cargue.
 
-## 4. Cuando llegue el momento de conectar el dominio
+## 4. El dominio — HECHO el 2026-10-01
 
-Este paso es **futuro**: se ejecuta el día que el cliente confirme el
-lanzamiento, no antes.
+✅ `lafincaecohotel.com` **ya apunta a Vercel** y el hosting viejo de Hostinger se
+canceló: **el sitio nuevo es el sitio en producción**. El apex es el dominio
+principal y `www` devuelve un 308 hacia él.
+
+Queda pendiente **solo el punto 4** de la lista (`SITIO_PUBLICADO=1`), que es una
+decisión de Cesar. El procedimiento original se conserva abajo como referencia.
 
 1. En **Hostinger** (donde vive el DNS del dominio hoy), crear/editar:
    - Un registro **A** del apex (`lafincaecohotel.com`) apuntando a la IP que
@@ -301,8 +369,10 @@ lanzamiento, no antes.
 2. Esperar la propagación del DNS (puede tardar desde minutos hasta unas
    horas) y confirmar en Vercel que el dominio queda validado y con el
    certificado SSL activo.
-3. Cambiar `NEXT_PUBLIC_SITE_URL` a `https://lafincaecohotel.com`.
-4. Cambiar `SITIO_PUBLICADO` a `1`.
+3. ✅ Cambiar `NEXT_PUBLIC_SITE_URL` a `https://lafincaecohotel.com` (hecho el
+   2026-10-01).
+4. ⬜ **Pendiente:** poner `SITIO_PUBLICADO` en `1`. Mientras no se haga, el
+   hotel está invisible en Google (ver el apartado de esa variable).
 5. Redesplegar.
 6. Repetir la verificación de la sección 3, ahora contra el dominio real:
    `/robots.txt` ya NO debe decir `Disallow: /` (debe volver el
