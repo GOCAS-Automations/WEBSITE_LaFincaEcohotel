@@ -59,9 +59,26 @@
   `NEXT_PUBLIC_SITE_URL` —estaba en `http://localhost:3000` **en Vercel**, así que el
   sitio publicado se declaraba canónico en localhost— y nació **`PAGOS_ACTIVOS`**, el
   interruptor que impide que un huésped real pague en la pasarela de pruebas.
-  🔴 **Pendiente que bloquea de verdad: `SITIO_PUBLICADO=1` en Vercel.** Sin eso el
-  sitio sale con `noindex` y, como el sitio viejo ya no existe, **el hotel está
-  invisible en Google**.
+  ~~🔴 Pendiente que bloquea de verdad: `SITIO_PUBLICADO=1` en Vercel~~ —
+  **resuelto esa misma noche**: comprobado el 2026-10-02,
+  `https://lafincaecohotel.com/robots.txt` responde `Allow: /`. Queda enviar el
+  sitemap a Search Console.
+
+- **2026-10-02 · Un pago no puede perderse.** Se descubrió que a
+  `/api/pagos/bold/webhook` habían llegado **cero eventos** pese a dos pagos reales
+  en el sandbox, y que por eso `LF-2026-0001` se canceló sola al vencer su hold **con
+  el pago hecho**. El webhook deja de ser la única vía: nace la **reconciliación**
+  (`src/lib/pagos/reconciliar.ts`), que le pregunta a la API de Bold con nuestra llave
+  desde la **página de retorno**, el **cron diario** —antes de barrer las vencidas— y
+  un botón **«Verificar pago con Bold»** en el panel; comparte la escritura con el
+  webhook (`src/lib/pagos/aplicar-estado.ts`) para que no puedan divergir. La
+  migración **016** prohíbe en SQL cancelar por vencimiento una reserva con pago
+  aprobado. Ese mismo día se **encendieron los correos** (Resend verificado, los tres
+  enviados de verdad a `fincavillarrealcali@gmail.com`, con `Reply-To` al Gmail del
+  hotel).
+  🔴 **Pendiente que bloquea: las cuatro variables de correo en Vercel**
+  (`RESEND_API_KEY`, `EMAIL_FROM`, `EMAIL_NOTIFY_TO`, `EMAIL_REPLY_TO`). Sin ellas el
+  sitio publicado confirma la reserva y **no avisa a nadie**.
 
 ## Decisiones tomadas
 
@@ -162,6 +179,14 @@
 | 2026-10-01 | **Tener llaves de Bold no es poder cobrar: `PAGOS_ACTIVOS` es un interruptor aparte y nace en `0`.** Con el dominio real sirviendo el sitio, unas llaves de pruebas significan un huésped real pasando por una pasarela que no cobra; y un evento de ese sandbox confirmaría la reserva **sin pago**. Es lo último que se enciende, y se enciende junto a las llaves de producción. |
 | 2026-10-01 | **El webhook usa `ambienteDeclarado()`, no `modoBold()`, para decidir si puede confirmar.** `modoBold()` devuelve `produccion` a propósito cuando `VERCEL_ENV=production`, para no firmar nunca con la llave vacía; aquí hace falta lo contrario, saber qué llaves dice la configuración que hay. Pruebas declaradas + producción = evento registrado y **cero cambios** en `pagos` y `reservas`. |
 | 2026-09-30 | **Las redirecciones de `next.config` GANAN a las rutas del App Router**, así que una `source` que coincida con una página existente la deja inalcanzable sin ningún aviso en el build. Con barra final son dos saltos (308 de normalización + 301) y se acepta: quitarlos exigiría `skipTrailingSlashRedirect: true`, que dejaría cada página del sitio accesible con y sin barra —contenido duplicado— a cambio de ahorrar un salto que Google sigue sin problema. |
+| 2026-10-02 | ⚠ **El webhook NO puede ser la única vía de confirmación.** Se hicieron pagos reales en el sandbox de Bold y llegaron **cero** eventos: `LF-2026-0001` se canceló sola al vencer su hold con el pago hecho. En producción eso es un huésped que paga y se queda sin reserva. Nace la **reconciliación** (`src/lib/pagos/reconciliar.ts`): le preguntamos nosotros a la API de Bold con nuestra llave desde la página de retorno, el cron diario y un botón del panel. |
+| 2026-10-02 | **La transición vive en UN solo módulo, `src/lib/pagos/aplicar-estado.ts`.** Dos caminos que escriben una confirmación de pago tienen que escribir lo mismo hasta la última columna, y la única forma de garantizarlo es que sea literalmente el mismo código. Lo único que los distingue es `diferir`: el webhook manda correos y calendario a `after()` porque Bold exige responder en dos segundos; la reconciliación los espera, porque quien la llamó quiere saber si el correo salió. |
+| 2026-10-02 | **Preguntarle a la API de Bold NO contradice el requisito 2 de la auditoría.** Lo que ese requisito prohíbe es creerle a la URL del navegador (`?bold-tx-status=approved` lo escribe cualquiera). Consultar la transacción con nuestra llave de identidad es la misma fuente de verdad que ya exige su requisito 5. De la URL solo se toma la **referencia**, que no es una afirmación sino una pregunta. |
+| 2026-10-02 | **La reconciliación no pregunta por un pago que ya está en un estado final y coherente.** Se lee la base primero: así reconciliar dos veces no cuesta ni una llamada de red, una referencia inventada no convierte el sitio en un ariete contra la API de Bold, y una página recargada cien veces no escribe nada. Consecuencia aceptada: **una anulación posterior (`VOIDED`) solo llega por webhook**, no por reconciliación. |
+| 2026-10-02 | ⚠ **Una reserva con un pago aprobado NO se cancela nunca por vencimiento** (migración 016). Y los `PROCESSING`/`PENDING` tienen 15 minutos de gracia desde su `actualizado_at`, no desde su creación: así se protege al cobro que alguien acaba de comprobar sin proteger al checkout abandonado, que tiene que liberar sus noches. La gracia es corta porque `reservas_sin_solapamiento` no puede leer `now()`: una `pendiente` sin cancelar sigue apartando fechas, y alargarla produciría noches que se ofrecen y no se pueden comprar. |
+| 2026-10-02 | **En el cron, reconciliar va ANTES de barrer.** Si el barrido corriera primero cancelaría una reserva cuyo pago está aprobado y habría que resucitarla después, con el riesgo de que entretanto alguien comprara esas noches. Invertir las dos llamadas de `/api/salud` reintroduce el fallo que todo esto arregla. |
+| 2026-10-02 | **Si una reserva pagada llegó a cancelarse, la reconciliación la RESUCITA** y lo deja anotado en `notas` (anexado, nunca sobrescrito). El único desenlace que no se puede resolver con código es el 23P01: pago aprobado y fechas ya vendidas a otro. Eso se reporta con todas las letras —`pagos_requieren_atencion` en `/api/salud` y un mensaje en el panel— porque son dos personas y una cabaña. |
+| 2026-10-02 | **Los correos llevan `Reply-To` al Gmail del hotel (`EMAIL_REPLY_TO`).** `reservas@lafincaecohotel.com` es una identidad de ENVÍO de Resend: detrás no hay buzón que nadie lea. Sin `Reply-To`, la respuesta del huésped («¿puedo llegar a las 9?») se pierde y él cree que avisó. Un correo perdido de un huésped es peor que un correo que no se envió. |
 
 ## Registro de sesiones
 
@@ -2811,3 +2836,93 @@ la que produjo el BTN-001, y `LF-2026-0002`, la del checkout que sí abrió) con
 sus pagos y extras. Al terminar: `reservas` 0, `pagos` 0, `pagos_eventos` 0,
 `reserva_extras` 0, `bloqueos` 0; catálogo intacto (5 cabañas, 4 planes, 13
 tarifas, 4 extras, 22 filas de contenido, 39 imágenes).
+
+### 2026-10-02 — Un pago no puede perderse: reconciliación con Bold y correos encendidos
+
+#### El problema, que no era de pruebas
+
+En el sandbox de Bold se hicieron pagos **de verdad** y a `/api/pagos/bold/webhook`
+llegaron **cero eventos**: `pagos_eventos` estaba vacía. El botón «Probar el
+webhook» del panel de Bold solo guarda la URL y no dispara nada, y en pruebas Bold
+tampoco los envía solos. Resultado: `LF-2026-0001` **se canceló sola** al vencer su
+hold de 30 minutos, con el pago hecho.
+
+Eso en producción es **un huésped que paga y se queda sin reserva**, y no se
+entera hasta que llega a la finca. Un webhook que no llega no avisa de que no
+llegó, así que la conclusión no fue «arreglar el webhook» sino **que el webhook
+deje de ser la única vía de confirmación**.
+
+#### La reconciliación
+
+- **`src/lib/pagos/aplicar-estado.ts`** (nuevo) — la transición, extraída del
+  webhook: `pagos` + `reservas` + correos + Google Calendar. **El webhook y la
+  reconciliación la comparten**, que es la única forma de garantizar que no
+  divergen. Lo único que las distingue es el parámetro `diferir`: el webhook pasa
+  `after()` porque Bold exige responder en dos segundos; la reconciliación espera.
+  Exporta además `repararReservaSinConfirmar()` para el estado incoherente (pago
+  `APPROVED` y reserva sin confirmar), que `decidirAccionDePago` no puede arreglar
+  —y no debe: ahí está la regla que impide los correos duplicados—.
+- **`src/lib/pagos/reconciliar.ts`** (nuevo) — `reconciliarPago(referencia)`
+  pregunta a `GET payments.api.bold.co/v2/payment-voucher/<ref>` con la llave de
+  identidad y aplica lo que diga; `reconciliarPagosPendientes()` hace la pasada
+  del cron. Enganchada en **tres** puntos:
+  1. **La página de retorno** `/reservar/confirmacion` reconcilia **antes de
+     pintar**. Es el caso corriente: el huésped vuelve de pagar y ve su reserva
+     confirmada sin que exista ningún webhook.
+  2. **El cron** (`/api/salud`) reconcilia los pagos no finales de las últimas 24
+     horas **antes** de liberar las vencidas, e informa (`pagos_revisados`,
+     `pagos_reconciliados`, `pagos_confirmados`, `pagos_requieren_atencion`).
+  3. **El panel**: botón **«Verificar pago con Bold»** en la tarjeta de pago de la
+     ficha, visible solo cuando hay algo que verificar.
+- **Migración 016** — `liberar_reservas_vencidas` **nunca** cancela una reserva con
+  un pago `APPROVED`, y da 15 minutos de gracia a los `PROCESSING`/`PENDING`
+  movidos hace poco.
+
+#### Qué devolvió Bold para las dos reservas de prueba
+
+La reconciliación corrió contra el sandbox real. **Bold devolvió `APPROVED` para
+las dos**, con `payment_method: CREDIT_CARD` y las transacciones `T_8YO0FOXI6J`
+(`LF-2026-0001`, $250.000 de anticipo sobre $500.000) y `T_N689TJBUXK`
+(`LF-2026-0002`, Día de Calma, $125.000 sobre $250.000). Las dos quedaron
+`confirmada` con `expira_at` en nulo y sus correos enviados — **sin un solo evento
+de webhook en la base**. Una de ellas estaba a dos minutos de que el hold la
+cancelara.
+
+Las referencias del día anterior ya no se pueden consultar: el sandbox las archiva
+a las pocas horas y responden **404 «La referencia … no fue encontrada»**. Es la
+razón por la que la ventana del cron son 24 horas y no «todas».
+
+#### Los correos, encendidos
+
+`EMAIL_FROM=La Finca Eco Hotel <reservas@lafincaecohotel.com>`,
+`EMAIL_NOTIFY_TO=fincavillarrealcali@gmail.com` y el nuevo
+**`EMAIL_REPLY_TO=fincavillarrealcali@gmail.com`**. Los tres correos (y sus tres
+variantes de Día de Calma) se enviaron de verdad: llegaron a la **bandeja de
+entrada**, no a spam, con `dkim=pass`, `spf=pass`, `dmarc=pass`, remitente «La
+Finca Eco Hotel», `Reply-To` al Gmail del hotel y el logo del bucket cargando
+(HTTP 200, PNG de 6,4 kB). 🔴 **Faltan las cuatro variables en Vercel**: sin ellas
+el sitio publicado confirma la reserva y se calla.
+
+#### Verificación
+
+`tsc`, `eslint` (solo el aviso previo de `scripts/importar-fotos-drive.mjs`) y
+`build` limpios; **288 pruebas en verde**, 16 nuevas sobre la reconciliación
+(aprobado, rechazado, anulado, en proceso, sin respuesta, idempotencia, correos no
+duplicados, resurrección, fechas ocupadas y la carrera webhook ↔ reconciliación).
+
+Contra la base real y el sandbox real, en localhost: el cron confirmó las dos
+reservas; la migración 016 comprobada en sus tres casos (pago aprobado → 0
+liberadas; en proceso reciente → 0; en proceso de hace 2 h → 1, con la nota del
+huésped conservada); la página de retorno **resucitó** una reserva que el barrido
+había cancelado, dejando las tres notas encadenadas; y repetir página y cron no
+cambió ni un `procesado_at` ni envió un correo más.
+
+**Sin residuos.** Al terminar: `reservas` 0, `pagos` 0, `pagos_eventos` 0,
+`reserva_extras` 0, `bloqueos` 0; catálogo intacto (5 cabañas, 4 planes, 13
+tarifas, 4 extras, 22 filas de contenido, 39 imágenes).
+
+#### Lo que NO se pudo verificar
+
+El botón del panel no se pulsó en un navegador con sesión (no se tenía la
+contraseña del panel). Llama a `reconciliarPago()`, que sí está probada de punta a
+punta por los otros dos caminos y por las 16 pruebas.

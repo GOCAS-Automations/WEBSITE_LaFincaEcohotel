@@ -37,9 +37,10 @@ defecto, activarla en los tres salvo que se diga lo contrario.
 | `GOOGLE_PLACES_API_KEY` | **Sí** | Production, Preview, Development | Llave de la Places API (New) del proyecto de Google Cloud. Sin ella el bloque de reseñas simplemente no se publica: no bloquea el deploy |
 | `GOOGLE_CALENDAR_CREDENCIALES` | **Sí** | Production, Preview, Development | JSON de la cuenta de servicio `lafinca-calendario@…` **en base64, en una sola línea** — ver el apartado dedicado más abajo |
 | `GOOGLE_CALENDAR_ID` | No | Production, Preview, Development | **Vacía** hasta que el hotel comparta su calendario «la finca». Con la variable vacía, la integración no hace nada y el sitio funciona igual |
-| `RESEND_API_KEY` | **Sí** | Production, Preview, Development | **Vacía** hasta que exista la cuenta de Resend y el dominio esté verificado — ver el apartado dedicado más abajo |
-| `EMAIL_FROM` | No | Production, Preview, Development | **Vacía** por ahora. Después: `La Finca Eco Hotel <reservas@lafincaecohotel.com>` |
-| `EMAIL_NOTIFY_TO` | No | Production, Preview, Development | **Vacía** por ahora. Después: el correo (o los correos, separados por coma) del hotel que reciben el aviso de cada reserva |
+| `RESEND_API_KEY` | **Sí** | Production, Preview, Development | 🔴 **PENDIENTE EN VERCEL.** Ya está en `.env.local` y funciona; falta copiarla aquí. Sin ella, el sitio publicado no envía ni un correo — ver el apartado dedicado más abajo |
+| `EMAIL_FROM` | No | Production, Preview, Development | 🔴 **PENDIENTE EN VERCEL.** `La Finca Eco Hotel <reservas@lafincaecohotel.com>` |
+| `EMAIL_NOTIFY_TO` | No | Production, Preview, Development | 🔴 **PENDIENTE EN VERCEL.** `fincavillarrealcali@gmail.com` (admite varios separados por coma) |
+| `EMAIL_REPLY_TO` | No | Production, Preview, Development | 🔴 **PENDIENTE EN VERCEL.** `fincavillarrealcali@gmail.com` — a dónde contesta el huésped: `reservas@` es solo una identidad de envío y no tiene buzón que nadie lea |
 | `BOLD_IDENTITY_KEY` | No (es **pública** por diseño: Bold dice «no hay problema en que alguien pueda verla ya que sólo sirve para identificarte») | Production, Preview, Development | Llave de **identidad**. De **pruebas** en Preview y Development; de **producción** solo en Production — ver el apartado dedicado |
 | `BOLD_PRIVATE_KEY` | **Sí. Solo servidor, jamás al navegador** | Production, Preview, Development | Llave **secreta** del mismo ambiente que la de identidad |
 | `BOLD_MODO` | No | Preview, Development (**no** en Production) | `pruebas` mientras se usen las llaves de prueba. En Production se deja vacía o se borra — ver el apartado dedicado |
@@ -148,17 +149,35 @@ base de datos es la misma, el comprobante se ve igual al volver. Esta variable
 solo hace falta para depurar ese retorno sin salir del equipo (un túnel de ngrok,
 una vista previa de Vercel); si lo que trae no es https, se ignora.
 
-### `RESEND_API_KEY`, `EMAIL_FROM` y `EMAIL_NOTIFY_TO`
+### `RESEND_API_KEY`, `EMAIL_FROM`, `EMAIL_NOTIFY_TO` y `EMAIL_REPLY_TO`
 
 El sitio ya tiene escritos y probados sus **tres correos transaccionales**
 (`src/lib/email/`): «recibimos tu solicitud» y «tu reserva está confirmada» al
 huésped, y el aviso interno a la administración.
 
-**Están listos pero dormidos.** Sin `RESEND_API_KEY`, las funciones de envío no
-hacen nada y **no fallan**: registran en el log de Vercel qué habrían enviado, a
-quién y con qué asunto, y devuelven `{enviado:false, motivo:'no_configurado'}`.
-Es deliberado: estas funciones se llaman desde el webhook de pagos, y un fallo de
-correo nunca puede tumbar una reserva que el huésped ya pagó.
+> ✅ **2026-10-02 — los correos están ACTIVOS en local.** La cuenta de Resend
+> existe, `lafincaecohotel.com` está verificado y los tres correos se enviaron de
+> verdad a `fincavillarrealcali@gmail.com`: llegaron a la **bandeja de entrada**
+> (no a spam), con `dkim=pass`, `spf=pass` y `dmarc=pass`, el remitente «La Finca
+> Eco Hotel», el `Reply-To` al Gmail del hotel y el logo del bucket cargando
+> (HTTP 200, PNG de 6,4 kB).
+>
+> 🔴 **Lo que falta es copiar las cuatro variables a Vercel.** Mientras no estén
+> ahí, el sitio publicado sigue sin enviar ni un correo: confirma la reserva y se
+> calla. Los valores están en la tabla de arriba y en `.env.local`.
+>
+> Nota menor para después: el DMARC del dominio está en `p=NONE`. Entrega bien,
+> pero subirlo a `p=quarantine` cuando lleve unas semanas enviando protege la
+> marca contra suplantación. No bloquea nada.
+
+**El modo dormido sigue siendo el contrato donde falte la clave.** Sin
+`RESEND_API_KEY`, las funciones de envío no hacen nada y **no fallan**: registran
+en el log de Vercel qué habrían enviado, a quién y con qué asunto, y devuelven
+`{enviado:false, motivo:'no_configurado'}`. Es deliberado: estas funciones se
+llaman desde el webhook de pagos y desde la reconciliación, y un fallo de correo
+nunca puede tumbar una reserva que el huésped ya pagó. Verificado el 2026-10-02:
+con las claves puestas, una reserva se confirmó y los correos salieron; sin
+claves, se confirma igual.
 
 Se pueden revisar sin clave, en el navegador:
 
@@ -179,21 +198,28 @@ Día de Calma) en una carpeta temporal, con un `index.html` para abrirlos.
    que se puede hacer hoy, antes del lanzamiento.* Si el hotel ya usa otro
    servicio de correo, hay que **fusionar** el SPF en un solo registro TXT y no
    crear un segundo: dos SPF invalidan los dos.
-3. Crear la clave de API en Resend y ponerla en `RESEND_API_KEY`.
-4. Poner `EMAIL_FROM` (`La Finca Eco Hotel <reservas@lafincaecohotel.com>`) y
-   `EMAIL_NOTIFY_TO` con el correo del hotel. `EMAIL_NOTIFY_TO` **admite varios
-   separados por coma** — no hace falta crear una lista de distribución.
+3. Crear la clave de API en Resend y ponerla en `RESEND_API_KEY`. *(Hecho.)*
+4. Poner las otras tres. *(Hechas en `.env.local`; faltan en Vercel.)*
+   - `EMAIL_FROM=La Finca Eco Hotel <reservas@lafincaecohotel.com>`
+   - `EMAIL_NOTIFY_TO=fincavillarrealcali@gmail.com` — **admite varios separados
+     por coma**, así que no hace falta crear una lista de distribución.
+   - `EMAIL_REPLY_TO=fincavillarrealcali@gmail.com` — **a dónde contesta el
+     huésped.** No es un adorno: `reservas@lafincaecohotel.com` es una identidad
+     de envío de Resend y detrás **no hay un buzón que alguien lea**. Sin
+     `Reply-To`, la respuesta del huésped («¿puedo llegar a las 9?») se pierde, y
+     él cree que avisó. Si se deja vacía se usa el primero de `EMAIL_NOTIFY_TO`.
 5. Redesplegar y probar de verdad:
 
        npm run correos:probar -- --enviar tu@correo.com
 
    (con `RESEND_API_KEY` en `.env.local`). Revisar los seis en el teléfono.
 
-**Lo que bloquea esto es el cliente, no el código**: hace falta que Amapola
-confirme **qué correo del hotel** se usa como remitente y como destinatario del
-aviso interno (§12 del plan). Mientras no llegue, el panel avisa en pantalla
-—«Todavía no se envían correos automáticos: avísale tú por WhatsApp»— para que
-el equipo no dé por hecho que el huésped ya recibió su confirmación.
+**Esto ya no lo bloquea el cliente.** Amapola confirmó el correo del hotel
+(`fincavillarrealcali@gmail.com`) y el remitente quedó en
+`reservas@lafincaecohotel.com`. Lo único pendiente es copiar las cuatro variables
+a Vercel. Mientras no estén, el panel sigue avisando en pantalla —«Todavía no se
+envían correos automáticos: avísale tú por WhatsApp»— para que el equipo no dé por
+hecho que el huésped recibió su confirmación.
 
 ### `GOOGLE_CALENDAR_CREDENCIALES` y `GOOGLE_CALENDAR_ID`
 
@@ -294,6 +320,23 @@ pronto — cada día con `noindex` es un día que el hotel no aparece en Google.
 
 **Obligatoria antes del lanzamiento.** Es el secreto con el que se firma la
 llamada del cron que mantiene despierta la base.
+
+> ⚠ **Desde el 2026-10-02 el cron hace algo más importante que el latido:
+> reconcilia los pagos.** `/api/salud` ejecuta cuatro tareas **en este orden**:
+> el latido, **la reconciliación de los pagos no finales de las últimas 24 horas
+> contra la API de Bold**, el barrido de reservas vencidas y el refresco de las
+> reseñas. El orden no es cosmético: si el barrido corriera antes de la
+> reconciliación, cancelaría una reserva cuyo pago está aprobado —pasó de verdad
+> con `LF-2026-0001`—. **Si este cron no corre, un pago cuyo webhook no llegue
+> puede tardar en confirmarse hasta que alguien abra la ficha en el panel.**
+>
+> La respuesta trae los conteos: `pagos_revisados`, `pagos_reconciliados`,
+> `pagos_confirmados`, `pagos_descartados`, `pagos_sin_respuesta` y
+> `pagos_requieren_atencion`. **El único que hay que vigilar es el último**:
+> cuenta los pagos que Bold da por aprobados y que no se pudieron confirmar porque
+> esas fechas ya se le asignaron a otra reserva. Eso lo resuelve una persona
+> —reubicar o devolver—, y las referencias concretas quedan en los registros de
+> Vercel con un `console.error`.
 
 El plan gratuito de Supabase **pausa los proyectos con poca actividad al cabo de
 siete días**, y un proyecto pausado deja el sitio sin contenido, sin fotos y sin

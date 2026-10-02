@@ -1,6 +1,6 @@
 # Plan de cierre — La Finca Eco Hotel
 
-> Actualizado el **jueves 1 de octubre de 2026** (tarde). Documento de trabajo de GOCAS. El del cliente es `Checklist_Estado_Sitio_LaFinca.pdf`; las preguntas abiertas van en `Preguntas_Finales_LaFinca.pdf`.
+> Actualizado el **viernes 2 de octubre de 2026**. Documento de trabajo de GOCAS. El del cliente es `Checklist_Estado_Sitio_LaFinca.pdf`; las preguntas abiertas van en `Preguntas_Finales_LaFinca.pdf`.
 
 ## Dónde estamos
 
@@ -8,7 +8,7 @@
 
 Las tres entregas que bloqueaban el lanzamiento ya llegaron: **datos fiscales** (Raquel Lenis García · NIT 66830269-5), **textos legales aprobados** y **llaves de prueba de Bold**. La cuenta de Bold sigue en verificación de identidad, así que los pagos se construyen y prueban en ambiente de pruebas; el día que Bold apruebe, solo se cambian las llaves.
 
-## 🔴 Lo más urgente: el hotel está invisible en Google
+## ✅ Resuelto: el hotel ya es visible en Google
 
 `SITIO_PUBLICADO` no está en `1`, así que el sitio se publica con
 `<meta name="robots" content="noindex, nofollow">` y un `robots.txt` que dice
@@ -25,7 +25,30 @@ mismo.
 3. Comprobar que `/robots.txt` ya no dice `Disallow: /` y enviar
    `https://lafincaecohotel.com/sitemap.xml` a Google Search Console.
 
-No se activó desde aquí a propósito: es una decisión de Cesar.
+**Hecho el 1 de octubre por la noche.** Comprobado el 2 de octubre:
+`https://lafincaecohotel.com/robots.txt` responde `Allow: /`. De este punto solo
+queda **enviar el sitemap a Google Search Console**, que acelera el primer rastreo
+pero no lo condiciona.
+
+## 🔴 Lo más urgente ahora: los correos no salen del sitio publicado
+
+Los tres correos **ya funcionan** —se enviaron de verdad a
+`fincavillarrealcali@gmail.com` el 2 de octubre y llegaron a la bandeja de
+entrada— pero solo desde el equipo de desarrollo: las variables están en
+`.env.local` y **no en Vercel**. Mientras siga así, el sitio publicado confirma una
+reserva y **se calla**: el huésped no recibe su código ni el hotel el aviso.
+
+Son cuatro variables en Vercel → `website-la-finca-ecohotel` → **Settings →
+Environment Variables** (Production y Preview), y **redesplegar**:
+
+    RESEND_API_KEY   = (la que ya está en .env.local, empieza por re_)
+    EMAIL_FROM       = La Finca Eco Hotel <reservas@lafincaecohotel.com>
+    EMAIL_NOTIFY_TO  = fincavillarrealcali@gmail.com
+    EMAIL_REPLY_TO   = fincavillarrealcali@gmail.com
+
+La última no es un adorno: `reservas@lafincaecohotel.com` solo sirve para
+**enviar**, no tiene buzón. Sin `Reply-To`, lo que conteste un huésped no llega a
+nadie y él cree que avisó.
 
 ## Estado del sitio
 
@@ -39,24 +62,37 @@ No se activó desde aquí a propósito: es una decisión de Cesar.
 | Seguridad (cookies, cabeceras, fuerza bruta, permisos, consentimiento Ley 1581) | Auditada y corregida |
 | Latido anti-pausa de Supabase | Listo |
 | Reseñas de Google con caché propio (30 llamadas/mes) | Listo |
-| Correos de confirmación (3 plantillas) | Escritos y probados, **dormidos** hasta tener Resend |
+| Correos de confirmación (3 plantillas) | **Enviando de verdad** — probados contra Gmail el 2026-10-02 (bandeja de entrada, DKIM/SPF/DMARC en verde). 🔴 Faltan las cuatro variables en Vercel |
+| **Confirmación sin depender del webhook** (reconciliación con la API de Bold) | **Lista y probada contra el sandbox real** — página de retorno, cron diario y botón del panel |
 | Reservas que expiran a los 30 minutos | Listo |
 | Redirecciones 301 del sitio viejo | Listas y verificadas |
 | Datos fiscales, legales y correo de contacto | Aplicados |
 | Google Calendar (lectura y escritura) | Construido; falta el ID del calendario del hotel |
 | **Pagos con Bold** | **Checkout abriendo en pruebas** — el error BTN-001 está corregido (ver abajo). Falta pagar con las tarjetas de prueba (5 min en el navegador), registrar el webhook en el panel de Bold y cambiar las llaves el día que Bold apruebe la cuenta |
 | Interruptor de pagos (`PAGOS_ACTIVOS`) | Listo — **apagado**, como debe estar hasta el lanzamiento |
-| **Activar los correos** | **Pendiente — falta cuenta Resend + DNS** |
+| **Activar los correos** | **Hecho en local; falta copiar `RESEND_API_KEY`, `EMAIL_FROM`, `EMAIL_NOTIFY_TO` y `EMAIL_REPLY_TO` a Vercel** |
 | **Dominio** | **Listo** — `lafincaecohotel.com` apunta a Vercel, `www` redirige al apex, hosting viejo cancelado |
-| **Indexación en Google** | 🔴 **Bloqueada**: falta `SITIO_PUBLICADO=1` en Vercel |
+| **Indexación en Google** | **Resuelta** — `SITIO_PUBLICADO=1` está puesta y `https://lafincaecohotel.com/robots.txt` ya dice `Allow: /` (comprobado el 2026-10-02). Queda enviar el sitemap a Search Console |
 
 ---
 
 # Paso a paso para Cesar
 
-## 1 · Crear la cuenta de Resend y verificar el dominio (20 minutos)
+## 1 · ~~Crear la cuenta de Resend y verificar el dominio~~ — HECHO
 
 Resend es el servicio que envía los correos de confirmación. El **plan gratuito es suficiente**: 3.000 correos al mes y 100 al día, contra un máximo realista de unos 450 al mes con cinco cabañas.
+
+> ✅ **Hecho el 2 de octubre.** La cuenta existe, `lafincaecohotel.com` está
+> verificado y los seis correos de prueba (tres plantillas + tres variantes de Día
+> de Calma) llegaron a `fincavillarrealcali@gmail.com` **a la bandeja de entrada**,
+> con `dkim=pass`, `spf=pass` y `dmarc=pass`. Lo único que queda es el bloque rojo
+> de arriba: copiar las cuatro variables a Vercel.
+>
+> Detalle menor para dentro de unas semanas: el DMARC del dominio está en
+> `p=NONE`. Entrega bien; subirlo a `p=quarantine` cuando lleve tiempo enviando
+> protege la marca contra suplantación. No bloquea nada.
+>
+> Los pasos de abajo se dejan como registro de lo que se hizo.
 
 1. Entra a `resend.com` → **Sign up** con tu correo de GOCAS (la cuenta la administramos nosotros; el hotel no la necesita).
 2. En el menú lateral, **Domains** → **Add Domain** → escribe `lafincaecohotel.com` → **Add**.
@@ -149,9 +185,65 @@ Con el caché propio el consumo es de unas 30 llamadas al mes contra 1.000 gratu
 
           https://lafincaecohotel.com/api/pagos/bold/webhook
 
-## Cuando llegue la clave de Resend
+## Hecho el 2 de octubre
 
-- Configurar las variables y enviar de verdad las tres plantillas; revisarlas en Gmail y en móvil.
+### 🔴 El hallazgo del día: **llegaron cero webhooks de Bold**
+
+Los pagos del sandbox se hicieron de verdad y a `/api/pagos/bold/webhook` **no
+llegó ni un evento**: la tabla `pagos_eventos` estaba vacía. El botón «Probar el
+webhook» del panel de Bold solo guarda la URL y no dispara nada, y en pruebas Bold
+tampoco los manda solos. Consecuencia real: `LF-2026-0001` **se canceló sola** al
+vencer su hold de 30 minutos **con el pago hecho**.
+
+Eso en producción es **un huésped que paga y se queda sin reserva**, y no se entera
+hasta que llega a la finca. No era un problema de pruebas: es el peor fallo posible
+de un motor de reservas.
+
+### La solución: el webhook deja de ser la única vía
+
+- [x] **Reconciliación con la API de Bold.** Le preguntamos nosotros por la
+      referencia (`GET payments.api.bold.co/v2/payment-voucher/<ref>` con la llave
+      de identidad) y aplicamos lo que responda. Enganchada en **tres** puntos: **la
+      página de retorno** (al volver de pagar, antes de pintar), **el cron diario**
+      (los pagos sin resolver de las últimas 24 h, **antes** de liberar las
+      vencidas) y **un botón «Verificar pago con Bold» en la ficha del panel**, para
+      cuando un huésped llame diciendo «yo pagué».
+- [x] **El webhook y la reconciliación comparten la escritura** (un solo módulo),
+      así que no pueden divergir. Idempotentes: reconciliar dos veces, o reconciliar
+      algo que el webhook ya confirmó, no escribe nada y no reenvía ningún correo.
+- [x] **Una reserva con un pago aprobado no se cancela nunca por vencimiento**
+      (migración 016), y si alguna llegó a cancelarse, la reconciliación la
+      **resucita** dejando constancia en sus notas.
+- [x] **Probado contra el sandbox real**: Bold devolvió `APPROVED` para las dos
+      reservas de prueba (transacciones `T_8YO0FOXI6J` y `T_N689TJBUXK`, tarjeta de
+      crédito) y las dos quedaron confirmadas con sus correos enviados, **sin un solo
+      webhook**. Una de ellas estaba a dos minutos de que el hold la cancelara.
+- [x] 16 pruebas nuevas (288 en total): aprobado, rechazado, anulado, en proceso, sin
+      respuesta, idempotencia, correos no duplicados, resurrección, fechas ya
+      vendidas y la carrera webhook ↔ reconciliación.
+
+### Correos
+
+- [x] **Los tres correos salen de verdad.** Variables puestas en local, dominio
+      verificado en Resend, enviados a `fincavillarrealcali@gmail.com`: bandeja de
+      entrada, `dkim=pass`, `spf=pass`, `dmarc=pass`, remitente «La Finca Eco
+      Hotel», logo del bucket cargando.
+- [x] **`EMAIL_REPLY_TO` nueva**: lo que conteste el huésped va al Gmail del hotel.
+      `reservas@lafincaecohotel.com` solo sirve para enviar, no tiene buzón.
+- [ ] 🔴 **Copiar las cuatro variables de correo a Vercel y redesplegar** (ver el
+      bloque rojo del principio). Es lo único que falta para que el sitio publicado
+      envíe.
+
+### Lo que queda sin comprobar
+
+- [ ] El botón del panel no se pulsó en un navegador con sesión (no se tenía la
+      contraseña del panel). Llama a la misma función que la página de retorno y el
+      cron, las dos probadas de punta a punta contra el sandbox real.
+- [ ] **Registrar el webhook en el panel de Bold** sigue pendiente, y ahora se sabe
+      que **no basta**: aunque se registre, en pruebas no llegan eventos. Con la
+      reconciliación, dejarlo sin registrar ya no cuesta una reserva; pero en
+      producción hay que registrarlo igual, porque confirma en segundos en vez de
+      esperar a que el huésped vuelva o a que corra el cron.
 
 ## Cierre técnico (viernes)
 
@@ -186,7 +278,9 @@ Todo esto está en `Preguntas_Finales_LaFinca.pdf`. Lo que condiciona el motor d
 |---|---|
 | La verificación de Bold se demora | Todo queda probado en sandbox; pasar a producción son minutos. **Es justo lo que está pasando y por eso el sitio sale con `PAGOS_ACTIVOS=0`:** cierra por WhatsApp, con el mismo desglose, y los pagos se encienden después sin tocar código |
 | Un huésped real paga en la pasarela de pruebas | Imposible con `PAGOS_ACTIVOS=0`: el botón no se pinta y el endpoint responde 503. Y si un evento del sandbox llegara al webhook en producción, no confirma nada y lo deja en el log |
-| El sitio sigue con `noindex` y nadie lo nota | El hotel ya no tiene otra web: cada día cuenta. Está como primer punto de este documento |
+| ~~El sitio sigue con `noindex`~~ | Resuelto el 1 de octubre: `robots.txt` ya dice `Allow: /` |
+| **Un huésped paga y su reserva no se confirma** | Era real y ya pasó en pruebas (cero webhooks). Ahora hay **tres** vías independientes de confirmación —webhook, página de retorno y cron diario— y el barrido no puede cancelar una reserva con pago aprobado. El único caso que todavía pide una persona es «pago aprobado y fechas ya vendidas a otro»: sale en `pagos_requieren_atencion` del cron y con un mensaje claro en el panel |
+| **El sitio publicado no envía correos** | Las cuatro variables de Resend están en local y faltan en Vercel. Es el primer punto de este documento |
 | El dominio vence el 4 de noviembre | Renovarlo esta semana. **Ahora tumba el sitio de verdad**, no solo el viejo |
 | Reaplicar los seeds borraría ediciones del panel | Nunca ejecutar `npm run db:aplicar` sin comparar antes la base con el seed |
 | Google entrega solo 5 reseñas y algunas son viejas | El criterio relaja la ventana a 24 meses antes de quedarse corto |

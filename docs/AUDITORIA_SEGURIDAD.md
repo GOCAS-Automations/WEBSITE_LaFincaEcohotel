@@ -551,6 +551,29 @@ requisitos que el día de la integración **no** se pueden dejar para después:
 2. **La reserva se confirma SOLO por webhook**, nunca por la redirección del
    navegador. La vuelta del checkout es una pista para el huésped, no un hecho:
    se puede falsificar escribiendo la URL.
+
+   > ⚠ **Nota al día, 2026-10-02 — este requisito se precisó, no se relajó.**
+   > La letra («solo por webhook») resultó ser una regla peligrosa por sí misma:
+   > en el ambiente de pruebas se hicieron dos pagos reales en el sandbox de Bold
+   > y llegaron **cero** eventos de webhook, de modo que una reserva pagada
+   > (`LF-2026-0001`) se canceló sola al vencer su hold. En producción eso es **un
+   > huésped que paga y se queda sin reserva**, que es un riesgo mayor que el que
+   > este requisito pretendía evitar.
+   >
+   > Lo que el requisito prohíbe —y sigue prohibido— es **creerle a la URL**:
+   > `?bold-tx-status=approved` lo escribe cualquiera y se ignora por completo. Lo
+   > que ahora existe además del webhook es la **reconciliación**
+   > (`src/lib/pagos/reconciliar.ts`): le preguntamos nosotros a la API de Bold
+   > con nuestra llave de identidad —la misma fuente de verdad que exige el
+   > requisito 5— desde la página de retorno, desde el cron diario y desde un
+   > botón del panel. De la URL solo se toma la **referencia**, que no es una
+   > afirmación sino una pregunta.
+   >
+   > Las dos vías comparten la escritura (`src/lib/pagos/aplicar-estado.ts`) para
+   > que no puedan divergir, y la idempotencia está probada
+   > (`src/lib/pagos/reconciliar.test.ts`). Y la migración **016** añade la regla
+   > que faltaba en la base: **una reserva con un pago aprobado no se cancela
+   > nunca por vencimiento.**
 3. **El webhook verifica la firma** de Wompi (`WOMPI_EVENTS_SECRET`) antes de
    mirar el cuerpo, y **rechaza** lo que no la traiga. Sin esto, cualquiera
    confirma reservas gratis con un `curl`.
