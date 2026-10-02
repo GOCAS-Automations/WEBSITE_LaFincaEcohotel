@@ -1,6 +1,11 @@
 import { revalidatePath } from "next/cache";
 
 import { frenar } from "@/lib/api/limite-peticiones";
+import {
+  HORAS_RECONCILIACION,
+  reconciliarPagosPendientes,
+  type ResumenReconciliacion,
+} from "@/lib/pagos/reconciliar";
 import { refrescarResenasGoogle } from "@/lib/resenas-google";
 import { liberarReservasVencidas } from "@/lib/reserva/liberar-vencidas";
 import { crearClienteAdmin } from "@/lib/supabase/admin";
@@ -11,6 +16,8 @@ import { crearClienteAdmin } from "@/lib/supabase/admin";
  *
  *     GET /api/salud
  *     → 200 { "ok": true, "base": "activa", "reservas_liberadas": 0,
+ *             "pagos_revisados": 0, "pagos_reconciliados": 0,
+ *             "pagos_confirmados": 0, "pagos_requieren_atencion": 0,
  *             "resenas_refrescadas": true, "resenas_guardadas": 5, "hora": "…" }
  *     → 503 { "ok": false }
  *
@@ -55,29 +62,40 @@ import { crearClienteAdmin } from "@/lib/supabase/admin";
  * (reservas liberadas, reseñas guardadas) que no identifican a nadie.
  *
  * ---------------------------------------------------------------------------
- * LAS TRES TAREAS DEL CRON DIARIO
+ * LAS CUATRO TAREAS DEL CRON DIARIO, **EN ESTE ORDEN**
  * ---------------------------------------------------------------------------
  *   1. El latido en sí (clave anónima).
- *   2. Barrer las reservas cuyo hold venció (clave de servicio).
- *   3. Refrescar las reseñas de Google (clave de servicio) — la ÚNICA llamada
+ *   2. **Reconciliar los pagos sin resolver** de las últimas 24 horas: se le
+ *      pregunta a Bold por cada uno y se aplica lo que diga (clave de servicio).
+ *   3. Barrer las reservas cuyo hold venció (clave de servicio).
+ *   4. Refrescar las reseñas de Google (clave de servicio) — la ÚNICA llamada
  *      rutinaria a Places API del proyecto: una al día, unas 30 al mes, contra
  *      las 1.000 gratuitas. Ver el comentario largo donde ocurre.
  *
- * Las tres en el mismo cron porque son tres cosas que hay que hacer una vez al
- * día y la suma cuesta milisegundos. Un cron por tarea serían tres entradas en
- * `vercel.json` para el mismo trabajo.
+ * ⚠ **El 2 va antes del 3, y no es un detalle de estilo.** Si el barrido corriera
+ * primero, cancelaría una reserva cuyo pago está aprobado en Bold —es
+ * exactamente lo que le pasó a `LF-2026-0001`— y habría que resucitarla después,
+ * con el riesgo de que entre las dos cosas alguien hubiera comprado esas noches.
+ * Preguntando antes, un pago aprobado **nunca** llega a la lista de vencidas: la
+ * confirmación le quita el `expira_at`.
+ *
+ * Las cuatro en el mismo cron porque son cosas que hay que hacer una vez al día.
+ * Un cron por tarea serían cuatro entradas en `vercel.json` para el mismo
+ * trabajo.
  */
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 /**
- * Margen de sobra. El latido y el barrido tardan milisegundos; lo único que
- * puede demorarse es la llamada a Places API, que ya tiene su propio corte de
- * seis segundos dentro de `refrescarResenasGoogle()`. Treinta segundos es
- * holgura, no una expectativa.
+ * Margen de sobra. El latido y el barrido tardan milisegundos; lo que puede
+ * demorarse son las llamadas a terceros: Places API (corte propio de seis
+ * segundos) y la reconciliación de pagos contra Bold, que además de un corte por
+ * consulta tiene un **plazo total** de veinte segundos
+ * (`LIMITE_MS_RECONCILIACION`) para no comerse la función entera y dejar el
+ * barrido sin ejecutar. Sesenta segundos es holgura, no una expectativa.
  */
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 /** Un latido al día, más margen para probarlo a mano. */
 const LIMITE = { peticiones: 10, segundos: 300 };
@@ -164,9 +182,49 @@ export async function GET(peticion: Request) {
       esta llamada es cancelar holds que ya estaban vencidos, que es
       exactamente su trabajo; no toca ninguna otra tabla ni devuelve nada.
     */
+    /*
+      ===================================================================
+      ANTES DEL BARRIDO: PREGUNTARLE A BOLD POR LOS PAGOS SIN RESOLVER.
+      ===================================================================
+      El webhook no puede ser la única vía de confirmación. Lo demostró el
+      sandbox: dos pagos reales, **cero eventos recibidos**, y una reserva pagada
+      (`LF-2026-0001`) cancelada sola al vencer su hold. Esta pasada es la red que
+      lo recoge aunque no llegue ni un evento: por cada pago no final de las
+      últimas 24 horas se consulta la API de Bold con nuestra llave y se aplica lo
+      que responda, con **el mismo código** que usa el webhook
+      (`src/lib/pagos/aplicar-estado.ts`).
+
+      Va ANTES de `liberarReservasVencidas()` a propósito: así una reserva pagada
+      se confirma —y pierde su `expira_at`— antes de que el barrido pueda mirarla.
+      Invertir estas dos llamadas reintroduce el fallo que esto arregla.
+
+      24 horas porque es lo que Bold conserva para consulta; más atrás, la API
+      responde que no encuentra la referencia. No lanza nunca.
+    */
+    const admin = crearClienteAdmin();
+
+    let reconciliacion: ResumenReconciliacion = {
+      revisados: 0,
+      reconciliados: 0,
+      confirmados: 0,
+      descartados: 0,
+      sinRespuesta: 0,
+      requierenAtencion: [],
+    };
+    try {
+      reconciliacion = await reconciliarPagosPendientes(admin);
+    } catch (error) {
+      /* `reconciliarPagosPendientes` no lanza, pero el latido no se cae ni
+         aunque algún día lo hiciera. */
+      console.error(
+        "[salud] no se pudieron reconciliar los pagos:",
+        error instanceof Error ? error.message : error,
+      );
+    }
+
     let liberadas = 0;
     try {
-      liberadas = await liberarReservasVencidas(crearClienteAdmin());
+      liberadas = await liberarReservasVencidas(admin);
     } catch (error) {
       /* `liberarReservasVencidas` no lanza, pero crear el cliente sí puede si
          falta la clave de servicio. El latido no se cae por eso. */
@@ -227,6 +285,24 @@ export async function GET(peticion: Request) {
         /* Cuántas cayeron, para poder mirarlo en los registros de Vercel sin
            entrar a la base. No sale ni un dato de ningún huésped. */
         reservas_liberadas: liberadas,
+        /*
+          LA RECONCILIACIÓN, CONTADA. Son conteos y una ventana en horas: ni una
+          referencia, ni un monto, ni un nombre.
+
+          `pagos_requieren_atencion` es el único que hay que mirar de verdad:
+          cuenta los pagos que Bold da por aprobados y que NO se pudieron
+          confirmar porque esas fechas ya se le asignaron a otra reserva. No hay
+          nada automático que hacer con eso —son dos personas y una cabaña— y las
+          referencias concretas quedan en los registros de Vercel con un
+          `console.error`.
+        */
+        pagos_revisados: reconciliacion.revisados,
+        pagos_reconciliados: reconciliacion.reconciliados,
+        pagos_confirmados: reconciliacion.confirmados,
+        pagos_descartados: reconciliacion.descartados,
+        pagos_sin_respuesta: reconciliacion.sinRespuesta,
+        pagos_requieren_atencion: reconciliacion.requierenAtencion.length,
+        pagos_ventana_horas: HORAS_RECONCILIACION,
         /* Si el refresco de hoy entró, y con cuántas reseñas quedó la fila. Ni
            los textos ni los nombres de quienes reseñaron: solo el conteo. */
         resenas_refrescadas: resenas.refrescado,
