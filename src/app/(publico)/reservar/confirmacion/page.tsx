@@ -7,7 +7,7 @@ import { metadatosPagina } from "@/lib/seo";
  * A dónde vuelve el huésped desde la pasarela de Bold.
  *
  * ---------------------------------------------------------------------------
- * ESTA PÁGINA NO CONFIRMA NADA. **NADA.**
+ * ESTA PÁGINA NO SE CREE NADA DE LA URL. **NADA.**
  * ---------------------------------------------------------------------------
  * Requisito 2 de `docs/AUDITORIA_SEGURIDAD.md`: «La reserva se confirma SOLO
  * por webhook, nunca por la redirección del navegador. La vuelta del checkout es
@@ -15,6 +15,13 @@ import { metadatosPagina } from "@/lib/seo";
  * URL». Cualquiera puede abrir
  * `…/reservar/confirmacion?bold-order-id=X&bold-tx-status=approved` a mano, así
  * que lo que diga la dirección se ignora y el estado se **pregunta a Bold**.
+ *
+ * Desde el 2026-10-02, además de preguntar, **aplica** lo que Bold responda
+ * (`reconciliarPago()`): llegaron cero eventos de webhook en pruebas y una
+ * reserva pagada se canceló sola, así que el webhook no puede ser la única vía.
+ * Lo que se usa de la dirección sigue siendo únicamente la **referencia**, que es
+ * una pregunta y no una afirmación. Ver el comentario largo de
+ * `src/components/paginas/confirmacion-pago.tsx`.
  *
  * Dinámica y sin indexar: depende de un parámetro y no tiene nada que buscar
  * nadie en Google.

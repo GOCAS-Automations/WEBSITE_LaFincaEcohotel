@@ -9,7 +9,6 @@ import { HORARIO_DIA_POR_DEFECTO } from "@/lib/reserva/dia-de-calma";
 import {
   ETIQUETA_ESTADO_BOLD,
   boldConfigurado,
-  consultarEstadoPago,
   esAprobado,
   esRechazado,
   etiquetaMetodoPago,
@@ -17,6 +16,7 @@ import {
   referenciaValida,
   type EstadoBold,
 } from "@/lib/pagos/bold";
+import { reconciliarPago } from "@/lib/pagos/reconciliar";
 import { crearClienteAdmin } from "@/lib/supabase/admin";
 import { formatearCOP, formatearEstadia, formatearFecha } from "@/lib/utils/formato";
 import { enlaceWhatsapp } from "@/lib/whatsapp";
@@ -26,16 +26,25 @@ import { LLEGADA } from "@/lib/email/plantillas";
  * Lo que ve el huésped al volver de la pasarela.
  *
  * ===========================================================================
- * TRES ESTADOS, Y NINGUNO DE ELLOS CONFIRMA NADA
+ * ESTA PÁGINA **RECONCILIA** ANTES DE PINTAR (2026-10-02)
  * ===========================================================================
- * La reserva la confirma el webhook y solo el webhook. Esta página **lee**: le
- * pregunta a Bold en qué estado está la transacción y mira la fila de `pagos` y
- * la de `reservas`. Nunca escribe.
+ * Antes solo leía, porque la reserva la confirmaba el webhook y solo el webhook.
+ * Eso se rompió en pruebas de la peor manera: dos pagos reales en el sandbox de
+ * Bold, **cero eventos de webhook**, y una reserva pagada cancelada sola al
+ * vencer su hold. En producción eso es un huésped que paga y se queda sin
+ * reserva, así que el webhook dejó de ser la única vía.
  *
- * Y lo que dice la URL se ignora. Bold añade `?bold-order-id=…&bold-tx-status=…`
- * al volver, pero `bold-tx-status` es un parámetro del navegador: cualquiera
- * puede escribir `approved` a mano. Lo único que se usa de la dirección es la
- * **referencia**, que no es una afirmación sino una pregunta.
+ * Lo primero que hace esta página es `reconciliarPago()`: le **pregunta a la API
+ * de Bold** con nuestra llave y, si dice `APPROVED`, aplica exactamente la misma
+ * transición que el webhook (`src/lib/pagos/aplicar-estado.ts`). Así el huésped
+ * que vuelve de pagar ve su reserva confirmada aunque no llegue ningún evento.
+ *
+ * **Y lo que dice la URL se sigue ignorando por completo.** Bold añade
+ * `?bold-order-id=…&bold-tx-status=…` al volver, pero `bold-tx-status` es un
+ * parámetro del navegador: cualquiera puede escribir `approved` a mano. Lo único
+ * que se usa de la dirección es la **referencia**, que no es una afirmación sino
+ * una pregunta; la respuesta la da Bold. Es la intención del requisito 2 de
+ * `docs/AUDITORIA_SEGURIDAD.md`, no su contradicción.
  *
  * ---------------------------------------------------------------------------
  * «PENDIENTE» ES UN ESTADO DE PRIMERA CLASE, NO UN ERROR
@@ -56,14 +65,15 @@ import { LLEGADA } from "@/lib/email/plantillas";
  * suele ya estar.
  *
  * ---------------------------------------------------------------------------
- * LA BASE MANDA SOBRE BOLD CUANDO LA BASE DICE «CONFIRMADA»
+ * LO QUE SE PINTA SALE DE LA BASE, YA RECONCILIADA
  * ---------------------------------------------------------------------------
- * Si el webhook ya pasó, la reserva está `confirmada` y eso es un hecho
- * verificado con firma. Si además la API de Bold dijera algo distinto —porque su
- * índice va con retraso— se le cree a la base. Al revés no: que Bold diga
- * `APPROVED` mientras la base sigue en `pendiente` significa que el webhook no
- * ha llegado, y entonces se muestra «pendiente de confirmación». Nunca se pinta
- * una reserva como confirmada si nadie la confirmó.
+ * El orden es: reconciliar primero, leer después. Así no hay dos versiones que
+ * comparar: cuando se pinta la pantalla, `pagos.estado` **ya es** lo que acaba de
+ * decir Bold, y `reservas.estado` ya refleja lo que eso significa. Si la consulta
+ * a Bold no se pudo hacer, no se escribe nada y se pinta lo que había, diciendo
+ * en pantalla que no se pudo preguntar.
+ *
+ * Nunca se pinta una reserva como confirmada si no está confirmada en la base.
  */
 
 type Props = {
@@ -413,19 +423,29 @@ async function resolver(referencia: string): Promise<Vista> {
     const supabase = crearClienteAdmin();
 
     /*
-      LA CONSULTA A BOLD Y LA DE LA BASE, EN PARALELO.
-      Son independientes y las dos están en el camino del render: encadenarlas
-      sumaría sus latencias en la pantalla que el huésped mira con la duda de si
-      le cobraron.
+      ================================================================
+      PRIMERO RECONCILIAR, DESPUÉS LEER. **Este orden es la corrección.**
+      ================================================================
+      Le pregunta a Bold por esta referencia y, si el pago está aprobado, aplica
+      la misma transición que el webhook: reserva `confirmada`, `monto_pagado`,
+      `expira_at` a nulo, correos y evento del calendario.
+
+      Es idempotente: si el webhook ya pasó, `reconciliarPago()` ve el pago en un
+      estado final coherente, **ni llama a Bold ni escribe nada** y no reenvía
+      ningún correo. Recargar esta página cien veces no duplica nada.
+
+      Nunca lanza, así que un fallo de Bold no deja al huésped sin comprobante:
+      se pinta lo que haya en la base y se le dice que no se pudo preguntar.
     */
-    const [consulta, filaPago] = await Promise.all([
-      consultarEstadoPago(referencia),
-      supabase
-        .from("pagos")
-        .select("reserva_id, monto, estado, metodo")
-        .eq("referencia", referencia)
-        .maybeSingle(),
-    ]);
+    const reconciliacion = await reconciliarPago(referencia, { supabase });
+
+    /* La fila de `pagos` se lee DESPUÉS, para que refleje lo que se acabó de
+       escribir. */
+    const filaPago = await supabase
+      .from("pagos")
+      .select("reserva_id, monto, estado, metodo")
+      .eq("referencia", referencia)
+      .maybeSingle();
 
     if (filaPago.error || !filaPago.data) return VACIA;
 
@@ -490,35 +510,22 @@ async function resolver(referencia: string): Promise<Vista> {
     const rango = reserva ? leerRangoFechas(reserva.estancia) : null;
 
     /*
-      QUÉ ESTADO DE PAGO SE MUESTRA.
+      QUÉ ESTADO DE PAGO SE MUESTRA: **el de la base, ya reconciliado.**
 
-      Si la base dice que la reserva está `confirmada`, el webhook ya pasó y eso
-      es un hecho firmado: se muestra aprobado aunque la API de Bold vaya con
-      retraso. Si no, manda lo que diga la API; y si la API no respondió, lo que
-      quedó guardado en `pagos`.
+      Después de `reconciliarPago()`, `pagos.estado` es lo que acaba de decir
+      Bold (o lo que ya había, si Bold no respondió o todavía no ve la
+      transacción). No hay nada que comparar: una sola fuente, y es la que el
+      panel y los correos también leen.
+
+      La única corrección que sigue hecha falta es la de abajo: una reserva
+      `confirmada` se pinta como pago aprobado aunque su fila de `pagos` diga otra
+      cosa, porque el dinero puede haber entrado por otra vía (una transferencia
+      que el equipo apuntó a mano, o una confirmación hecha desde el panel).
     */
     const estadoGuardado = normalizarEstadoBold(filaPago.data.estado);
 
-    /*
-      Y UN MATIZ QUE IMPORTA: `NO_TRANSACTION_FOUND` NO BAJA UN ESTADO FINAL.
-
-      La API puede tardar «hasta 10 minutos» en ver una transacción, y en el
-      ambiente de pruebas las referencias se borran a las 12 horas. Si lo
-      guardado en `pagos` es ya un estado final —lo escribió un webhook con
-      firma verificada— un «todavía no la veo» de la API no puede convertir un
-      pago rechazado en un «estamos confirmando». Mismo criterio que el webhook.
-    */
-    const apiUtil =
-      !consulta.fallo &&
-      consulta.estado !== "NO_TRANSACTION_FOUND" &&
-      consulta.estado !== "DESCONOCIDO";
-
     const estadoPago: EstadoBold =
-      reserva?.estado === "confirmada"
-        ? "APPROVED"
-        : apiUtil
-          ? consulta.estado
-          : estadoGuardado;
+      reserva?.estado === "confirmada" ? "APPROVED" : estadoGuardado;
 
     const total = reserva?.total ?? 0;
     const pagado = reserva?.monto_pagado ?? 0;
@@ -537,11 +544,14 @@ async function resolver(referencia: string): Promise<Vista> {
       estadoReserva: reserva?.estado ?? null,
       estadoPago,
       metodo:
-        etiquetaMetodoPago(consulta.metodo) ??
+        etiquetaMetodoPago(reconciliacion.consulta?.metodo) ??
         etiquetaMetodoPago(
           typeof filaPago.data.metodo === "string" ? filaPago.data.metodo : null,
         ),
-      consultaFallida: consulta.fallo,
+      /* Solo cuando de verdad no se pudo preguntar. Un «Bold todavía no ve la
+         transacción» no es un fallo: es el caso normal del primer minuto, y la
+         pantalla ya lo cuenta como «estamos confirmando tu pago». */
+      consultaFallida: reconciliacion.clave === "sin_respuesta",
     };
   } catch (error) {
     console.error(
