@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import {
   cambiarEstadoReservaAction,
   eliminarReservaAction,
+  verificarPagoAction,
 } from "../acciones";
 import { FormularioReserva } from "../formulario-reserva";
 import { Aviso } from "@/components/admin/aviso";
@@ -99,6 +100,18 @@ export default async function PaginaReserva({
     pagos[0],
     reserva.estado,
   );
+
+  /*
+    ¿Hay algo que verificar contra Bold? `pagos` viene del más reciente al más
+    antiguo, así que el primero que encaje es el que importa. Encaja un cobro que
+    no está aprobado (puede haberse aprobado sin que nos llegara el evento) y
+    también un cobro aprobado cuya reserva NO está confirmada, que es el estado
+    incoherente que deja un webhook a medias.
+  */
+  const pagoAVerificar =
+    pagos.find(
+      (pago) => !esAprobado(pago.estado) || reserva.estado !== "confirmada",
+    ) ?? null;
 
   /*
     Las experiencias se agrupan por la noche a la que se añadieron: en una
@@ -489,6 +502,47 @@ export default async function PaginaReserva({
                       </dl>
                     </div>
                   ))}
+
+                  {/* ---------------------------------------------------------
+                      «VERIFICAR PAGO CON BOLD».
+
+                      Está aquí porque es aquí donde el equipo se hace la
+                      pregunta: el huésped llama diciendo «yo pagué» y la ficha
+                      dice «pendiente». El botón le pregunta a Bold con nuestra
+                      llave y aplica lo que responda, igual que haría el webhook.
+                      Hace falta porque un webhook que no llega no avisa de que no
+                      llegó: en pruebas llegaron CERO eventos y una reserva pagada
+                      se canceló sola al vencer su hold.
+
+                      Solo se ofrece cuando hay algo que verificar: un cobro que
+                      no está aprobado, o una reserva que no está confirmada
+                      teniendo un cobro aprobado (el caso incoherente). Si todo
+                      cuadra, el botón no aparece — un botón que siempre dice «ya
+                      estaba bien» enseña a no pulsarlo.
+                  ---------------------------------------------------------- */}
+                  {pagoAVerificar ? (
+                    <form action={verificarPagoAction} className="pt-1">
+                      <input type="hidden" name="id" value={reserva.id} />
+                      <input
+                        type="hidden"
+                        name="referencia"
+                        value={pagoAVerificar.referencia}
+                      />
+                      <BotonEnviar
+                        tono="secundario"
+                        tamano="sm"
+                        className="w-full"
+                        etiquetaEnEspera="Preguntando a Bold…"
+                      >
+                        Verificar pago con Bold
+                      </BotonEnviar>
+                      <p className="mt-2 text-[0.75rem] leading-snug text-crema-600">
+                        Le pregunta a Bold cómo quedó este cobro. Si está
+                        aprobado, la reserva se confirma y salen los correos.
+                        Pulsarlo dos veces no duplica nada.
+                      </p>
+                    </form>
+                  ) : null}
 
                   <p className="text-[0.75rem] leading-snug text-crema-600">
                     El cobro lo procesa Bold. Este sitio no recibe ni guarda

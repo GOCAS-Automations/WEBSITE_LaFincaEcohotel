@@ -30,6 +30,7 @@ import {
   CUPO_DIA_DE_CALMA,
   MAX_PERSONAS_POR_RESERVA_DIA,
 } from "@/lib/reserva/dia-de-calma";
+import { reconciliarPago } from "@/lib/pagos/reconciliar";
 import { ocupaCalendario } from "@/lib/reserva/holds";
 import { liberarReservasVencidas } from "@/lib/reserva/liberar-vencidas";
 import { invalidarCacheCalendario } from "@/lib/reserva/ocupacion-externa";
@@ -811,6 +812,71 @@ export async function cambiarEstadoReservaAction(formData: FormData) {
         avisoCalendario ? `\n${avisoCalendario}` : ""
       }${avisoCorreo ? `\n${avisoCorreo}` : ""}`,
     )}`,
+  );
+}
+
+/**
+ * «VERIFICAR PAGO CON BOLD»: la herramienta de quien atiende un «pagué y no me
+ * llegó nada».
+ *
+ * ---------------------------------------------------------------------------
+ * POR QUÉ ESTE BOTÓN EXISTE
+ * ---------------------------------------------------------------------------
+ * Porque el webhook puede no llegar, y cuando no llega no avisa. Pasó en el
+ * sandbox de Bold: dos pagos reales, cero eventos, y una reserva pagada
+ * (`LF-2026-0001`) cancelada sola al vencer su hold. El equipo del hotel no tiene
+ * por qué entender nada de eso; lo que necesita es un botón que pregunte.
+ *
+ * Lo que hace es **exactamente** lo que haría el webhook: `reconciliarPago()`
+ * consulta la API de Bold con nuestra llave y aplica lo que diga con el mismo
+ * código (`src/lib/pagos/aplicar-estado.ts`). Si el pago está aprobado, la
+ * reserva queda confirmada —incluso si estaba cancelada por vencimiento— y salen
+ * los correos. Si ya estaba todo bien, no escribe nada y lo dice.
+ *
+ * Es idempotente: pulsarlo diez veces no duplica correos ni abonos.
+ *
+ * **Usa la clave de servicio** (dentro de `reconciliarPago`) y no la sesión del
+ * panel, al contrario que el resto de este archivo. No es un descuido: la
+ * escritura tiene que ser la misma que la del webhook hasta la última columna, y
+ * además `pagos_eventos` no es legible para el rol `authenticated`. La frontera
+ * sigue siendo `requireAdmin()`, aquí arriba: sin sesión de administrador no se
+ * llega a la llamada.
+ */
+export async function verificarPagoAction(formData: FormData) {
+  await requireAdmin();
+
+  const id = String(formData.get("id") ?? "").trim();
+  const referencia = String(formData.get("referencia") ?? "").trim();
+  const volver = esUuid(id) ? `${RUTA_LISTA}/${id}` : RUTA_LISTA;
+
+  if (!referencia) {
+    redirect(
+      `${volver}?error=${encodeURIComponent(
+        "Esta reserva no tiene una referencia de pago que verificar.",
+      )}`,
+    );
+  }
+
+  const resultado = await reconciliarPago(referencia);
+
+  /* Qué se le dice al equipo. Los desenlaces que piden una persona o que no
+     pudieron comprobar nada van como error; el resto, como información. */
+  const esProblema =
+    resultado.clave === "referencia_invalida" ||
+    resultado.clave === "pago_desconocido" ||
+    resultado.clave === "sin_respuesta" ||
+    resultado.clave === "no_configurado" ||
+    resultado.aplicado?.clave === "fechas_ocupadas" ||
+    resultado.aplicado?.clave === "error_pago" ||
+    resultado.aplicado?.clave === "error_lectura" ||
+    resultado.aplicado?.clave === "error_reserva";
+
+  /* Solo si cambió algo hace falta rehacer las pantallas; y el calendario del
+     panel también, porque una reserva confirmada ocupa fechas. */
+  if (resultado.cambio) refrescar(id);
+
+  redirect(
+    `${volver}?${esProblema ? "error" : "ok"}=${encodeURIComponent(resultado.mensaje)}`,
   );
 }
 
