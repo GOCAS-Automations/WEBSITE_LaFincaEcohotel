@@ -8,6 +8,19 @@
  * barrido es justo lo que tiene que ser atómico.
  *
  * ---------------------------------------------------------------------------
+ * ⚠ ESTA FUNCIÓN NO PUEDE CANCELAR UNA RESERVA PAGADA
+ * ---------------------------------------------------------------------------
+ * La migración **016** se lo prohíbe en SQL: la sentencia excluye toda reserva
+ * con un pago `APPROVED` (sin plazo) y toda reserva con un pago en proceso movido
+ * en los últimos quince minutos. Es la última línea de defensa del fallo del
+ * 2026-10-01, cuando `LF-2026-0001` se canceló sola teniendo el pago hecho porque
+ * nunca llegó el evento del webhook.
+ *
+ * Quien llame a esto desde el cron tiene además una obligación: **reconciliar
+ * antes** (`reconciliarPagosPendientes()`), para que un pago aprobado no llegue
+ * ni a estar en la lista. El orden está escrito en `src/app/api/salud/route.ts`.
+ *
+ * ---------------------------------------------------------------------------
  * CUÁNDO SE LLAMA
  * ---------------------------------------------------------------------------
  * **Antes de toda creación o reactivación de reserva** —la del sitio público y

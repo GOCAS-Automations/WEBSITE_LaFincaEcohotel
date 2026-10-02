@@ -20,6 +20,28 @@
  * llamada, no un checkout abandonado.
  *
  * ---------------------------------------------------------------------------
+ * ⚠ UNA RESERVA CON UN PAGO COBRADO **NO CADUCA NUNCA** (2026-10-02)
+ * ---------------------------------------------------------------------------
+ * El vencimiento es una regla sobre un checkout abandonado, no sobre el dinero.
+ * El barrido (`liberar_reservas_vencidas`, migración **016**) excluye:
+ *
+ *   · toda reserva con un pago `APPROVED` — sin plazo ninguno, y
+ *   · toda reserva con un pago `PROCESSING`/`PENDING` movido en los últimos
+ *     **15 minutos**, que es la carrera del cobro que se aprueba justo cuando el
+ *     hold muere (PSE es el que más tarda).
+ *
+ * Hizo falta porque el 2026-10-01 pasó de verdad: dos pagos reales en el sandbox
+ * de Bold, cero eventos de webhook, y `LF-2026-0001` cancelada sola con el pago
+ * hecho. La gracia es corta y no larga por una razón concreta, explicada en la
+ * cabecera de la migración: una `pendiente` sin cancelar sigue apartando las
+ * fechas para la restricción EXCLUDE, así que alargarla produciría noches que se
+ * ofrecen y no se pueden comprar.
+ *
+ * **Lo que de verdad recupera un pago aprobado es la reconciliación**
+ * (`src/lib/pagos/reconciliar.ts`): preguntarle a Bold desde la página de
+ * retorno, desde el cron —antes del barrido— y desde el botón del panel.
+ *
+ * ---------------------------------------------------------------------------
  * LA REGLA QUE NO SE PUEDE OLVIDAR
  * ---------------------------------------------------------------------------
  * `reservas_sin_solapamiento` es una restricción EXCLUDE y su predicado tiene
