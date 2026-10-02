@@ -5,26 +5,39 @@ import {
   ambienteDeclarado,
   boldConfigurado,
   consultarEstadoPago,
-  esAprobado,
   estadoDeEvento,
-  etiquetaMetodoPago,
   firmaDeEventoValida,
   leerEventoBold,
   modoBold,
   type EstadoBold,
 } from "@/lib/pagos/bold";
 import {
-  decidirAccionDePago,
-  pagadoTrasCobro,
-} from "@/lib/pagos/transiciones";
-import { avisarPagoAprobado } from "@/lib/email";
-import { sincronizarReservaEnCalendario } from "@/lib/reserva/sincronizar-calendario";
+  aplicarEstadoDePago,
+  type ResultadoAplicacion,
+} from "@/lib/pagos/aplicar-estado";
 import { crearClienteAdmin } from "@/lib/supabase/admin";
 
 /**
- * EL WEBHOOK DE BOLD. **Aquí y solo aquí se confirma una reserva.**
+ * EL WEBHOOK DE BOLD: la vía **preferente** de confirmación, no la única.
  *
  *     POST /api/pagos/bold/webhook
+ *
+ * ⚠ **2026-10-02 — esto cambió, y conviene entender por qué.** Hasta esa fecha
+ * aquí decía «aquí y solo aquí se confirma una reserva». Dejó de ser verdad a
+ * propósito: en el ambiente de pruebas se hicieron dos pagos reales en el
+ * sandbox de Bold y llegaron **cero** eventos a este endpoint, de modo que una
+ * reserva pagada (`LF-2026-0001`) se canceló sola al vencer su hold. Un webhook
+ * que no llega no avisa de que no llegó.
+ *
+ * Desde entonces existe la **reconciliación** (`src/lib/pagos/reconciliar.ts`):
+ * le preguntamos nosotros a la API de Bold con nuestra llave y aplicamos lo que
+ * diga, desde la página de retorno, el cron diario y un botón del panel. Las dos
+ * vías comparten la escritura —`aplicarEstadoDePago()`— precisamente para que no
+ * puedan divergir.
+ *
+ * Lo que **sigue intacto** es el requisito 2 de la auditoría: la redirección del
+ * navegador no confirma nada. De la URL de retorno solo se toma la referencia,
+ * que es una pregunta y no una afirmación.
  *
  * ===========================================================================
  * LAS CUATRO REGLAS QUE ESTE ARCHIVO TIENE QUE CUMPLIR
@@ -34,6 +47,12 @@ import { crearClienteAdmin } from "@/lib/supabase/admin";
  *   **2.** «La reserva se confirma SOLO por webhook, nunca por la redirección
  *   del navegador. La vuelta del checkout es una pista para el huésped, no un
  *   hecho: se puede falsificar escribiendo la URL.»
+ *
+ *   La letra de este requisito se queda corta y su **intención** se cumple
+ *   entera: lo que no se puede creer es la URL. La reconciliación no cree a la
+ *   URL; le pregunta a la API de Bold con nuestra llave, que es la misma fuente
+ *   de verdad que exige el requisito 5. Ver la nota al día en
+ *   `docs/AUDITORIA_SEGURIDAD.md`.
  *
  *   **3.** «El webhook verifica la firma antes de mirar el cuerpo, y rechaza lo
  *   que no la traiga. Sin esto, cualquiera confirma reservas gratis con un
@@ -58,15 +77,12 @@ import { crearClienteAdmin } from "@/lib/supabase/admin";
  *   returning` es a la vez el registro y el candado: si no devuelve fila, ese
  *   evento exacto ya se procesó y aquí se responde 200 sin hacer nada.
  *
- *   **Capa 2 — la transición de estado.** La capa 1 no basta, porque Bold
- *   documenta el `id` como único «por notificación enviada», no por
- *   transacción: un reintento podría traer otro `id` del mismo pago. Lo que
- *   garantiza que no se dupliquen los correos es que los efectos ocurren **solo
- *   en el `update` condicional**:
- *
- *       update pagos set estado='APPROVED' … where referencia=$1 and estado<>'APPROVED'
- *
- *   Si no devuelve fila, ese pago ya estaba aprobado y no se reenvía nada.
+ *   **Capas 2 y 3 — la transición de estado y el `update` condicional.** La capa
+ *   1 no basta, porque Bold documenta el `id` como único «por notificación
+ *   enviada», no por transacción: un reintento podría traer otro `id` del mismo
+ *   pago. Y además hay otra vía escribiendo (la reconciliación), así que dos
+ *   procesos distintos pueden coincidir en el mismo pago. Las dos capas que lo
+ *   impiden viven en `src/lib/pagos/aplicar-estado.ts` y están explicadas ahí.
  *
  * ---------------------------------------------------------------------------
  * RESPONDER RÁPIDO, Y QUÉ SE DEJA PARA DESPUÉS
@@ -254,29 +270,7 @@ export async function POST(peticion: Request) {
   }
 
   /* ---------------------------------------------------------------------
-     4. EL PAGO QUE ESTE EVENTO TOCA
-     ------------------------------------------------------------------ */
-  const { data: pago, error: errorPago } = await supabase
-    .from("pagos")
-    .select("id, reserva_id, referencia, monto, estado")
-    .eq("referencia", evento.referencia)
-    .maybeSingle();
-
-  if (errorPago) {
-    console.error("[bold/webhook] no se pudo leer el pago:", errorPago.message);
-    /* Esto sí merece un reintento: es un fallo nuestro, no del evento. */
-    return new Response("Error al leer el pago", { status: 500 });
-  }
-
-  if (!pago) {
-    console.warn(
-      `[bold/webhook] la referencia ${evento.referencia} no existe en esta base.`,
-    );
-    return ok("referencia desconocida");
-  }
-
-  /* ---------------------------------------------------------------------
-     5. EL ESTADO REAL, PREGUNTADO A BOLD (requisito 5)
+     4. EL ESTADO REAL, PREGUNTADO A BOLD (requisito 5)
      ------------------------------------------------------------------ */
   /*
     No se confía en el estado que trae el evento. Se pregunta con nuestra propia
@@ -331,267 +325,71 @@ export async function POST(peticion: Request) {
     );
   }
 
-  const metodo =
-    etiquetaMetodoPago(consulta.metodo) ?? etiquetaMetodoPago(evento.metodo);
-  const transaccionId = consulta.transaccionId ?? evento.transaccionId;
-  /* Lo que se cobró de verdad. Lo normal es que coincida con `pago.monto`, pero
-     manda lo que diga Bold: es lo que llegó a la cuenta del hotel. */
-  const montoCobrado =
-    consulta.total ?? evento.monto ?? Number(pago.monto ?? 0);
-
   /* ---------------------------------------------------------------------
-     6. IDEMPOTENCIA, CAPA 2: la transición
+     5. LA TRANSICIÓN — **EL MISMO CÓDIGO QUE LA RECONCILIACIÓN**
      ------------------------------------------------------------------ */
   /*
-    LA DECISIÓN VIVE EN UNA FUNCIÓN PURA Y PROBADA.
+    AQUÍ ESTABA ANTES TODA LA ESCRITURA, Y HABERLA SACADO ES EL ARREGLO.
 
-    `decidirAccionDePago` (`src/lib/pagos/transiciones.ts`) fija las dos reglas
-    que no se pueden romper: el mismo estado dos veces no hace nada, y de
-    `APPROVED` no se sale hacia atrás con un evento de rechazo que llegue tarde.
-    Tenerla aparte permite probarla sin red ni base de datos.
+    Desde el 2026-10-02 el webhook no es la única vía de confirmación: también
+    confirma `reconciliarPago()` (`src/lib/pagos/reconciliar.ts`), que le
+    pregunta a Bold por su cuenta desde la página de retorno, el cron diario y un
+    botón del panel. Hizo falta porque llegaron CERO eventos de webhook y una
+    reserva pagada se canceló sola al vencer su hold.
+
+    Dos caminos que escriben una confirmación de pago **tienen** que escribir lo
+    mismo, y la única forma de garantizarlo es que sea literalmente el mismo
+    código. Vive en `src/lib/pagos/aplicar-estado.ts`, con la decisión pura
+    (`decidirAccionDePago`) y las tres capas de idempotencia explicadas ahí.
+
+    Lo único que este endpoint le añade es `after`: Bold exige responder en dos
+    segundos, así que los correos y el evento del calendario salen con la
+    respuesta ya enviada. La reconciliación, en cambio, los espera.
   */
-  const accion = decidirAccionDePago(pago.estado, estado);
-
-  if (accion === "nada") {
-    /* Se actualiza el payload por si trae más datos y se corta aquí. Ni correos,
-       ni calendario, ni nada. */
-    await supabase
-      .from("pagos")
-      .update({ payload: json, evento_id: evento.id || null })
-      .eq("id", pago.id);
-
-    console.info(
-      `[bold/webhook] ${evento.referencia}: nada que hacer (guardado ${String(
-        pago.estado ?? "",
-      )}, evento ${estado}).`,
-    );
-    return ok("sin cambios");
-  }
-
-  /*
-    EL `UPDATE` CONDICIONAL. Es el candado de verdad.
-
-    `.neq("estado", estado)` hace que dos ejecuciones simultáneas del webhook no
-    puedan pasar las dos: Postgres serializa el `update` y la segunda no
-    encuentra fila que cambiar. Entre un `select` y un `update` hechos aparte
-    cabría la otra ejecución entera; aquí no cabe nada.
-  */
-  const { data: actualizado, error: errorActualizar } = await supabase
-    .from("pagos")
-    .update({
-      estado,
-      metodo,
-      transaccion_id: transaccionId,
-      payload: json,
-      evento_id: evento.id || null,
-      /* El monto que se registra es el cobrado, solo si se cobró algo. */
-      monto: esAprobado(estado) ? montoCobrado : pago.monto,
-      procesado_at: new Date().toISOString(),
-    })
-    .eq("id", pago.id)
-    .neq("estado", estado)
-    .select("id");
-
-  if (errorActualizar) {
-    console.error(
-      "[bold/webhook] no se pudo actualizar el pago:",
-      errorActualizar.message,
-    );
-    return new Response("Error al guardar el pago", { status: 500 });
-  }
-
-  if (!actualizado || actualizado.length === 0) {
-    console.info(
-      `[bold/webhook] otra ejecución se adelantó con ${evento.referencia}.`,
-    );
-    return ok("ya procesado por otra ejecución");
-  }
+  const resultado = await aplicarEstadoDePago(supabase, {
+    referencia: evento.referencia,
+    estado,
+    montoCobrado: consulta.total ?? evento.monto ?? null,
+    metodo: consulta.metodo ?? evento.metodo ?? null,
+    transaccionId: consulta.transaccionId ?? evento.transaccionId ?? null,
+    payload: json,
+    eventoId: evento.id || null,
+    origen: "webhook",
+    diferir: (tarea) => after(tarea),
+  });
 
   /* ---------------------------------------------------------------------
-     7. Y LO QUE ESO SIGNIFICA PARA LA RESERVA
+     6. QUÉ SE LE RESPONDE A BOLD
      ------------------------------------------------------------------ */
-  const reservaId = pago.reserva_id ? String(pago.reserva_id) : null;
-
-  if (!reservaId) {
-    return ok("pago sin reserva asociada");
+  /*
+    Bold reintenta cinco veces todo lo que no sea 200, así que **solo se devuelve
+    error cuando el reintento puede arreglar algo**. Un evento que nunca vamos a
+    poder procesar —una referencia que no existe aquí— se responde 200: insistir
+    veinticuatro horas no lo va a cambiar. Lo que sí merece reintento es un fallo
+    nuestro de escritura, y `reintentable` lo dice.
+  */
+  if (resultado.reintentable) {
+    return new Response(resultado.mensaje, { status: 500 });
   }
 
-  if (accion === "confirmar") {
-    const { data: reserva } = await supabase
-      .from("reservas")
-      .select("total, monto_pagado, estado")
-      .eq("id", reservaId)
-      .maybeSingle();
-
-    /* `pagadoTrasCobro` suma en vez de sustituir y topa en el total; está
-       probada aparte (`transiciones.test.ts`). */
-    const { pagado, saldo } = pagadoTrasCobro(
-      Number(reserva?.total ?? 0),
-      Number(reserva?.monto_pagado ?? 0),
-      montoCobrado,
-    );
-    const total = Number(reserva?.total ?? 0);
-
-    const { error: errorReserva } = await supabase
-      .from("reservas")
-      .update({
-        estado: "confirmada",
-        monto_pagado: pagado,
-        /*
-          SE LIMPIA EL VENCIMIENTO. Una reserva pagada no caduca: si se quedara
-          con el `expira_at` puesto, el barrido de los treinta minutos la
-          cancelaría y liberaría unas fechas que el huésped ya pagó. Es el peor
-          fallo posible de esta integración y se evita con este `null`.
-        */
-        expira_at: null,
-      })
-      .eq("id", reservaId);
-
-    if (errorReserva) {
-      console.error(
-        `[bold/webhook] el pago de ${evento.referencia} entró pero no se pudo confirmar la reserva:`,
-        errorReserva.message,
-      );
-      /* El pago ya está guardado como aprobado. Un 500 hace que Bold reintente
-         y la capa 2 ya no dejará pasar el pago, pero sí este bloque: en el
-         reintento la reserva se confirmará. Es el único camino en el que un
-         reintento sirve para algo. */
-      return new Response("Pago guardado, reserva pendiente de confirmar", {
-        status: 500,
-      });
-    }
-
-    console.info(
-      `[bold/webhook] ${evento.referencia} aprobado: reserva confirmada, pagado ${pagado} de ${total}.`,
-    );
-
-    /*
-      LOS CORREOS Y EL CALENDARIO, YA CON LA RESPUESTA ENVIADA.
-
-      `after()` corre después de responder, así que Bold recibe su 200 dentro de
-      los dos segundos y el huésped recibe su correo igual. Ninguna de las dos
-      llamadas lanza —`avisarPagoAprobado` lo tiene prohibido por contrato y
-      `sincronizarReservaEnCalendario` devuelve un aviso en vez de fallar—, pero
-      van en `try/catch` porque un error dentro de `after()` que nadie atrapa
-      ensucia los registros sin informar de nada.
-    */
-    after(async () => {
-      try {
-        await avisarPagoAprobado(supabase, reservaId, {
-          monto: montoCobrado,
-          saldo,
-          metodo,
-          transaccionId,
-        });
-      } catch (error) {
-        console.error(
-          "[bold/webhook] fallo inesperado al avisar del pago:",
-          error instanceof Error ? error.message : error,
-        );
-      }
-
-      try {
-        const aviso = await sincronizarReservaEnCalendario(supabase, reservaId);
-        if (aviso) console.info(`[bold/webhook] calendario: ${aviso}`);
-      } catch (error) {
-        console.error(
-          "[bold/webhook] fallo inesperado al sincronizar el calendario:",
-          error instanceof Error ? error.message : error,
-        );
-      }
-    });
-
-    return ok("reserva confirmada");
-  }
-
-  if (accion === "cancelar") {
-    /*
-      ANULACIÓN APROBADA (`VOID_APPROVED`): el dinero se devolvió, así que la
-      reserva se cancela con el motivo escrito y las fechas vuelven al calendario
-      en el momento, sin esperar al barrido.
-    */
-    const { data: reserva } = await supabase
-      .from("reservas")
-      .select("estado, notas, monto_pagado")
-      .eq("id", reservaId)
-      .maybeSingle();
-
-    const motivo = `Pago anulado en Bold (referencia ${evento.referencia}). La reserva queda cancelada.`;
-    const notasPrevias =
-      typeof reserva?.notas === "string" ? reserva.notas.trim() : "";
-
-    /*
-      EL DINERO ANULADO SE DESCUENTA DE `monto_pagado`.
-
-      Una anulación es una devolución: el hotel ya no tiene ese dinero. Dejar la
-      ficha diciendo «abonado $362.500» en una reserva anulada haría que el
-      equipo creyera que conserva un anticipo que se devolvió, y eso termina en
-      una discusión con el huésped.
-
-      Se **resta** en vez de poner cero porque puede haber otro dinero legítimo
-      en esa reserva: una transferencia que el equipo apuntó a mano antes. Lo que
-      se anula es este cobro, no todo lo que entró.
-    */
-    const pagadoTrasAnular = Math.max(
-      0,
-      Number(reserva?.monto_pagado ?? 0) - montoCobrado,
-    );
-
-    await supabase
-      .from("reservas")
-      .update({
-        estado: "cancelada",
-        monto_pagado: pagadoTrasAnular,
-        expira_at: null,
-        /* Se ANEXA: ahí está lo que escribió el huésped (una alergia, la hora de
-           llegada) y perderlo por una anulación sería destruir información del
-           cliente para dejar una etiqueta técnica. Mismo criterio que el barrido
-           de la migración 013. */
-        notas: notasPrevias ? `${notasPrevias}\n${motivo}` : motivo,
-      })
-      .eq("id", reservaId);
-
-    /* El evento del calendario se borra si lo había: una reserva cancelada no
-       puede seguir ocupando el calendario del hotel. */
-    after(async () => {
-      try {
-        const aviso = await sincronizarReservaEnCalendario(supabase, reservaId);
-        if (aviso) console.info(`[bold/webhook] calendario: ${aviso}`);
-      } catch (error) {
-        console.error(
-          "[bold/webhook] fallo al sincronizar el calendario tras la anulación:",
-          error instanceof Error ? error.message : error,
-        );
-      }
-    });
-
-    console.info(
-      `[bold/webhook] ${evento.referencia} anulado: reserva cancelada, abonado queda en ${pagadoTrasAnular}.`,
-    );
-    return ok("reserva cancelada por anulación");
-  }
-
-  if (accion === "dejar_vencer") {
-    /*
-      RECHAZADO O FALLIDO: **no se cancela nada**.
-
-      El huésped sigue dentro de su media hora de hold y lo normal tras una
-      tarjeta rechazada es intentarlo con otra: cancelarle la reserva en ese
-      momento le quitaría las fechas que está a punto de pagar. Si no vuelve, el
-      barrido la cancela sola a los treinta minutos, que es exactamente para lo
-      que existe.
-    */
-    console.info(
-      `[bold/webhook] ${evento.referencia} ${estado}: la reserva se deja vencer sola.`,
-    );
-    return ok("pago no aprobado; la reserva vencerá sola");
-  }
-
-  /* En proceso (`PROCESSING`, `PENDING` de PSE): se guardó el estado y se
-     espera el evento final. Nada que tocar en la reserva. */
-  console.info(`[bold/webhook] ${evento.referencia} en estado ${estado}.`);
-  return ok("estado intermedio guardado");
+  return ok(DETALLE[resultado.clave]);
 }
+
+/** Lo que se le escribe a Bold en el cuerpo del 200, por desenlace. */
+const DETALLE: Record<ResultadoAplicacion["clave"], string> = {
+  pago_desconocido: "referencia desconocida",
+  sin_cambios: "sin cambios",
+  confirmada: "reserva confirmada",
+  cancelada: "reserva cancelada por anulación",
+  no_aprobado: "pago no aprobado; la reserva vencerá sola",
+  intermedio: "estado intermedio guardado",
+  sin_reserva: "pago sin reserva asociada",
+  adelantado: "ya procesado por otra ejecución",
+  fechas_ocupadas: "pago aprobado, pero las fechas ya están ocupadas",
+  error_lectura: "no se pudo leer el pago",
+  error_pago: "no se pudo guardar el pago",
+  error_reserva: "no se pudo confirmar la reserva",
+};
 
 /**
  * Bold no hace `GET` sobre el webhook, pero la gente sí: alguien va a pegar
