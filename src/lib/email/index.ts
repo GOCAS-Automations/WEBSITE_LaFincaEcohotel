@@ -36,6 +36,7 @@ export {
   enviarAvisoAdministracion,
   enviarReservaConfirmada,
   enviarSolicitudRecibida,
+  responderA,
   type ResultadoCorreo,
 } from "./send";
 

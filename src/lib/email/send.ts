@@ -2,10 +2,16 @@
  * Envío de los correos transaccionales con Resend.
  *
  * ---------------------------------------------------------------------------
- * ESTADO: LISTO PERO DORMIDO
+ * ESTADO: **ACTIVO desde el 2026-10-02** · y dormido donde falte la clave
  * ---------------------------------------------------------------------------
- * Todavía no hay cuenta de Resend, ni dominio verificado, ni `RESEND_API_KEY`.
- * Mientras esa variable no exista, las funciones de envío **no hacen nada y no
+ * La cuenta de Resend existe, `lafincaecohotel.com` está verificado y los tres
+ * correos se enviaron de verdad a `fincavillarrealcali@gmail.com`. Las variables
+ * son `RESEND_API_KEY`, `EMAIL_FROM`, `EMAIL_NOTIFY_TO` y `EMAIL_REPLY_TO` (ver
+ * `.env.example` y `docs/DESPLIEGUE_VERCEL.md`).
+ *
+ * El modo dormido **sigue existiendo y sigue siendo el contrato**, porque hay
+ * entornos sin clave (una vista previa, el equipo de alguien que no la tiene).
+ * Donde no exista `RESEND_API_KEY`, las funciones de envío **no hacen nada y no
  * fallan**: registran en consola qué habrían enviado y devuelven
  * `{ enviado: false, motivo: "no_configurado" }`.
  *
@@ -20,15 +26,16 @@
  * eso, hay que revisar antes cada punto de llamada.
  *
  * ---------------------------------------------------------------------------
- * PARA ACTIVARLO (cuando el hotel tenga correo y dominio)
+ * PARA ACTIVARLO EN UN ENTORNO NUEVO (lo de Vercel sigue pendiente)
  * ---------------------------------------------------------------------------
- *   1. Crear la cuenta en Resend y **verificar `lafincaecohotel.com`** con los
- *      registros TXT/DKIM en Hostinger. Sin dominio verificado, un correo
- *      enviado desde `@lafincaecohotel.com` se marca como spam o se rechaza.
- *   2. Poner `RESEND_API_KEY`, `EMAIL_FROM` y `EMAIL_NOTIFY_TO` en Vercel y en
- *      `.env.local` (ver `.env.example` y `docs/DESPLIEGUE_VERCEL.md`).
- *   3. No hay que tocar código: el remitente y los destinatarios internos se
- *      leen del entorno.
+ *   1. La cuenta de Resend y el dominio verificado ya están. Sin dominio
+ *      verificado, un correo enviado desde `@lafincaecohotel.com` se marca como
+ *      spam o se rechaza.
+ *   2. Poner `RESEND_API_KEY`, `EMAIL_FROM`, `EMAIL_NOTIFY_TO` y
+ *      `EMAIL_REPLY_TO` en Vercel (ya están en `.env.local`); ver
+ *      `.env.example` y `docs/DESPLIEGUE_VERCEL.md`.
+ *   3. No hay que tocar código: el remitente, los destinatarios internos y el
+ *      `Reply-To` se leen del entorno.
  *
  * El paquete `resend` se importa **dinámicamente**, ya dentro de la función que
  * envía: importar este archivo sin la clave no carga nada de red y no revienta.
@@ -88,6 +95,25 @@ export function destinatariosInternos(): string[] {
     .split(",")
     .map((correo) => correo.trim())
     .filter((correo) => correo.includes("@"));
+}
+
+/**
+ * A DÓNDE VA LA RESPUESTA DEL HUÉSPED. **Esto no es un adorno.**
+ *
+ * `reservas@lafincaecohotel.com` es una identidad de envío de Resend: el dominio
+ * está verificado para *mandar*, pero detrás **no hay un buzón que alguien lea**.
+ * Sin `Reply-To`, el huésped que conteste «¿puedo llegar a las 9?» —y va a
+ * contestar, porque el remitente dice `reservas@` y no `no-reply@`— escribe a un
+ * sitio donde nadie lo verá. Un correo perdido de un huésped es peor que un
+ * correo que no se envió: el huésped cree que avisó.
+ *
+ * Así que la respuesta se dirige al correo que el hotel **sí lee** todos los
+ * días: `fincavillarrealcali@gmail.com`. Se configura con `EMAIL_REPLY_TO` y, si
+ * no está, se cae al primero de `EMAIL_NOTIFY_TO`, que por definición es un buzón
+ * atendido: es a donde van los avisos internos.
+ */
+export function responderA(): string | null {
+  return leerEntorno("EMAIL_REPLY_TO") ?? destinatariosInternos()[0] ?? null;
 }
 
 /* ===========================================================================
@@ -207,9 +233,14 @@ async function entregar(
     const { Resend } = await import("resend");
     const resend = new Resend(clave);
 
+    const responder = responderA();
+
     const { data, error } = await resend.emails.send({
       from: leerEntorno("EMAIL_FROM") ?? REMITENTE_POR_DEFECTO,
       to: destinatarios,
+      /* Sin esto, lo que conteste el huésped no llega a ningún buzón atendido.
+         Ver `responderA()`. */
+      ...(responder ? { replyTo: responder } : {}),
       subject: correo.asunto,
       html: correo.html,
       text: correo.texto,

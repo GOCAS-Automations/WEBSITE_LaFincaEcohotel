@@ -343,6 +343,17 @@ const resend = new Resend(clave);
 const remitente =
   process.env.EMAIL_FROM?.trim() ||
   "La Finca Eco Hotel <reservas@lafincaecohotel.com>";
+/* El mismo `Reply-To` que usa el sitio (`responderA()` en
+   `src/lib/email/send.ts`): si la prueba no lo lleva, no se está probando el
+   correo que recibe el huésped. `reservas@` es solo una identidad de envío y no
+   tiene buzón que nadie lea. */
+const responder =
+  process.env.EMAIL_REPLY_TO?.trim() ||
+  process.env.EMAIL_NOTIFY_TO?.split(",")[0]?.trim() ||
+  null;
+
+console.log(`Remitente: ${remitente}`);
+console.log(`Responder a: ${responder ?? "(sin Reply-To)"}\n`);
 
 let fallos = 0;
 
@@ -351,6 +362,7 @@ for (const caso of indice) {
   const { data, error } = await resend.emails.send({
     from: remitente,
     to: [destino],
+    ...(responder ? { replyTo: responder } : {}),
     /* El prefijo evita que una prueba se confunda con un correo real en la
        bandeja de quien la reciba. */
     subject: `[PRUEBA] ${correo.asunto}`,
