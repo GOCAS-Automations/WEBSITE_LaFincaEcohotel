@@ -15,7 +15,9 @@ Sitio web + motor de reservas para La Finca Eco Hotel (Cali, Colombia). Cliente 
 
 ## Stack
 
-Next.js (App Router) + TypeScript + Tailwind CSS + Supabase (Postgres/Auth/Storage) + Vercel. Pagos: Wompi (fase posterior). Correos: Resend (fase posterior).
+Next.js (App Router) + TypeScript + Tailwind CSS + Supabase (Postgres/Auth/Storage) + Vercel. Pagos: **Bold** (del Banco de Bogotá, donde el hotel ya tiene cuenta; Wompi quedó descartada). Correos: **Resend** con dominio verificado.
+
+**Si el build falla con `Cannot read properties of undefined (reading 'call')`, no es el código:** es caché corrupta de `.next`, que OneDrive sincroniza. Borrar `.next` y volver a construir antes de sospechar del cambio.
 
 ## Reglas técnicas innegociables
 
