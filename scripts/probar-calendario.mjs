@@ -63,7 +63,7 @@ const {
   listarEventos,
   credencialConfigurada,
   correoDeLaCuentaDeServicio,
-  idCalendarioHotel,
+  configuracionDeCalendarios,
 } = await import("../src/lib/google/calendario.ts");
 
 const { ocupacionDesdeEventos, cabanasAfectadas, diasDeLaFranja } = await import(
@@ -112,10 +112,19 @@ async function principal() {
     process.exit(1);
   }
   console.log(`  Cuenta de servicio: ${correoDeLaCuentaDeServicio()}`);
+  const configurados = configuracionDeCalendarios().calendarios;
   console.log(
     `  GOOGLE_CALENDAR_ID: ${
-      idCalendarioHotel() ?? "(vacío — el hotel aún no ha compartido su calendario)"
+      configurados.length === 0
+        ? "(vacío — el hotel aún no ha compartido su calendario)"
+        : configurados
+            .map((c) => (c.cabana === null ? c.id : `${c.id} → Cabaña ${c.cabana}`))
+            .join(", ")
     }`,
+  );
+  console.log(
+    "  (Para ver la configuración en detalle y los calendarios que la cuenta ve:\n" +
+      "   npm run calendario:verificar)",
   );
 
   console.log("\n── Calendario de prueba ────────────────────────────────────");

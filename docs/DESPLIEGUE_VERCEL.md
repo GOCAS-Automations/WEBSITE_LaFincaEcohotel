@@ -36,7 +36,8 @@ defecto, activarla en los tres salvo que se diga lo contrario.
 | `SITIO_PUBLICADO` | No | Production, Preview, Development | **`0` o sin definir** hasta el lanzamiento — ver el apartado dedicado |
 | `GOOGLE_PLACES_API_KEY` | **Sí** | Production, Preview, Development | Llave de la Places API (New) del proyecto de Google Cloud. Sin ella el bloque de reseñas simplemente no se publica: no bloquea el deploy |
 | `GOOGLE_CALENDAR_CREDENCIALES` | **Sí** | Production, Preview, Development | JSON de la cuenta de servicio `lafinca-calendario@…` **en base64, en una sola línea** — ver el apartado dedicado más abajo |
-| `GOOGLE_CALENDAR_ID` | No | Production, Preview, Development | **Vacía** hasta que el hotel comparta su calendario «la finca». Con la variable vacía, la integración no hace nada y el sitio funciona igual |
+| `GOOGLE_CALENDAR_ID` | No | Production, Preview, Development | **Vacía** hasta que el hotel comparta su calendario «la finca». Es una **lista**: `general@…, cab1@…=1, cab2@…=2` (el `=n` ata un calendario a una cabaña). Con la variable vacía, la integración no hace nada y el sitio funciona igual |
+| `GOOGLE_CALENDAR_ESCRIBIR_EN` | No | Production, Preview, Development | Opcional. En qué calendario se apuntan las reservas del panel; por defecto, el **primero** de `GOOGLE_CALENDAR_ID`. Se escribe siempre en uno solo para no duplicar eventos |
 | `RESEND_API_KEY` | **Sí** | Production, Preview, Development | 🔴 **PENDIENTE EN VERCEL.** Ya está en `.env.local` y funciona; falta copiarla aquí. Sin ella, el sitio publicado no envía ni un correo — ver el apartado dedicado más abajo |
 | `EMAIL_FROM` | No | Production, Preview, Development | 🔴 **PENDIENTE EN VERCEL.** `La Finca Eco Hotel <reservas@lafincaecohotel.com>` |
 | `EMAIL_NOTIFY_TO` | No | Production, Preview, Development | 🔴 **PENDIENTE EN VERCEL.** `fincavillarrealcali@gmail.com` (admite varios separados por coma) |
@@ -241,19 +242,46 @@ línea no los aguanta. **El archivo JSON original vive fuera del repositorio**
 (carpeta `_Sensible/` del cliente) y nunca debe copiarse dentro del proyecto ni
 subirse a Git.
 
-`GOOGLE_CALENDAR_ID` es el identificador del calendario del hotel. **Hoy se
-deja vacía**, porque falta que el hotel haga dos cosas:
+`GOOGLE_CALENDAR_ID` es la **lista** de calendarios que el sitio lee. **Hoy se
+deja vacía**, porque falta que el hotel haga una cosa:
 
-1. Compartir su calendario «la finca» con el correo de la cuenta de servicio y
-   darle el permiso **«Hacer cambios en eventos»** (no basta con «Ver todos los
-   detalles»: sin escritura, las reservas del panel no se apuntan).
-2. Pasarnos el **ID del calendario**: Google Calendar → el calendario «la
-   finca» → Configuración → «Integrar calendario» → «ID del calendario».
+- Compartir su calendario «la finca» con el correo de la cuenta de servicio y
+  darle el permiso **«Hacer cambios en eventos»** (no basta con «Ver todos los
+  detalles»: sin escritura, las reservas del panel no se apuntan).
 
-Con las dos variables puestas, `npm run calendario:probar` verifica la
-integración de punta a punta contra la API de Google (crea un calendario de
-prueba propio de la cuenta de servicio, lo usa y lo borra; no toca el del
-hotel). Sin ellas, el panel muestra «Calendario del hotel: sin configurar» y
+El **ID del calendario** ya no hay que pedírselo: en cuanto lo compartan aparece
+solo, con su identificador completo, en el panel (Reservas → «Ver los
+calendarios de Google», visible para el propietario) y en
+`npm run calendario:verificar`. También se puede sacar a mano desde Google
+Calendar → el calendario → Configuración → «Integrar calendario» → «ID del
+calendario».
+
+El formato admite varios calendarios separados por comas, y un `=n` detrás de
+cada uno para atarlo a una cabaña:
+
+```
+GOOGLE_CALENDAR_ID=general@group.calendar.google.com
+GOOGLE_CALENDAR_ID=general@group.calendar.google.com, cab1@…=1, cab2@…=2
+```
+
+Sin `=n` el calendario es **general** y se lee el título de cada evento (si
+nombra una cabaña ocupa esa; si no, se marcan las cinco). Con `=n` **todos** los
+eventos de ese calendario ocupan esa cabaña, sin mirar el título: es lo que
+hacen falta para los cinco subcalendarios por cabaña que el hotel va a crear
+para su bot de WhatsApp. Un mapeo que no se entienda (`=9`, `=cocina`) no apaga
+nada: se lee como general y el panel lo avisa.
+
+Dos scripts para comprobarlo:
+
+- `npm run calendario:verificar` — solo lee. Dice si la credencial carga, con
+  qué correo, cómo quedó entendida la variable y **qué calendarios ve de verdad
+  la cuenta de servicio**, con sus identificadores. Es el que se corre el día
+  que el hotel comparta el calendario.
+- `npm run calendario:probar` — verifica la integración de punta a punta contra
+  la API de Google (crea un calendario de prueba propio de la cuenta de
+  servicio, lo usa y lo borra; no toca el del hotel).
+
+Sin estas variables el panel muestra «Calendario del hotel: sin configurar» y
 todo lo demás sigue funcionando.
 
 ### `NEXT_PUBLIC_SITE_URL`

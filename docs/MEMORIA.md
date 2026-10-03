@@ -3048,3 +3048,103 @@ contraseña). Que siga aceptando hoy está comprobado por código: su acción no
 importa nada de la antelación, su única validación de fechas es que la salida sea
 posterior a la entrada (más cupo y choques), y el formulario trae **hoy** como
 entrada por defecto. Queda la casilla correspondiente en `docs/GUIA_PRUEBAS.md`.
+
+### 2026-10-03 — El sitio ya lee varios calendarios de Google, uno por cabaña
+
+**Por qué.** El hotel confirmó dos cosas. La primera, que en su calendario
+general los eventos **sí** llevan el nombre de la cabaña en el título: la lectura
+por título que ya estaba escrita sirve tal cual. La segunda, que van a crear
+**cinco subcalendarios, uno por cabaña**, bajo el mismo Gmail, para un bot de
+WhatsApp que funciona aparte. El sitio queda preparado para eso ahora, sin
+esperar a que existan.
+
+#### El formato de la variable
+
+`GOOGLE_CALENDAR_ID` pasa de ser un identificador a ser una **lista**. Separador:
+coma (los espacios y los saltos de línea también valen). Detrás de cada
+identificador puede ir `=n` con el número de cabaña:
+
+```
+GOOGLE_CALENDAR_ID=general@group.calendar.google.com
+GOOGLE_CALENDAR_ID=general@group.calendar.google.com, cab1@…=1, cab2@…=2
+```
+
+- **Sin `=n`** → calendario general: se lee el título de cada evento. Si nombra
+  una cabaña, ocupa esa; si no, bloquea las cinco. Es la regla de siempre.
+- **Con `=n`** (1 a 5) → todos los eventos de ese calendario ocupan **esa**
+  cabaña, sin mirar el título. Así el equipo puede apuntar «Ana Pérez» a secas en
+  el subcalendario de la Cabaña 3. Se entiende también `=cabaña 3`, `=cabana-03`
+  y `=cab. 3`.
+- Un solo identificador —el formato anterior— sigue funcionando igual.
+
+**Nada de esto puede apagar la disponibilidad.** Un mapeo que no se entiende
+(`=9`, `=cocina`) se degrada a calendario general, que bloquea más y no menos, y
+queda como aviso en el panel. Un identificador repetido se cuenta una vez. La
+decisión está en `src/lib/reserva/calendarios-config.ts`, que es puro y está
+probado.
+
+#### Ante un error de lectura, lo mismo que ya pasaba
+
+Los calendarios se consultan **en paralelo** y la ocupación se une. Si uno falla y
+otro responde, se usa lo que llegó y el fallo sale como aviso: es la coherencia
+con el comportamiento que ya existía para un solo calendario —un error de lectura
+devolvía ocupación vacía y no bloqueaba nada—, porque la fuente de verdad es
+Postgres y Google solo puede **añadir** ocupación, nunca quitarla. Una lectura
+incompleta se cachea un minuto en vez de cinco.
+
+**El doble conteo no existe**: lo que sale son franjas, y unir dos franjas
+idénticas ocupa exactamente las mismas noches que una. Si el mismo evento está en
+el general y en el subcalendario de su cabaña, la copia idéntica se descarta (para
+no ver dos barras en el panel) y, cuando los títulos difieren, las dos franjas
+siguen apuntando a la misma cabaña y a las mismas noches. Hay test de las dos
+cosas.
+
+#### Se escribe en un solo calendario
+
+Las reservas del panel se apuntan en **uno**: el primero de la lista, o el de
+`GOOGLE_CALENDAR_ESCRIBIR_EN` (variable nueva, opcional). Si se escribiera en el
+general y además en el de la cabaña, el equipo vería cada reserva dos veces y
+habría que mantener dos eventos por reserva. Crear, actualizar y borrar pasan por
+la misma función, así que las tres operaciones caen siempre donde se creó el
+evento. Contrapartida documentada: `reservas.referencia_externa` guarda el id del
+evento pero no su calendario, así que cambiar esa variable con reservas ya
+apuntadas deja huérfanos los eventos viejos. Es una decisión de puesta en marcha.
+
+#### El panel lo explica solo
+
+En **Reservas**, debajo del estado del calendario, el **propietario** tiene un
+desplegable «Ver los calendarios de Google» con: el correo de la cuenta de
+servicio al que hay que invitar, los calendarios configurados (identificador
+completo copiable, a qué cabaña van, cuál recibe las reservas, y aviso en rojo si
+el sitio no lo ve) y **los calendarios que la cuenta ya ve pero nadie ha
+configurado**. Eso último es lo que nos ahorra pedirle el identificador al hotel:
+en cuanto compartan el calendario, aparece ahí y se copia. Va detrás de un
+`Suspense` para no retrasar el calendario del mes, y se cachea cinco minutos (el
+botón «Actualizar ahora» tira esa caché también). Los avisos de configuración y
+los calendarios que fallaron salen como lista ámbar, y la pastilla pasa a
+«Conectado a medias».
+
+#### Scripts
+
+- `npm run calendario:verificar` (**nuevo**, solo lee): si la credencial carga,
+  el correo de la cuenta, cómo quedó entendida la variable con sus avisos, dónde
+  se escribe y qué calendarios ve de verdad la cuenta, marcando configurados y
+  sin configurar. No imprime ningún secreto. Es el script del día que el hotel
+  comparta el calendario.
+- `npm run calendario:probar` (el de antes, escribe en un calendario de prueba
+  propio y lo borra): sigue pasando, 14/14.
+
+#### Verificación
+
+`npx tsc --noEmit` limpio · `npm test` **326 pruebas en verde**, 22 nuevas (14 del
+parseo de la configuración y 8 de la unión de ocupaciones) · `npm run build` sin errores
+· `npm run calendario:probar` 14/14 contra la API real · `calendario:verificar`
+probado con configuraciones válidas e inválidas.
+
+#### Lo que falta (de Cesar, no del código)
+
+1. Que el hotel comparta el calendario «la finca» con
+   `lafinca-calendario@project-bdfd1411-9189-442d-84d.iam.gserviceaccount.com`
+   con permiso **«Hacer cambios en eventos»**.
+2. Poner `GOOGLE_CALENDAR_ID` (y `GOOGLE_CALENDAR_ESCRIBIR_EN` si hace falta) en
+   Vercel **Production**. `.env.local` sigue con la variable vacía a propósito.

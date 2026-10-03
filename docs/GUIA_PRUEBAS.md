@@ -82,10 +82,38 @@ Entra en `lafincaecohotel.com/admin` con la cuenta propietaria.
 - [ ] **Usuarios**: crea una cuenta de equipo, entra con ella y comprueba que **no** ve la sección Usuarios. Bórrala.
 - [ ] Sube una **foto nueva** desde el panel y comprueba que aparece en el sitio.
 
-## 6 · Limpieza (importante)
+## 6 · Calendario de Google (solo si ya está conectado)
+
+Esta sección se hace **solo si el panel dice «Calendario del hotel: conectado»**.
+Mientras diga «sin configurar», sáltala: significa que todavía no se ha
+compartido el calendario con el sitio.
+
+- [ ] **Del panel a Google:** crea una reserva manual en el panel y ábrela luego
+      en Google Calendar. Tiene que aparecer el evento, con la cabaña y el
+      nombre del huésped en el título, en los días correctos (el día de salida
+      **no** se ocupa).
+- [ ] Cambia las fechas de esa reserva en el panel: el mismo evento se mueve en
+      Google, no se crea otro.
+- [ ] Cancela la reserva en el panel: el evento **desaparece** de Google.
+- [ ] **De Google al sitio:** crea a mano en Google un evento llamado
+      «Cabaña 3 — prueba» para un fin de semana libre. En el panel, pulsa
+      «Actualizar ahora» en el recuadro del calendario del hotel. Esas noches
+      tienen que salir ocupadas **solo en la Cabaña 3**, y en el sitio público la
+      Cabaña 3 deja de ofrecerse para esas fechas (las otras cuatro siguen
+      libres).
+- [ ] **Un evento sin cabaña bloquea las cinco:** crea otro evento a mano
+      llamado «Reunión» (sin nombrar ninguna cabaña) en un día libre. Tras
+      «Actualizar ahora», ese día tiene que salir ocupado en **las cinco**
+      cabañas, en el panel y en el sitio. Es a propósito: ante la duda, no se
+      vende.
+- [ ] Borra de Google los dos eventos de prueba y pulsa «Actualizar ahora»: las
+      fechas vuelven a estar libres.
+
+## 7 · Limpieza (importante)
 
 - [ ] Borra **todas** las reservas de prueba desde el panel, incluidas las de día.
 - [ ] Borra los bloqueos de prueba.
+- [ ] Borra del calendario de Google los eventos de prueba que creaste a mano.
 - [ ] Deshaz los cambios de contenido que hiciste para probar.
 - [ ] Borra las fotos de prueba que subiste.
 - [ ] Avísame para verificar que la base quedó limpia.
