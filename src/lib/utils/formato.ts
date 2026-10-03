@@ -53,9 +53,21 @@ const formateadorFechaISO = new Intl.DateTimeFormat("en-CA", {
   day: "2-digit",
 });
 
-/** Fecha de hoy en Colombia, como `AAAA-MM-DD`. */
-export function hoyEnBogota(): FechaISO {
-  return formateadorFechaISO.format(new Date());
+/**
+ * Fecha de hoy en Colombia, como `AAAA-MM-DD`.
+ *
+ * Es el «hoy» del HOTEL, el único que vale para decidir fechas de estadía. A
+ * las 11 de la noche de Bogotá en Madrid ya es el día siguiente, así que el
+ * reloj del navegador correría un día y dejaría reservar una noche que para el
+ * hotel ya pasó. Colombia no tiene horario de verano, pero se resuelve con
+ * `Intl` y la zona por nombre en vez de restar cinco horas a mano: así no hay
+ * nada que corregir si algún día eso cambia.
+ *
+ * `ahora` se puede pasar para probar el cambio de día sin tocar el reloj del
+ * sistema; en producción nadie lo pasa.
+ */
+export function hoyEnBogota(ahora: Date = new Date()): FechaISO {
+  return formateadorFechaISO.format(ahora);
 }
 
 /**

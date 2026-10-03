@@ -25,9 +25,14 @@
  * fechas dejaba el plan congelado y ya no se podía cambiar—, y además no es lo
  * que hace el hotel: las mixtas se permiten y se **desglosan noche por noche**.
  *
- * Aquí no hay ninguna función que diga «no». Este módulo solo CLASIFICA. Quién
- * puede cobrar qué lo decide `cotizacion.ts`, y la interfaz nunca apaga un día
- * del calendario por culpa de un plan.
+ * Aquí ninguna función dice «no» **por culpa de un plan**: este módulo solo
+ * CLASIFICA. Quién puede cobrar qué lo decide `cotizacion.ts`, y la interfaz
+ * nunca apaga un día del calendario por culpa de un plan.
+ *
+ * Lo único que sí puede decir «no» vive abajo y no tiene nada que ver con los
+ * planes: el rango en sí (`validarRango`) y la **antelación mínima** del sitio
+ * público (`DIAS_MINIMOS_ANTELACION`, `validarAntelacion`), que es la que
+ * impide reservar en línea para hoy.
  *
  * ---------------------------------------------------------------------------
  * MÓDULO PURO
@@ -241,6 +246,107 @@ export function resumenEnPalabras(noches: Noche[]): string {
     );
   }
   return partes.join(" y ");
+}
+
+/* ===========================================================================
+ * Antelación mínima — la regla del SITIO PÚBLICO
+ * ======================================================================== */
+
+/**
+ * CUÁNTOS DÍAS DE ANTELACIÓN EXIGE UNA RESERVA HECHA DESDE EL SITIO.
+ *
+ * `1` = la llegada más temprana que se puede elegir en el sitio es **mañana**;
+ * nadie reserva en línea para hoy (decisión del cliente, 2026-10-02: el equipo
+ * necesita el día para alistar la cabaña y recibir al huésped). Cambiar este
+ * número a `2` o `3` endurece la regla en todo el sitio de una sola vez: el
+ * calendario, el recálculo del servidor y el endpoint `/api/reservar` leen esta
+ * constante y nada más. No hay ningún otro sitio donde esté escrito «mañana».
+ *
+ * ⚠️ **ES UNA REGLA DEL SITIO PÚBLICO, NO DEL HOTEL.** El panel administrativo
+ * tiene que poder registrar una reserva de HOY —las que entran por WhatsApp a
+ * última hora, con el huésped ya en camino— y también bloquear el día en curso
+ * por mantenimiento. Por eso el alta manual
+ * (`src/app/admin/(panel)/reservas/acciones.ts`) y los bloqueos NO pasan por
+ * aquí: su único límite de fechas sigue siendo el choque con otra reserva. Si
+ * esta constante se aplicara al panel, el equipo perdería las reservas de última
+ * hora, que son dinero que ya está en la puerta.
+ *
+ * Se declara como `number` y no como el literal `1` a propósito: así el
+ * compilador no «aplana» las ramas que dependen de ella y subirla sigue
+ * cambiando los textos sin tocar nada más.
+ */
+export const DIAS_MINIMOS_ANTELACION: number = 1;
+
+/**
+ * La primera llegada que el sitio público acepta, dado el «hoy» del hotel.
+ *
+ * `hoy` tiene que venir calculado en `America/Bogota` —`hoyEnBogota()` de
+ * `src/lib/utils/formato.ts`—, nunca del reloj del navegador: a las 11 de la
+ * noche de Bogotá «mañana» todavía es mañana, y un visitante en Madrid (donde
+ * ya son las 6 de la mañana del día siguiente) vería la fecha corrida un día.
+ */
+export function primeraLlegadaReservable(hoy: FechaISO): FechaISO {
+  return sumarDias(hoy, DIAS_MINIMOS_ANTELACION);
+}
+
+/**
+ * El motivo CORTO, para la casilla de un día apagado en el calendario.
+ * Va al `aria-label` junto a la fecha: «viernes 2 de octubre — no se puede
+ * reservar para hoy».
+ */
+export const MOTIVO_SIN_ANTELACION =
+  DIAS_MINIMOS_ANTELACION === 1
+    ? "no se puede reservar para hoy"
+    : "es demasiado pronto para reservar";
+
+/**
+ * La regla en tres palabras, para la ayuda del calendario: «desde mañana en
+ * adelante». Se deriva de la constante, así que subirla también cambia el texto.
+ */
+export const TEXTO_ANTELACION =
+  DIAS_MINIMOS_ANTELACION === 1
+    ? "desde mañana en adelante"
+    : `con al menos ${DIAS_MINIMOS_ANTELACION} días de antelación`;
+
+/** El motivo LARGO, el que se le explica a quien lo intenta de todos modos. */
+export const MENSAJE_SIN_ANTELACION =
+  DIAS_MINIMOS_ANTELACION === 1
+    ? "Las reservas por el sitio son a partir de mañana: para hoy mismo ya no podemos tomarlas en línea. Si quieres llegar hoy, escríbenos por WhatsApp y lo resolvemos al instante."
+    : `Las reservas por el sitio necesitan ${DIAS_MINIMOS_ANTELACION} días de antelación. Si quieres llegar antes, escríbenos por WhatsApp y lo resolvemos al instante.`;
+
+export type ResultadoAntelacion =
+  | { valido: true }
+  | { valido: false; motivo: string };
+
+/**
+ * ¿Esta llegada respeta la antelación mínima del sitio público?
+ *
+ * Misma función para el hospedaje y para el **Día de Calma**: el Día de Calma es
+ * una llegada sin salida, así que su fecha única se comprueba igual. Pura: no
+ * mira el reloj, el «hoy» se lo pasa quien llama.
+ */
+export function validarAntelacion(
+  entrada: FechaISO | null | undefined,
+  hoy: FechaISO,
+): ResultadoAntelacion {
+  if (!entrada || !esFechaISO(entrada)) {
+    return { valido: false, motivo: "La fecha de llegada no es válida." };
+  }
+  if (!esFechaISO(hoy)) {
+    /* Un «hoy» ilegible es un fallo de quien llama, no del huésped. Se cierra
+       la puerta en vez de dejar pasar una reserva sin comprobar. */
+    return { valido: false, motivo: MENSAJE_SIN_ANTELACION };
+  }
+
+  if (entrada >= primeraLlegadaReservable(hoy)) return { valido: true };
+
+  if (entrada < hoy) {
+    return {
+      valido: false,
+      motivo: `Esa fecha ya pasó. ${MENSAJE_SIN_ANTELACION}`,
+    };
+  }
+  return { valido: false, motivo: MENSAJE_SIN_ANTELACION };
 }
 
 /* ===========================================================================
