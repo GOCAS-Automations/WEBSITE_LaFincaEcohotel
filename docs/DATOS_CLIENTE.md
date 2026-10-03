@@ -99,7 +99,7 @@ reserva vive en `MAX_PERSONAS_POR_RESERVA_DIA` (mismo archivo) y en el constrain
 
 **El Día de Calma se reserva y se paga por el sitio** (2026-09-16). Recorre el mismo cierre que el
 hospedaje: resumen con el total ($250.000 para una o dos personas), paso de anticipo con el
-deslizante de 50 a 100 % y el mismo botón final. Wompi tendrá **una sola costura** para los dos
+deslizante de 50 a 100 % y el mismo botón final. El pago con Bold tiene **una sola costura** para los dos
 tipos: el botón lee `pagoActual`, que es el resumen del modo en curso
 (`src/components/sitio/selector-reserva.tsx`). No hay experiencias por noche en este modo —no hay
 noches—, pero sí los **adicionales «para el día»**, que viajan con `noche = null`, igual que los de
@@ -243,7 +243,7 @@ nuestro propio sitio se ignoran.
 
 | Persona | Rol |
 |---|---|
-| **Amapola** | Dueña, clienta directa de GOCAS. Envía identidad de marca, accesos (Hostinger, correo, Google Business, Analytics), cuenta bancaria y documentos de Wompi; aprueba textos y legales |
+| **Amapola** | Dueña, clienta directa de GOCAS. Envía identidad de marca, accesos (Hostinger, correo, Google Business, Analytics) y habilita en su panel de Bold las llaves de integración, que nos envía; no hay documentos que entregar y la cuenta que recibe los pagos la configura el hotel dentro de Bold; aprueba textos y legales |
 | **Juan Camilo Mejía** | Arquitecto; creó el Drive y reparte los requerimientos; revisa descripciones y textos con Amapola |
 | **Camilo** | Accesos y Drive |
 | **Santiago** | Diseñador: logo vectorial, identidad de marca, licencia de Intro |
@@ -296,7 +296,7 @@ que el navegador pueda falsificar.
 - [x] Razón social, NIT y correo de contacto: entregados el 2026-09-30 (ver §7).
 - [ ] Revisión posterior de los textos legales (aprobados por el cliente el 2026-09-30; queda la revisión jurídica).
 - [ ] **Llaves de producción de Bold** (Amapola). La pasarela es **Bold**, del Banco de Bogotá, donde
-      el hotel ya tiene cuenta (no es Wompi). **No se piden documentos ni cuenta bancaria**: solo que el
+      el hotel ya tiene cuenta. **No se piden documentos ni cuenta bancaria**: solo que el
       hotel **habilite las llaves de integración en su panel de Bold** y nos envíe las dos de
       producción (identidad y secreta, del mismo ambiente). Sin ellas el sitio no cobra en línea y
       cierra por WhatsApp. El anticipo ya está decidido (ver §5): de 50 a 100 %, y el saldo por link
