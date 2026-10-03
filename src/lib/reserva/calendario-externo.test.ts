@@ -8,6 +8,7 @@ import {
   franjasQueChocan,
   numeroDeCabana,
   ocupacionDesdeEventos,
+  ocupacionDesdeVariosCalendarios,
   rangoDelEvento,
   type EventoCalendario,
 } from "./calendario-externo";
@@ -268,5 +269,151 @@ describe("diasDeLaFranja", () => {
       evento({ titulo: "Cabaña 1", inicioFecha: "2026-09-29", finFecha: "2026-10-02" }),
     ]);
     expect(diasDeLaFranja(franja)).toEqual(["2026-09-29", "2026-09-30", "2026-10-01"]);
+  });
+});
+
+describe("ocupacionDesdeVariosCalendarios", () => {
+  const CABANAS = [1, 2, 3, 4, 5].map((n) => ({
+    id: `id-${n}`,
+    nombre: `Cabaña 0${n}`,
+  }));
+
+  /** Qué noches quedan ocupadas en cada cabaña: la pregunta que importa. */
+  function nochesPorCabana(franjas: ReturnType<typeof ocupacionDesdeEventos>) {
+    const mapa = new Map<string, Set<string>>(
+      CABANAS.map((cabana) => [cabana.id, new Set<string>()]),
+    );
+    for (const franja of franjas) {
+      for (const cabana of cabanasAfectadas(franja, CABANAS)) {
+        for (const dia of diasDeLaFranja(franja)) mapa.get(cabana.id)?.add(dia);
+      }
+    }
+    return Object.fromEntries(
+      [...mapa].map(([id, dias]) => [id, [...dias].sort()]),
+    );
+  }
+
+  it("en un calendario de cabaña no hace falta que el título la nombre", () => {
+    const franjas = ocupacionDesdeVariosCalendarios([
+      {
+        cabana: 3,
+        eventos: [
+          evento({ id: "a", titulo: "Ana Pérez", inicioFecha: "2026-09-10", finFecha: "2026-09-12" }),
+        ],
+      },
+    ]);
+    expect(franjas).toHaveLength(1);
+    expect(franjas[0].cabana).toBe(3);
+    expect(franjas[0].motivo).toBe("calendario_de_cabana");
+    /* Y no bloquea las otras cuatro, que es lo que haría el calendario general. */
+    expect(cabanasAfectadas(franjas[0], CABANAS).map((c) => c.id)).toEqual(["id-3"]);
+  });
+
+  it("el calendario de cabaña manda sobre lo que diga el título", () => {
+    const franjas = ocupacionDesdeVariosCalendarios([
+      {
+        cabana: 2,
+        eventos: [
+          evento({ id: "a", titulo: "Cabaña 5 · se cambiaron", inicioFecha: "2026-09-10", finFecha: "2026-09-11" }),
+        ],
+      },
+    ]);
+    expect(franjas[0].cabana).toBe(2);
+  });
+
+  it("el calendario general sigue leyendo el título, y lo anónimo bloquea las cinco", () => {
+    const franjas = ocupacionDesdeVariosCalendarios([
+      {
+        cabana: null,
+        eventos: [
+          evento({ id: "a", titulo: "Cabaña 4 · Luis", inicioFecha: "2026-09-10", finFecha: "2026-09-11" }),
+          evento({ id: "b", titulo: "Evento privado", inicioFecha: "2026-09-20", finFecha: "2026-09-21" }),
+        ],
+      },
+    ]);
+    expect(franjas.find((f) => f.eventoId === "a")?.cabana).toBe(4);
+    expect(franjas.find((f) => f.eventoId === "b")?.cabana).toBeNull();
+    expect(cabanasAfectadas(franjas.find((f) => f.eventoId === "b")!, CABANAS)).toHaveLength(5);
+  });
+
+  it("une los calendarios en vez de sumarlos: el mismo evento repetido ocupa lo mismo", () => {
+    const enElGeneral = evento({
+      id: "evt-compartido",
+      titulo: "Cabaña 3 · Ana Pérez",
+      inicioFecha: "2026-09-10",
+      finFecha: "2026-09-13",
+    });
+
+    const soloGeneral = ocupacionDesdeVariosCalendarios([
+      { cabana: null, eventos: [enElGeneral] },
+    ]);
+    const enLosDos = ocupacionDesdeVariosCalendarios([
+      { cabana: null, eventos: [enElGeneral] },
+      { cabana: 3, eventos: [enElGeneral] },
+    ]);
+
+    /* La copia idéntica se descarta: una sola barra en el panel. */
+    expect(soloGeneral).toHaveLength(1);
+    expect(enLosDos).toHaveLength(1);
+    expect(nochesPorCabana(enLosDos)).toEqual(nochesPorCabana(soloGeneral));
+  });
+
+  it("aunque el subcalendario lo titule distinto, la ocupación es la misma", () => {
+    const soloGeneral = ocupacionDesdeVariosCalendarios([
+      {
+        cabana: null,
+        eventos: [
+          evento({ id: "g", titulo: "Cabaña 3 · Ana Pérez", inicioFecha: "2026-09-10", finFecha: "2026-09-13" }),
+        ],
+      },
+    ]);
+    const enLosDos = ocupacionDesdeVariosCalendarios([
+      {
+        cabana: null,
+        eventos: [
+          evento({ id: "g", titulo: "Cabaña 3 · Ana Pérez", inicioFecha: "2026-09-10", finFecha: "2026-09-13" }),
+        ],
+      },
+      {
+        cabana: 3,
+        eventos: [
+          evento({ id: "s", titulo: "Ana", inicioFecha: "2026-09-10", finFecha: "2026-09-13" }),
+        ],
+      },
+    ]);
+
+    expect(nochesPorCabana(enLosDos)).toEqual(nochesPorCabana(soloGeneral));
+  });
+
+  it("sigue descartando lo cancelado y lo que escribió el propio sitio", () => {
+    const franjas = ocupacionDesdeVariosCalendarios([
+      {
+        cabana: 1,
+        eventos: [
+          evento({ id: "a", estado: "cancelled", inicioFecha: "2026-09-10", finFecha: "2026-09-11" }),
+          evento({ id: "b", origen: ORIGEN_PROPIO, inicioFecha: "2026-09-12", finFecha: "2026-09-13" }),
+          evento({ id: "c", titulo: "Marta", inicioFecha: "2026-09-14", finFecha: "2026-09-15" }),
+        ],
+      },
+    ]);
+    expect(franjas.map((f) => f.eventoId)).toEqual(["c"]);
+  });
+
+  it("sale ordenado por fecha aunque los calendarios lleguen en cualquier orden", () => {
+    const franjas = ocupacionDesdeVariosCalendarios([
+      {
+        cabana: 5,
+        eventos: [evento({ id: "tarde", titulo: "x", inicioFecha: "2026-09-20", finFecha: "2026-09-21" })],
+      },
+      {
+        cabana: 1,
+        eventos: [evento({ id: "pronto", titulo: "y", inicioFecha: "2026-09-02", finFecha: "2026-09-03" })],
+      },
+    ]);
+    expect(franjas.map((f) => f.eventoId)).toEqual(["pronto", "tarde"]);
+  });
+
+  it("sin calendarios no hay ocupación", () => {
+    expect(ocupacionDesdeVariosCalendarios([])).toEqual([]);
   });
 });

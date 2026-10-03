@@ -8,6 +8,11 @@ import {
   ZONA_HOTEL,
   type EventoCalendario,
 } from "../reserva/calendario-externo";
+import {
+  parsearCalendarios,
+  type CalendarioDelHotel,
+  type ConfiguracionCalendarios,
+} from "../reserva/calendarios-config";
 
 /**
  * Google Calendar con una cuenta de servicio, a pelo.
@@ -23,15 +28,19 @@ import {
  * problema, y en Vercel cada mega cuenta en el arranque en frío.
  *
  * ---------------------------------------------------------------------------
- * LAS DOS VARIABLES
+ * LAS VARIABLES
  * ---------------------------------------------------------------------------
  * · `GOOGLE_CALENDAR_CREDENCIALES` → el JSON de la cuenta de servicio
  *   `lafinca-calendario@…` **en base64, en una sola línea**. En base64 porque
  *   la clave privada lleva saltos de línea y un `.env` de una línea no los
  *   aguanta. También se acepta el JSON en claro por comodidad en local.
- * · `GOOGLE_CALENDAR_ID` → el identificador del calendario «la finca». **Hoy
- *   está vacío**: el hotel todavía no ha compartido su calendario con la
- *   cuenta de servicio.
+ * · `GOOGLE_CALENDAR_ID` → la **lista** de calendarios que se leen, con el
+ *   mapeo opcional a cabaña (`general@…, cab1@…=1, cab2@…=2`). El formato
+ *   entero está documentado en `../reserva/calendarios-config.ts`. Un solo
+ *   identificador sigue valiendo. **Hoy está vacío**: el hotel todavía no ha
+ *   compartido su calendario con la cuenta de servicio.
+ * · `GOOGLE_CALENDAR_ESCRIBIR_EN` → opcional. Dónde se apuntan las reservas del
+ *   panel; por defecto, el primero de la lista.
  *
  * ---------------------------------------------------------------------------
  * NADA DE ESTO PUEDE TIRAR EL SITIO
@@ -100,15 +109,40 @@ export function correoDeLaCuentaDeServicio(): string | null {
   return leerCredencial()?.correo ?? null;
 }
 
-/** Identificador del calendario del hotel, o `null` si todavía no lo tenemos. */
-export function idCalendarioHotel(): string | null {
-  const id = process.env.GOOGLE_CALENDAR_ID?.trim();
-  return id ? id : null;
+/**
+ * Los calendarios configurados y a dónde se escribe, ya entendidos.
+ *
+ * Se lee de las variables en cada llamada —no se guarda— porque es barato y
+ * porque así un cambio en Vercel surte efecto sin tocar nada más. Nunca lanza:
+ * lo que no se entiende sale como aviso en `avisos`.
+ */
+export function configuracionDeCalendarios(): ConfiguracionCalendarios {
+  return parsearCalendarios(
+    process.env.GOOGLE_CALENDAR_ID,
+    process.env.GOOGLE_CALENDAR_ESCRIBIR_EN,
+  );
 }
 
-/** ¿Está la integración completa (credencial + calendario)? */
+/** Los calendarios que el sitio LEE. Vacío si todavía no hay ninguno. */
+export function calendariosDelHotel(): CalendarioDelHotel[] {
+  return configuracionDeCalendarios().calendarios;
+}
+
+/**
+ * El único calendario donde el sitio ESCRIBE, o `null` si no hay ninguno.
+ *
+ * Es uno solo a propósito: si las reservas del panel se apuntaran en el
+ * calendario general y además en el de su cabaña, el equipo vería cada reserva
+ * dos veces y habría que mantener dos eventos por reserva. Por defecto es el
+ * primero de `GOOGLE_CALENDAR_ID`; `GOOGLE_CALENDAR_ESCRIBIR_EN` lo cambia.
+ */
+export function calendarioDeEscritura(): string | null {
+  return configuracionDeCalendarios().escribirEn;
+}
+
+/** ¿Está la integración completa (credencial + al menos un calendario)? */
 export function calendarioConfigurado(): boolean {
-  return credencialConfigurada() && idCalendarioHotel() !== null;
+  return credencialConfigurada() && calendariosDelHotel().length > 0;
 }
 
 function base64url(dato: Buffer | string): string {

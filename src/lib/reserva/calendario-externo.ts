@@ -31,6 +31,11 @@
  *   4. Los eventos que creó el propio sitio se ignoran: ya están en la tabla
  *      `reservas` y contarlos dos veces haría que una reserva chocara consigo
  *      misma. Se reconocen por `extendedProperties.private.origen`.
+ *   5. Si el evento viene de un calendario atado a una cabaña (los cinco
+ *      subcalendarios que lleva el hotel, ver `calendarios-config.ts`), ocupa
+ *      ESA cabaña y el título no se mira. Lo hace
+ *      {@link ocupacionDesdeVariosCalendarios}, que además une lo de todos los
+ *      calendarios sin contar dos veces un evento duplicado.
  *
  * ---------------------------------------------------------------------------
  * FECHAS
@@ -86,8 +91,15 @@ export type OcupacionExterna = {
   fin: string;
   /** Número de cabaña (1–5) reconocido en el título; `null` = bloquea todas. */
   cabana: number | null;
-  /** Por qué bloquea, para poder explicarlo en el panel en español. */
-  motivo: "cabana_reconocida" | "sin_cabana";
+  /**
+   * Por qué bloquea, para poder explicarlo en el panel en español.
+   *
+   * · `cabana_reconocida` → el título del evento nombraba la cabaña.
+   * · `sin_cabana` → no se reconoció ninguna: bloquea las cinco.
+   * · `calendario_de_cabana` → el evento venía de un subcalendario atado a una
+   *   cabaña, así que el título no hizo falta.
+   */
+  motivo: "cabana_reconocida" | "sin_cabana" | "calendario_de_cabana";
 };
 
 /* ---------------------------------------------------------------------------
@@ -226,9 +238,76 @@ export function ocupacionDesdeEventos(
     });
   }
 
+  ordenarFranjas(franjas);
+  return franjas;
+}
+
+/** Orden de lectura del panel: por fecha y, a igualdad, por título. */
+function ordenarFranjas(franjas: OcupacionExterna[]): void {
   franjas.sort((a, b) =>
     a.inicio === b.inicio ? a.titulo.localeCompare(b.titulo) : a.inicio < b.inicio ? -1 : 1,
   );
+}
+
+/** Los eventos de UN calendario, con la cabaña a la que está atado ese calendario. */
+export type LoteDeCalendario = {
+  /** Cabaña fija del calendario (1–5), o `null` si es un calendario general. */
+  cabana: number | null;
+  eventos: EventoCalendario[];
+};
+
+/**
+ * Junta la ocupación de varios calendarios en una sola lista.
+ *
+ * ---------------------------------------------------------------------------
+ * SUBCALENDARIOS: LA CABAÑA MANDA SOBRE EL TÍTULO
+ * ---------------------------------------------------------------------------
+ * Si el lote viene de un calendario atado a una cabaña, sus eventos ocupan ESA
+ * cabaña y da igual lo que diga el título. Es lo que hace útil un subcalendario:
+ * el equipo puede apuntar «Ana Pérez» a secas en el de la Cabaña 3 y el sitio
+ * sabe de qué cabaña habla.
+ *
+ * ---------------------------------------------------------------------------
+ * ESTO ES UNA UNIÓN, NO UNA SUMA
+ * ---------------------------------------------------------------------------
+ * El mismo evento puede estar en el calendario general Y en el de su cabaña
+ * —son dos calendarios del mismo Gmail y nadie promete que no se dupliquen—. Un
+ * evento repetido no debe ocupar «dos veces»: lo que sale de aquí son franjas, y
+ * dos franjas idénticas bloquean exactamente las mismas noches que una. Para que
+ * tampoco se vean dos barras iguales en el panel, se descarta la copia cuando
+ * coinciden cabaña, fechas y título.
+ *
+ * Cuando el título SÍ difiere (en el general «Cabaña 3 · Ana» y en el
+ * subcalendario «Ana»), quedan dos franjas; siguen apuntando a la misma cabaña y
+ * a las mismas noches, así que la disponibilidad resultante es la misma.
+ */
+export function ocupacionDesdeVariosCalendarios(
+  lotes: LoteDeCalendario[],
+): OcupacionExterna[] {
+  const franjas: OcupacionExterna[] = [];
+  const vistas = new Set<string>();
+
+  for (const lote of lotes) {
+    for (const franja of ocupacionDesdeEventos(lote.eventos)) {
+      const ajustada: OcupacionExterna =
+        lote.cabana === null
+          ? franja
+          : { ...franja, cabana: lote.cabana, motivo: "calendario_de_cabana" };
+
+      const clave = [
+        ajustada.cabana ?? "todas",
+        ajustada.inicio,
+        ajustada.fin,
+        ajustada.titulo.toLowerCase(),
+      ].join("|");
+      if (vistas.has(clave)) continue;
+
+      vistas.add(clave);
+      franjas.push(ajustada);
+    }
+  }
+
+  ordenarFranjas(franjas);
   return franjas;
 }
 

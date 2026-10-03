@@ -5,9 +5,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   actualizarEvento,
   calendarioConfigurado,
+  calendarioDeEscritura,
   crearEvento,
   eliminarEvento,
-  idCalendarioHotel,
   type EventoNuevo,
 } from "@/lib/google/calendario";
 import { obtenerReserva } from "@/lib/admin/datos";
@@ -31,6 +31,25 @@ import type { ReservaAdmin } from "@/lib/admin/tipos";
  *
  * Si `GOOGLE_CALENDAR_ID` está vacío —hoy lo está: el hotel todavía no ha
  * compartido su calendario— todo esto no hace absolutamente nada.
+ *
+ * ---------------------------------------------------------------------------
+ * SE ESCRIBE EN UN SOLO CALENDARIO
+ * ---------------------------------------------------------------------------
+ * El sitio LEE varios calendarios (el general del hotel y los subcalendarios por
+ * cabaña), pero ESCRIBE solo en uno: el que diga `calendarioDeEscritura()`, que
+ * es el primero de `GOOGLE_CALENDAR_ID` salvo que
+ * `GOOGLE_CALENDAR_ESCRIBIR_EN` diga otro. Si se escribiera en el general y
+ * además en el de la cabaña, el equipo vería cada reserva dos veces y habría que
+ * mantener dos eventos por reserva.
+ *
+ * Crear, actualizar y borrar pasan por esa MISMA función, así que las tres
+ * operaciones de una reserva caen siempre en el mismo calendario. El precio de
+ * esa simplicidad: `reservas.referencia_externa` guarda solo el id del evento,
+ * no en qué calendario está. Si alguien cambia el calendario de escritura con
+ * reservas ya apuntadas, los eventos viejos se quedan huérfanos en el calendario
+ * anterior —borrarlos no fallará (un 404 se trata como éxito) pero tampoco los
+ * quitará— y hay que barrerlos a mano. Cambiar esa variable es, por tanto, una
+ * decisión de puesta en marcha, no un ajuste del día a día.
  *
  * ---------------------------------------------------------------------------
  * CÓMO SE RECONOCE NUESTRO EVENTO
@@ -109,7 +128,7 @@ export async function sincronizarReservaEnCalendario(
   supabase: SupabaseClient,
   reservaId: string,
 ): Promise<string | null> {
-  const calendarioId = idCalendarioHotel();
+  const calendarioId = calendarioDeEscritura();
   if (!calendarioId || !calendarioConfigurado()) return null;
 
   let reserva: ReservaAdmin | null = null;
@@ -176,7 +195,7 @@ export async function borrarEventoDeReserva(
   supabase: SupabaseClient,
   reservaId: string,
 ): Promise<string | null> {
-  const calendarioId = idCalendarioHotel();
+  const calendarioId = calendarioDeEscritura();
   if (!calendarioId || !calendarioConfigurado()) return null;
 
   const { data } = await supabase
