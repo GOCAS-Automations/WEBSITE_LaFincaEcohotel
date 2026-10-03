@@ -5,7 +5,9 @@ import { boldConfigurado, pagosActivos } from "@/lib/pagos/bold";
 import { crearReservaYCobro } from "@/lib/pagos/crear-reserva";
 import type { SolicitudDeReserva } from "@/lib/pagos/cotizar-en-servidor";
 import { origenParaBold } from "@/lib/pagos/origen";
+import { validarAntelacion } from "@/lib/reserva/noches";
 import { crearClienteAdmin } from "@/lib/supabase/admin";
+import { hoyEnBogota } from "@/lib/utils/formato";
 
 /**
  * Crear la reserva y abrir el cobro de Bold.
@@ -36,6 +38,10 @@ import { crearClienteAdmin } from "@/lib/supabase/admin";
  * qué noche, el porcentaje de anticipo y los datos de contacto. Los precios los
  * pone el servidor leyendo `tarifas` y `extras` (`cotizarEnServidor`). Si el
  * cuerpo trae un `total`, se ignora: no se lee en ningún sitio.
+ *
+ * Y las fechas se comprueban contra el **reloj del hotel**, no contra el del
+ * navegador: por el sitio no se reserva para hoy (ver más abajo y
+ * `DIAS_MINIMOS_ANTELACION` en `src/lib/reserva/noches.ts`).
  */
 
 export const dynamic = "force-dynamic";
@@ -165,6 +171,26 @@ export async function POST(peticion: Request) {
       { ok: true, ignorado: true },
       { headers: { "cache-control": "no-store" } },
     );
+  }
+
+  /*
+    NADIE RESERVA AQUÍ PARA HOY.
+
+    Regla del hotel desde el 2026-10-02: por el sitio solo se reserva con un día
+    de antelación como mínimo, así que la llegada más temprana es mañana. El
+    calendario ya apaga esos días, pero esto es una petición HTTP: puede venir de
+    un `fetch` escrito a mano, de una pestaña abierta desde ayer o de un enlace
+    viejo. **La validación que manda es esta**, y se hace antes de leer la base.
+
+    Vale para el hospedaje y para el Día de Calma —en el Día de Calma `entrada`
+    es la fecha única—, y `cotizarEnServidor()` la repite por si algún día entra
+    otro camino público. El PANEL no pasa por aquí: el equipo sí puede registrar
+    una reserva de hoy (ver `DIAS_MINIMOS_ANTELACION` en
+    `src/lib/reserva/noches.ts`).
+  */
+  const antelacion = validarAntelacion(texto(datos.entrada, 10), hoyEnBogota());
+  if (!antelacion.valido) {
+    return error(antelacion.motivo, 400);
   }
 
   /*

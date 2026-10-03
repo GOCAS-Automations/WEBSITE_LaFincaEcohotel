@@ -297,6 +297,21 @@ export async function guardarReservaAction(
       ? null
       : uuidRequerido(formData, "alojamiento_id", "Cabaña");
     const planId = uuidRequerido(formData, "plan_id", "Plan");
+    /*
+      AQUÍ NO SE EXIGE ANTELACIÓN, Y ES A PROPÓSITO.
+
+      El sitio público no toma reservas para el mismo día: su llegada más
+      temprana es mañana (`DIAS_MINIMOS_ANTELACION` en
+      `src/lib/reserva/noches.ts`, comprobado en `cotizarEnServidor()` y en
+      `/api/reservar`). El panel es el otro caso: el equipo del hotel recibe por
+      WhatsApp reservas de HOY, con el huésped ya en camino, y tiene que poder
+      registrarlas. Por eso el alta manual solo mira lo que de verdad lo impide
+      —que la salida sea posterior a la entrada, el cupo del Día de Calma y el
+      choque con otra reserva o un bloqueo—, nunca el calendario.
+
+      Si algún día hiciera falta un tope aquí, tendría que ser otra constante:
+      aplicar la del público dejaría al hotel sin las reservas de última hora.
+    */
     const entrada = fechaRequerida(
       formData,
       "entrada",

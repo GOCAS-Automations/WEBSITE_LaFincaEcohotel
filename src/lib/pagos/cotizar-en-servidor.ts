@@ -51,7 +51,12 @@ import {
   MAX_PERSONAS_POR_RESERVA_DIA,
   cotizarDiaDeCalma,
 } from "../reserva/dia-de-calma";
-import { esFechaISO, nochesDe, validarRango } from "../reserva/noches";
+import {
+  esFechaISO,
+  nochesDe,
+  validarAntelacion,
+  validarRango,
+} from "../reserva/noches";
 import { ocupaCalendario } from "../reserva/holds";
 import {
   normalizarPorcentajeAnticipo,
@@ -59,7 +64,7 @@ import {
   type ExtraElegido,
   type ResumenDePago,
 } from "../reserva/total";
-import { sumarDias, type FechaISO } from "../utils/formato";
+import { hoyEnBogota, sumarDias, type FechaISO } from "../utils/formato";
 
 /* ===========================================================================
  * Lo que llega del navegador
@@ -166,12 +171,29 @@ export async function cotizarEnServidor(
 
   /* El «hoy» del hotel, no el del navegador: una zona horaria distinta no puede
      servir para reservar una noche que ya pasó. */
-  const hoy = new Date(ahora.getTime() - 5 * 60 * 60 * 1000)
-    .toISOString()
-    .slice(0, 10);
+  const hoy = hoyEnBogota(ahora);
 
-  if (solicitud.entrada < hoy) {
-    return no("Esa fecha ya pasó. Elige una fecha a partir de hoy.");
+  /*
+    LA ANTELACIÓN MÍNIMA, Y AQUÍ ES DONDE MANDA.
+
+    El sitio no toma reservas en línea para el mismo día: la llegada más
+    temprana es mañana (`DIAS_MINIMOS_ANTELACION`). El calendario ya apaga esos
+    días, pero el calendario es del navegador y el navegador puede mandar
+    cualquier cosa —un `fetch` a mano, un enlace viejo, una pestaña abierta
+    desde ayer—, así que la decisión se toma aquí, con el «hoy» del hotel.
+
+    Vale igual para el **hospedaje** y para el **Día de Calma**: esta
+    comprobación va antes de separar los dos caminos, y en el Día de Calma
+    `entrada` es la fecha única.
+
+    No afecta al PANEL: el alta manual del equipo
+    (`src/app/admin/(panel)/reservas/acciones.ts`) no pasa por esta función —ni
+    por `/api/reservar`— precisamente para poder registrar las reservas de hoy
+    que entran por WhatsApp a última hora.
+  */
+  const antelacion = validarAntelacion(solicitud.entrada, hoy);
+  if (!antelacion.valido) {
+    return no(antelacion.motivo);
   }
   if (solicitud.entrada > sumarDias(hoy, MAXIMO_DIAS_VISTA)) {
     return no(
