@@ -187,6 +187,8 @@
 | 2026-10-02 | **En el cron, reconciliar va ANTES de barrer.** Si el barrido corriera primero cancelaría una reserva cuyo pago está aprobado y habría que resucitarla después, con el riesgo de que entretanto alguien comprara esas noches. Invertir las dos llamadas de `/api/salud` reintroduce el fallo que todo esto arregla. |
 | 2026-10-02 | **Si una reserva pagada llegó a cancelarse, la reconciliación la RESUCITA** y lo deja anotado en `notas` (anexado, nunca sobrescrito). El único desenlace que no se puede resolver con código es el 23P01: pago aprobado y fechas ya vendidas a otro. Eso se reporta con todas las letras —`pagos_requieren_atencion` en `/api/salud` y un mensaje en el panel— porque son dos personas y una cabaña. |
 | 2026-10-02 | **Los correos llevan `Reply-To` al Gmail del hotel (`EMAIL_REPLY_TO`).** `reservas@lafincaecohotel.com` es una identidad de ENVÍO de Resend: detrás no hay buzón que nadie lea. Sin `Reply-To`, la respuesta del huésped («¿puedo llegar a las 9?») se pierde y él cree que avisó. Un correo perdido de un huésped es peor que un correo que no se envió. |
+| 2026-10-02 | **Por el sitio no se reserva para hoy: la llegada más temprana es mañana** (`DIAS_MINIMOS_ANTELACION = 1` en `src/lib/reserva/noches.ts`). Vale para hospedaje y Día de Calma. El calendario solo es ayuda visual; quien decide es el servidor (`cotizarEnServidor()` y `/api/reservar`), con el «hoy» de `America/Bogota`. |
+| 2026-10-02 | ⚠ **La antelación mínima es una regla del SITIO PÚBLICO, nunca del panel.** El equipo del hotel tiene que poder registrar una reserva de hoy —las de WhatsApp a última hora, con el huésped ya en camino— y bloquear el día en curso. Por eso el alta manual no pasa por `cotizarEnServidor()` y su formulario sigue trayendo hoy por defecto. Aplicarle la constante del público le costaría al hotel las reservas de última hora. |
 
 ## Registro de sesiones
 
@@ -2926,3 +2928,123 @@ tarifas, 4 extras, 22 filas de contenido, 39 imágenes).
 El botón del panel no se pulsó en un navegador con sesión (no se tenía la
 contraseña del panel). Llama a `reconciliarPago()`, que sí está probada de punta a
 punta por los otros dos caminos y por las 16 pruebas.
+
+---
+
+### 2026-10-02 (tarde) — Por el sitio ya no se reserva para hoy
+
+Petición del cliente, con el sitio **en producción y en pruebas activas**: nadie
+puede reservar desde el sitio público para el mismo día. La fecha de llegada más
+temprana que se puede elegir es **mañana**, y vale igual para el hospedaje y para
+el **Día de Calma**.
+
+#### Dónde quedó la regla
+
+**Una sola constante**, en el módulo puro de fechas del motor:
+
+```ts
+// src/lib/reserva/noches.ts
+export const DIAS_MINIMOS_ANTELACION: number = 1;
+export function primeraLlegadaReservable(hoy: FechaISO): FechaISO;
+export function validarAntelacion(entrada, hoy): { valido } | { valido, motivo };
+```
+
+Ponerla en `2` o `3` endurece la regla en el calendario, en el recálculo del
+servidor y en el endpoint **a la vez**, y además cambia los textos: los mensajes
+(`MOTIVO_SIN_ANTELACION`, `MENSAJE_SIN_ANTELACION`, `TEXTO_ANTELACION`) se derivan
+de la constante, así que no hay ningún «mañana» escrito a mano en la interfaz.
+
+Quién la usa:
+
+- **El calendario** (`src/components/sitio/calendario-fechas.tsx`) gana una prop
+  `minima`, que por defecto es `hoy`. Los días entre `hoy` y `minima` salen
+  apagados con el motivo **«no se puede reservar para hoy»** —distinto del «ya
+  pasó» de siempre, que se conserva—. `minima` también mueve el foco inicial, el
+  tope del botón «mes anterior» y el recorrido con flechas: un `<button disabled>`
+  no puede recibir foco, y sin eso las flechas lo habrían perdido al llegar a hoy.
+- **El sitio público** (`modulo-reserva.tsx` y `selector-reserva.tsx`) calcula
+  `primeraLlegadaReservable(hoy)` y la pasa. También se endurece la llegada que
+  llega por la URL: un `?entrada=` de hoy o de ayer —de un enlace viejo de
+  WhatsApp— ya no se acepta.
+- **El servidor, que es quien manda**: `cotizarEnServidor()` (antes de separar
+  hospedaje y Día de Calma, así que cubre los dos) y, antes de leer siquiera la
+  base, `/api/reservar`.
+
+#### El panel NO cambia, y es deliberado
+
+El equipo del hotel **sí** tiene que poder registrar una reserva de hoy: son las
+que entran por WhatsApp a última hora, con el huésped ya en camino. El alta manual
+(`src/app/admin/(panel)/reservas/acciones.ts`) y los bloqueos no pasan por
+`cotizarEnServidor()` ni por `/api/reservar`, así que la regla no los toca; el
+formulario del panel sigue trayendo **hoy** como fecha de entrada por defecto.
+Queda un comentario largo en los dos extremos —la constante y la acción del
+panel— explicando por qué, porque es justo el tipo de asimetría que alguien
+«arregla» sin saber que cuesta reservas.
+
+#### El reloj es el de Bogotá
+
+`hoyEnBogota()` (`src/lib/utils/formato.ts`) acepta ahora un `ahora` opcional para
+poder probarlo. Se usa en `/api/reservar` y en `cotizarEnServidor()`, que antes
+restaba cinco horas a mano. A las **23:00 de Bogotá** sigue siendo el mismo día y
+«mañana» sigue siendo mañana; a las 00:01 el corte ya se ha movido.
+
+⚠ **Ventana conocida, sin regresión:** `/` y `/reservar` son estáticas con
+`revalidate` de una hora, así que el `hoy` que viaja al calendario puede quedarse
+viejo hasta 60 minutos después de medianoche. En esa ventana el calendario podría
+ofrecer el día de hoy; el servidor lo rechaza igual, que es exactamente para lo
+que está. El mismo desfase ya existía con los días «ya pasó».
+
+#### Textos
+
+- **FAQ nueva en el CMS**: «¿Puedo reservar para el mismo día?» → «Por el sitio,
+  no: las reservas en línea —de hospedaje y de Día de Calma— son a partir del día
+  siguiente… Si quieres venir hoy mismo, escríbenos por WhatsApp». Sustituye lo
+  que decía el documento del bot («depende de la disponibilidad»). Se añadió al
+  respaldo de `src/lib/contenido.ts`, se regeneró `supabase/seed/002_contenido.sql`
+  con `npm run seed:contenido` y se escribió la fila `faq` de `contenido`.
+  **Antes de escribir se comparó la fila real con el seed**: era idéntica (nadie la
+  había tocado desde el panel), así que la actualización solo añade la pregunta
+  nueva; de 17 a 18. No se corrió `npm run db:aplicar`.
+- Ayuda del calendario: «Elige el día de llegada, **desde mañana en adelante**…
+  Para llegar hoy mismo, escríbenos por WhatsApp».
+- Paso 1 de `/reservar`: «Elige llegada y salida, desde mañana en adelante…» (antes
+  decía «No hay fechas prohibidas», que ya no es exacto).
+- Revisados y **dejados como están**: «te confirmamos disponibilidad el mismo día»
+  de `/reservar`, fichas de cabaña, `/alojamientos` y `/contacto` — hablan de la
+  rapidez de la respuesta, no de reservar para hoy. Los correos no prometen nada
+  sobre fechas de llegada. Los términos legales tampoco prometían el mismo día, así
+  que no se tocaron: si el cliente quiere la regla en el documento de términos,
+  es un cambio aparte (arrastra la fila legal del CMS y la versión `LEGAL_ACTUALIZADO`).
+
+#### Verificación
+
+`tsc`, `eslint` (solo el aviso previo de `scripts/importar-fotos-drive.mjs`) y
+`build` limpios. **304 pruebas en verde**, 16 nuevas en
+`src/lib/reserva/antelacion.test.ts`: hoy rechazado, mañana aceptado, el corte
+cruzando fin de mes y año bisiesto, el Día de Calma con el mismo corte que el
+hospedaje, y el cambio de día **a las 23:00 y a las 00:01 de Bogotá**.
+
+Contra `localhost:3000`, con peticiones directas al endpoint:
+
+| Petición | Respuesta |
+|---|---|
+| Hospedaje con llegada **hoy** | 400 · «Las reservas por el sitio son a partir de mañana…» |
+| Hospedaje con llegada **ayer** | 400 · «Esa fecha ya pasó. Las reservas por el sitio…» |
+| **Día de Calma** para hoy | 400 · el mismo mensaje |
+| Hospedaje para **mañana** | pasa el filtro de fechas y falla en el siguiente control (cabaña inexistente), sin escribir nada |
+
+Capturas del calendario abierto a **1440** y **390**: hoy (viernes 2 de octubre)
+tachado y sin pulsar, primer día elegible el sábado 3, flecha de mes anterior
+deshabilitada. El `aria-label` del día de hoy dice «viernes, 2 de octubre — no se
+puede reservar para hoy». Comprobado igual en el calendario de la **portada**.
+
+**Sin residuos:** `reservas` 0, `pagos` 0, `reserva_extras` 0, `bloqueos` 0. Lo
+único que cambió en la base es la fila `faq` de `contenido`.
+
+#### Lo que NO se pudo verificar
+
+El alta manual del panel no se ejecutó en un navegador con sesión (no se tiene la
+contraseña). Que siga aceptando hoy está comprobado por código: su acción no
+importa nada de la antelación, su única validación de fechas es que la salida sea
+posterior a la entrada (más cupo y choques), y el formulario trae **hoy** como
+entrada por defecto. Queda la casilla correspondiente en `docs/GUIA_PRUEBAS.md`.

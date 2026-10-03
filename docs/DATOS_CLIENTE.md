@@ -183,6 +183,18 @@ nuestro propio sitio se ignoran.
   incumplimiento, sin devolución ni reprogramación.
 - **Mínimo de noches:** no hay (se puede una sola noche). `TODO` confirmar si aplica mínimo en
   fines de semana o festivos.
+- **Antelación mínima para reservar en línea (confirmado el 2026-10-02):** por el sitio **no se
+  reserva para el mismo día**. La fecha de llegada más temprana que se puede elegir es **mañana**,
+  tanto en hospedaje como en el **Día de Calma**. Quien quiera venir hoy mismo se atiende **por
+  WhatsApp**.
+  - En el código es **una sola constante**, `DIAS_MINIMOS_ANTELACION = 1` en
+    `src/lib/reserva/noches.ts`: ponerla en `2` o `3` endurece la regla en el calendario, en el
+    recálculo del servidor y en el endpoint a la vez. Todo el cálculo va en `America/Bogota`.
+  - **El panel NO cambia:** el equipo del hotel sí puede registrar a mano una reserva de hoy —las
+    que entran por WhatsApp a última hora— y bloquear el día en curso. La regla es solo del sitio
+    público. Esto es deliberado y está anotado en el código.
+  - Reemplaza lo que decía el documento del bot («¿Puedo reservar para el mismo día? Depende de la
+    disponibilidad»). La FAQ del sitio ya lo dice con las palabras nuevas.
 - **Mascotas:** bienvenidas en todas las áreas, con cuidado responsable. Segunda mascota $50.000.
 - **Menores de edad: NO se permiten en la finca, en ninguna cabaña** (indicación directa de Cesar,
   2026-09-14; manda sobre el documento del bot, que hablaba de bebés hasta 10 meses). Experiencia

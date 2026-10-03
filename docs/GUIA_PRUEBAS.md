@@ -46,6 +46,7 @@
 - [ ] **Experiencias por noche** (paso 4): añade una a una noche concreta y comprueba que suma al total.
 - [ ] **Anticipo** (paso 5): mueve el deslizante entre 50 % y 100 %; el monto en pesos cambia en vivo.
 - [ ] **Día de Calma**: elige **una sola fecha sin salida**. Aparece el plan de día, $250.000, máximo 2 adultos y los cupos que quedan.
+- [ ] **No se reserva para hoy**: abre el calendario y comprueba que **el día de hoy sale tachado** y no se puede pulsar (igual que los días que ya pasaron). El primer día elegible es **mañana**. Pruébalo también en el **Día de Calma** y en el calendario de la **portada**.
 - [ ] Intenta reservar una fecha ya ocupada: debe avisar en español, sin errores técnicos.
 
 ## 3 · Pagos
@@ -71,6 +72,7 @@ Entra en `lafincaecohotel.com/admin` con la cuenta propietaria.
 
 - [ ] **Reservas**: el calendario mensual muestra las cinco cabañas y la fila de Día de Calma con sus cupos.
 - [ ] Crea una **reserva manual** (como las de WhatsApp) y comprueba que bloquea el calendario.
+- [ ] **El panel SÍ puede reservar para hoy**: crea una reserva manual con la fecha de entrada de **hoy** (es la que trae el formulario por defecto). Tiene que guardarse sin quejarse: la regla del día de antelación es solo del sitio público.
 - [ ] Crea un **bloqueo** por mantenimiento y comprueba que esa fecha deja de ofrecerse en el sitio.
 - [ ] **Contenido**: cambia un texto de la portada, guarda y verifícalo en el sitio.
 - [ ] **Cabañas**: cambia una comodidad y un precio; compruébalo en la ficha pública.
