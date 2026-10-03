@@ -281,6 +281,10 @@ insert into contenido (clave, valor) values
       "respuesta": "Con un anticipo del 50 % se confirma la reserva, y al reservar puedes elegir adelantar más —hasta el 100 %— si prefieres llegar sin nada pendiente. Lo que quede se paga antes de la llegada con un link de pago que te enviamos con anticipación. En La Finca no hay datáfono ni manejamos efectivo. Nunca te pediremos los datos de tu tarjeta por WhatsApp."
     },
     {
+      "pregunta": "¿Puedo reservar para el mismo día?",
+      "respuesta": "Por el sitio, no: las reservas en línea —de hospedaje y de Día de Calma— son a partir del día siguiente, así alcanzamos a alistar todo y recibirte como se debe. Si quieres venir hoy mismo, escríbenos por WhatsApp: si hay disponibilidad, lo resolvemos ahí mismo."
+    },
+    {
       "pregunta": "¿Puedo cancelar o cambiar la fecha?",
       "respuesta": "Una vez confirmada la reserva no hay reembolsos. Sí puedes cambiar la fecha una sola vez, avisando con mínimo 3 días de anticipación. Cancelar el mismo día o no presentarse se considera incumplimiento y no da lugar a devolución ni reprogramación."
     },

@@ -722,6 +722,13 @@ const RESPALDO_EXPERIENCIAS_PAGINA: ContenidoExperiencias = {
  * También decían que los niños son bienvenidos sin matizar. Desde el
  * 2026-09-14 la regla del hotel es más tajante y está en §5 de
  * `DATOS_CLIENTE.md`: NO se permiten menores de edad, en ninguna cabaña.
+ *
+ * Desde el **2026-10-02** hay una pregunta más: «¿Puedo reservar para el mismo
+ * día?». El documento del bot respondía «depende de la disponibilidad», y ya no
+ * es así: por el sitio solo se reserva a partir del día siguiente
+ * (`DIAS_MINIMOS_ANTELACION` en `src/lib/reserva/noches.ts`) y el mismo día se
+ * atiende por WhatsApp. La respuesta tiene que decir las dos cosas, porque si
+ * no, quien quiera venir hoy se queda mirando un calendario apagado.
  */
 const RESPALDO_FAQ: ContenidoFaq = {
   intro:
@@ -751,6 +758,11 @@ const RESPALDO_FAQ: ContenidoFaq = {
       pregunta: "¿Cómo se reserva y cómo se paga?",
       respuesta:
         "Con un anticipo del 50 % se confirma la reserva, y al reservar puedes elegir adelantar más —hasta el 100 %— si prefieres llegar sin nada pendiente. Lo que quede se paga antes de la llegada con un link de pago que te enviamos con anticipación. En La Finca no hay datáfono ni manejamos efectivo. Nunca te pediremos los datos de tu tarjeta por WhatsApp.",
+    },
+    {
+      pregunta: "¿Puedo reservar para el mismo día?",
+      respuesta:
+        "Por el sitio, no: las reservas en línea —de hospedaje y de Día de Calma— son a partir del día siguiente, así alcanzamos a alistar todo y recibirte como se debe. Si quieres venir hoy mismo, escríbenos por WhatsApp: si hay disponibilidad, lo resolvemos ahí mismo.",
     },
     {
       pregunta: "¿Puedo cancelar o cambiar la fecha?",
