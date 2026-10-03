@@ -10,8 +10,10 @@ import {
 } from "react";
 
 import {
+  MOTIVO_SIN_ANTELACION,
   nochesDe,
   resumenEnPalabras,
+  TEXTO_ANTELACION,
   tipoDeNoche,
   validarRango,
   type TipoNoche,
@@ -79,6 +81,17 @@ import { useLadoDelPanel } from "./usar-lado-panel";
  * el resto del proyecto. `hoy` llega calculado en el SERVIDOR con
  * `hoyEnBogota()`: si se calculara aquí, un visitante en Madrid vería
  * deshabilitado un día que en Colombia todavía no ha terminado.
+ *
+ * ---------------------------------------------------------------------------
+ * ANTELACIÓN MÍNIMA (`minima`)
+ * ---------------------------------------------------------------------------
+ * El sitio público no toma reservas para hoy: la primera llegada elegible es
+ * mañana (`DIAS_MINIMOS_ANTELACION` en `src/lib/reserva/noches.ts`). Quien use
+ * este calendario pasa esa fecha en `minima` y los días anteriores salen
+ * apagados con su motivo. Es **ayuda visual**: la validación que manda es la del
+ * servidor (`cotizarEnServidor` y `/api/reservar`), porque un navegador puede
+ * mandar cualquier cosa. Sin `minima` el calendario solo apaga el pasado, que es
+ * lo que necesita cualquier uso interno.
  */
 
 /* ===========================================================================
@@ -178,8 +191,16 @@ export type PropsCalendario = {
   entrada: string;
   salida: string;
   alCambiar: (entrada: string, salida: string) => void;
-  /** Fecha mínima seleccionable (`AAAA-MM-DD`), calculada en el servidor. */
+  /** El «hoy» del hotel (`AAAA-MM-DD`), calculado en el servidor. El pasado se apaga. */
   hoy: string;
+  /**
+   * Primera fecha ELEGIBLE (`AAAA-MM-DD`). Por defecto, `hoy`.
+   *
+   * El sitio público pasa `primeraLlegadaReservable(hoy)` —mañana— porque en
+   * línea no se reserva para el mismo día. Los días entre `hoy` y `minima` se
+   * pintan apagados con el motivo «no se puede reservar para hoy».
+   */
+  minima?: string;
   /**
    * PREFERENCIA de tipo de noche, no restricción.
    *
@@ -217,6 +238,7 @@ export function CalendarioFechas({
   salida,
   alCambiar,
   hoy,
+  minima,
   preferencia = null,
   nombrePreferencia = null,
   alQuitarPreferencia,
@@ -231,9 +253,12 @@ export function CalendarioFechas({
   const idPanel = useId();
   const idAviso = useId();
 
+  /* La primera fecha elegible. Sin `minima`, el único límite es el pasado. */
+  const primera = minima && minima > hoy ? minima : hoy;
+
   const [abierto, setAbierto] = useState(false);
-  const [mes, setMes] = useState(() => inicioDeMes(entrada || hoy));
-  const [foco, setFoco] = useState(() => entrada || hoy);
+  const [mes, setMes] = useState(() => inicioDeMes(entrada || primera));
+  const [foco, setFoco] = useState(() => entrada || primera);
   /**
    * Fase: si ya hay llegada y falta salida, el siguiente clic pone la salida.
    * En modo «solo ese día» no hay salida que elegir, así que cada clic mueve
@@ -301,10 +326,15 @@ export function CalendarioFechas({
   /**
    * Qué se puede pulsar.
    *
-   * Solo dos cosas apagan un día, y ninguna tiene que ver con el plan:
-   * **el pasado** y, mientras se elige la salida, **los días anteriores a la
-   * llegada**. Una estadía mixta (jueves→sábado) es perfectamente vendible: se
-   * desglosa noche por noche. Ver `src/lib/reserva/noches.ts`.
+   * Tres cosas apagan un día, y ninguna tiene que ver con el plan: **el
+   * pasado**, **la antelación mínima** (hoy, cuando se pasa `minima`) y,
+   * mientras se elige la salida, **los días anteriores a la llegada**. Una
+   * estadía mixta (jueves→sábado) es perfectamente vendible: se desglosa noche
+   * por noche. Ver `src/lib/reserva/noches.ts`.
+   *
+   * Ojo: la salida sí puede caer en cualquier día posterior a la llegada. La
+   * antelación es una regla de LLEGADA, y como la llegada ya es mañana como
+   * mínimo, la salida nunca puede quedar antes de `minima`.
    *
    * El tope de un año evita que alguien arme por accidente una estadía absurda;
    * `validarRango()` lo explica en español si llega a pasar.
@@ -317,9 +347,13 @@ export function CalendarioFechas({
         return { activable: false, motivo: "es anterior a la llegada" };
       }
 
+      if (!eligiendoSalida && dia < primera) {
+        return { activable: false, motivo: MOTIVO_SIN_ANTELACION };
+      }
+
       return { activable: true, motivo: null };
     },
-    [hoy, eligiendoSalida, entrada],
+    [hoy, primera, eligiendoSalida, entrada],
   );
 
   /* --- Selección -------------------------------------------------------- */
@@ -340,13 +374,18 @@ export function CalendarioFechas({
     [estadoDeDia, eligiendoSalida, entrada, alCambiar],
   );
 
+  /*
+    El foco no baja de la primera fecha ELEGIBLE, no de hoy: un `<button>`
+    deshabilitado no puede recibir foco, así que dejar que las flechas llegaran
+    a un día apagado perdería el foco dentro de la rejilla.
+  */
   const moverFoco = useCallback(
     (nuevo: string) => {
-      if (nuevo < hoy) return;
+      if (nuevo < primera) return;
       setFoco(nuevo);
       if (nuevo.slice(0, 7) !== mes.slice(0, 7)) setMes(inicioDeMes(nuevo));
     },
-    [hoy, mes],
+    [primera, mes],
   );
 
   const teclasRejilla = useCallback(
@@ -403,7 +442,8 @@ export function CalendarioFechas({
           ? `${formatearFechaCorta(entrada)} → elige la salida`
           : "Elige tus fechas";
 
-  const mesAnteriorPermitido = inicioDeMes(mes) > inicioDeMes(hoy);
+  /* No se retrocede a un mes en el que ya no queda ningún día elegible. */
+  const mesAnteriorPermitido = inicioDeMes(mes) > inicioDeMes(primera);
 
   return (
     <div ref={contenedor} className={`relative ${className ?? ""}`}>
@@ -420,8 +460,8 @@ export function CalendarioFechas({
         type="button"
         onClick={() => {
           setAbierto((valor) => !valor);
-          setMes(inicioDeMes(entrada || hoy));
-          setFoco(entrada || hoy);
+          setMes(inicioDeMes(entrada || primera));
+          setFoco(entrada || primera);
         }}
         aria-expanded={abierto}
         aria-controls={idPanel}
@@ -528,7 +568,9 @@ export function CalendarioFechas({
               ? "Vienes solo ese día, sin dormir. Toca otro día si quieres cambiarlo."
               : eligiendoSalida
                 ? "Ahora elige el día de salida. Cuentan las noches, no los días: si sales el sábado, el sábado no se cobra."
-                : "Elige el día de llegada. Cualquier fecha vale: a cada noche le ponemos su tarifa."}
+                : primera > hoy
+                  ? `Elige el día de llegada, ${TEXTO_ANTELACION}: a cada noche le ponemos su tarifa. Para llegar hoy mismo, escríbenos por WhatsApp.`
+                  : "Elige el día de llegada. Cualquier fecha vale: a cada noche le ponemos su tarifa."}
           </p>
 
           {/*
@@ -651,7 +693,7 @@ export function CalendarioFechas({
               onClick={() => {
                 alQuitarDiaUnico?.();
                 alCambiar("", "");
-                setFoco(hoy);
+                setFoco(primera);
               }}
               className="min-h-11 font-titulo text-xs font-semibold text-crema-600 underline-offset-4 hover:text-petroleo-800 hover:underline"
             >

@@ -24,7 +24,9 @@ import {
   esFechaISO,
   etiquetaTipoNoche,
   nochesDe,
+  primeraLlegadaReservable,
   resumenEnPalabras,
+  TEXTO_ANTELACION,
   tieneFinDeSemana,
   validarRango,
   type TipoNoche,
@@ -155,7 +157,12 @@ type Props = {
   /** Experiencias y adicionales activos. */
   extras: ExtraSeleccionable[];
   whatsapp: string;
-  /** Fecha mínima seleccionable (`AAAA-MM-DD`), calculada en el servidor. */
+  /**
+   * El «hoy» del hotel (`AAAA-MM-DD`), calculado en el servidor con
+   * `hoyEnBogota()`. La primera llegada elegible NO es hoy: el sitio no toma
+   * reservas para el mismo día (`DIAS_MINIMOS_ANTELACION` en
+   * `src/lib/reserva/noches.ts`).
+   */
   hoy: string;
   /**
    * ¿Hay pago en línea?
@@ -203,12 +210,22 @@ export function SelectorReserva({
   const planInicial =
     planes.find((plan) => plan.nombre.toLowerCase() === planUrl) ?? null;
 
+  /**
+   * La primera llegada elegible: mañana, no hoy.
+   *
+   * Sale de `hoy` —que llega del servidor en hora de Bogotá— con la constante
+   * del motor, así que el día de corte es el mismo que aplica el servidor al
+   * cobrar. Ver `DIAS_MINIMOS_ANTELACION` en `src/lib/reserva/noches.ts`.
+   */
+  const primeraLlegada = primeraLlegadaReservable(hoy);
+
   const entradaUrl = parametros.get("entrada");
   const salidaUrl = parametros.get("salida");
-  /* Una llegada anterior a hoy no se acepta: viene de un enlace viejo
-     compartido por WhatsApp y el visitante no puede hacer nada con ella. */
+  /* Una llegada que ya no se puede reservar —de ayer, o de hoy mismo— no se
+     acepta: viene de un enlace viejo compartido por WhatsApp y el visitante no
+     puede hacer nada con ella. */
   const entradaInicial =
-    esFechaISO(entradaUrl) && entradaUrl >= hoy ? entradaUrl : "";
+    esFechaISO(entradaUrl) && entradaUrl >= primeraLlegada ? entradaUrl : "";
   const salidaInicial =
     esFechaISO(salidaUrl) && entradaInicial && salidaUrl > entradaInicial
       ? salidaUrl
@@ -621,7 +638,9 @@ export function SelectorReserva({
   const enlace = soloUnDia
     ? enlaceWhatsapp(
         mensajeDiaDeCalma({
-          fecha: entrada || hoy,
+          /* Sin fecha elegida, el mensaje propone la primera reservable
+             (mañana), no hoy: el hotel no toma días de hoy por el sitio. */
+          fecha: entrada || primeraLlegada,
           personas: personasDia,
           horario: planDia?.horario ?? HORARIO_DIA_POR_DEFECTO,
           extras: extrasElegidos.map((extra) => ({
@@ -804,6 +823,7 @@ export function SelectorReserva({
                 if (nuevaSalida || !nuevaEntrada) setSoloUnDia(false);
               }}
               hoy={hoy}
+              minima={primeraLlegada}
               preferencia={preferencia}
               nombrePreferencia={
                 preferencia === "entre_semana"
@@ -844,9 +864,9 @@ export function SelectorReserva({
             </p>
           ) : (
             <p className="text-sm leading-relaxed text-crema-700">
-              Elige llegada y salida. No hay fechas prohibidas: si tu estadía
-              mezcla días de semana y fin de semana, te lo desglosamos noche por
-              noche.{" "}
+              Elige llegada y salida, {TEXTO_ANTELACION}: ninguna combinación
+              está prohibida, y si tu estadía mezcla días de semana y fin de
+              semana te lo desglosamos noche por noche.{" "}
               {planDia
                 ? "¿Vienes solo por el día? Elige la fecha y marca «Vengo solo ese día»."
                 : null}

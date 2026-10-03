@@ -4,7 +4,11 @@ import { useRouter } from "next/navigation";
 import { useId, useMemo, useState, type FormEvent } from "react";
 
 import { clasesBoton } from "@/components/ui/boton";
-import { nochesDe, validarRango } from "@/lib/reserva/noches";
+import {
+  nochesDe,
+  primeraLlegadaReservable,
+  validarRango,
+} from "@/lib/reserva/noches";
 
 import { CalendarioFechas } from "./calendario-fechas";
 import { SelectorCabana } from "./selector-cabana";
@@ -55,7 +59,11 @@ export type CabanaOpcion = { slug: string; nombre: string };
 
 type Props = {
   cabanas: CabanaOpcion[];
-  /** Fecha mínima seleccionable (`AAAA-MM-DD`), calculada en el servidor. */
+  /**
+   * El «hoy» del hotel (`AAAA-MM-DD`), calculado en el servidor con
+   * `hoyEnBogota()`. De aquí sale la primera llegada elegible, que **no** es
+   * hoy: ver `DIAS_MINIMOS_ANTELACION` en `src/lib/reserva/noches.ts`.
+   */
   hoy: string;
   /** Texto del botón. */
   ctaTexto?: string;
@@ -194,6 +202,10 @@ export function ModuloReserva({
               setSalida(nuevaSalida);
             }}
             hoy={hoy}
+            /* En línea no se reserva para hoy: la llegada más temprana es
+               mañana (`DIAS_MINIMOS_ANTELACION`). El servidor lo vuelve a
+               comprobar al crear la reserva; esto solo apaga los días. */
+            minima={primeraLlegadaReservable(hoy)}
             compacto
           />
         </div>
