@@ -3148,3 +3148,48 @@ probado con configuraciones válidas e inválidas.
    con permiso **«Hacer cambios en eventos»**.
 2. Poner `GOOGLE_CALENDAR_ID` (y `GOOGLE_CALENDAR_ESCRIBIR_EN` si hace falta) en
    Vercel **Production**. `.env.local` sigue con la variable vacía a propósito.
+
+---
+
+### 2026-10-03 · Documentos del cliente: manual del panel y correcciones
+
+#### Manual del panel — DOC-LF-2026-05
+
+Nuevo entregable para el equipo del hotel, en el sistema de documentos v2 de GOCAS:
+`EcoHotel - La Finca\html\Manual_Panel_LaFinca.html` → `Manual_Panel_LaFinca.pdf`.
+**19 hojas / 19 páginas**, la más alta 1073 px. Cubre entrar al panel, el calendario
+mensual con la fila del Día de Calma, los cuatro estados de una reserva, el alta manual
+de las reservas de WhatsApp, la regla plan↔noche, pagos, bloqueos, el calendario de
+Google, contenido y fotos, cabañas, planes, experiencias, legales, usuarios, qué hacer
+si algo falla y una hoja de referencia rápida. Sin contraseñas: remite al DOC-LF-2026-03.
+
+Dos matices que el código obligó a redactar con precisión: no existe «restablecer
+contraseña por correo» (solo el propietario, desde Usuarios), y la sección del
+calendario advierte que **un evento cuyo título no identifique la cabaña bloquea las
+cinco**, que es la única regla que el equipo tiene que respetar al escribir eventos.
+
+#### Wompi → Bold en los documentos ya entregados
+
+`Checklist_Estado_Sitio_LaFinca.html` (6 menciones) y `Requerimientos_LaFinca.html`
+(4) seguían diciendo Wompi. Corregido frase por frase, no con buscar-y-reemplazar:
+al hotel ya no se le piden documentos para abrir una pasarela —Bold es del Banco de
+Bogotá, donde ya tiene cuenta— sino que habilite las llaves de integración y envíe las
+de producción. El estado de los pagos pasó de POR HACER a EN CURSO.
+
+#### Dos afirmaciones que habían quedado desactualizadas
+
+- **Requerimientos 8.3** (anticipo): era pregunta CLAVE, ya es decisión cerrada.
+  Deslizante del 50 % —mínimo que confirma— al 100 %. **El saldo se cobra por link de
+  pago antes de la llegada**: en la finca no hay datáfono ni se maneja efectivo
+  (§5 de `DATOS_CLIENTE.md`). Conviene no volver a escribir «se paga en el hotel».
+- **Checklist, acceso a Hostinger**: dejó de ser bloqueante. El dominio apunta a Vercel
+  desde el 2026-10-01 y el hosting viejo se canceló. Pero **los DNS siguen
+  administrándose en Hostinger** (ahí están los TXT de Resend), así que el acceso sigue
+  haciendo falta para el correo corporativo y para renovar el dominio: pendiente útil,
+  no bloqueante. Ningún documento registra que los nameservers se hayan movido.
+
+#### Vercel
+
+`PAGOS_ACTIVOS=0` en Production, para que nadie cierre una reserva sin pagar hasta el
+lanzamiento. A Production solo le faltan `GOOGLE_CALENDAR_CREDENCIALES` y
+`GOOGLE_CALENDAR_ID`; las llaves de Bold siguen solo en la preview de `pruebas-pagos`.
