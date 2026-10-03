@@ -1,4 +1,8 @@
-# Pendientes de la próxima ronda (quedaron sin ejecutar)
+# Pendientes de la próxima ronda (registro de una ronda ya ejecutada)
+
+> **Registro de una ronda ya ejecutada** (15 de septiembre de 2026): sus ocho puntos están hechos y
+> asentados en `docs/MEMORIA.md`. Lo de abajo («retomar tal cual») ya no aplica.
+> **El pendiente vivo está en `docs/PLAN_CIERRE.md`.**
 
 > Creado el 2026-09-15. La ronda se lanzó pero el agente se detuvo por límite de sesión
 > **antes de modificar nada**: el repositorio quedó limpio y sincronizado. Retomar tal cual.
