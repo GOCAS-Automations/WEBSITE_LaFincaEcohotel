@@ -1,10 +1,21 @@
 # Despliegue en Vercel
 
+> **Estado al 3 de octubre de 2026.** El sitio **ya está publicado y se indexa** en
+> `lafincaecohotel.com` (dominio y `SITIO_PUBLICADO=1` desde el 2026-10-01). A
+> **Vercel Production le faltan exactamente dos variables**, las del calendario de
+> Google (`GOOGLE_CALENDAR_CREDENCIALES` y `GOOGLE_CALENDAR_ID`): están a la
+> espera de que el hotel comparta su calendario. Todo lo demás está puesto. Lo
+> que falta para lanzar el cobro está en `docs/PLAN_CIERRE.md`, que es la guía
+> única de lo pendiente. El resto de este documento conserva el orden del primer
+> despliegue; donde algo ya está hecho, lo dice.
+
 Checklist paso a paso para publicar el sitio en Vercel **sin que Google lo
 indexe todavía**: mientras el WordPress viejo siga siendo la web real de La
 Finca, la URL de Vercel (temporal o de dominio) no puede competir por las
 mismas búsquedas. Esta guía cubre el primer deploy, las variables de entorno
 y —más adelante, cuando el cliente dé luz verde— el cambio de dominio.
+*(Así nació la guía. Hoy el WordPress viejo ya no existe y el dominio apunta a
+Vercel: ver §4.)*
 
 ## 1. Importar el repositorio
 
@@ -25,28 +36,48 @@ Configurarlas en **Project Settings → Environment Variables**. La columna
 “Entornos” dice en cuáles activarla (Production / Preview / Development); por
 defecto, activarla en los tres salvo que se diga lo contrario.
 
+**Estado real en Vercel Production (3 de octubre de 2026):**
+
+- ✅ **Puestas:** las de Supabase, `NEXT_PUBLIC_SITE_URL`, `SITIO_PUBLICADO=1`,
+  `CRON_SECRET` y las cuatro de Resend (`RESEND_API_KEY`, `EMAIL_FROM`,
+  `EMAIL_NOTIFY_TO`, `EMAIL_REPLY_TO`). `PAGOS_ACTIVOS` está en `0`, a propósito.
+- 🔴 **Pendientes: solo dos**, las del calendario. Se cargan el día que el hotel
+  comparta su calendario «la finca» con la cuenta de servicio:
+  - `GOOGLE_CALENDAR_CREDENCIALES` = el JSON de la cuenta de servicio en base64,
+    en una sola línea.
+  - `GOOGLE_CALENDAR_ID` = la **lista** de calendarios, en uno de estos dos
+    formatos: un identificador suelto
+    (`general@group.calendar.google.com`) o varios, con `=n` para atar cada uno
+    a su cabaña (`general@group.calendar.google.com, cab1@…=1, cab2@…=2`).
+  - Detalle y pasos en el apartado de esas variables, más abajo.
+- 🟡 **Bold:** las llaves de **pruebas** existen solo en la **preview de la rama
+  `pruebas-pagos`**. Production **no tiene** ninguna llave de Bold: llegan con las
+  de producción del hotel, y son parte de la secuencia del día del lanzamiento
+  (`docs/PLAN_CIERRE.md`, §5).
+
 | Variable | ¿Secreta? | Entornos | Valor recomendado en el primer deploy |
 |---|---|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | No | Production, Preview, Development | URL del proyecto de Supabase de La Finca (`https://xxxx.supabase.co`) |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | No (es pública por diseño, pero no compartirla fuera de Vercel/Supabase) | Production, Preview, Development | Llave `anon` del mismo proyecto |
-| `SUPABASE_SERVICE_ROLE_KEY` | **Sí** | Production, Preview, Development | Llave `service_role` del proyecto. Nunca lleva `NEXT_PUBLIC_` — si algún día apareciera con ese prefijo, sería un error grave: quedaría expuesta en el navegador |
+| `NEXT_PUBLIC_SUPABASE_URL` | No | Production, Preview, Development | ✅ **Puesta en Production.** URL del proyecto de Supabase de La Finca (`https://xxxx.supabase.co`) |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | No (es pública por diseño, pero no compartirla fuera de Vercel/Supabase) | Production, Preview, Development | ✅ **Puesta en Production.** Llave `anon` del mismo proyecto |
+| `SUPABASE_SERVICE_ROLE_KEY` | **Sí** | Production, Preview, Development | ✅ **Puesta en Production.** Llave `service_role` del proyecto. Nunca lleva `NEXT_PUBLIC_` — si algún día apareciera con ese prefijo, sería un error grave: quedaría expuesta en el navegador |
 | `SUPABASE_DB_URL` | **Sí** | Production, Preview, Development (solo hace falta si algún Route Handler o script corre migraciones en runtime; si no, puede omitirse en Vercel y usarse solo en local) | Cadena de conexión directa a Postgres del proyecto |
-| `NEXT_PUBLIC_SITE_URL` | No | Production, Preview, Development | **`https://lafincaecohotel.com`** — el dominio real ya apunta a Vercel (2026-10-01). Ver el apartado dedicado |
+| `NEXT_PUBLIC_SITE_URL` | No | Production, Preview, Development | ✅ **`https://lafincaecohotel.com`** — corregida el 2026-10-01 (estaba en `localhost`); el dominio real ya apunta a Vercel. Ver el apartado dedicado |
 | `IMAGENES_SIN_OPTIMIZAR` | No | — | Ver el apartado dedicado más abajo — se deja **vacía** en el primer deploy |
-| `SITIO_PUBLICADO` | No | Production, Preview, Development | **`0` o sin definir** hasta el lanzamiento — ver el apartado dedicado |
+| `SITIO_PUBLICADO` | No | Production (en Preview conviene dejarla fuera) | ✅ **`1` en Production desde el 2026-10-01.** Con `0` o sin definir el sitio se prohíbe a sí mismo en Google — ver el apartado dedicado |
 | `GOOGLE_PLACES_API_KEY` | **Sí** | Production, Preview, Development | Llave de la Places API (New) del proyecto de Google Cloud. Sin ella el bloque de reseñas simplemente no se publica: no bloquea el deploy |
-| `GOOGLE_CALENDAR_CREDENCIALES` | **Sí** | Production, Preview, Development | JSON de la cuenta de servicio `lafinca-calendario@…` **en base64, en una sola línea** — ver el apartado dedicado más abajo |
-| `GOOGLE_CALENDAR_ID` | No | Production, Preview, Development | **Vacía** hasta que el hotel comparta su calendario «la finca». Es una **lista**: `general@…, cab1@…=1, cab2@…=2` (el `=n` ata un calendario a una cabaña). Con la variable vacía, la integración no hace nada y el sitio funciona igual |
+| `GOOGLE_CALENDAR_CREDENCIALES` | **Sí** | Production, Preview, Development | 🔴 **PENDIENTE EN VERCEL** (una de las dos únicas que faltan). JSON de la cuenta de servicio `lafinca-calendario@…` **en base64, en una sola línea** — ver el apartado dedicado más abajo |
+| `GOOGLE_CALENDAR_ID` | No | Production, Preview, Development | 🔴 **PENDIENTE EN VERCEL** (la otra de las dos que faltan), a la espera de que el hotel comparta su calendario «la finca». Es una **lista**: un identificador suelto (`general@group.calendar.google.com`) o varios con `=n` para atar cada uno a su cabaña (`general@…, cab1@…=1, cab2@…=2`). Mientras no esté, la integración no hace nada y el sitio funciona igual |
 | `GOOGLE_CALENDAR_ESCRIBIR_EN` | No | Production, Preview, Development | Opcional. En qué calendario se apuntan las reservas del panel; por defecto, el **primero** de `GOOGLE_CALENDAR_ID`. Se escribe siempre en uno solo para no duplicar eventos |
-| `RESEND_API_KEY` | **Sí** | Production, Preview, Development | 🔴 **PENDIENTE EN VERCEL.** Ya está en `.env.local` y funciona; falta copiarla aquí. Sin ella, el sitio publicado no envía ni un correo — ver el apartado dedicado más abajo |
-| `EMAIL_FROM` | No | Production, Preview, Development | 🔴 **PENDIENTE EN VERCEL.** `La Finca Eco Hotel <reservas@lafincaecohotel.com>` |
-| `EMAIL_NOTIFY_TO` | No | Production, Preview, Development | 🔴 **PENDIENTE EN VERCEL.** `fincavillarrealcali@gmail.com` (admite varios separados por coma) |
-| `EMAIL_REPLY_TO` | No | Production, Preview, Development | 🔴 **PENDIENTE EN VERCEL.** `fincavillarrealcali@gmail.com` — a dónde contesta el huésped: `reservas@` es solo una identidad de envío y no tiene buzón que nadie lea |
-| `BOLD_IDENTITY_KEY` | No (es **pública** por diseño: Bold dice «no hay problema en que alguien pueda verla ya que sólo sirve para identificarte») | Production, Preview, Development | Llave de **identidad**. De **pruebas** en Preview y Development; de **producción** solo en Production — ver el apartado dedicado |
-| `BOLD_PRIVATE_KEY` | **Sí. Solo servidor, jamás al navegador** | Production, Preview, Development | Llave **secreta** del mismo ambiente que la de identidad |
-| `BOLD_MODO` | No | Preview, Development (**no** en Production) | `pruebas` mientras se usen las llaves de prueba. En Production se deja vacía o se borra — ver el apartado dedicado |
-| `PAGOS_ACTIVOS` | No | Production, Preview, Development | **`0` o sin definir.** Es el **último interruptor del lanzamiento** y se enciende solo junto a las llaves de producción — ver el apartado dedicado |
+| `RESEND_API_KEY` | **Sí** | Production, Preview, Development | ✅ **Puesta en Production.** Sin ella el sitio no envía ni un correo (modo dormido) — ver el apartado dedicado más abajo |
+| `EMAIL_FROM` | No | Production, Preview, Development | ✅ **Puesta en Production.** `La Finca Eco Hotel <reservas@lafincaecohotel.com>` |
+| `EMAIL_NOTIFY_TO` | No | Production, Preview, Development | ✅ **Puesta en Production.** `fincavillarrealcali@gmail.com` (admite varios separados por coma) |
+| `EMAIL_REPLY_TO` | No | Production, Preview, Development | ✅ **Puesta en Production.** `fincavillarrealcali@gmail.com` — a dónde contesta el huésped: `reservas@` es solo una identidad de envío y no tiene buzón que nadie lea |
+| `BOLD_IDENTITY_KEY` | No (es **pública** por diseño: Bold dice «no hay problema en que alguien pueda verla ya que sólo sirve para identificarte») | Production, Preview, Development | Llave de **identidad**. De **pruebas** en Preview y Development; de **producción** solo en Production — ver el apartado dedicado. 🟡 **Hoy** solo existe la de pruebas, y únicamente en la **preview de `pruebas-pagos`**; **Production no tiene ninguna** hasta que el hotel envíe las de producción |
+| `BOLD_PRIVATE_KEY` | **Sí. Solo servidor, jamás al navegador** | Production, Preview, Development | Llave **secreta** del mismo ambiente que la de identidad. 🟡 Misma situación: hoy solo en la preview de `pruebas-pagos`; **no está en Production** |
+| `BOLD_MODO` | No | Preview, Development (**no** en Production) | `pruebas` mientras se usen las llaves de prueba. En Production se deja vacía o se borra — ver el apartado dedicado. Hoy solo existe en la preview de `pruebas-pagos` |
+| `PAGOS_ACTIVOS` | No | Production, Preview, Development | ✅ **`0` en Production, a propósito.** Es el **último interruptor del lanzamiento** y se enciende solo junto a las llaves de producción — ver el apartado dedicado |
 | `BOLD_URL_RETORNO` | No | — | **Vacía.** Solo para depurar el retorno del pago desde local con un túnel https — ver el apartado dedicado |
+| `CRON_SECRET` | **Sí** | Production (y Preview si se quiere probar el cron) | ✅ **Puesta en Production.** Firma la llamada del cron diario (`/api/salud`) — ver el apartado dedicado |
 
 ### `BOLD_IDENTITY_KEY`, `BOLD_PRIVATE_KEY` y `BOLD_MODO`
 
@@ -102,8 +133,10 @@ antes de probar:
   4 h, 8 h y 24 h). El endpoint es idempotente: el mismo evento dos veces no
   duplica nada ni reenvía correos.
 
-**El día del lanzamiento**, cuando Bold apruebe la cuenta: cambiar las dos llaves
-de Production por las de producción, borrar `BOLD_MODO` de Production si estaba,
+**El día del lanzamiento**, cuando el hotel habilite las llaves de integración en
+su panel de Bold y nos envíe las dos de producción (al hotel no se le piden
+documentos: la cuenta de Bold ya existe, es del Banco de Bogotá, donde tiene
+cuenta): cargar las dos llaves en Production —hoy Production no tiene ninguna—, borrar `BOLD_MODO` de Production si estaba,
 registrar el webhook con el dominio real, y hacer **una compra real pequeña y su
 reembolso** para comprobar el circuito completo con dinero de verdad.
 
@@ -156,16 +189,19 @@ El sitio ya tiene escritos y probados sus **tres correos transaccionales**
 (`src/lib/email/`): «recibimos tu solicitud» y «tu reserva está confirmada» al
 huésped, y el aviso interno a la administración.
 
-> ✅ **2026-10-02 — los correos están ACTIVOS en local.** La cuenta de Resend
+> ✅ **Los correos están ACTIVOS, en local y en Vercel Production.** (Probados el
+> 2026-10-02.) La cuenta de Resend
 > existe, `lafincaecohotel.com` está verificado y los tres correos se enviaron de
 > verdad a `fincavillarrealcali@gmail.com`: llegaron a la **bandeja de entrada**
 > (no a spam), con `dkim=pass`, `spf=pass` y `dmarc=pass`, el remitente «La Finca
 > Eco Hotel», el `Reply-To` al Gmail del hotel y el logo del bucket cargando
 > (HTTP 200, PNG de 6,4 kB).
 >
-> 🔴 **Lo que falta es copiar las cuatro variables a Vercel.** Mientras no estén
-> ahí, el sitio publicado sigue sin enviar ni un correo: confirma la reserva y se
-> calla. Los valores están en la tabla de arriba y en `.env.local`.
+> ✅ **Las cuatro variables ya están puestas en Vercel Production**
+> (`RESEND_API_KEY`, `EMAIL_FROM`, `EMAIL_NOTIFY_TO` y `EMAIL_REPLY_TO`). Si alguna
+> faltara algún día, el sitio publicado dejaría de enviar correos: confirmaría la
+> reserva y se callaría (ver el modo dormido, abajo). Los valores están en la tabla
+> de arriba.
 >
 > Nota menor para después: el DMARC del dominio está en `p=NONE`. Entrega bien,
 > pero subirlo a `p=quarantine` cuando lleve unas semanas enviando protege la
@@ -200,7 +236,7 @@ Día de Calma) en una carpeta temporal, con un `index.html` para abrirlos.
    servicio de correo, hay que **fusionar** el SPF en un solo registro TXT y no
    crear un segundo: dos SPF invalidan los dos.
 3. Crear la clave de API en Resend y ponerla en `RESEND_API_KEY`. *(Hecho.)*
-4. Poner las otras tres. *(Hechas en `.env.local`; faltan en Vercel.)*
+4. Poner las otras tres. *(Hechas, en `.env.local` y en Vercel Production.)*
    - `EMAIL_FROM=La Finca Eco Hotel <reservas@lafincaecohotel.com>`
    - `EMAIL_NOTIFY_TO=fincavillarrealcali@gmail.com` — **admite varios separados
      por coma**, así que no hace falta crear una lista de distribución.
@@ -215,10 +251,10 @@ Día de Calma) en una carpeta temporal, con un `index.html` para abrirlos.
 
    (con `RESEND_API_KEY` en `.env.local`). Revisar los seis en el teléfono.
 
-**Esto ya no lo bloquea el cliente.** Amapola confirmó el correo del hotel
-(`fincavillarrealcali@gmail.com`) y el remitente quedó en
-`reservas@lafincaecohotel.com`. Lo único pendiente es copiar las cuatro variables
-a Vercel. Mientras no estén, el panel sigue avisando en pantalla —«Todavía no se
+**Esto ya no bloquea nada.** Amapola confirmó el correo del hotel
+(`fincavillarrealcali@gmail.com`), el remitente quedó en
+`reservas@lafincaecohotel.com` y las cuatro variables están en Vercel Production.
+Si en algún momento faltara la clave, el panel avisa en pantalla —«Todavía no se
 envían correos automáticos: avísale tú por WhatsApp»— para que el equipo no dé por
 hecho que el huésped recibió su confirmación.
 
@@ -242,8 +278,12 @@ línea no los aguanta. **El archivo JSON original vive fuera del repositorio**
 (carpeta `_Sensible/` del cliente) y nunca debe copiarse dentro del proyecto ni
 subirse a Git.
 
-`GOOGLE_CALENDAR_ID` es la **lista** de calendarios que el sitio lee. **Hoy se
-deja vacía**, porque falta que el hotel haga una cosa:
+> 🔴 **Estas dos son lo único que le falta a Vercel Production** (3 de octubre de
+> 2026). Ninguna está puesta todavía: el código está completo y probado, y
+> esperan a que el hotel haga una cosa (abajo).
+
+`GOOGLE_CALENDAR_ID` es la **lista** de calendarios que el sitio lee. **Hoy no
+está en Vercel**, porque falta que el hotel haga una cosa:
 
 - Compartir su calendario «la finca» con el correo de la cuenta de servicio y
   darle el permiso **«Hacer cambios en eventos»** (no basta con «Ver todos los
@@ -270,6 +310,17 @@ eventos de ese calendario ocupan esa cabaña, sin mirar el título: es lo que
 hacen falta para los cinco subcalendarios por cabaña que el hotel va a crear
 para su bot de WhatsApp. Un mapeo que no se entienda (`=9`, `=cocina`) no apaga
 nada: se lee como general y el panel lo avisa.
+
+**El día que el hotel comparta el calendario**, en este orden:
+
+1. `npm run calendario:verificar` para leer el identificador que aparezca.
+2. Cargar en **Vercel Production** `GOOGLE_CALENDAR_CREDENCIALES` (el JSON en
+   base64, una línea) y `GOOGLE_CALENDAR_ID` (el identificador suelto, o la lista
+   con `=n` si ya existen los subcalendarios por cabaña). Con subcalendarios,
+   dejar `GOOGLE_CALENDAR_ESCRIBIR_EN` apuntando al general, para no duplicar
+   eventos.
+3. **Redesplegar.**
+4. Comprobar que el panel dice «Calendario del hotel: conectado».
 
 Dos scripts para comprobarlo:
 
@@ -323,31 +374,35 @@ Controla si el sitio se indexa o no. Con `0` o sin definir:
 - `/robots.txt` bloquea el sitio completo (`Disallow: /`).
 - Cada página se publica con `<meta name="robots" content="noindex, nofollow">`.
 
-🔴 **Hoy esto es un problema abierto, no una precaución.** La variable existía
-para proteger al WordPress viejo mientras era la web real; ese sitio **ya no
-existe** (hosting cancelado) y el dominio apunta a Vercel. Mientras
-`SITIO_PUBLICADO` no valga `1`, **el hotel está invisible en Google**: el sitio
-nuevo se prohíbe a sí mismo y el viejo ya no responde.
+✅ **HECHO el 2026-10-01: vale `1` en Production.** Comprobado el 2026-10-02:
+`https://lafincaecohotel.com/robots.txt` responde `Allow: /`. Lo único que queda de
+este apartado es el punto 4, enviar el sitemap a Google Search Console, que va en
+la secuencia del día del lanzamiento (`docs/PLAN_CIERRE.md`, §5).
 
-**Para arreglarlo basta con esto**, y no hay nada más que tocar en el código:
+La variable existía para proteger al WordPress viejo mientras era la web real; ese
+sitio **ya no existe** (hosting cancelado) y el dominio apunta a Vercel. Si algún
+día dejara de valer `1`, **el hotel quedaría invisible en Google**: el sitio nuevo
+se prohibiría a sí mismo y el viejo ya no responde.
 
-1. Vercel → proyecto `website-la-finca-ecohotel` → **Settings → Environment
+**Cómo se hizo** (y cómo se repetiría), sin nada más que tocar en el código:
+
+1. ✅ Vercel → proyecto `website-la-finca-ecohotel` → **Settings → Environment
    Variables** → añadir `SITIO_PUBLICADO` con valor **`1`** (Production; de
    Preview conviene dejarla fuera, para que las vistas previas sigan sin
    indexarse).
-2. **Redesplegar** (Deployments → ⋯ → Redeploy, o cualquier commit nuevo).
+2. ✅ **Redesplegar** (Deployments → ⋯ → Redeploy, o cualquier commit nuevo).
    `/robots.txt` y las metaetiquetas son estáticos: se hornean en el build.
-3. Comprobar que `https://lafincaecohotel.com/robots.txt` ya **no** dice
-   `Disallow: /` y que la portada ya no trae `noindex`.
-4. Enviar `https://lafincaecohotel.com/sitemap.xml` desde Google Search Console.
-
-No lo activa nadie por su cuenta: es una decisión de Cesar, y conviene tomarla
-pronto — cada día con `noindex` es un día que el hotel no aparece en Google.
+3. ✅ Comprobar que `https://lafincaecohotel.com/robots.txt` ya **no** dice
+   `Disallow: /` y que la portada ya no trae `noindex`. (`robots.txt` comprobado el
+   2026-10-02.)
+4. ⬜ **Pendiente:** enviar `https://lafincaecohotel.com/sitemap.xml` desde Google
+   Search Console, con el visto bueno de lanzamiento.
 
 ### `CRON_SECRET`
 
-**Obligatoria antes del lanzamiento.** Es el secreto con el que se firma la
-llamada del cron que mantiene despierta la base.
+✅ **Ya está puesta en Vercel Production.** Era obligatoria antes del
+lanzamiento. Es el secreto con el que se firma la llamada del cron que mantiene
+despierta la base.
 
 > ⚠ **Desde el 2026-10-02 el cron hace algo más importante que el latido:
 > reconcilia los pagos.** `/api/salud` ejecuta cuatro tareas **en este orden**:
@@ -374,7 +429,7 @@ Para evitarlo, `vercel.json` programa un cron que llama una vez al día a
 anónima (`select id from planes limit 1`) y el contador de inactividad vuelve a
 cero.
 
-Cómo se configura:
+Cómo se configuró (y cómo se repetiría si hubiera que rotarla):
 
 1. Generar un valor largo al azar:
 
@@ -401,6 +456,10 @@ Detalles del cron:
   otro latido en su lugar.
 
 ## 3. Verificación tras el primer deploy
+
+*(Checklist del primer despliegue, ya cumplido. El primer punto describe el
+estado de antes del lanzamiento: contra el dominio real, `robots.txt` hoy dice
+`Allow: /`, como explica la §4.)*
 
 Con la URL de Vercel ya asignada (`https://…vercel.app`), revisar:
 
@@ -430,8 +489,8 @@ Con la URL de Vercel ya asignada (`https://…vercel.app`), revisar:
 canceló: **el sitio nuevo es el sitio en producción**. El apex es el dominio
 principal y `www` devuelve un 308 hacia él.
 
-Queda pendiente **solo el punto 4** de la lista (`SITIO_PUBLICADO=1`), que es una
-decisión de Cesar. El procedimiento original se conserva abajo como referencia.
+De esta lista **ya no queda nada pendiente**: el punto 4 (`SITIO_PUBLICADO=1`) también
+se hizo el 2026-10-01. El procedimiento original se conserva abajo como referencia.
 
 1. En **Hostinger** (donde vive el DNS del dominio hoy), crear/editar:
    - Un registro **A** del apex (`lafincaecohotel.com`) apuntando a la IP que
@@ -442,13 +501,13 @@ decisión de Cesar. El procedimiento original se conserva abajo como referencia.
    certificado SSL activo.
 3. ✅ Cambiar `NEXT_PUBLIC_SITE_URL` a `https://lafincaecohotel.com` (hecho el
    2026-10-01).
-4. ⬜ **Pendiente:** poner `SITIO_PUBLICADO` en `1`. Mientras no se haga, el
+4. ✅ Poner `SITIO_PUBLICADO` en `1` (hecho el 2026-10-01). Con otro valor, el
    hotel está invisible en Google (ver el apartado de esa variable).
-5. Redesplegar.
-6. Repetir la verificación de la sección 3, ahora contra el dominio real:
+5. ✅ Redesplegar.
+6. ✅ Repetir la verificación de la sección 3, ahora contra el dominio real:
    `/robots.txt` ya NO debe decir `Disallow: /` (debe volver el
    `Allow: /` con las exclusiones de `/admin` y `/api/`), y las canónicas
-   deben apuntar a `lafincaecohotel.com`.
+   deben apuntar a `lafincaecohotel.com`. (`robots.txt` comprobado el 2026-10-02.)
 7. **Redirecciones 301 del sitio viejo: ya están hechas** (`next.config.ts`,
    2026-09-30). El `wp-sitemap` del WordPress publicaba seis direcciones y las
    cinco que no son la portada redirigen:
@@ -474,8 +533,8 @@ decisión de Cesar. El procedimiento original se conserva abajo como referencia.
       (`panel@lafincaecohotel.com`) antes de entregarle el proyecto al
       cliente. Es una cuenta de desarrollo, no debe quedar activa en
       producción.
-- [ ] `CRON_SECRET` creada en Vercel (sección 2) y el cron visible en la
-      pestaña **Cron Jobs** del proyecto.
+- [x] `CRON_SECRET` creada en Vercel Production (sección 2).
+- [ ] El cron visible en la pestaña **Cron Jobs** del proyecto.
 - [ ] Comprobar que las cabeceras de seguridad viajan en producción:
 
           curl -sI https://<dominio>/ | grep -i "content-security-policy\|strict-transport\|x-frame\|referrer\|permissions\|x-content-type"
