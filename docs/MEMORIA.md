@@ -189,6 +189,8 @@
 | 2026-10-02 | **Los correos llevan `Reply-To` al Gmail del hotel (`EMAIL_REPLY_TO`).** `reservas@lafincaecohotel.com` es una identidad de ENVÍO de Resend: detrás no hay buzón que nadie lea. Sin `Reply-To`, la respuesta del huésped («¿puedo llegar a las 9?») se pierde y él cree que avisó. Un correo perdido de un huésped es peor que un correo que no se envió. |
 | 2026-10-02 | **Por el sitio no se reserva para hoy: la llegada más temprana es mañana** (`DIAS_MINIMOS_ANTELACION = 1` en `src/lib/reserva/noches.ts`). Vale para hospedaje y Día de Calma. El calendario solo es ayuda visual; quien decide es el servidor (`cotizarEnServidor()` y `/api/reservar`), con el «hoy» de `America/Bogota`. |
 | 2026-10-02 | ⚠ **La antelación mínima es una regla del SITIO PÚBLICO, nunca del panel.** El equipo del hotel tiene que poder registrar una reserva de hoy —las de WhatsApp a última hora, con el huésped ya en camino— y bloquear el día en curso. Por eso el alta manual no pasa por `cotizarEnServidor()` y su formulario sigue trayendo hoy por defecto. Aplicarle la constante del público le costaría al hotel las reservas de última hora. |
+| 2026-10-03 | ⚠ **`calendarList.list` NO dice a qué calendarios tiene acceso una cuenta de servicio.** Devuelve sus *suscripciones*, no sus *permisos*: compartir un calendario con ella concede la ACL, pero nadie «acepta» la invitación —una cuenta de servicio no tiene interfaz donde hacerlo—, así que su `calendarList` se queda **vacía** aunque lea los siete calendarios del hotel sin un fallo. El diagnóstico del panel dependía de esa lista y decía «no veo ningún calendario» con todo funcionando. **La verdad es `events.list`**, que además trae el nombre (`summary`) y el permiso real (`accessRole`) en la misma respuesta. `calendarList` solo sirve para descubrir identificadores que nadie nos ha dado, y su silencio no prueba nada. |
+| 2026-10-03 | **De los siete calendarios del hotel, solo UNO está compartido con permiso de escritura** («Reservas Finca Villarreal - Sitio Web», `65f3342a…`, `writer`); el general y los cinco por cabaña van en `reader`. Es la configuración correcta, pero hace real una distinción que antes era teórica: si ese permiso se cayera, cada reserva del panel se quedaría sin apuntar y nadie se enteraría. Por eso el sitio lo comprueba y lo avisa en la franja de estado del panel («No puede apuntar reservas»), sin esperar a la primera reserva perdida. |
 
 ## Registro de sesiones
 
@@ -3193,3 +3195,104 @@ de producción. El estado de los pagos pasó de POR HACER a EN CURSO.
 `PAGOS_ACTIVOS=0` en Production, para que nadie cierre una reserva sin pagar hasta el
 lanzamiento. A Production solo le faltan `GOOGLE_CALENDAR_CREDENCIALES` y
 `GOOGLE_CALENDAR_ID`; las llaves de Bold siguen solo en la preview de `pruebas-pagos`.
+
+### 2026-10-03 (tarde) — Los siete calendarios del hotel ya están conectados, y el diagnóstico dejó de mentir
+
+**Lo que pasó.** El hotel compartió **siete** calendarios con la cuenta de
+servicio `lafinca-calendario@…`: el general («Reservas Finca Villarreal»), los
+cinco por cabaña y uno nuevo y vacío, «Reservas Finca Villarreal - Sitio Web»,
+que es el único con «Hacer cambios en eventos». Se configuraron los siete en
+`GOOGLE_CALENDAR_ID` (los de cabaña con su `=1`…`=5`) y
+`GOOGLE_CALENDAR_ESCRIBIR_EN` apuntando al de escritura.
+
+`npm run calendario:verificar` parseaba la configuración perfectamente pero
+decía **«Calendarios que la cuenta del sitio ve de verdad: ninguno todavía»** y
+avisaba de que los siete estaban configurados y no los veía. Era un **falso
+negativo**: los siete se leen sin un solo fallo.
+
+#### La causa
+
+`listarCalendarios()` usaba `calendarList.list`, que devuelve los calendarios a
+los que la cuenta está **suscrita**, no aquellos sobre los que tiene **permiso**.
+Compartir un calendario con una cuenta de servicio concede la ACL; la
+suscripción nunca aparece, porque no hay nadie que acepte una invitación. El
+acceso real va por `events.list`, que funciona con el permiso aunque
+`calendarList` esté vacía.
+
+Comprobado calendario por calendario con `listarEventos`: **los siete responden**.
+`calendarList.list` devuelve cero entradas al mismo tiempo.
+
+#### Qué se cambió
+
+- **`src/lib/google/calendario.ts`** — `listarEventos` pasa a ser un envoltorio de
+  **`leerCalendario()`**, que devuelve también el `summary` y el `accessRole` que
+  Google ya incluía en esa misma respuesta (gratis, sin una llamada más). Nuevo
+  **`comprobarCalendario(id)`**: la comprobación de acceso, con `maxResults=1` y
+  `fields=summary,accessRole`, así que no baja ni un evento. Y
+  `accesoPermiteEscribir()`, que es `owner` o `writer` y nada más.
+- **`src/lib/reserva/diagnostico-calendarios.ts`** (nuevo, **puro**) — arma el
+  diagnóstico a partir de las comprobaciones ya hechas. Puro a propósito: la
+  lógica vivía pegada a la llamada de red y por eso no había ninguna prueba que
+  hubiera cazado el falso negativo. 16 pruebas nuevas en
+  `diagnostico-calendarios.test.ts`, la primera de ellas la regresión: un
+  calendario que responde sale accesible **aunque la lista de suscripciones venga
+  vacía**.
+- **`src/lib/reserva/ocupacion-externa.ts`** — `diagnosticoDelCalendario()`
+  comprueba en paralelo cada calendario configurado (y el de escritura, aunque
+  esté fuera de la lista). `calendarList` se sigue llamando, pero solo para
+  **descubrir** identificadores; ya no decide nada. Un diagnóstico con algo roto
+  se cachea un minuto en vez de cinco.
+- **El aviso grave.** `LecturaCalendario` gana `escrituraSinPermiso`. Como el
+  permiso viene en la respuesta de la lectura normal, el sitio se entera sin
+  llamadas extra: si el calendario de escritura resulta estar en solo lectura, la
+  franja de estado del panel saca una pastilla roja **«No puede apuntar
+  reservas»** y el aviso explica el arreglo. Es grave porque todo se lee bien y,
+  sin embargo, ninguna reserva del panel llega al calendario del hotel.
+- **El panel** (`diagnostico-calendario.tsx`) se reorganiza en dos bloques que
+  ahora son cosas distintas de verdad: **«Aquí se apuntan las reservas del
+  panel»** (uno) y **«Calendarios que el sitio solo consulta»** (los demás). Cada
+  uno con su nombre en Google, su permiso en español y si responde.
+- **`scripts/verificar-calendarios.mjs`** — misma estructura, y termina con código
+  de salida 1 si algún calendario no responde o si el de escritura no puede
+  escribir.
+
+#### Qué hay dentro de los calendarios (próximos 60 días, 2026-10-03 → 12-02)
+
+| Calendario | Permiso | Eventos |
+| --- | --- | --- |
+| Reservas Finca Villarreal - Sitio Web (escritura) | `writer` | 0 |
+| Reservas Finca Villarreal (general) | `reader` | **48** |
+| Cabañas 1 a 5 | `reader` | 0 cada uno |
+
+**Los 48 títulos del general nombran su cabaña**, los 48: «Javier Coral cabaña 5»,
+«Diego Camargo bono regalo cabaña 3», «Jhon Hernández (B.R. Atarnan O.) cabaña 2»,
+«Ximena Rojas Cabaña 2»… Pasados por las reglas reales del sitio, los 48 salen
+como `cabana_reconocida` y **ninguno** como `sin_cabana`. Es decir: **cero
+bloqueos falsos hoy**. No hay eventos de «Mantenimiento», «Cumpleaños» ni nada
+que no sea una reserva.
+
+**Los cinco calendarios por cabaña están vacíos**, así que el general no duplica
+nada: es la única fuente de ocupación. Conviene dejarlo en la lista. Cuando el bot
+de WhatsApp empiece a llenar los de cabaña habrá que mirar si el general repite lo
+mismo (la unión ya descarta el evento duplicado por id, pero dos eventos distintos
+para la misma reserva no se reconocen entre sí).
+
+#### Lo que hay que vigilar, y es decisión del cliente
+
+El riesgo sigue vivo: **un evento del general cuyo título no nombre la cabaña
+bloquea las cinco**. Hoy no hay ninguno, pero nada se lo impide al equipo. Hay que
+pedirle al hotel que **todo** lo que apunte en el general lleve la cabaña en el
+título, incluidos los eventos que no son reservas (mantenimiento, visitas,
+cumpleaños). La alternativa —dejar de leer el general en cuanto los de cabaña
+estén poblados— es la decisión que tocará tomar con el cliente.
+
+#### Verificación
+
+`npx tsc --noEmit` limpio · `npm test` **352 pruebas en verde** (336 + 16 nuevas) ·
+`npm run build` sin errores · `eslint` limpio sobre lo tocado ·
+`npm run calendario:verificar` ahora imprime «7 de 7 calendarios configurados
+responden. ✓ La integración con el calendario del hotel está sana».
+
+**No se escribió, editó ni borró ningún evento en los calendarios del cliente.**
+Todo fue lectura; el permiso de escritura se confirmó por el `accessRole` que
+devuelve Google (`writer`), sin crear ningún evento de prueba.
