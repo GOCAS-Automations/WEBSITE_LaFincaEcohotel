@@ -282,12 +282,25 @@ que el navegador pueda falsificar.
 
 ## 9. Pendientes que siguen abiertos (no inventar)
 
+> Puesta al día el 2026-10-03. Lo que bloquea el lanzamiento y el orden en que se resuelve
+> están en `docs/PLAN_CIERRE.md`; esta lista es solo lo que falta del lado del cliente.
+
 - [ ] Logo vectorial (Santiago) — mientras tanto, el de `public/marca/` y el del manual.
 - [ ] Licencia Intro (Santiago).
-- [ ] Clave Hostinger, Google Business, Analytics (Amapola).
+- [ ] **Acceso a Hostinger** (Amapola, que lo tiene). **Ya no bloquea el lanzamiento**: el hosting viejo
+      se canceló y el dominio apunta a Vercel desde el 2026-10-01. Pero los DNS siguen administrándose
+      ahí, así que el acceso hace falta para **renovar el dominio** (vence el **4 de noviembre de 2026**;
+      si vence, el hotel se queda sin web) y para el **correo corporativo**. Si Amapola prefiere, que
+      renueve ella y lo confirme.
+- [ ] Acceso a Google Business Profile y a Google Analytics (Amapola).
 - [x] Razón social, NIT y correo de contacto: entregados el 2026-09-30 (ver §7).
 - [ ] Revisión posterior de los textos legales (aprobados por el cliente el 2026-09-30; queda la revisión jurídica).
-- [ ] Cuenta bancaria y documentos Wompi (Amapola).
+- [ ] **Llaves de producción de Bold** (Amapola). La pasarela es **Bold**, del Banco de Bogotá, donde
+      el hotel ya tiene cuenta (no es Wompi). **No se piden documentos ni cuenta bancaria**: solo que el
+      hotel **habilite las llaves de integración en su panel de Bold** y nos envíe las dos de
+      producción (identidad y secreta, del mismo ambiente). Sin ellas el sitio no cobra en línea y
+      cierra por WhatsApp. El anticipo ya está decidido (ver §5): de 50 a 100 %, y el saldo por link
+      de pago antes de la llegada.
 - [ ] Video: definir con Juan Camilo; sugieren embeber links de Instagram.
 - [ ] ¿Mínimo de noches en fines de semana/festivos?
 - [ ] **Día de Calma**: confirmar si el anticipo mínimo es el mismo 50 % del hospedaje (el sitio ya
@@ -297,7 +310,12 @@ que el navegador pueda falsificar.
 - [ ] **Google Calendar «la finca»**: la integración ya está hecha (2026-09-16). Solo falta que el
       hotel **comparta** el calendario con
       `lafinca-calendario@project-bdfd1411-9189-442d-84d.iam.gserviceaccount.com` dándole
-      **«Hacer cambios en eventos»**, y nos pase el **ID del calendario**. Nada más.
+      **«Hacer cambios en eventos»** (con «Ver todos los detalles» no basta: sin escritura, las
+      reservas del panel no se apuntan). **Nada más: ya no hace falta pedirles el ID del calendario**,
+      porque aparece solo en el panel (Reservas → «Ver los calendarios de Google») y con
+      `npm run calendario:verificar` en cuanto lo compartan.
+- [ ] **Nombres y correos de quienes usarán el panel** (Juan Camilo): hoy solo existen la cuenta del
+      hotel y la temporal de pruebas `panel@lafincaecohotel.com`, que se borra al entregar.
 - [x] Usuarios del panel — resuelto el 2026-09-16: existe `/admin/usuarios` con los roles
       propietario y equipo, y la cuenta del hotel (`fincavillarreal@gmail.com`) ya está creada.
       Sigue pendiente **explicarle a Amapola qué es el panel**: el administrador del sitio donde
