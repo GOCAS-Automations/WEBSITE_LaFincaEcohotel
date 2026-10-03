@@ -1,18 +1,29 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useId, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useId, useMemo, useState, type FormEvent } from "react";
 
 import { clasesBoton } from "@/components/ui/boton";
 import {
+  bloqueoComun,
+  bloqueoDeCabana,
+  mesDe,
+  MOTIVO_TODAS_OCUPADAS,
+  nochesBloqueadas,
+  validarFechas,
+} from "@/lib/reserva/elegibilidad-calendario";
+import {
+  etiquetaTipoNoche,
   nochesDe,
   primeraLlegadaReservable,
   validarRango,
+  type TipoNoche,
 } from "@/lib/reserva/noches";
 
 import { CalendarioFechas } from "./calendario-fechas";
 import { SelectorCabana } from "./selector-cabana";
 import { IconoFlecha, IconoLlave } from "./iconos";
+import { useOcupacion } from "./usar-ocupacion";
 
 /**
  * Módulo de reserva directa de la portada.
@@ -53,9 +64,24 @@ import { IconoFlecha, IconoLlave } from "./iconos";
  *   línea cuenta.
  * · **Ningún día se apaga por culpa de un plan.** Aquí ni siquiera se pregunta
  *   el plan: el plan sale de la noche (ver `src/lib/reserva/noches.ts`).
+ * · **Sí se apaga lo OCUPADO** (2026-10-03). Con cabaña elegida, el calendario
+ *   tacha sus noches tomadas —y, en la 02, las de lunes a jueves, que no
+ *   vende—. Sin cabaña, tacha solo las noches en que NO queda ninguna libre, y
+ *   el panel dice que al elegir cabaña se ven sus fechas exactas. Las reglas
+ *   y la carga son las mismas que en `/reservar`: `elegibilidad-calendario.ts`
+ *   y `useOcupacion`. Nada se pide al servidor hasta que el visitante abre el
+ *   calendario o elige cabaña.
  */
 
-export type CabanaOpcion = { slug: string; nombre: string };
+export type CabanaOpcion = {
+  slug: string;
+  nombre: string;
+  /**
+   * Tipos de noche que vende (de sus tarifas, `tiposOfrecidosDe`). La 02 solo
+   * vende las de fin de semana. `null` o ausente = todas.
+   */
+  tipos?: TipoNoche[] | null;
+};
 
 type Props = {
   cabanas: CabanaOpcion[];
@@ -86,6 +112,99 @@ export function ModuloReserva({
   const [cabana, setCabana] = useState("");
   const [entrada, setEntrada] = useState("");
   const [salida, setSalida] = useState("");
+
+  const primera = primeraLlegadaReservable(hoy);
+
+  /* --- La ocupación ------------------------------------------------------ */
+
+  /*
+    PEREZOSA: la portada la ve todo el mundo y casi nadie abre el calendario.
+    Se enciende al abrirlo (el calendario avisa del mes que muestra) o al
+    elegir cabaña, que es la señal de que va en serio.
+  */
+  const [interesado, setInteresado] = useState(false);
+  const [mes, setMes] = useState(() => mesDe(primera));
+  const ocupacion = useOcupacion({ activa: interesado, mes });
+
+  const opcion = cabanas.find((item) => item.slug === cabana) ?? null;
+
+  /*
+    QUÉ SE TACHA.
+    Con cabaña: sus noches tomadas (la regla de la 02 la aplica el propio
+    calendario con `tiposDeNocheOfrecidos`). Sin cabaña: las noches en que
+    las cinco están bloqueadas —ocupadas o, en la 02, entre semana—, sacadas
+    de los meses ya cargados.
+  */
+  const nochesOcupadas = useMemo(() => {
+    if (opcion) return ocupacion.porCabana[opcion.slug] ?? [];
+    if (ocupacion.diasCargados.length === 0) return [];
+    const comun = bloqueoComun(
+      cabanas.map((item) =>
+        bloqueoDeCabana({
+          ocupadas: ocupacion.porCabana[item.slug] ?? [],
+          tiposOfrecidos: item.tipos ?? null,
+        }),
+      ),
+    );
+    return nochesBloqueadas(ocupacion.diasCargados, comun);
+  }, [opcion, cabanas, ocupacion.porCabana, ocupacion.diasCargados]);
+
+  const notaCalendario =
+    ocupacion.estado === "error"
+      ? "No pudimos consultar las fechas ocupadas ahora mismo. Elige igual: te las confirmamos al reservar."
+      : !opcion
+        ? "Tachamos solo los días sin ninguna cabaña libre. Al elegir cabaña verás sus fechas exactas."
+        : opcion.tipos && opcion.tipos.length === 1
+          ? `La ${opcion.nombre} solo se ofrece para ${etiquetaTipoNoche(opcion.tipos[0], true)}: las demás salen tachadas.`
+          : null;
+
+  /*
+    CAMBIAR DE CABAÑA CON LAS FECHAS PUESTAS.
+    Se comprueban contra la nueva con las mismas reglas del calendario; si no
+    valen, se quitan y se dice arriba, en la línea de estado del módulo.
+    `/reservar` haría lo mismo al llegar, pero aquí se ve antes de pulsar.
+  */
+  const [porValidar, setPorValidar] = useState(false);
+  const [aviso, setAviso] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!porValidar) return;
+    if (!entrada || !opcion) {
+      setPorValidar(false);
+      return;
+    }
+    if (ocupacion.estado !== "error" && !ocupacion.mesCargado(mesDe(entrada))) {
+      return;
+    }
+    const resultado = validarFechas(
+      { entrada, salida },
+      {
+        hoy,
+        minima: primera,
+        bloqueo: bloqueoDeCabana({
+          ocupadas: ocupacion.porCabana[opcion.slug] ?? [],
+          tiposOfrecidos: opcion.tipos ?? null,
+          nombreCabana: opcion.nombre,
+        }),
+      },
+    );
+    if (!resultado.valido) {
+      setAviso(`Esas fechas no están libres en la ${opcion.nombre}: elige otras.`);
+      setEntrada("");
+      setSalida("");
+    }
+    setPorValidar(false);
+  }, [porValidar, entrada, salida, opcion, ocupacion, hoy, primera]);
+
+  function cambiarCabana(nueva: string) {
+    setCabana(nueva);
+    setAviso(null);
+    if (nueva) setInteresado(true);
+    if (nueva && entrada) {
+      setMes(mesDe(entrada));
+      setPorValidar(true);
+    }
+  }
 
   /*
     Aquí NO hay plan, y tampoco hace falta: el plan sale de las noches, no al
@@ -147,9 +266,11 @@ export function ModuloReserva({
 
               Sin fechas no se escribe nada. Aquí decía «Sin intermediarios ni
               comisiones» y Cesar pidió retirarlo del sitio entero. */}
-          {noches.length > 0
-            ? `${noches.length} ${noches.length === 1 ? "noche" : "noches"}`
-            : ""}
+          {aviso
+            ? aviso
+            : noches.length > 0
+              ? `${noches.length} ${noches.length === 1 ? "noche" : "noches"}`
+              : ""}
         </p>
       </div>
 
@@ -187,7 +308,7 @@ export function ModuloReserva({
           <SelectorCabana
             cabanas={cabanas}
             valor={cabana}
-            alCambiar={setCabana}
+            alCambiar={cambiarCabana}
             etiquetaId={idEtiquetaCabana}
           />
         </div>
@@ -200,12 +321,24 @@ export function ModuloReserva({
             alCambiar={(nuevaEntrada, nuevaSalida) => {
               setEntrada(nuevaEntrada);
               setSalida(nuevaSalida);
+              setAviso(null);
+              setPorValidar(false);
             }}
             hoy={hoy}
             /* En línea no se reserva para hoy: la llegada más temprana es
                mañana (`DIAS_MINIMOS_ANTELACION`). El servidor lo vuelve a
                comprobar al crear la reserva; esto solo apaga los días. */
-            minima={primeraLlegadaReservable(hoy)}
+            minima={primera}
+            nochesOcupadas={nochesOcupadas}
+            tiposDeNocheOfrecidos={opcion?.tipos ?? null}
+            nombreCabana={opcion?.nombre ?? null}
+            motivoOcupada={opcion ? undefined : MOTIVO_TODAS_OCUPADAS}
+            cargandoOcupacion={ocupacion.estado === "cargando"}
+            nota={notaCalendario}
+            alCambiarMes={(visible) => {
+              setInteresado(true);
+              setMes(visible);
+            }}
             compacto
           />
         </div>

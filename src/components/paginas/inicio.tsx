@@ -39,6 +39,7 @@ import {
 } from "@/lib/contenido";
 import { getResenasGoogle } from "@/lib/resenas-google";
 import { CLASE_FOTO_CON_FLAG } from "@/lib/fotos";
+import { tiposOfrecidosDe } from "@/lib/reserva/elegibilidad-calendario";
 import { formatearCOP, hoyEnBogota } from "@/lib/utils/formato";
 import { mensajeExperiencia, enlaceWhatsapp } from "@/lib/whatsapp";
 
@@ -132,6 +133,9 @@ export async function PaginaInicio() {
   const opcionesCabana = alojamientos.map((alojamiento) => ({
     slug: alojamiento.slug,
     nombre: alojamiento.nombre,
+    /* Qué noches vende, de sus tarifas: con esto el calendario del módulo
+       tacha los lunes a jueves de la 02, igual que en `/reservar`. */
+    tipos: tiposOfrecidosDe(alojamiento),
   }));
 
   /*
