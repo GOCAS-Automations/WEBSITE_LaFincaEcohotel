@@ -1,20 +1,32 @@
 # Guía de pruebas — sitio público con Bold en modo pruebas
 
-> Para recorrer `https://lafincaecohotel.com` de punta a punta antes de activar los pagos reales. Marca cada casilla y anota lo que falle con la URL y una captura.
+> Para recorrer el sitio de punta a punta antes de activar los pagos reales: lo demás en `https://lafincaecohotel.com`, los pagos en `https://pruebas.lafincaecohotel.com`. Marca cada casilla y anota lo que falle con la URL y una captura.
 
 ## Antes de empezar
 
-**Variables en Vercel (Production) y redesplegar después de ponerlas:**
+**Dos direcciones, y no son intercambiables:**
 
-| Variable | Valor | Para qué |
+| Dónde | Qué se prueba ahí | Pagos |
 |---|---|---|
-| `BOLD_IDENTITY_KEY` | la de **pruebas**, de tu `.env.local` | Firmar el checkout |
-| `BOLD_PRIVATE_KEY` | la de **pruebas**, de tu `.env.local` | Firmar el checkout |
-| `PAGOS_ACTIVOS` | `1` | Muestra el botón de pagar |
-| `CRON_SECRET` | el que te di | Protege el cron |
-| `RESEND_API_KEY`, `EMAIL_FROM`, `EMAIL_NOTIFY_TO`, `EMAIL_REPLY_TO` | ya puestas | Correos |
+| `https://lafincaecohotel.com` | Las secciones **1, 2, 4, 5, 6 y 7** | Apagados |
+| `https://pruebas.lafincaecohotel.com` | **Solo la sección 3 (pagos)** | Encendidos, con la pasarela de pruebas |
 
-**No pongas `BOLD_MODO`.** Con las llaves de pruebas y sin esa variable, el checkout lleva a la pasarela de pruebas y la confirmación llega por reconciliación (consulta directa a Bold), que es la vía que funciona en sandbox.
+`pruebas.lafincaecohotel.com` es la vista previa de la rama `pruebas-pagos`: el mismo sitio, la misma base de datos y el mismo panel, pero con las llaves de **pruebas** de Bold en su propio alcance. Ya está configurada; para la ronda de pagos solo hay que entrar por ahí.
+
+**Por qué la ronda de pagos no se hace en el sitio real:** con llaves de pruebas en Production, un huésped que entre a `/reservar` esa tarde podría «pagar» con una tarjeta de sandbox —que no cobra un peso— y quedarse con una reserva de verdad confirmada y una cabaña bloqueada.
+
+**Variables en Vercel. Antes de empezar, comprobar que están así** (y redesplegar si se cambia alguna):
+
+| Variable | Production (el sitio real) | Preview (rama `pruebas-pagos`) |
+|---|---|---|
+| `BOLD_IDENTITY_KEY` | la de **producción** (o vacía hasta el lanzamiento) | la de **pruebas** |
+| `BOLD_PRIVATE_KEY` | la de **producción** (o vacía hasta el lanzamiento) | la de **pruebas** |
+| `PAGOS_ACTIVOS` | **`0`** (o borrada) hasta el lanzamiento | `1` |
+| `BOLD_MODO` | **no debe existir** | `pruebas` |
+| `CRON_SECRET` | el que te di | el mismo |
+| `RESEND_API_KEY`, `EMAIL_FROM`, `EMAIL_NOTIFY_TO`, `EMAIL_REPLY_TO` | ya puestas | ya puestas |
+
+Lo único que no puede pasar nunca es **llaves de pruebas con `PAGOS_ACTIVOS=1` en Production**. Si alguna vez quedan así, el sitio se defiende solo —no confirma ninguna reserva y deja el motivo en los registros—, pero entonces los pagos no se pueden probar: por eso se usa la vista previa.
 
 **Tarjetas de prueba:** aprobada `4111 1111 1111 1111` · rechazada `4970 1100 0000 0062`. Fecha futura cualquiera, CVV cualquiera.
 
@@ -49,13 +61,19 @@
 - [ ] **No se reserva para hoy**: abre el calendario y comprueba que **el día de hoy sale tachado** y no se puede pulsar (igual que los días que ya pasaron). El primer día elegible es **mañana**. Pruébalo también en el **Día de Calma** y en el calendario de la **portada**.
 - [ ] Intenta reservar una fecha ya ocupada: debe avisar en español, sin errores técnicos.
 
-## 3 · Pagos
+## 3 · Pagos — **esta sección va en `pruebas.lafincaecohotel.com`**
 
+> Toda esta sección, incluido el panel, se hace entrando por `https://pruebas.lafincaecohotel.com`. En el sitio real el botón de pagar no aparece, y es a propósito: en Production los pagos siguen apagados hasta el lanzamiento.
+
+- [ ] Abre `https://pruebas.lafincaecohotel.com/reservar`. **El botón de pagar aparece.** (Si no aparece, avísame: falta `PAGOS_ACTIVOS=1` en la vista previa.)
+- [ ] Abre `https://lafincaecohotel.com/reservar` en otra pestaña: ahí el cierre tiene que seguir siendo **por WhatsApp**, sin botón de pagar. Es la comprobación de que el sitio real no está cobrando con una pasarela de pruebas.
 - [ ] **Pago aprobado**: completa una reserva y paga con la tarjeta aprobada. Al volver, la página de confirmación muestra la reserva **confirmada** con su código.
-- [ ] En el panel, esa reserva aparece confirmada con el monto pagado y el saldo pendiente.
+- [ ] En el panel (`pruebas.lafincaecohotel.com/admin`), esa reserva aparece confirmada con el monto pagado y el saldo pendiente.
 - [ ] **Pago rechazado**: repite con la tarjeta de rechazo. La reserva queda pendiente y no se confirma.
 - [ ] **Abandono**: inicia un pago y cierra la pestaña sin pagar. A los 30 minutos la fecha vuelve a estar libre.
 - [ ] **Botón del panel**: en una reserva pendiente con pago, pulsa «Verificar pago con Bold» y comprueba que responde con el estado real.
+
+Las reservas que creaste aquí son reservas de verdad —la base de datos es la misma—, así que entran en la limpieza de la sección 7 igual que las demás.
 
 ## 4 · Correos
 
@@ -126,8 +144,8 @@ De cada fallo: **en qué página**, **qué hiciste**, **qué esperabas** y **qu�
 
 ## Cuando terminen las pruebas
 
-1. Quitar `PAGOS_ACTIVOS` o ponerlo en `0` hasta el lanzamiento real, para que nadie reserve gratis.
-2. Cambiar las llaves de Bold por las de **producción**, registrar el webhook en `https://lafincaecohotel.com/api/pagos/bold/webhook` y habilitar las llaves de integración en su panel.
-3. Volver a poner `PAGOS_ACTIVOS=1` y hacer **una compra real pequeña** con su reembolso.
+1. Comprobar que Production sigue con `PAGOS_ACTIVOS=0` y **sin** `BOLD_MODO`: las llaves de pruebas se quedan solo en la vista previa.
+2. Poner en Production las llaves de Bold de **producción**, registrar el webhook en `https://lafincaecohotel.com/api/pagos/bold/webhook` y habilitar las llaves de integración en su panel.
+3. Recién entonces poner `PAGOS_ACTIVOS=1` en Production y hacer **una compra real pequeña** con su reembolso.
 4. Enviar el sitemap a Google Search Console.
 5. Crear las cuentas reales del equipo y borrar el usuario de pruebas.
