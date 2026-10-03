@@ -951,28 +951,33 @@ const RESPALDO_GALERIA: ContenidoGaleria = {
 
 const RESPALDO_RESERVAR: ContenidoReservar = {
   intro:
-    "Empieza por tus fechas: con ellas te mostramos las cabañas libres y el precio noche por noche. Te llevamos a WhatsApp con el mensaje ya escrito y confirmamos disponibilidad el mismo día.",
+    "Empieza por tu cabaña: con ella te mostramos sus fechas libres y el precio noche por noche. Te llevamos a WhatsApp con el mensaje ya escrito y confirmamos disponibilidad el mismo día.",
   /*
-    SON LOS CINCO PASOS DEL SELECTOR, UNO A UNO (2026-09-15).
+    SON LOS CINCO PASOS DEL SELECTOR, UNO A UNO.
 
-    El orden es el del flujo real —las FECHAS primero, porque de ellas sale
-    todo lo demás— y ahora están los cinco, no tres: faltaban las experiencias
-    por noche y la elección de cuánto se paga hoy, que es justo lo último que
-    alguien quiere saber antes de pulsar. Los textos son cortos a propósito:
-    se pintan en dos columnas junto a la fotografía y la sección no puede
-    crecer de alto. Y SIN el número delante: la tarjeta ya lleva su círculo
-    numerado, y «1» junto a «1. Tus fechas» se leía como un once.
+    El orden es el del flujo real. Desde el 2026-10-03 la CABAÑA va primero
+    —la disponibilidad es de cada cabaña, y el calendario tacha sus noches
+    ocupadas en cuanto sabe cuál es— y las fechas después; antes era al revés
+    y se elegían fechas a ciegas. Son cinco: lugar, fechas, plan, experiencias
+    por noche y cuánto se paga hoy. Los textos son cortos a propósito: se
+    pintan en dos columnas junto a la fotografía y la sección no puede crecer
+    de alto. Y SIN el número delante: la tarjeta ya lleva su círculo numerado,
+    y «1» junto a «1. Tu cabaña» se leía como un once.
+
+    Si se cambian aquí, hay que regenerar el seed (`npm run seed:contenido`) y
+    llevarlos a la base con `scripts/actualizar-pasos-reservar.mjs`, que solo
+    escribe si el hotel no los ha editado desde el panel.
   */
   pasos: [
     {
-      titulo: "Tus fechas",
-      texto:
-        "Llegada y salida en el calendario. Ninguna combinación está prohibida: cada noche se cobra con la tarifa de su fecha.",
-    },
-    {
       titulo: "Tu cabaña",
       texto:
-        "Te mostramos las que sirven para esas fechas, con su precio. Las cinco son independientes y para dos personas.",
+        "Elige una de las cinco, todas para dos. ¿Vienes solo de día? Elige el Día de Calma, sin hospedaje.",
+    },
+    {
+      titulo: "Tus fechas",
+      texto:
+        "El calendario te muestra las fechas libres de esa cabaña: las noches ocupadas salen tachadas.",
     },
     {
       titulo: "Tu plan",

@@ -227,10 +227,11 @@ export async function PaginaExperiencias() {
             : "bg-crema-50"
         }
         titulo="Todas se suman a tu reserva"
-        /* El orden real del flujo es fechas → cabaña → plan (ver los tres
-           pasos de `/reservar`): esta frase decía «elige primero la cabaña y
-           el plan» y contradecía lo que el visitante iba a encontrar. */
-        texto="Elige primero tus fechas y tu cabaña; la experiencia se añade después y queda lista antes de que llegues."
+        /* El orden real del flujo es cabaña → fechas → plan (ver los pasos
+           de `/reservar`; la cabaña va primero desde el 2026-10-03, porque el
+           calendario tacha sus noches ocupadas). Si cambia el flujo, esta
+           frase tiene que cambiar con él. */
+        texto="Elige primero tu cabaña y tus fechas; la experiencia se añade después y queda lista antes de que llegues."
         espejo
       />
     </>

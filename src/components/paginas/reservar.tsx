@@ -143,8 +143,8 @@ export async function PaginaReservar() {
           {/*
             LOS CINCO PASOS EN DOS COLUMNAS, SIN CRECER DE ALTO.
             Eran tres tarjetas en una columna; ahora son los cinco del selector
-            —fechas, cabaña, plan, experiencias por noche y cuánto se paga
-            hoy—. Poner cinco tarjetas del tamaño de las anteriores habría
+            —cabaña, fechas, plan, experiencias por noche y cuánto se paga
+            hoy; desde el 2026-10-03 la cabaña va antes que las fechas—. Poner cinco tarjetas del tamaño de las anteriores habría
             duplicado el alto de la sección y descolgado la fotografía, así que
             van en dos columnas y más densas: título de una línea, texto corto,
             `p-4` en vez de `p-5` y el número a 1.75rem. Con cinco tarjetas y

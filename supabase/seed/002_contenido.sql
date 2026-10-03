@@ -638,15 +638,15 @@ insert into contenido (clave, valor) values
 }$json$::jsonb),
 
 ('reservar', $json${
-  "intro": "Empieza por tus fechas: con ellas te mostramos las cabañas libres y el precio noche por noche. Te llevamos a WhatsApp con el mensaje ya escrito y confirmamos disponibilidad el mismo día.",
+  "intro": "Empieza por tu cabaña: con ella te mostramos sus fechas libres y el precio noche por noche. Te llevamos a WhatsApp con el mensaje ya escrito y confirmamos disponibilidad el mismo día.",
   "pasos": [
     {
-      "titulo": "Tus fechas",
-      "texto": "Llegada y salida en el calendario. Ninguna combinación está prohibida: cada noche se cobra con la tarifa de su fecha."
+      "titulo": "Tu cabaña",
+      "texto": "Elige una de las cinco, todas para dos. ¿Vienes solo de día? Elige el Día de Calma, sin hospedaje."
     },
     {
-      "titulo": "Tu cabaña",
-      "texto": "Te mostramos las que sirven para esas fechas, con su precio. Las cinco son independientes y para dos personas."
+      "titulo": "Tus fechas",
+      "texto": "El calendario te muestra las fechas libres de esa cabaña: las noches ocupadas salen tachadas."
     },
     {
       "titulo": "Tu plan",
