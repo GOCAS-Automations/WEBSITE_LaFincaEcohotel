@@ -1,8 +1,9 @@
 import { after } from "next/server";
 
 import {
+  AVISO_PRUEBAS_EN_PRODUCCION,
   CABECERA_FIRMA_BOLD,
-  ambienteDeclarado,
+  ambienteDePruebasEnProduccion,
   boldConfigurado,
   consultarEstadoPago,
   estadoDeEvento,
@@ -240,19 +241,21 @@ export async function POST(peticion: Request) {
 
     Así que el webhook sigue recibiendo y REGISTRANDO el evento (hace falta para
     probarlo desde el panel de Bold, con el botón «Probar el webhook»), pero no
-    toca `pagos` ni `reservas`. Se usa `ambienteDeclarado()` y no `modoBold()`: el
-    segundo devuelve `produccion` a propósito en producción para no firmar con la
-    llave vacía, y aquí lo que hace falta saber es justo lo contrario, qué llaves
-    dice la configuración que hay.
+    toca `pagos` ni `reservas`.
+
+    La comprobación vive en `ambienteDePruebasEnProduccion()`
+    (`src/lib/pagos/bold.ts`) y **no** se repite aquí a mano: la reconciliación
+    tiene que hacer exactamente la misma, y mientras estuvo escrita solo en este
+    archivo no la hacía. Ahí está explicado por qué mira `ambienteDeclarado()` y
+    no `modoBold()`.
 
     Esto es la red, no el interruptor: el que impide de verdad que un huésped
     llegue a pagar en pruebas es `PAGOS_ACTIVOS` (`src/lib/pagos/bold.ts`).
   */
-  if (ambienteDeclarado() === "pruebas" && process.env.VERCEL_ENV === "production") {
+  if (ambienteDePruebasEnProduccion()) {
     console.error(
-      `[bold/webhook] ${evento.referencia ?? "sin referencia"}: BOLD_MODO=pruebas en un despliegue de producción. ` +
-        "El evento queda registrado pero NO se confirma ninguna reserva: una pasarela de pruebas no cobra nada. " +
-        "Hay que poner las llaves de producción y borrar BOLD_MODO en Vercel.",
+      `[bold/webhook] ${evento.referencia ?? "sin referencia"}: ${AVISO_PRUEBAS_EN_PRODUCCION} ` +
+        "El evento queda registrado en `pagos_eventos` y no se toca ni `pagos` ni `reservas`.",
     );
     return ok("ambiente de pruebas en producción: no se confirma nada");
   }

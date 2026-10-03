@@ -58,7 +58,9 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
+  AVISO_PRUEBAS_EN_PRODUCCION,
   ETIQUETA_ESTADO_BOLD,
+  ambienteDePruebasEnProduccion,
   boldConfigurado,
   consultarEstadoPago,
   esEstadoFinal,
@@ -82,6 +84,11 @@ import { crearClienteAdmin } from "../supabase/admin";
 export type ClaveReconciliacion =
   /** Faltan las llaves de Bold: no hay a quién preguntar. */
   | "no_configurado"
+  /**
+   * Llaves de **pruebas** declaradas en el despliegue de **producción**: no se
+   * pregunta nada y no se escribe nada. Ver `ambienteDePruebasEnProduccion()`.
+   */
+  | "ambiente_pruebas"
   /** La referencia no tiene una forma que Bold admitiría. */
   | "referencia_invalida"
   /** Esa referencia no existe en `pagos`. */
@@ -164,6 +171,41 @@ export async function reconciliarPago(
       clave: "no_configurado",
       mensaje:
         "La pasarela de pagos no está configurada en este entorno, así que no hay a quién preguntarle.",
+    };
+  }
+
+  /* ---------------------------------------------------------------------
+     EL CANDADO DEL AMBIENTE: pruebas no confirma nada en producción
+     ------------------------------------------------------------------ */
+  /*
+    ESTE `if` FALTABA, Y ERA EL AGUJERO.
+
+    El webhook lo tenía desde el 2026-10-01; esta función, no. Y desde el
+    2026-10-02 esta función también confirma reservas —desde la página de
+    retorno, el cron diario y el botón del panel—, así que con las llaves de
+    PRUEBAS cargadas en Production un pago hecho con la tarjeta de prueba de Bold
+    sí dejaba una reserva real `confirmada` sin un peso cobrado. La puerta con
+    candado era una de cuatro.
+
+    Se corta **antes de leer la base y antes de preguntarle a Bold**, así que no
+    se escribe nada: el pago se queda como estaba (`PROCESSING`), la reserva sigue
+    `pendiente` con su `expira_at` intacto y el barrido de vencidas la libera a su
+    hora como cualquier reserva sin pagar. Un rechazo por ambiente no deja nada a
+    medias.
+
+    En `localhost` y en las vistas previas esto es `false` siempre, de modo que la
+    ronda de `docs/GUIA_PRUEBAS.md` —que se hace en la preview de
+    `pruebas-pagos`— reconcilia con normalidad.
+  */
+  if (ambienteDePruebasEnProduccion()) {
+    console.error(`[reconciliar] ${referencia}: ${AVISO_PRUEBAS_EN_PRODUCCION}`);
+    return {
+      ...base,
+      clave: "ambiente_pruebas",
+      mensaje:
+        "Este sitio está publicado como el real pero configurado con la pasarela de pruebas de Bold, " +
+        "así que no se confirmó nada: un pago de pruebas no cobra dinero. " +
+        "La reserva sigue pendiente. Avisa a GOCAS para poner las llaves de producción.",
     };
   }
 
@@ -470,6 +512,18 @@ export async function reconciliarPagosPendientes(
   };
 
   if (!boldConfigurado()) return resumen;
+
+  /*
+    El mismo candado que arriba, y aquí hace falta decirlo aparte: el cron corre
+    solo de madrugada y nadie lee su respuesta, así que si se queda sin hacer nada
+    tiene que quedar dicho **por qué** en el registro. Cortar aquí no rompe el
+    barrido: `liberarReservasVencidas()` corre después igual y las reservas sin
+    pagar se liberan a su hora.
+  */
+  if (ambienteDePruebasEnProduccion()) {
+    console.error(`[reconciliar] ${AVISO_PRUEBAS_EN_PRODUCCION} No se revisó ningún pago.`);
+    return resumen;
+  }
 
   const horas = opciones.horas ?? HORAS_RECONCILIACION;
   const maximo = opciones.maximo ?? MAXIMO_RECONCILIACION;

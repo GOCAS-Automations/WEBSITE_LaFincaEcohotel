@@ -881,6 +881,9 @@ export async function verificarPagoAction(formData: FormData) {
     resultado.clave === "pago_desconocido" ||
     resultado.clave === "sin_respuesta" ||
     resultado.clave === "no_configurado" ||
+    /* Llaves de pruebas en el despliegue real: no se verificó nada y hay que
+       arreglar las variables de Vercel. Va en rojo, no en verde. */
+    resultado.clave === "ambiente_pruebas" ||
     resultado.aplicado?.clave === "fechas_ocupadas" ||
     resultado.aplicado?.clave === "error_pago" ||
     resultado.aplicado?.clave === "error_lectura" ||

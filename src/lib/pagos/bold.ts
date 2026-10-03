@@ -187,6 +187,64 @@ export function ambienteDeclarado(): ModoBold {
     : "produccion";
 }
 
+/**
+ * ⛔ **EL CANDADO DEL AMBIENTE: pruebas no confirma nada en producción.**
+ *
+ * ---------------------------------------------------------------------------
+ * POR QUÉ ESTO ES UNA FUNCIÓN Y NO DOS `if` COPIADOS
+ * ---------------------------------------------------------------------------
+ * Hasta el 2026-10-03 esta comprobación vivía escrita a mano **solo** dentro del
+ * Route Handler del webhook. Y el webhook dejó de ser la única vía de
+ * confirmación el 2026-10-02: también confirma la reconciliación
+ * (`src/lib/pagos/reconciliar.ts`), desde la página de retorno, el cron diario y
+ * un botón del panel. O sea que había una puerta con candado y tres sin él: un
+ * pago hecho con la tarjeta de pruebas de Bold confirmaba una reserva de verdad
+ * si las llaves de pruebas estaban cargadas en Production.
+ *
+ * La causa raíz no fue el olvido, fue tener la regla duplicable. Por eso vive
+ * aquí, al lado de `ambienteDeclarado()`, y la llaman las dos vías.
+ *
+ * ---------------------------------------------------------------------------
+ * DE QUÉ PROTEGE, EXACTAMENTE
+ * ---------------------------------------------------------------------------
+ * De que el sitio **real** —`lafincaecohotel.com`, que ya apunta a Vercel— dé
+ * por pagada una reserva con un pago que no cobró un peso. En el sandbox de Bold
+ * «pagar» es gratis: hay tarjetas de prueba publicadas, y además los eventos del
+ * webhook se firman con la **llave vacía**, así que cualquiera puede fabricarlos.
+ * Una reserva confirmada así bloquea una cabaña por una venta que no existió.
+ *
+ * Se mira `ambienteDeclarado()` y **no** `modoBold()`: el segundo devuelve
+ * `produccion` a propósito cuando `VERCEL_ENV=production`, para no firmar nunca
+ * con la llave vacía, y aquí hace falta justo lo contrario — qué llaves dice la
+ * configuración que hay.
+ *
+ * ---------------------------------------------------------------------------
+ * LO QUE **NO** ES
+ * ---------------------------------------------------------------------------
+ * No es el interruptor del negocio: el que impide que un huésped llegue a pagar
+ * con la pasarela de pruebas es `pagosActivos()`. Este es la red de abajo, y solo
+ * se activa en el despliegue de producción: en `localhost` y en las vistas
+ * previas (`VERCEL_ENV` es `development` o `preview`) devuelve `false` siempre,
+ * de modo que la ronda de pruebas de `docs/GUIA_PRUEBAS.md` funciona entera.
+ */
+export function ambienteDePruebasEnProduccion(): boolean {
+  return (
+    ambienteDeclarado() === "pruebas" && process.env.VERCEL_ENV === "production"
+  );
+}
+
+/**
+ * La explicación del rechazo, para el registro.
+ *
+ * Quien lea el log tiene que entender en una frase que **no se rompió nada**: se
+ * rechazó por ambiente, y se arregla cambiando variables en Vercel. Es la misma
+ * frase en el webhook y en la reconciliación a propósito.
+ */
+export const AVISO_PRUEBAS_EN_PRODUCCION =
+  "RECHAZADO POR AMBIENTE (no es un fallo): BOLD_MODO=pruebas en un despliegue de producción. " +
+  "Una pasarela de pruebas no cobra nada, así que NO se confirma ninguna reserva. " +
+  "Se arregla en Vercel: poner las llaves de producción de Bold y borrar BOLD_MODO de Production.";
+
 /** ¿Están las dos llaves puestas? Sin ellas el sitio cierra por WhatsApp. */
 export function boldConfigurado(): boolean {
   return (
