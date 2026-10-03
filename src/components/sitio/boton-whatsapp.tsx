@@ -24,6 +24,14 @@ import { IconoWhatsapp } from "./iconos";
  *    cualquier pieza futura que necesite el mismo rincón de pantalla libre
  *    puede pedirlo con el mismo `data-*`, sin tocar este archivo.
  *
+ *    **Los que aparecen DESPUÉS también cuentan** (2026-10-03). El selector
+ *    de `/reservar` se pinta en el navegador dentro de un `<Suspense>`, así
+ *    que cuando este efecto corría todavía no existía y el FAB nunca se
+ *    apartaba: en el teléfono quedaba encima del botón «Listo» del
+ *    calendario. Un `MutationObserver` vigila el árbol y empieza a observar
+ *    cada `data-fab-evitar` nuevo —el selector, la hoja del calendario al
+ *    abrirse— y suelta los que desaparecen.
+ *
  * Si `IntersectionObserver` no existe, el botón se queda siempre visible, que
  * es el comportamiento seguro.
  *
@@ -55,23 +63,54 @@ export function BotonWhatsappFlotante({ enlace }: { enlace: string }) {
 
     /* Puede haber más de un objetivo (o ninguno) en la página; el FAB se
        oculta mientras CUALQUIERA de ellos esté en el viewport. */
-    const objetivos = document.querySelectorAll<HTMLElement>(
-      "[data-fab-evitar]",
-    );
-    if (objetivos.length > 0) {
-      const visibles = new Set<Element>();
-      const observadorModulos = new IntersectionObserver((entradas) => {
-        for (const entrada of entradas) {
-          if (entrada.isIntersecting) visibles.add(entrada.target);
-          else visibles.delete(entrada.target);
-        }
-        setOcultoPorModulo(visibles.size > 0);
-      });
-      objetivos.forEach((objetivo) => observadorModulos.observe(objetivo));
-      observadores.push(observadorModulos);
-    }
+    const visibles = new Set<Element>();
+    const observados = new Set<Element>();
+    const observadorModulos = new IntersectionObserver((entradas) => {
+      for (const entrada of entradas) {
+        if (entrada.isIntersecting) visibles.add(entrada.target);
+        else visibles.delete(entrada.target);
+      }
+      setOcultoPorModulo(visibles.size > 0);
+    });
+    observadores.push(observadorModulos);
 
-    return () => observadores.forEach((observador) => observador.disconnect());
+    /* Observa los nuevos y suelta los que ya no están en el documento. */
+    const revisar = () => {
+      for (const objetivo of document.querySelectorAll("[data-fab-evitar]")) {
+        if (!observados.has(objetivo)) {
+          observados.add(objetivo);
+          observadorModulos.observe(objetivo);
+        }
+      }
+      let cambio = false;
+      for (const objetivo of [...observados]) {
+        if (!objetivo.isConnected) {
+          observados.delete(objetivo);
+          observadorModulos.unobserve(objetivo);
+          cambio = visibles.delete(objetivo) || cambio;
+        }
+      }
+      if (cambio) setOcultoPorModulo(visibles.size > 0);
+    };
+    revisar();
+
+    /* Una revisión por fotograma como mucho: React puede tocar el árbol
+       muchas veces seguidas y basta con mirar una vez al final. */
+    let pendiente = 0;
+    const vigia = new MutationObserver(() => {
+      if (pendiente) return;
+      pendiente = requestAnimationFrame(() => {
+        pendiente = 0;
+        revisar();
+      });
+    });
+    vigia.observe(document.body, { childList: true, subtree: true });
+
+    return () => {
+      vigia.disconnect();
+      cancelAnimationFrame(pendiente);
+      observadores.forEach((observador) => observador.disconnect());
+    };
   }, []);
 
   const oculto = ocultoPorPie || ocultoPorModulo;
