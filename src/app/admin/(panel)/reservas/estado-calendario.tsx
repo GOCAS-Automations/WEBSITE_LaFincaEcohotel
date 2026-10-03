@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { refrescarCalendarioAction } from "./acciones";
 import { Pastilla, claseBoton } from "@/components/admin/ui";
 import { fechaHora } from "@/lib/admin/fechas";
@@ -14,6 +16,10 @@ import type { EstadoConexion } from "@/lib/reserva/ocupacion-externa";
  * El botón «Actualizar ahora» existe porque la lectura se guarda cinco minutos
  * (ver `src/lib/reserva/ocupacion-externa.ts`). Quien acaba de apuntar algo en
  * su teléfono no debería esperar a que caduque la caché para verlo aquí.
+ *
+ * Debajo caben dos cosas más: los **avisos** (un calendario que no se pudo leer,
+ * una configuración que no se entendió) y, solo para el propietario, el
+ * desplegable con los calendarios de Google (`diagnostico-calendario.tsx`).
  */
 
 const TONOS: Record<
@@ -30,6 +36,9 @@ export function EstadoCalendarioHotel({
   mensaje,
   consultado,
   mes,
+  avisos = [],
+  lecturaIncompleta = false,
+  detalle = null,
 }: {
   estado: EstadoConexion;
   mensaje: string;
@@ -37,8 +46,17 @@ export function EstadoCalendarioHotel({
   consultado: string | null;
   /** Mes que se está mirando, para volver a él tras actualizar. */
   mes: string;
+  /** Cosas que revisar, en español. Vacío = todo en orden. */
+  avisos?: string[];
+  /** Cierto si alguno de los calendarios configurados no se pudo leer. */
+  lecturaIncompleta?: boolean;
+  /** El desplegable de diagnóstico, si quien mira puede verlo. */
+  detalle?: ReactNode;
 }) {
   const { tono, etiqueta } = TONOS[estado];
+  /* Conectado pero a medias no es «conectado» a secas: si falta un calendario,
+     hay fechas que el sitio no está viendo y eso tiene que destacar. */
+  const conAvisos = estado === "conectado" && lecturaIncompleta;
 
   return (
     <section
@@ -49,7 +67,9 @@ export function EstadoCalendarioHotel({
         <span className="text-[0.8125rem] font-semibold text-crema-900">
           Calendario del hotel
         </span>
-        <Pastilla tono={tono}>{etiqueta}</Pastilla>
+        <Pastilla tono={conAvisos ? "ambar" : tono}>
+          {conAvisos ? "Conectado a medias" : etiqueta}
+        </Pastilla>
       </div>
 
       <p className="min-w-0 flex-1 text-[0.75rem] leading-snug text-crema-600">
@@ -67,6 +87,21 @@ export function EstadoCalendarioHotel({
           Actualizar ahora
         </button>
       </form>
+
+      {avisos.length > 0 && (
+        <ul className="w-full list-none space-y-1.5">
+          {avisos.map((aviso) => (
+            <li
+              key={aviso}
+              className="rounded-suave bg-dorado-500/[0.1] px-3 py-2 text-[0.75rem] leading-snug text-dorado-800 ring-1 ring-dorado-500/25"
+            >
+              {aviso}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {detalle}
     </section>
   );
 }

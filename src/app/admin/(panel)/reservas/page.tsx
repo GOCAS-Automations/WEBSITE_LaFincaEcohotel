@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { CalendarioMes } from "./calendario";
+import { BloqueDiagnosticoCalendario } from "./diagnostico-calendario";
 import { EstadoCalendarioHotel } from "./estado-calendario";
 import { Aviso } from "@/components/admin/aviso";
 import {
@@ -64,7 +65,7 @@ export default async function PaginaReservas({
     estado?: string;
   }>;
 }) {
-  const { supabase } = await requireAdmin();
+  const { supabase, rol } = await requireAdmin();
   const params = await searchParams;
 
   const mes = leerClaveMes(params.mes);
@@ -151,6 +152,11 @@ export default async function PaginaReservas({
         mensaje={calendarioHotel.mensaje}
         consultado={calendarioHotel.consultado}
         mes={claveMes(mes)}
+        avisos={calendarioHotel.avisos}
+        lecturaIncompleta={calendarioHotel.lecturaIncompleta}
+        /* Los identificadores de Google son cosa del propietario: a quien
+           atiende el teléfono no le aportan nada. */
+        detalle={rol === "propietario" ? <BloqueDiagnosticoCalendario /> : null}
       />
 
       <div className="mt-8">
