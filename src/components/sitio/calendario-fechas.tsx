@@ -7,10 +7,16 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
 } from "react";
 
 import {
-  MOTIVO_SIN_ANTELACION,
+  bloqueoDeCabana,
+  eligiendoSalida as fasePideSalida,
+  evaluadorDeDias,
+  type EstadoDia,
+} from "@/lib/reserva/elegibilidad-calendario";
+import {
   nochesDe,
   resumenEnPalabras,
   TEXTO_ANTELACION,
@@ -46,10 +52,31 @@ import { useLadoDelPanel } from "./usar-lado-panel";
  *
  * El modelo real es el contrario (§3 de `docs/DATOS_CLIENTE.md`): **el plan es
  * una consecuencia de la noche**. Cualquier rango de fechas es válido; el motor
- * le pone a cada noche la tarifa que le toca. Lo único que sigue apagado es el
- * pasado. Si llega una PREFERENCIA de tipo de noche —alguien que pulsó «Entre
- * Semana» en la portada— se resalta, se explica y se puede quitar, pero nunca
- * impide elegir.
+ * le pone a cada noche la tarifa que le toca. Si llega una PREFERENCIA de tipo
+ * de noche —alguien que pulsó «Entre Semana» en la portada— se resalta, se
+ * explica y se puede quitar, pero nunca impide elegir.
+ *
+ * ---------------------------------------------------------------------------
+ * LO QUE SÍ APAGA UN DÍA: LA OCUPACIÓN DE LA CABAÑA ELEGIDA (2026-10-03)
+ * ---------------------------------------------------------------------------
+ * Esto NO contradice lo de arriba. Un plan es una tarifa: cambia el precio,
+ * no la posibilidad de dormir. Una noche ocupada, en cambio, no se puede
+ * vender a nadie, y dejar elegirla para avisar después («esas noches ya están
+ * ocupadas») era hacer elegir a ciegas. Ahora el calendario recibe las
+ * noches tomadas de la cabaña (`nochesOcupadas`) y las tacha, con la
+ * semántica hotelera de `[llegada, salida)`: no se llega en una noche
+ * ocupada, la salida no salta por encima de una, y se puede llegar el día en
+ * que otro sale. Las reglas viven en `src/lib/reserva/elegibilidad-calendario.ts`,
+ * puras y con pruebas.
+ *
+ * La única restricción «de tarifa» que entra por la misma puerta es la de la
+ * Cabaña 02 (`tiposDeNocheOfrecidos`): no es una preferencia de plan sino una
+ * noche que esa cabaña no vende, y para el calendario es igual que una noche
+ * ocupada. Los planes siguen sin apagar nada.
+ *
+ * El tachado es EXPERIENCIA DE USO, NO SEGURIDAD: la ocupación se cargó hace
+ * un rato y puede haber cambiado. El servidor vuelve a comprobar al reservar
+ * y la restricción de exclusión de Postgres tiene la última palabra.
  *
  * Tampoco entra una librería: un calendario de mes es una tabla de siete
  * columnas y aritmética de días. Lo caro de un calendario no es dibujarlo, es
@@ -70,6 +97,11 @@ import { useLadoDelPanel } from "./usar-lado-panel";
  * · Cada día anuncia su fecha completa, si es festivo y qué tipo de noche es
  *   (`aria-label`: «sábado 19 de septiembre — noche de fin de semana o
  *   festivo»), que es justo lo que decide el precio.
+ * · Un día apagado NO lleva `disabled`, lleva `aria-disabled` y su motivo en
+ *   la etiqueta («lunes 12 de octubre — ocupado: esa noche ya está
+ *   reservada»). Un `<button disabled>` no recibe foco: con las flechas el
+ *   foco caía en una casilla ocupada y se perdía fuera de la rejilla, y el
+ *   lector de pantalla nunca llegaba a decir POR QUÉ no se puede elegir.
  * · El foco NO se escapa del panel mientras está abierto, `Escape` lo cierra y
  *   devuelve el foco al botón.
  * · Un `aria-live="polite"` anuncia la selección y los errores.
@@ -225,6 +257,34 @@ export type PropsCalendario = {
   alElegirDiaUnico?: () => void;
   /** Vuelve al modo estadía conservando la fecha ya elegida. */
   alQuitarDiaUnico?: () => void;
+  /**
+   * NOCHES OCUPADAS (`AAAA-MM-DD`) de la cabaña elegida: cada fecha es una
+   * noche tomada, con la semántica `[llegada, salida)`. Se tachan y no se
+   * pueden elegir como llegada; la salida no puede saltar por encima de una.
+   * Vacío = nada tachado (sin cabaña, o mientras carga).
+   */
+  nochesOcupadas: string[];
+  /**
+   * Tipos de noche que vende la cabaña elegida. La 02 solo vende las de fin
+   * de semana o festivo: sus lunes a jueves se tratan como noches tomadas.
+   * `null` = las vende todas.
+   */
+  tiposDeNocheOfrecidos?: readonly TipoNoche[] | null;
+  /** Para nombrar la cabaña en el motivo que oye el lector de pantalla. */
+  nombreCabana?: string | null;
+  /** Motivo de las noches ocupadas, si no es el de una sola cabaña. */
+  motivoOcupada?: string;
+  /** Modo `diaUnico`: días sin cupo del Día de Calma. Se tachan. */
+  diasSinCupo?: string[];
+  /** Mientras llega la ocupación: un aviso discreto, nada se bloquea. */
+  cargandoOcupacion?: boolean;
+  /** Una explicación dentro del panel (la regla de la 02, un fallo de carga…). */
+  nota?: ReactNode;
+  /**
+   * Avisa del mes que se está mirando con el panel abierto, para que quien
+   * carga la ocupación pida ese mes y el siguiente.
+   */
+  alCambiarMes?: (mes: string) => void;
   /** Nombres de los campos ocultos, para que el `<form>` funcione sin JS. */
   nombreEntrada?: string;
   nombreSalida?: string;
@@ -245,6 +305,14 @@ export function CalendarioFechas({
   diaUnico = false,
   alElegirDiaUnico,
   alQuitarDiaUnico,
+  nochesOcupadas,
+  tiposDeNocheOfrecidos = null,
+  nombreCabana = null,
+  motivoOcupada,
+  diasSinCupo,
+  cargandoOcupacion = false,
+  nota,
+  alCambiarMes,
   nombreEntrada = "entrada",
   nombreSalida = "salida",
   compacto = false,
@@ -264,7 +332,21 @@ export function CalendarioFechas({
    * En modo «solo ese día» no hay salida que elegir, así que cada clic mueve
    * el día elegido en vez de cerrar un rango.
    */
-  const eligiendoSalida = Boolean(entrada) && !salida && !diaUnico;
+  const eligiendoSalida = fasePideSalida({ entrada, salida, diaUnico });
+
+  /*
+    El mes que se mira, hacia fuera: quien carga la ocupación pide ese mes y
+    el siguiente. Solo con el panel abierto —cerrado no se mira nada— y por
+    una ref, para que un `alCambiarMes` nuevo en cada render no dispare el
+    efecto en bucle.
+  */
+  const avisarMes = useRef(alCambiarMes);
+  useEffect(() => {
+    avisarMes.current = alCambiarMes;
+  });
+  useEffect(() => {
+    if (abierto) avisarMes.current?.(mes.slice(0, 7));
+  }, [abierto, mes]);
 
   const contenedor = useRef<HTMLDivElement>(null);
   const disparador = useRef<HTMLButtonElement>(null);
@@ -324,45 +406,58 @@ export function CalendarioFechas({
   /* --- Reglas ----------------------------------------------------------- */
 
   /**
-   * Qué se puede pulsar.
+   * Qué se puede pulsar. Las reglas están en `evaluadorDeDias()`
+   * (`src/lib/reserva/elegibilidad-calendario.ts`), puras y probadas:
    *
-   * Tres cosas apagan un día, y ninguna tiene que ver con el plan: **el
-   * pasado**, **la antelación mínima** (hoy, cuando se pasa `minima`) y,
-   * mientras se elige la salida, **los días anteriores a la llegada**. Una
-   * estadía mixta (jueves→sábado) es perfectamente vendible: se desglosa noche
-   * por noche. Ver `src/lib/reserva/noches.ts`.
+   *   · **el pasado** y **la antelación mínima** (hoy, cuando se pasa
+   *     `minima`), como siempre;
+   *   · eligiendo la salida, **los días anteriores a la llegada** y **los
+   *     posteriores a la primera noche ocupada** tras ella —el tope se pinta
+   *     tachado para que el huésped lo vea sin adivinarlo—;
+   *   · eligiendo la llegada, **los días cuya noche está tomada** en la cabaña
+   *     elegida (o que la cabaña no vende), y en modo día **los días sin
+   *     cupo**.
    *
-   * Ojo: la salida sí puede caer en cualquier día posterior a la llegada. La
-   * antelación es una regla de LLEGADA, y como la llegada ya es mañana como
-   * mínimo, la salida nunca puede quedar antes de `minima`.
-   *
-   * El tope de un año evita que alguien arme por accidente una estadía absurda;
-   * `validarRango()` lo explica en español si llega a pasar.
+   * Ningún plan apaga nada: una estadía mixta (jueves→sábado) es
+   * perfectamente vendible. La salida tampoco se rige por la antelación, que
+   * es regla de LLEGADA. El tope de un año lo explica `validarRango()`.
    */
-  const estadoDeDia = useCallback(
-    (dia: string): { activable: boolean; motivo: string | null } => {
-      if (dia < hoy) return { activable: false, motivo: "ya pasó" };
-
-      if (eligiendoSalida && dia <= entrada) {
-        return { activable: false, motivo: "es anterior a la llegada" };
-      }
-
-      if (!eligiendoSalida && dia < primera) {
-        return { activable: false, motivo: MOTIVO_SIN_ANTELACION };
-      }
-
-      return { activable: true, motivo: null };
-    },
-    [hoy, primera, eligiendoSalida, entrada],
+  const bloqueo = useMemo(
+    () =>
+      bloqueoDeCabana({
+        ocupadas: nochesOcupadas,
+        tiposOfrecidos: tiposDeNocheOfrecidos,
+        nombreCabana,
+        motivoOcupada,
+      }),
+    [nochesOcupadas, tiposDeNocheOfrecidos, nombreCabana, motivoOcupada],
   );
+  const sinCupo = useMemo(() => {
+    const dias = new Set(diasSinCupo ?? []);
+    return (dia: string) => dias.has(dia);
+  }, [diasSinCupo]);
+
+  const evaluador = useMemo(
+    () =>
+      evaluadorDeDias(
+        { entrada, salida, diaUnico },
+        { hoy, minima, bloqueo, sinCupo },
+      ),
+    [entrada, salida, diaUnico, hoy, minima, bloqueo, sinCupo],
+  );
+  const estadoDeDia = evaluador.estado;
+  /** Última salida posible mientras se elige la salida (o `null`). */
+  const tope = evaluador.tope;
 
   /* --- Selección -------------------------------------------------------- */
 
   const elegir = useCallback(
     (dia: string) => {
       if (!estadoDeDia(dia).activable) return;
-      if (eligiendoSalida) {
-        alCambiar(entrada, dia);
+      if (eligiendoSalida || diaUnico) {
+        /* La salida —o el único día del Día de Calma— cierra la pregunta:
+           el panel se recoge y lo siguiente que hay que ver está debajo. */
+        alCambiar(eligiendoSalida ? entrada : dia, eligiendoSalida ? dia : "");
         setAbierto(false);
         disparador.current?.focus();
         return;
@@ -371,13 +466,14 @@ export function CalendarioFechas({
       alCambiar(dia, "");
       setFoco(dia);
     },
-    [estadoDeDia, eligiendoSalida, entrada, alCambiar],
+    [estadoDeDia, eligiendoSalida, diaUnico, entrada, alCambiar],
   );
 
   /*
-    El foco no baja de la primera fecha ELEGIBLE, no de hoy: un `<button>`
-    deshabilitado no puede recibir foco, así que dejar que las flechas llegaran
-    a un día apagado perdería el foco dentro de la rejilla.
+    El foco no baja de la primera fecha ELEGIBLE, no de hoy. Los días
+    ocupados SÍ reciben foco —llevan `aria-disabled`, no `disabled`— para que
+    el lector de pantalla diga por qué no se pueden elegir; los anteriores a la
+    primera fecha elegible no hacen falta recorrerlos.
   */
   const moverFoco = useCallback(
     (nuevo: string) => {
@@ -440,10 +536,36 @@ export function CalendarioFechas({
         ? `${formatearFechaCorta(entrada)} → ${formatearFechaCorta(salida)}`
         : entrada
           ? `${formatearFechaCorta(entrada)} → elige la salida`
-          : "Elige tus fechas";
+          : diaUnico
+            ? "Elige el día"
+            : "Elige tus fechas";
 
   /* No se retrocede a un mes en el que ya no queda ningún día elegible. */
   const mesAnteriorPermitido = inicioDeMes(mes) > inicioDeMes(primera);
+
+  const semanas = semanasDelMes(mes);
+  /* ¿Hay algo tachado por ocupación en el mes que se ve? Entonces se explica
+     qué significa el tachado, debajo de la rejilla. */
+  const hayOcupados = semanas.some((semana) =>
+    semana.some(
+      (dia) => dia.slice(0, 7) === mes.slice(0, 7) && estadoDeDia(dia).ocupado,
+    ),
+  );
+
+  /* La ayuda de arriba de la rejilla, según la fase. */
+  const ayuda = diaUnico
+    ? entrada
+      ? "Vienes solo ese día, sin dormir. Toca otro día si quieres cambiarlo."
+      : `Elige el día de tu visita, ${TEXTO_ANTELACION}. Es un día completo, sin dormir.`
+    : eligiendoSalida
+      ? tope !== null && tope <= entrada
+        ? "Esa llegada ya no está libre. Borra las fechas y elige otra."
+        : tope !== null
+          ? `Ahora elige el día de salida. Como tarde, el ${formatearFechaCorta(tope)}: esa noche ya no está libre.`
+          : "Ahora elige el día de salida. Cuentan las noches, no los días: si sales el sábado, el sábado no se cobra."
+      : primera > hoy
+        ? `Elige el día de llegada, ${TEXTO_ANTELACION}: a cada noche le ponemos su tarifa. Para llegar hoy mismo, escríbenos por WhatsApp.`
+        : "Elige el día de llegada. Cualquier fecha vale: a cada noche le ponemos su tarifa.";
 
   return (
     <div ref={contenedor} className={`relative ${className ?? ""}`}>
@@ -470,6 +592,9 @@ export function CalendarioFechas({
           "flex w-full min-h-11 items-center gap-2 rounded-[var(--radius-suave)] border border-crema-300/90 bg-white text-left",
           "font-titulo font-medium text-petroleo-900 shadow-[inset_0_1px_2px_rgba(41,37,33,0.04)]",
           "transition-colors duration-200 outline-none hover:border-crema-400 focus-visible:border-petroleo-500",
+          /* Dentro de un `<fieldset disabled>` (el paso de fechas sin cabaña
+             elegida en `/reservar`) el botón queda apagado de verdad. */
+          "disabled:cursor-not-allowed disabled:bg-crema-50 disabled:hover:border-crema-300/90",
           compacto ? "px-3.5 py-3 text-[0.95rem]" : "px-4 py-3 text-sm",
         ].join(" ")}
       >
@@ -515,6 +640,9 @@ export function CalendarioFechas({
             id={idPanel}
             role="group"
             aria-label="Calendario de llegada y salida"
+            /* En el teléfono es una hoja al borde inferior: el FAB de WhatsApp
+               se aparta mientras está abierta (ver `boton-whatsapp.tsx`). */
+            data-fab-evitar=""
             /*
               El tope de alto va en una variable CSS y no en `max-height`
               directo porque solo debe aplicarse desde `sm`: en el teléfono el
@@ -530,6 +658,9 @@ export function CalendarioFechas({
             className={[
               "fixed inset-x-3 bottom-3 z-50 rounded-[var(--radius-generoso)] bg-white p-4 shadow-[var(--shadow-elevada)] ring-1 ring-crema-200",
               "sm:absolute sm:inset-x-auto sm:left-0 sm:w-[20.5rem]",
+              /* En el módulo de la portada, desde `lg`, el panel se abre en dos
+                 columnas (ver DOS COLUMNAS más abajo): necesita más ancho. */
+              compacto ? "lg:w-auto" : "",
               "sm:max-h-[var(--alto-hoja)] sm:overflow-y-auto sm:overscroll-contain",
               /* Solo desde `sm`: por debajo es la hoja del borde inferior. */
               lado === "arriba"
@@ -537,7 +668,27 @@ export function CalendarioFechas({
                 : "sm:bottom-auto sm:top-[calc(100%+0.5rem)]",
             ].join(" ")}
           >
-          <div className="mb-3 flex items-center justify-between gap-2">
+          {/*
+            DOS COLUMNAS EN EL MÓDULO DE LA PORTADA, DESDE `lg`.
+            Allí el panel se abre HACIA ARRIBA (debajo no hay sitio dentro del
+            hero) y por encima solo quedan unos 500 px hasta la barra del sitio.
+            En una sola columna —mes, ayuda, aviso, rejilla, leyenda y botones—
+            pasaba de 600 px y se cortaba: «Borrar fechas» y «Listo» quedaban
+            escondidos dentro del panel. Medido contra localhost a 1440×900.
+            Con los textos a la izquierda y la rejilla a la derecha mide lo que
+            la rejilla, unos 400 px. En el teléfono es la hoja inferior de
+            siempre, y en `/reservar` (sin `compacto`) la columna única de
+            siempre: las áreas de rejilla solo actúan dentro del `grid`.
+            El orden del DOM no cambia: mes, ayuda, rejilla, leyenda y pie.
+          */}
+          <div
+            className={
+              compacto
+                ? "lg:grid lg:grid-cols-[14rem_19.5rem] lg:grid-rows-[auto_1fr_auto] lg:gap-x-5 lg:[grid-template-areas:'textos_mes'_'textos_rejilla'_'pie_rejilla']"
+                : undefined
+            }
+          >
+          <div className="mb-3 flex items-center justify-between gap-2 lg:[grid-area:mes]">
             <button
               type="button"
               onClick={() => setMes(sumarMeses(mes, -1))}
@@ -563,15 +714,40 @@ export function CalendarioFechas({
             </button>
           </div>
 
-          <p className="mb-2 text-xs leading-snug text-crema-600">
-            {diaUnico
-              ? "Vienes solo ese día, sin dormir. Toca otro día si quieres cambiarlo."
-              : eligiendoSalida
-                ? "Ahora elige el día de salida. Cuentan las noches, no los días: si sales el sábado, el sábado no se cobra."
-                : primera > hoy
-                  ? `Elige el día de llegada, ${TEXTO_ANTELACION}: a cada noche le ponemos su tarifa. Para llegar hoy mismo, escríbenos por WhatsApp.`
-                  : "Elige el día de llegada. Cualquier fecha vale: a cada noche le ponemos su tarifa."}
+          <div className="lg:[grid-area:textos]">
+          <p className="mb-2 text-xs leading-snug text-crema-600">{ayuda}</p>
+
+          {/*
+            MIENTRAS LLEGA LA OCUPACIÓN.
+            Discreto a propósito: una línea con un punto que late, la rejilla
+            un poco más tenue y `aria-busy`. No se bloquea nada —el servidor
+            vuelve a comprobar— y casi siempre llega antes de que se lea.
+            El punto solo late si el sistema no pide menos movimiento.
+          */}
+          <p
+            role="status"
+            className={
+              cargandoOcupacion
+                ? "mb-2 flex items-center gap-1.5 text-[0.7rem] leading-snug font-medium text-oliva-700"
+                : "sr-only"
+            }
+          >
+            {cargandoOcupacion ? (
+              <>
+                <span
+                  aria-hidden="true"
+                  className="size-1.5 shrink-0 rounded-full bg-oliva-500 motion-safe:animate-pulse"
+                />
+                Consultando las fechas libres…
+              </>
+            ) : null}
           </p>
+
+          {nota ? (
+            <div className="mb-2 rounded-[var(--radius-suave)] bg-crema-100 px-3 py-2 text-xs leading-snug text-crema-800">
+              {nota}
+            </div>
+          ) : null}
 
           {/*
             EL CAMINO AL DÍA DE CALMA.
@@ -634,7 +810,17 @@ export function CalendarioFechas({
             </p>
           ) : null}
 
-          <table role="grid" className="w-full border-collapse">
+          </div>
+
+          <div className="lg:[grid-area:rejilla]">
+          <table
+            role="grid"
+            aria-busy={cargandoOcupacion || undefined}
+            className={[
+              "w-full border-collapse transition-opacity duration-200",
+              cargandoOcupacion ? "opacity-70" : "",
+            ].join(" ")}
+          >
             <thead>
               <tr>
                 {DIAS_CORTOS.map((corto, indice) => (
@@ -654,7 +840,7 @@ export function CalendarioFechas({
               </tr>
             </thead>
             <tbody onKeyDown={teclasRejilla}>
-              {semanasDelMes(mes).map((semana) => (
+              {semanas.map((semana) => (
                 <tr key={semana[0]}>
                   {semana.map((dia) => (
                     <Celda
@@ -674,6 +860,33 @@ export function CalendarioFechas({
               ))}
             </tbody>
           </table>
+          </div>
+
+          <div className="lg:[grid-area:pie] lg:self-end">
+          {/*
+            QUÉ SIGNIFICA EL TACHADO, CON UNA MUESTRA.
+            Solo si en el mes que se ve hay algo tachado por ocupación —sin eso
+            la leyenda es ruido— y no hay `nota`: la nota ya explica el
+            tachado (la regla de la 02, la portada sin cabaña) y repetirlo
+            alarga un panel que en la portada vive con el espacio justo. La muestra es la misma casilla en pequeño, así
+            que no hay que traducir nada. `aria-hidden`: el lector de pantalla
+            ya oye el motivo en cada día.
+          */}
+          {hayOcupados && !nota ? (
+            <p
+              aria-hidden="true"
+              className="mt-2 flex items-center gap-2 text-[0.7rem] leading-snug text-crema-700"
+            >
+              <span className="inline-flex h-5 min-w-7 items-center justify-center rounded-md bg-crema-200/80 px-1 text-[0.7rem] text-crema-600 line-through decoration-crema-600 decoration-[1.5px]">
+                12
+              </span>
+              {diaUnico
+                ? "Tachado: ese día ya no tiene cupo."
+                : eligiendoSalida
+                  ? "Tachado: para salir ese día habría que pasar una noche ocupada."
+                  : "Tachado: esa noche ya está ocupada. Sí puedes llegar el día en que otro huésped sale."}
+            </p>
+          ) : null}
 
           {/*
             LA CUENTA DE NOCHES, DENTRO DEL PANEL.
@@ -711,6 +924,8 @@ export function CalendarioFechas({
             </button>
           </div>
           </div>
+          </div>
+          </div>
         </>
       ) : null}
     </div>
@@ -737,11 +952,12 @@ function Celda({
   entrada: string;
   salida: string;
   foco: string;
-  estado: { activable: boolean; motivo: string | null };
+  estado: EstadoDia;
   preferencia: TipoNoche | null;
   alElegir: (dia: string) => void;
   refFoco?: React.RefObject<HTMLButtonElement | null>;
 }) {
+  const apagado = !estado.activable;
   const deOtroMes = dia.slice(0, 7) !== mes.slice(0, 7);
   const esEntrada = dia === entrada;
   const esSalida = dia === salida;
@@ -775,7 +991,9 @@ function Celda({
         /* Tabulación itinerante: solo el día enfocado entra en el orden de
            tabulación. Sin esto, el tabulador pasaría por 42 botones. */
         tabIndex={dia === foco ? 0 : -1}
-        disabled={!estado.activable}
+        /* `aria-disabled` y no `disabled`: ver ACCESIBILIDAD en la cabecera.
+           El clic de un día apagado no hace nada (`elegir` lo comprueba). */
+        aria-disabled={apagado || undefined}
         aria-label={etiqueta}
         aria-current={seleccionado ? "date" : undefined}
         onClick={() => alElegir(dia)}
@@ -783,15 +1001,27 @@ function Celda({
           /* 44 px de alto: es el mínimo que se acierta con el pulgar sin
              ampliar, y el calendario se usa sobre todo desde el teléfono. */
           "relative flex h-11 w-full items-center justify-center rounded-[10px] text-sm transition-colors duration-150",
-          "disabled:cursor-not-allowed disabled:text-crema-400 disabled:line-through disabled:opacity-70",
-          deOtroMes ? "text-crema-400" : "text-petroleo-900",
+          /*
+            Prioridad: lo elegido manda —la llegada se sigue viendo como
+            llegada mientras se elige la salida—, luego lo apagado y luego el
+            rango. Lo apagado tiene DOS pieles: un día que ya pasó se borra
+            casi del todo; uno OCUPADO se tacha sobre un fondo crema propio
+            con texto `crema-600` (4,7:1 sobre ese fondo), para que se lea qué
+            día es y se note que no es lo mismo que un día pasado.
+          */
           seleccionado
             ? "bg-petroleo-600 font-bold text-white hover:bg-petroleo-700"
-            : enRango
-              ? "bg-petroleo-50 font-semibold text-petroleo-800"
-              : preferido
-                ? "bg-brote-100 font-semibold hover:bg-brote-200"
-                : "hover:bg-crema-100",
+            : apagado
+              ? estado.ocupado
+                ? `cursor-not-allowed bg-crema-200/70 text-crema-600 line-through decoration-crema-600 decoration-[1.5px] ${deOtroMes ? "opacity-60" : ""}`
+                : "cursor-not-allowed text-crema-400 line-through opacity-70"
+              : enRango
+                ? "bg-petroleo-50 font-semibold text-petroleo-800"
+                : `${deOtroMes ? "text-crema-400" : "text-petroleo-900"} ${
+                    preferido
+                      ? "bg-brote-100 font-semibold hover:bg-brote-200"
+                      : "hover:bg-crema-100"
+                  }`,
         ].join(" ")}
       >
         {Number(dia.slice(8, 10))}

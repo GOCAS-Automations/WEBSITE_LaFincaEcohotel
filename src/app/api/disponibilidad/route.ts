@@ -7,6 +7,8 @@ import {
   cabanasAfectadas,
   diasDeLaFranja,
 } from "@/lib/reserva/calendario-externo";
+import { cupoDelDia } from "@/lib/reserva/dia-de-calma";
+import { MAXIMO_DIAS_DISPONIBILIDAD } from "@/lib/reserva/elegibilidad-calendario";
 import { ocupaCalendario } from "@/lib/reserva/holds";
 import { esFechaISO } from "@/lib/reserva/noches";
 import { ocupacionDelCalendario } from "@/lib/reserva/ocupacion-externa";
@@ -17,7 +19,16 @@ import { crearClienteAdmin } from "@/lib/supabase/admin";
  *
  *     GET /api/disponibilidad?desde=2026-09-01&hasta=2026-10-01
  *     → { "desde": "...", "hasta": "...", "cabanas": [
- *          { "slug": "cabana-01", "nombre": "Cabaña 01", "ocupado": ["2026-09-12", …] } ] }
+ *          { "slug": "cabana-01", "nombre": "Cabaña 01", "ocupado": ["2026-09-12", …] } ],
+ *        "dia": { "2026-09-13": 10, … } }
+ *
+ * Cada fecha de `ocupado` es UNA NOCHE tomada (rangos `[check_in, check_out)`):
+ * la del día de salida de otra reserva no aparece, porque esa noche está libre.
+ *
+ * `dia` son las personas del Día de Calma ya apuntadas por fecha —solo las
+ * fechas con alguien—. Es el mismo número que `/api/dia-de-calma/cupo` da para
+ * un día suelto, pero de todo el periodo de una vez: con él el calendario tacha
+ * los días sin cupo sin una consulta por día.
  *
  * ---------------------------------------------------------------------------
  * LAS TRES FUENTES, EN UN SOLO SITIO
@@ -48,8 +59,19 @@ export const dynamic = "force-dynamic";
 /** La capa de Google ya se cachea cinco minutos; la base se lee siempre fresca. */
 export const revalidate = 0;
 
-/** Tope de la ventana consultable: tres meses. Más es un abuso, no una consulta. */
-const MAXIMO_DIAS = 92;
+/**
+ * Tope de la ventana consultable: tres meses. Más es un abuso, no una consulta.
+ * La cifra vive en `elegibilidad-calendario.ts` porque el calendario del
+ * navegador parte sus consultas para no pasarse de ella.
+ */
+const MAXIMO_DIAS = MAXIMO_DIAS_DISPONIBILIDAD;
+
+/**
+ * Los estados que gastan cupo del Día de Calma: los mismos que cuenta
+ * `/api/dia-de-calma/cupo` (y el trigger de la base). Una `completada` es de
+ * un día que ya pasó y no le quita sitio a nadie.
+ */
+const ESTADOS_QUE_GASTAN_CUPO = ["pendiente", "confirmada"];
 
 /**
  * Freno de peticiones.
@@ -58,7 +80,9 @@ const MAXIMO_DIAS = 92;
  * `service_role` y ADEMÁS llama al Google Calendar del hotel. Sin tope, un
  * script puede agotar la cuota de la API de Google y dejar al hotel sin
  * calendario. Treinta por minuto dan de sobra para el uso real: el calendario
- * del navegador pide una vez por mes visible y al cambiar de cabaña.
+ * del navegador pide dos meses de una vez —todas las cabañas en la misma
+ * respuesta— y vuelve a pedir solo al pasar a meses que no tiene; el aviso de
+ * disponibilidad del resumen pide una vez por rango elegido.
  */
 const LIMITE = { peticiones: 30, segundos: 60 };
 
@@ -96,30 +120,38 @@ export async function GET(peticion: Request) {
   try {
     const supabase = crearClienteAdmin();
 
-    const [alojamientos, reservas, bloqueos, calendario] = await Promise.all([
-      supabase
-        .from("alojamientos")
-        .select("id, slug, nombre")
-        .eq("activo", true)
-        .order("orden", { ascending: true }),
-      supabase
-        .from("reservas")
-        /* `estado` y `expira_at` viajan para poder aplicar `ocupaCalendario()`:
-           el `in` de abajo solo acota la consulta. */
-        .select("alojamiento_id, estancia, estado, expira_at")
-        .eq("tipo", "hospedaje")
-        .in("estado", ESTADOS_QUE_OCUPAN)
-        .overlaps("estancia", `[${desde},${hasta})`),
-      supabase
-        .from("bloqueos")
-        .select("alojamiento_id, rango")
-        .overlaps("rango", `[${desde},${hasta})`),
-      ocupacionDelCalendario(desde, hasta),
-    ]);
+    const [alojamientos, reservas, bloqueos, calendario, reservasDia] =
+      await Promise.all([
+        supabase
+          .from("alojamientos")
+          .select("id, slug, nombre")
+          .eq("activo", true)
+          .order("orden", { ascending: true }),
+        supabase
+          .from("reservas")
+          /* `estado` y `expira_at` viajan para poder aplicar `ocupaCalendario()`:
+             el `in` de abajo solo acota la consulta. */
+          .select("alojamiento_id, estancia, estado, expira_at")
+          .eq("tipo", "hospedaje")
+          .in("estado", ESTADOS_QUE_OCUPAN)
+          .overlaps("estancia", `[${desde},${hasta})`),
+        supabase
+          .from("bloqueos")
+          .select("alojamiento_id, rango")
+          .overlaps("rango", `[${desde},${hasta})`),
+        ocupacionDelCalendario(desde, hasta),
+        supabase
+          .from("reservas")
+          .select("estancia, num_personas, estado, expira_at")
+          .eq("tipo", "dia")
+          .in("estado", ESTADOS_QUE_GASTAN_CUPO)
+          .overlaps("estancia", `[${desde},${hasta})`),
+      ]);
 
     if (alojamientos.error) throw new Error(alojamientos.error.message);
     if (reservas.error) throw new Error(reservas.error.message);
     if (bloqueos.error) throw new Error(bloqueos.error.message);
+    if (reservasDia.error) throw new Error(reservasDia.error.message);
 
     const cabanas = (alojamientos.data ?? []).map((fila) => ({
       id: String(fila.id),
@@ -192,6 +224,43 @@ export async function GET(peticion: Request) {
       }
     }
 
+    /*
+      EL CUPO DEL DÍA DE CALMA, DÍA POR DÍA.
+      Misma suma que `/api/dia-de-calma/cupo`: personas de las solicitudes que
+      todavía ocupan (`ocupaCalendario()` descarta los holds vencidos). Solo
+      sale el agregado por fecha, nunca quién viene.
+    */
+    const personasPorDia: Record<string, number> = {};
+    for (const fila of reservasDia.data ?? []) {
+      if (
+        !ocupaCalendario(
+          {
+            estado: String(fila.estado ?? ""),
+            expira_at:
+              typeof fila.expira_at === "string" ? fila.expira_at : null,
+          },
+          ahora,
+        )
+      ) {
+        continue;
+      }
+      const rango = leerRangoFechas(fila.estancia);
+      if (!rango) continue;
+      for (
+        let dia = rango.inicio > desde ? rango.inicio : desde;
+        dia < rango.fin && dia < hasta;
+        dia = sumarDiasISO(dia, 1)
+      ) {
+        personasPorDia[dia] =
+          (personasPorDia[dia] ?? 0) + Number(fila.num_personas ?? 0);
+      }
+    }
+    const dia = Object.fromEntries(
+      Object.entries(personasPorDia)
+        .sort(([a], [b]) => (a < b ? -1 : 1))
+        .map(([fecha, usado]) => [fecha, cupoDelDia(fecha, usado).usado]),
+    );
+
     return NextResponse.json(
       {
         desde,
@@ -201,6 +270,7 @@ export async function GET(peticion: Request) {
           nombre: cabana.nombre,
           ocupado: [...(ocupado.get(cabana.id) ?? [])].sort(),
         })),
+        dia,
         /* Para poder decir en pantalla «esto todavía no incluye lo que el hotel
            apunta en su calendario» cuando la integración no está conectada. */
         calendario_hotel: calendario.estado,
