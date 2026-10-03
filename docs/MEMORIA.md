@@ -80,6 +80,14 @@
   (`RESEND_API_KEY`, `EMAIL_FROM`, `EMAIL_NOTIFY_TO`, `EMAIL_REPLY_TO`). Sin ellas el
   sitio publicado confirma la reserva y **no avisa a nadie**.
 
+- **2026-10-03 · Primero la cabaña, luego las fechas.** `/reservar` pregunta «¿Dónde
+  te quedas?» (cinco cabañas y el Día de Calma) y después «¿Cuándo?», y el calendario
+  **tacha las noches ocupadas** de la cabaña elegida con la semántica `[llegada,
+  salida)`: no se llega en noche ocupada, la salida no la salta, se puede llegar el
+  día en que otro sale. La portada hace lo mismo (sin cabaña, solo las noches sin
+  ninguna libre). Reglas puras en `src/lib/reserva/elegibilidad-calendario.ts`;
+  detalle en el registro de esa noche.
+
 ## Decisiones tomadas
 
 | Fecha | Decisión |
@@ -3296,3 +3304,112 @@ responden. ✓ La integración con el calendario del hotel está sana».
 **No se escribió, editó ni borró ningún evento en los calendarios del cliente.**
 Todo fue lectura; el permiso de escritura se confirmó por el `accessRole` que
 devuelve Google (`writer`), sin crear ningún evento de prueba.
+
+### 2026-10-03 (noche) — Primero la cabaña, luego las fechas, y el calendario tacha lo ocupado
+
+Pedido del cliente: el motor pedía **fechas → cabaña** y el calendario no sabía nada de
+ocupación; se elegían fechas a ciegas y después un aviso decía «esas noches ya están
+ocupadas». Ahora que el sitio lee el Google Calendar del hotel (48 reservas reales), el
+orden se invierte y el calendario **tacha** lo que no se puede elegir.
+
+#### Qué cambió
+
+- **`/reservar`, pasos nuevos:** 1 «¿Dónde te quedas?» —las cinco cabañas y el **Día de
+  Calma** al mismo nivel, en el mismo grupo de radios— y 2 «¿Cuándo?», el calendario.
+  Plan, experiencias por noche, anticipo y datos no cambian de lógica; solo se
+  renumeran. Sin cabaña elegida, el paso 2 se ve **atenuado** dentro de un
+  `<fieldset disabled>` (fuera del tabulador, sin trucos de `tabIndex`) con la frase
+  «Elige primero tu cabaña para ver sus fechas libres» a contraste normal.
+- **Fechas que llegan sin cabaña** (`?entrada=&salida=` desde la portada) se guardan;
+  al elegir cabaña —o al cambiar de una a otra, o al pasar al Día de Calma— se
+  comprueban con las mismas reglas del calendario en cuanto su mes está cargado. Si no
+  valen, se quitan con un aviso corto («Quitamos tus fechas (…): no están libres en la
+  Cabaña 01…»). Con cabaña elegida, cada tarjeta dice además «Libre / Ocupada en tus
+  fechas» usando la consulta que ya hacía el resumen.
+- **El calendario** (`calendario-fechas.tsx`) recibe `nochesOcupadas`,
+  `tiposDeNocheOfrecidos` (regla de la 02), `diasSinCupo`, `cargandoOcupacion`, `nota`
+  y `alCambiarMes`. Los días apagados llevan **`aria-disabled` + motivo en el
+  `aria-label`** («domingo, 4 de octubre — ocupado: esa noche ya está reservada») en vez
+  de `disabled`: un botón deshabilitado no recibe foco, y con las flechas el foco se
+  perdía. Los ocupados se pintan tachados sobre fondo crema (`crema-600` sobre
+  `crema-200`, 4,7:1), distintos de un día pasado. Leyenda «Tachado: …» bajo la
+  rejilla cuando hay algo tachado y no hay nota.
+- **Reglas puras** en `src/lib/reserva/elegibilidad-calendario.ts` (46 pruebas):
+  `bloqueoDeCabana`, `bloqueoComun`, `topeDeSalida`, `evaluadorDeDias`,
+  `validarFechas`, `diasSinCupo`, `ventanaPorCargar`, `repartirPorMes`,
+  `tiposOfrecidosDe`. `MAXIMO_DIAS_DISPONIBILIDAD = 92` vive ahí y el endpoint lo
+  importa (Next no deja exportar constantes desde un `route.ts`).
+- **Carga:** `useOcupacion` (`src/components/sitio/usar-ocupacion.ts`), compartido por
+  la portada y `/reservar`. Pide el mes visible y el siguiente en **una** consulta
+  (≤ 62 días), guarda por mes con caducidad de 5 minutos y reintenta un mes fallido a
+  los 30 s. **Decisión explícita contra el encargo:** se pidió «al cambiar de cabaña,
+  se vuelve a cargar; cabañas distintas no comparten caché». `/api/disponibilidad`
+  devuelve las cinco cabañas en cada respuesta y cuesta lo mismo pedir una que cinco,
+  así que la caché es por mes y dentro guarda las noches **de cada cabaña por
+  separado**: cambiar de cabaña no vuelve a preguntar (ahorra freno de peticiones y
+  cuota de Google) y nunca se mezclan las noches de una con las de otra.
+- **`/api/disponibilidad`** devuelve además `dia: { "AAAA-MM-DD": personas }` (solo
+  fechas con alguien) con la misma suma que `/api/dia-de-calma/cupo`: una consulta más
+  en el mismo `Promise.all`. Con eso el calendario del Día de Calma tacha los días sin
+  cupo.
+- **Portada** (`modulo-reserva.tsx`): con cabaña, sus noches; sin cabaña, solo las
+  noches en que **las cinco** están bloqueadas, con la nota «Tachamos solo los días sin
+  ninguna cabaña libre. Al elegir cabaña verás sus fechas exactas». La ocupación se
+  pide al abrir el calendario o elegir cabaña, nunca al cargar la portada. Cambiar de
+  cabaña con fechas puestas las comprueba y, si no valen, las quita con aviso en la
+  línea de estado. `inicio.tsx` pasa `tipos` (de `tiposOfrecidosDe`) para la 02.
+- **Panel en dos columnas en la portada desde `lg`**: abierto hacia arriba solo
+  quedaban ~500 px y en una columna pasaba de 600 —«Borrar fechas» y «Listo» se
+  escondían—. Textos a la izquierda, rejilla a la derecha: ~400 px. En el teléfono y
+  en `/reservar`, la columna de siempre.
+- **FAB de WhatsApp**: solo buscaba `data-fab-evitar` al montarse, y el selector de
+  `/reservar` se pinta después (Suspense), así que en el teléfono tapaba «Listo» del
+  calendario. Ahora un `MutationObserver` observa los que aparecen y suelta los que
+  desaparecen; la hoja del calendario lleva el atributo.
+- **Textos:** respaldo de `reservar` (entrada «Empieza por tu cabaña…», pasos «Tu
+  cabaña» y «Tus fechas» primero), seed regenerado, frase de `/experiencias`,
+  `CMS_CLAVES.md` y el bloque 2 de `GUIA_PRUEBAS.md` (dos casillas nuevas). El FAQ y
+  `CONTENIDO_ACTUAL.md` no describían el orden: sin cambios.
+- **Base real:** `scripts/actualizar-pasos-reservar.mjs` (simula por defecto,
+  `--ejecutar` escribe) solo reemplaza `intro` y `pasos` si son exactamente el texto
+  anterior del seed. Se corrió **después del push**: los dos campos coincidían con el
+  seed anterior y quedaron actualizados; la segunda pasada dice «ya está al día».
+
+#### La semántica elegida (rangos `[llegada, salida)`)
+
+- Un día cuya **noche** está ocupada no es llegada.
+- Un día es salida si **todas** las noches entre la llegada y ese día están libres: la
+  salida más tardía es la primera noche bloqueada tras la llegada (`topeDeSalida`), y
+  todo lo posterior se tacha mientras se elige la salida, con la frase «Como tarde, el
+  17 de oct: esa noche ya no está libre».
+- Se puede **llegar el día en que otro sale** y **salir el día en que otro llega**.
+- «Bloqueada» incluye las noches que la cabaña **no vende**: la 02 (solo Estándar)
+  tacha sus lunes a jueves no festivos, con explicación en la tarjeta («Solo noches de
+  fin de semana o festivo»), en el panel y bajo el calendario. Sale de sus tarifas, no
+  de su nombre.
+- La antelación sigue igual: hoy no se reserva; un día ocupado se distingue de uno
+  apagado por antelación.
+- **Es experiencia de uso, no seguridad**: el aviso «informa, no bloquea» del resumen
+  se queda como red (consulta el rango exacto al elegirlo), `/api/reservar` vuelve a
+  comprobar y la restricción de exclusión de Postgres tiene la última palabra.
+
+#### Verificación
+
+`npx tsc --noEmit` limpio · `npm test` **398 en verde** (352 + 46) · `next build` sin
+errores (en una copia aislada del proyecto: en la carpeta real había tres `next dev`
+de otras sesiones en los puertos 3000–3002 compartiendo `.next`, y un build ahí los
+habría roto) · eslint limpio sobre lo tocado. Capturas con Chrome headless contra
+`next start` en `localhost:3107`, a 1440 y 390: `/reservar` sin cabaña, Cabaña 01 en
+octubre y noviembre (4, 10, 11, 17, 24 / 1, 2, 14, 21 tachados), llegada el 12 con
+tope el 17, fechas descartadas al elegir cabaña, Cabaña 02, Día de Calma y la portada
+con y sin cabaña. Comprobado en el DOM: 0 celdas con `disabled`, motivo en cada
+`aria-label`, el paso 2 sin cabaña con 0 controles enfocables.
+
+#### Lo que quedó fuera
+
+- La ocupación se carga para los meses que se miran: una estadía que salte a un mes
+  no cargado cuenta esas noches como libres (las comprueban el aviso y el servidor).
+- En modo Día de Calma el botón sigue diciendo «Borrar fechas» (es una sola).
+- La hoja del calendario de la portada en el teléfono sigue posicionándose respecto
+  del formulario (el `backdrop-blur` del módulo crea un bloque contenedor para
+  `fixed`): se ve bien a 390, pero no es la hoja inferior que describe el código.
