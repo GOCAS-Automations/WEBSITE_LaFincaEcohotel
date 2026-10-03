@@ -1,12 +1,14 @@
 import "server-only";
 
 import {
+  accesoPermiteEscribir,
   calendarioConfigurado,
+  comprobarCalendario,
   configuracionDeCalendarios,
   correoDeLaCuentaDeServicio,
   credencialConfigurada,
+  leerCalendario,
   listarCalendarios,
-  listarEventos,
 } from "@/lib/google/calendario";
 import {
   franjasQueChocan,
@@ -15,7 +17,20 @@ import {
   type LoteDeCalendario,
   type OcupacionExterna,
 } from "./calendario-externo";
-import type { ConfiguracionCalendarios } from "./calendarios-config";
+import {
+  armarDiagnostico,
+  avisoDeEscrituraSinPermiso,
+  calendariosAComprobar,
+  type CalendarioSuscrito,
+  type ComprobacionDeCalendario,
+  type DiagnosticoCalendario,
+} from "./diagnostico-calendarios";
+
+export type {
+  CalendarioDiagnosticado,
+  CalendarioSuscrito,
+  DiagnosticoCalendario,
+} from "./diagnostico-calendarios";
 
 /**
  * La capa «Google Calendar» de la disponibilidad, con caché.
@@ -87,6 +102,12 @@ export type LecturaCalendario = {
   avisos: string[];
   /** Cierto si algún calendario de la lista no se pudo leer. */
   lecturaIncompleta: boolean;
+  /**
+   * Cierto si Google dijo que la cuenta del sitio **no puede escribir** en el
+   * calendario donde el panel apunta las reservas. Es grave y va destacado: con
+   * esto en cierto, cada reserva creada desde el panel se queda sin apuntar.
+   */
+  escrituraSinPermiso: boolean;
 };
 
 type Entrada = {
@@ -137,6 +158,7 @@ function sinConfigurar(
     consultado: null,
     avisos,
     lecturaIncompleta: false,
+    escrituraSinPermiso: false,
   };
 }
 
@@ -175,18 +197,33 @@ async function consultar(
   const respuestas = await Promise.all(
     config.calendarios.map(async (calendario) => ({
       calendario,
-      respuesta: await listarEventos(calendario.id, desde, hasta),
+      respuesta: await leerCalendario(calendario.id, desde, hasta),
     })),
   );
 
   const lotes: LoteDeCalendario[] = [];
   const fallos: string[] = [];
+  /** Avisos que no son un fallo de lectura, pero que hay que contar igual. */
+  const graves: string[] = [];
+  let escrituraSinPermiso = false;
   let eventos = 0;
 
   for (const { calendario, respuesta } of respuestas) {
     if (respuesta.ok) {
-      lotes.push({ cabana: calendario.cabana, eventos: respuesta.datos });
-      eventos += respuesta.datos.length;
+      lotes.push({ cabana: calendario.cabana, eventos: respuesta.datos.eventos });
+      eventos += respuesta.datos.eventos.length;
+      /* El permiso viene GRATIS en la misma respuesta, así que se aprovecha: si
+         el calendario donde el panel apunta las reservas resulta estar
+         compartido en solo lectura, nadie debería enterarse por echar en falta
+         una reserva. */
+      if (
+        calendario.id.toLowerCase() === config.escribirEn?.toLowerCase() &&
+        respuesta.datos.acceso !== null &&
+        !accesoPermiteEscribir(respuesta.datos.acceso)
+      ) {
+        escrituraSinPermiso = true;
+        graves.push(avisoDeEscrituraSinPermiso(respuesta.datos.nombre ?? calendario.id, respuesta.datos.acceso));
+      }
       continue;
     }
     /* Un fallo de Google NO puede tumbar la pantalla: se deja constancia en el
@@ -199,7 +236,7 @@ async function consultar(
     fallos.push(`No se pudo leer el calendario «${calendario.id}»: ${respuesta.mensaje}`);
   }
 
-  const avisos = [...config.avisos, ...fallos];
+  const avisos = [...config.avisos, ...graves, ...fallos];
 
   /* Ninguno respondió: es el caso «error» de siempre, con ocupación vacía. */
   if (lotes.length === 0) {
@@ -211,6 +248,7 @@ async function consultar(
       consultado: new Date().toISOString(),
       avisos,
       lecturaIncompleta: true,
+      escrituraSinPermiso,
     };
   }
 
@@ -223,6 +261,7 @@ async function consultar(
     consultado: new Date().toISOString(),
     avisos,
     lecturaIncompleta: fallos.length > 0,
+    escrituraSinPermiso,
   };
 }
 
@@ -291,6 +330,7 @@ export async function estadoDelCalendario(
   consultado: string | null;
   configurado: boolean;
   avisos: string[];
+  escrituraSinPermiso: boolean;
 }> {
   const lectura = await ocupacionDelCalendario(desde, hasta);
   return {
@@ -299,6 +339,7 @@ export async function estadoDelCalendario(
     consultado: lectura.consultado,
     configurado: calendarioConfigurado(),
     avisos: lectura.avisos,
+    escrituraSinPermiso: lectura.escrituraSinPermiso,
   };
 }
 
@@ -306,100 +347,29 @@ export async function estadoDelCalendario(
  * Diagnóstico para el panel
  * ======================================================================== */
 
-/** Un calendario que la cuenta de servicio ve de verdad en Google. */
-export type CalendarioVisible = {
-  id: string;
-  nombre: string;
-  /** `owner`, `writer`, `reader`… tal como lo llama Google. */
-  acceso: string;
-  /** Cierto si además está en `GOOGLE_CALENDAR_ID`. */
-  configurado: boolean;
-  /** Cabaña a la que está atado, si lo está. */
-  cabana: number | null;
-  /** Cierto si es el calendario donde se apuntan las reservas del panel. */
-  deEscritura: boolean;
-};
-
-export type DiagnosticoCalendario = {
-  credencial: boolean;
-  /** El correo al que hay que invitar el calendario. */
-  correoCuenta: string | null;
-  configurado: boolean;
-  /** Los calendarios de la variable, en su orden, con lo que se sabe de ellos. */
-  configurados: {
-    id: string;
-    cabana: number | null;
-    /** Cierto si la cuenta de servicio lo ve de verdad. */
-    visible: boolean;
-    deEscritura: boolean;
-  }[];
-  escribirEn: string | null;
-  escrituraForzada: boolean;
-  escrituraFueraDeLista: boolean;
-  avisos: string[];
-  /** Lo que la cuenta ve en Google; `null` si no se pudo preguntar. */
-  visibles: CalendarioVisible[] | null;
-  /** Por qué no se pudo preguntar, si es el caso. */
-  errorVisibles: string | null;
-};
-
 type EntradaDiagnostico = { caducidad: number; valor: DiagnosticoCalendario };
 let diagnosticoEnCache: EntradaDiagnostico | null = null;
 
-function mismoId(a: string | null | undefined, b: string | null | undefined): boolean {
-  return Boolean(a && b && a.toLowerCase() === b.toLowerCase());
-}
-
-function armarDiagnostico(
-  config: ConfiguracionCalendarios,
-  visibles: { id: string; nombre: string; acceso: string }[] | null,
-  errorVisibles: string | null,
-): DiagnosticoCalendario {
-  const porId = new Map(
-    config.calendarios.map((calendario) => [calendario.id.toLowerCase(), calendario]),
-  );
-
-  return {
-    credencial: credencialConfigurada(),
-    correoCuenta: correoDeLaCuentaDeServicio(),
-    configurado: calendarioConfigurado(),
-    configurados: config.calendarios.map((calendario) => ({
-      id: calendario.id,
-      cabana: calendario.cabana,
-      visible: visibles
-        ? visibles.some((visto) => mismoId(visto.id, calendario.id))
-        : false,
-      deEscritura: mismoId(calendario.id, config.escribirEn),
-    })),
-    escribirEn: config.escribirEn,
-    escrituraForzada: config.escrituraForzada,
-    escrituraFueraDeLista: config.escrituraFueraDeLista,
-    avisos: config.avisos,
-    visibles:
-      visibles?.map((visto) => {
-        const configurado = porId.get(visto.id.toLowerCase());
-        return {
-          ...visto,
-          configurado: Boolean(configurado),
-          cabana: configurado?.cabana ?? null,
-          deEscritura: mismoId(visto.id, config.escribirEn),
-        };
-      }) ?? null,
-    errorVisibles,
-  };
-}
-
 /**
- * Todo lo que hace falta para entender la integración desde el panel: qué dice
- * la configuración y qué calendarios ve de verdad la cuenta de servicio.
+ * Todo lo que hace falta para entender la integración desde el panel.
  *
- * Lo segundo es lo que nos ahorra pedirle el identificador al hotel: en cuanto
- * compartan el calendario, aparece aquí con su id completo y solo hay que
- * copiarlo a la variable.
+ * ---------------------------------------------------------------------------
+ * LA FUENTE DE VERDAD ES LA LECTURA, NO LA LISTA DE SUSCRIPCIONES
+ * ---------------------------------------------------------------------------
+ * Cada calendario configurado se comprueba **preguntándole a Google por sus
+ * eventos** ({@link comprobarCalendario}), que es exactamente lo que hace el
+ * sitio para calcular disponibilidad. Si eso responde, hay acceso: punto. De esa
+ * misma respuesta salen el nombre del calendario y el permiso real.
  *
- * Se guarda cinco minutos, igual que la ocupación, porque es una llamada más a
- * Google por cada vez que se pinta la pantalla de reservas. El botón «Actualizar
- * ahora» del panel también tira esta caché. Nunca lanza.
+ * `calendarList.list` se sigue llamando, pero solo para **descubrir**
+ * identificadores que nadie nos ha dado. No decide nada: ver la cabecera de
+ * `diagnostico-calendarios.ts`, que cuenta el falso negativo que costó esta
+ * distinción.
+ *
+ * Las comprobaciones van en paralelo —son siete peticiones independientes— y se
+ * guardan cinco minutos, igual que la ocupación, porque esto se pinta en la
+ * pantalla de reservas. El botón «Actualizar ahora» del panel tira la caché.
+ * Nunca lanza.
  */
 export async function diagnosticoDelCalendario(): Promise<DiagnosticoCalendario> {
   if (diagnosticoEnCache && diagnosticoEnCache.caducidad > Date.now()) {
@@ -407,23 +377,63 @@ export async function diagnosticoDelCalendario(): Promise<DiagnosticoCalendario>
   }
 
   const config = configuracionDeCalendarios();
+  const hayCredencial = credencialConfigurada();
 
-  let visibles: { id: string; nombre: string; acceso: string }[] | null = null;
-  let errorVisibles: string | null = null;
+  const comprobaciones: Record<string, ComprobacionDeCalendario> = {};
+  let suscritos: CalendarioSuscrito[] | null = null;
+  let errorSuscritos: string | null = null;
 
-  if (credencialConfigurada()) {
-    const respuesta = await listarCalendarios();
-    if (respuesta.ok) {
-      visibles = respuesta.datos;
+  if (hayCredencial) {
+    const aComprobar = calendariosAComprobar(config);
+    const [respuestas, lista] = await Promise.all([
+      Promise.all(
+        aComprobar.map(async (id) => ({ id, respuesta: await comprobarCalendario(id) })),
+      ),
+      listarCalendarios(),
+    ]);
+
+    for (const { id, respuesta } of respuestas) {
+      if (respuesta.ok) {
+        comprobaciones[id.toLowerCase()] = {
+          ok: true,
+          nombre: respuesta.datos.nombre,
+          acceso: respuesta.datos.acceso,
+          puedeEscribir: respuesta.datos.puedeEscribir,
+        };
+        continue;
+      }
+      comprobaciones[id.toLowerCase()] = { ok: false, mensaje: respuesta.mensaje };
+      console.error(
+        `[calendario] no se pudo comprobar el calendario ${id}:`,
+        respuesta.mensaje,
+      );
+    }
+
+    if (lista.ok) {
+      suscritos = lista.datos;
     } else {
-      errorVisibles = respuesta.mensaje;
-      console.error("[calendario] no se pudo listar los calendarios:", respuesta.mensaje);
+      errorSuscritos = lista.mensaje;
+      console.error("[calendario] no se pudo listar las suscripciones:", lista.mensaje);
     }
   }
 
-  const valor = armarDiagnostico(config, visibles, errorVisibles);
+  const valor = armarDiagnostico({
+    credencial: hayCredencial,
+    correoCuenta: correoDeLaCuentaDeServicio(),
+    config,
+    comprobaciones,
+    suscritos,
+    errorSuscritos,
+  });
+
+  /* Un diagnóstico con algo roto se guarda solo un minuto: quien está arreglando
+     un permiso en Google quiere ver el efecto pronto, no dentro de cinco. */
+  const algoRoto =
+    errorSuscritos !== null ||
+    valor.escrituraSinPermiso ||
+    valor.configurados.some((calendario) => calendario.error !== null);
   diagnosticoEnCache = {
-    caducidad: Date.now() + (errorVisibles ? 60_000 : VIDA_CACHE_MS),
+    caducidad: Date.now() + (algoRoto ? 60_000 : VIDA_CACHE_MS),
     valor,
   };
   return valor;

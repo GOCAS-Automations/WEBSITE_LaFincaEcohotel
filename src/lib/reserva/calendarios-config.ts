@@ -4,11 +4,13 @@
  * ---------------------------------------------------------------------------
  * POR QUÉ VARIOS CALENDARIOS
  * ---------------------------------------------------------------------------
- * El hotel lleva un calendario general («la finca») donde apunta las reservas
- * poniendo el nombre de la cabaña en el título, y además va a crear **cinco
- * subcalendarios, uno por cabaña**, bajo el mismo Gmail, para un bot de
- * WhatsApp que funciona aparte. Las dos cosas van a convivir, así que el sitio
- * tiene que poder leer una lista de calendarios y no uno solo.
+ * El hotel lleva un calendario general («Reservas Finca Villarreal») donde
+ * apunta las reservas poniendo el nombre de la cabaña en el título, y además
+ * tiene **cinco subcalendarios, uno por cabaña**, bajo el mismo Gmail, para un
+ * bot de WhatsApp que funciona aparte. Las dos cosas conviven, así que el sitio
+ * tiene que poder leer una lista de calendarios y no uno solo. Hay un séptimo,
+ * «Reservas Finca Villarreal - Sitio Web», que es el único compartido con
+ * permiso de escritura: ahí apunta el panel sus reservas.
  *
  * ---------------------------------------------------------------------------
  * EL FORMATO DE `GOOGLE_CALENDAR_ID`

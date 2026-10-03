@@ -6,18 +6,29 @@
  * ---------------------------------------------------------------------------
  * PARA QUÉ
  * ---------------------------------------------------------------------------
- * Es el script que se corre **el día que el hotel comparta su calendario** con
- * la cuenta de servicio. Imprime, en este orden:
+ * Es el script que se corre cuando hay que saber si la integración con el
+ * calendario del hotel está viva. Imprime, en este orden:
  *
  *   1. si la credencial carga y con qué correo (el que hay que invitar),
  *   2. cómo quedó entendida `GOOGLE_CALENDAR_ID` —qué calendarios y a qué
  *      cabaña va cada uno— con los avisos de lo que no se entendió,
- *   3. en qué calendario se van a apuntar las reservas del panel,
- *   4. los calendarios que la cuenta ve de verdad, con su identificador
- *      completo, marcando los que ya están configurados y los que no.
+ *   3. **el calendario donde el sitio ESCRIBE**, comprobado: si la cuenta no
+ *      tiene ahí permiso de escritura, las reservas del panel no se apuntan en
+ *      ningún lado y el script termina con error,
+ *   4. los calendarios que el sitio **solo LEE**, comprobados uno por uno,
+ *   5. si la cuenta tiene algún calendario más en su propia lista, por si hay un
+ *      identificador que copiar.
  *
- * Con el punto 4 no hay que pedirle el identificador a nadie: se copia de aquí a
- * `.env.local` y a Vercel.
+ * ---------------------------------------------------------------------------
+ * CÓMO SE COMPRUEBA, Y POR QUÉ NO CON `calendarList`
+ * ---------------------------------------------------------------------------
+ * Pidiéndole a Google **los eventos de cada calendario**, que es lo que hace el
+ * sitio de verdad. La versión anterior preguntaba a `calendarList.list` y daba
+ * por perdido lo que no saliera ahí; resultó que esa lista son las
+ * *suscripciones* de la cuenta, no sus *permisos*, y se queda vacía aunque el
+ * hotel haya compartido los siete calendarios. El script decía «ninguno
+ * todavía» con todo funcionando. La historia está en
+ * `src/lib/reserva/diagnostico-calendarios.ts`.
  *
  * A diferencia de `probar-calendario.mjs`, este script **no escribe nada** en
  * Google: solo lee. Se puede correr cuando sea, también contra el calendario
@@ -61,11 +72,16 @@ const {
   credencialConfigurada,
   correoDeLaCuentaDeServicio,
   configuracionDeCalendarios,
+  comprobarCalendario,
   listarCalendarios,
 } = await import("../src/lib/google/calendario.ts");
 
 const { etiquetaDeCalendario } = await import(
   "../src/lib/reserva/calendarios-config.ts"
+);
+
+const { accesoEnEspanol, armarDiagnostico, calendariosAComprobar } = await import(
+  "../src/lib/reserva/diagnostico-calendarios.ts"
 );
 
 function titulo(texto) {
@@ -87,8 +103,9 @@ if (!credencialConfigurada()) {
 console.log("  ✓ La credencial carga.");
 console.log(`  Cuenta del sitio: ${correoDeLaCuentaDeServicio()}`);
 console.log(
-  "  (Es el correo con el que el hotel tiene que compartir cada calendario,\n" +
-    "   con permiso de «Hacer cambios en eventos».)",
+  "  (Es el correo con el que el hotel comparte cada calendario. Para los que\n" +
+    "   el sitio solo consulta basta «Ver todos los eventos»; el calendario donde\n" +
+    "   se apuntan las reservas necesita «Hacer cambios en eventos».)",
 );
 
 titulo("GOOGLE_CALENDAR_ID, tal como se entiende");
@@ -111,78 +128,173 @@ if (config.calendarios.length === 0) {
   }
 }
 
-titulo("Dónde se apuntan las reservas del panel");
-console.log(
-  config.escribirEn
-    ? `  ${config.escribirEn}\n  ${
-        config.escrituraForzada
-          ? "(fijado con GOOGLE_CALENDAR_ESCRIBIR_EN)"
-          : "(el primero de la lista)"
-      }`
-    : "  En ninguno: no hay calendarios configurados.",
-);
+/* ---------------------------------------------------------------------------
+ * La comprobación de verdad: una lectura de eventos por calendario
+ * ------------------------------------------------------------------------ */
 
-if (config.avisos.length > 0) {
-  titulo("Avisos");
-  for (const aviso of config.avisos) console.log(`  ⚠ ${aviso}`);
+const comprobaciones = {};
+const aComprobar = calendariosAComprobar(config);
+
+const [respuestas, lista] = await Promise.all([
+  Promise.all(
+    aComprobar.map(async (id) => ({ id, respuesta: await comprobarCalendario(id) })),
+  ),
+  listarCalendarios(),
+]);
+
+for (const { id, respuesta } of respuestas) {
+  comprobaciones[id.toLowerCase()] = respuesta.ok
+    ? {
+        ok: true,
+        nombre: respuesta.datos.nombre,
+        acceso: respuesta.datos.acceso,
+        puedeEscribir: respuesta.datos.puedeEscribir,
+      }
+    : { ok: false, mensaje: respuesta.mensaje };
 }
 
-titulo("Calendarios que la cuenta del sitio ve de verdad");
+const diagnostico = armarDiagnostico({
+  credencial: true,
+  correoCuenta: correoDeLaCuentaDeServicio(),
+  config,
+  comprobaciones,
+  suscritos: lista.ok ? lista.datos : null,
+  errorSuscritos: lista.ok ? null : lista.mensaje,
+});
 
-const vistos = await listarCalendarios();
-
-if (!vistos.ok) {
-  console.error(`  ✗ No se pudo preguntar a Google: ${vistos.mensaje}\n`);
-  process.exit(1);
-}
-
-if (vistos.datos.length === 0) {
+/** Una línea por calendario, con lo que Google contestó. */
+function imprimir(calendario) {
+  if (calendario.error) {
+    console.log(`  ✗ ${calendario.id}`);
+    console.log(`    No responde: ${calendario.error}`);
+    return;
+  }
+  if (!calendario.responde) {
+    console.log(`  · ${calendario.id}`);
+    console.log("    Sin comprobar.");
+    return;
+  }
+  console.log(`  ✓ ${calendario.nombre ?? "(sin nombre)"}`);
+  console.log(`    ${calendario.id}`);
   console.log(
-    "  Ninguno todavía.\n\n" +
-      "  En Google Calendar, junto al nombre del calendario: «Configuración y\n" +
-      "  uso compartido» → «Compartir con determinadas personas o grupos» →\n" +
-      `  añadir ${correoDeLaCuentaDeServicio()} con «Hacer cambios en eventos».`,
+    `    Permiso: ${calendario.acceso} — ${accesoEnEspanol(calendario.acceso)}`,
+  );
+  console.log(
+    `    Qué ocupa: ${
+      calendario.cabana === null
+        ? "lo que diga el título de cada evento (las cinco cabañas si no lo dice)"
+        : `siempre la Cabaña ${calendario.cabana}`
+    }`,
+  );
+}
+
+titulo("Donde el sitio ESCRIBE las reservas del panel");
+
+if (!diagnostico.escritura) {
+  console.log(
+    "  En ninguno: no hay calendarios configurados. Las reservas se quedan solo\n" +
+      "  en el panel; están a salvo, pero no se ven desde el teléfono.",
   );
 } else {
-  const configurados = new Set(
-    config.calendarios.map((calendario) => calendario.id.toLowerCase()),
+  imprimir(diagnostico.escritura);
+  console.log(
+    `    ${
+      diagnostico.escrituraForzada
+        ? "Lo fija GOOGLE_CALENDAR_ESCRIBIR_EN."
+        : "Es el primero de GOOGLE_CALENDAR_ID."
+    }`,
   );
-  for (const visto of vistos.datos) {
-    const estaConfigurado = configurados.has(visto.id.toLowerCase());
-    console.log(`\n  ${estaConfigurado ? "✓ configurado" : "· sin configurar"}`);
-    console.log(`    ${visto.nombre}  (${visto.acceso})`);
-    console.log(`    ${visto.id}`);
-  }
-
-  const faltan = vistos.datos.filter(
-    (visto) => !configurados.has(visto.id.toLowerCase()),
-  );
-  if (faltan.length > 0) {
+  if (diagnostico.escrituraFueraDeLista) {
     console.log(
-      `\n  Para empezar a usar los ${faltan.length} «sin configurar», copia su\n` +
-        "  identificador a GOOGLE_CALENDAR_ID (con «=3» detrás si es el de la\n" +
-        "  Cabaña 3), en .env.local y en Vercel.",
+      "    ⚠ No está entre los que el sitio lee: lo que se apunte ahí no cuenta\n" +
+        "      para la disponibilidad.",
     );
   }
-
+  if (diagnostico.escrituraSinPermiso) {
+    console.log(
+      "\n  ✗✗ PROBLEMA GRAVE: la cuenta del sitio NO puede escribir ahí.\n" +
+        "     Las reservas que se creen desde el panel no se apuntarán en ningún\n" +
+        "     calendario del hotel, y nadie se dará cuenta hasta echarlas en falta.\n" +
+        "     Arreglo: en Google Calendar, «Configuración y uso compartido» de ese\n" +
+        `     calendario → ${correoDeLaCuentaDeServicio()} → «Hacer cambios en eventos».`,
+    );
+  }
 }
 
-/* Esto se comprueba SIEMPRE, también cuando la cuenta no ve ninguno: un
-   calendario configurado que la cuenta no ve es la causa número uno de «el
-   sitio no muestra lo que apuntamos». */
-const invisibles = config.calendarios.filter(
-  (calendario) =>
-    !vistos.datos.some(
-      (visto) => visto.id.toLowerCase() === calendario.id.toLowerCase(),
-    ),
+titulo("Calendarios que el sitio solo LEE");
+
+const soloLectura = diagnostico.configurados.filter(
+  (calendario) => !calendario.deEscritura,
 );
-if (invisibles.length > 0) {
+
+if (soloLectura.length === 0) {
   console.log(
-    `\n  ⚠ ${invisibles.length} calendario(s) están configurados pero la cuenta\n` +
-      "    NO los ve. Revisa que sigan compartidos con el correo de arriba y que\n" +
-      "    el identificador esté bien escrito:",
+    "  Ninguno. La disponibilidad se calcula solo con el calendario de arriba.",
   );
-  for (const calendario of invisibles) console.log(`      · ${calendario.id}`);
+} else {
+  console.log(
+    `  ${soloLectura.length} calendario(s). De aquí sale la disponibilidad: lo que\n` +
+      "  el hotel apunte en ellos bloquea fechas en el sitio.\n",
+  );
+  for (const calendario of soloLectura) {
+    imprimir(calendario);
+    console.log("");
+  }
 }
 
+if (diagnostico.avisos.length > 0) {
+  titulo("Avisos");
+  for (const aviso of diagnostico.avisos) console.log(`  ⚠ ${aviso}`);
+}
+
+/* ---------------------------------------------------------------------------
+ * Suscripciones: solo para descubrir identificadores
+ * ------------------------------------------------------------------------ */
+
+titulo("Otros calendarios en la lista de la cuenta");
+
+if (diagnostico.errorSuscritos) {
+  console.log(`  No se pudo preguntar: ${diagnostico.errorSuscritos}`);
+} else if ((diagnostico.suscritosSinConfigurar ?? []).length === 0) {
+  console.log(
+    "  Ninguno, y eso NO quiere decir nada malo: lo que Google llama\n" +
+      "  `calendarList` son las suscripciones de la cuenta, y una cuenta de\n" +
+      "  servicio no «acepta» invitaciones, así que casi siempre está vacía. Lo\n" +
+      "  que importa es la comprobación de arriba.",
+  );
+} else {
+  console.log(
+    "  La cuenta los tiene en su lista pero no están configurados. Para usar uno,\n" +
+      "  copia su identificador a GOOGLE_CALENDAR_ID (con «=3» detrás si es el de\n" +
+      "  la Cabaña 3), en .env.local y en Vercel.\n",
+  );
+  for (const suscrito of diagnostico.suscritosSinConfigurar) {
+    console.log(`  · ${suscrito.nombre}  (${accesoEnEspanol(suscrito.acceso)})`);
+    console.log(`    ${suscrito.id}`);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Veredicto
+ * ------------------------------------------------------------------------ */
+
+titulo("Resumen");
+
+const caidos = diagnostico.configurados.filter((calendario) => calendario.error);
+console.log(
+  `  ${diagnostico.responden} de ${diagnostico.configurados.length} calendarios configurados responden.`,
+);
+
+if (caidos.length === 0 && !diagnostico.escrituraSinPermiso) {
+  console.log("  ✓ La integración con el calendario del hotel está sana.\n");
+  process.exit(0);
+}
+
+if (caidos.length > 0) {
+  console.log(`  ✗ ${caidos.length} no responden (ver arriba).`);
+}
+if (diagnostico.escrituraSinPermiso) {
+  console.log("  ✗ El calendario de escritura no tiene permiso de escritura.");
+}
 console.log("");
+process.exit(1);

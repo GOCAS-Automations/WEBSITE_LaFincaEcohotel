@@ -38,6 +38,7 @@ export function EstadoCalendarioHotel({
   mes,
   avisos = [],
   lecturaIncompleta = false,
+  escrituraSinPermiso = false,
   detalle = null,
 }: {
   estado: EstadoConexion;
@@ -50,6 +51,13 @@ export function EstadoCalendarioHotel({
   avisos?: string[];
   /** Cierto si alguno de los calendarios configurados no se pudo leer. */
   lecturaIncompleta?: boolean;
+  /**
+   * Cierto si el calendario donde el panel apunta las reservas está compartido
+   * en solo lectura. No es «conectado a medias»: se lee todo bien, pero NADA de
+   * lo que se cree aquí llega al calendario del hotel. Por eso lleva pastilla
+   * propia y en rojo.
+   */
+  escrituraSinPermiso?: boolean;
   /** El desplegable de diagnóstico, si quien mira puede verlo. */
   detalle?: ReactNode;
 }) {
@@ -70,6 +78,9 @@ export function EstadoCalendarioHotel({
         <Pastilla tono={conAvisos ? "ambar" : tono}>
           {conAvisos ? "Conectado a medias" : etiqueta}
         </Pastilla>
+        {escrituraSinPermiso && (
+          <Pastilla tono="rojo">No puede apuntar reservas</Pastilla>
+        )}
       </div>
 
       <p className="min-w-0 flex-1 text-[0.75rem] leading-snug text-crema-600">

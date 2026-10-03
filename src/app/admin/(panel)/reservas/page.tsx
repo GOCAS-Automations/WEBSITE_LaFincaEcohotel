@@ -154,6 +154,7 @@ export default async function PaginaReservas({
         mes={claveMes(mes)}
         avisos={calendarioHotel.avisos}
         lecturaIncompleta={calendarioHotel.lecturaIncompleta}
+        escrituraSinPermiso={calendarioHotel.escrituraSinPermiso}
         /* Los identificadores de Google son cosa del propietario: a quien
            atiende el teléfono no le aportan nada. */
         detalle={rol === "propietario" ? <BloqueDiagnosticoCalendario /> : null}

@@ -29,8 +29,13 @@ import type { ReservaAdmin } from "@/lib/admin/tipos";
  * apuntar en el calendario del hotel»— y queda la traza en la consola del
  * servidor.
  *
- * Si `GOOGLE_CALENDAR_ID` está vacío —hoy lo está: el hotel todavía no ha
- * compartido su calendario— todo esto no hace absolutamente nada.
+ * Si `GOOGLE_CALENDAR_ID` está vacío, todo esto no hace absolutamente nada.
+ *
+ * El hotel comparte **un solo** calendario con permiso de escritura; los demás
+ * (el general y los cinco por cabaña) van en solo lectura. Si ese permiso se
+ * cayera, cada escritura de aquí fallaría con un 403 y el panel lo diría al
+ * guardar; el diagnóstico lo avisa antes, sin esperar a la primera reserva que
+ * se quede sin apuntar (ver `diagnostico-calendarios.ts`).
  *
  * ---------------------------------------------------------------------------
  * SE ESCRIBE EN UN SOLO CALENDARIO

@@ -37,10 +37,27 @@ import {
  * · `GOOGLE_CALENDAR_ID` → la **lista** de calendarios que se leen, con el
  *   mapeo opcional a cabaña (`general@…, cab1@…=1, cab2@…=2`). El formato
  *   entero está documentado en `../reserva/calendarios-config.ts`. Un solo
- *   identificador sigue valiendo. **Hoy está vacío**: el hotel todavía no ha
- *   compartido su calendario con la cuenta de servicio.
+ *   identificador sigue valiendo.
  * · `GOOGLE_CALENDAR_ESCRIBIR_EN` → opcional. Dónde se apuntan las reservas del
  *   panel; por defecto, el primero de la lista.
+ *
+ * ---------------------------------------------------------------------------
+ * `calendarList` NO DICE A QUÉ TIENE ACCESO LA CUENTA
+ * ---------------------------------------------------------------------------
+ * Esto costó una tarde de buscar un problema que no existía, así que queda
+ * escrito: `calendarList.list` devuelve los calendarios a los que la cuenta
+ * está **suscrita** (los suyos y los que alguien añadió a su lista), no
+ * aquellos sobre los que tiene **permiso**. Cuando una persona comparte un
+ * calendario con una cuenta de servicio, el permiso (la ACL) se concede pero
+ * nadie «acepta» la invitación —una cuenta de servicio no tiene bandeja de
+ * entrada ni interfaz—, así que su `calendarList` se queda vacía.
+ *
+ * El acceso de verdad se comprueba leyendo eventos: `events.list` funciona con
+ * el permiso aunque `calendarList` esté vacía, y su respuesta trae además el
+ * nombre del calendario (`summary`) y el permiso real (`accessRole`). Por eso
+ * {@link comprobarCalendario} es la fuente de verdad del diagnóstico y
+ * {@link listarCalendarios} se usa solo para **descubrir** identificadores que
+ * nadie nos ha dado.
  *
  * ---------------------------------------------------------------------------
  * NADA DE ESTO PUEDE TIRAR EL SITIO
@@ -386,7 +403,29 @@ function normalizar(evento: EventoApi): EventoCalendario | null {
 }
 
 /**
- * Eventos de un calendario entre dos fechas (`AAAA-MM-DD`, `hasta` exclusivo).
+ * Permisos de Google que dejan crear, mover y borrar eventos.
+ *
+ * Los cuatro valores posibles de `accessRole` son `owner`, `writer`, `reader` y
+ * `freeBusyReader`. Solo los dos primeros permiten escribir; con `reader` el
+ * sitio puede calcular disponibilidad pero no apuntar nada, y con
+ * `freeBusyReader` ni siquiera ve los títulos.
+ */
+export function accesoPermiteEscribir(acceso: string | null | undefined): boolean {
+  return acceso === "owner" || acceso === "writer";
+}
+
+/** Lo que Google cuenta de un calendario al devolver sus eventos. */
+export type LecturaDeCalendario = {
+  eventos: EventoCalendario[];
+  /** Nombre que le puso el hotel; `null` si Google no lo devolvió. */
+  nombre: string | null;
+  /** Permiso real de la cuenta: `owner`, `writer`, `reader`, `freeBusyReader`. */
+  acceso: string | null;
+};
+
+/**
+ * Eventos de un calendario entre dos fechas (`AAAA-MM-DD`, `hasta` exclusivo),
+ * más el nombre y el permiso real que Google adjunta en la misma respuesta.
  *
  * `singleEvents=true` es imprescindible: sin él, una serie que se repite llega
  * como UN evento con su regla de repetición y habría que expandirla a mano.
@@ -396,12 +435,16 @@ function normalizar(evento: EventoApi): EventoCalendario | null {
  * Pagina hasta agotar `nextPageToken`, con un tope por si acaso: un calendario
  * con miles de eventos en un mes es un calendario roto, no una razón para
  * dejar la petición corriendo.
+ *
+ * El `summary` y el `accessRole` vienen GRATIS en esta misma respuesta, así que
+ * se devuelven: son lo que permite al panel decir «leo el calendario “Reservas
+ * Finca Villarreal” y solo puedo leerlo» sin una llamada de más.
  */
-export async function listarEventos(
+export async function leerCalendario(
   calendarioId: string,
   desde: string,
   hasta: string,
-): Promise<ResultadoCalendario<EventoCalendario[]>> {
+): Promise<ResultadoCalendario<LecturaDeCalendario>> {
   if (!calendarioId) {
     return fallo(
       "no_configurado",
@@ -410,6 +453,8 @@ export async function listarEventos(
   }
 
   const eventos: EventoCalendario[] = [];
+  let nombre: string | null = null;
+  let acceso: string | null = null;
   let pagina: string | undefined;
 
   for (let vuelta = 0; vuelta < 10; vuelta += 1) {
@@ -429,9 +474,14 @@ export async function listarEventos(
     const respuesta = await llamar<{
       items?: EventoApi[];
       nextPageToken?: string;
+      summary?: string;
+      accessRole?: string;
     }>(`/calendars/${encodeURIComponent(calendarioId)}/events`, { busqueda });
 
     if (!respuesta.ok) return respuesta;
+
+    nombre ??= respuesta.datos.summary ?? null;
+    acceso ??= respuesta.datos.accessRole ?? null;
 
     for (const item of respuesta.datos.items ?? []) {
       const normalizado = normalizar(item);
@@ -442,7 +492,72 @@ export async function listarEventos(
     if (!pagina) break;
   }
 
-  return { ok: true, datos: eventos };
+  return { ok: true, datos: { eventos, nombre, acceso } };
+}
+
+/**
+ * Solo los eventos, para quien no necesita el nombre ni el permiso.
+ * Es la firma de siempre; {@link leerCalendario} es la que trae todo.
+ */
+export async function listarEventos(
+  calendarioId: string,
+  desde: string,
+  hasta: string,
+): Promise<ResultadoCalendario<EventoCalendario[]>> {
+  const respuesta = await leerCalendario(calendarioId, desde, hasta);
+  return respuesta.ok ? { ok: true, datos: respuesta.datos.eventos } : respuesta;
+}
+
+/** Lo que se sabe de un calendario después de preguntárselo a Google. */
+export type CalendarioComprobado = {
+  id: string;
+  /** Nombre que le puso el hotel; `null` si Google no lo devolvió. */
+  nombre: string | null;
+  /** Permiso real: `owner`, `writer`, `reader`, `freeBusyReader`. */
+  acceso: string | null;
+  /** Cierto si la cuenta del sitio puede apuntar eventos en él. */
+  puedeEscribir: boolean;
+};
+
+/**
+ * ¿Tiene la cuenta del sitio acceso de verdad a este calendario, y con qué
+ * permiso? Es **la** comprobación del diagnóstico.
+ *
+ * Se pregunta por sus eventos, que es lo que el sitio hace de verdad para
+ * calcular disponibilidad: si esto responde, el acceso funciona, y da igual que
+ * `calendarList` esté vacía (ver la cabecera del módulo). Se piden `maxResults=1`
+ * y solo los campos `summary` y `accessRole`, así que la respuesta no trae ni un
+ * evento: es la llamada más barata que prueba el acceso.
+ *
+ * Un fallo se devuelve con el mensaje en español de {@link mensajeDeEstado}, que
+ * ya distingue «no tiene permiso» (403) de «no existe ese identificador» (404).
+ */
+export async function comprobarCalendario(
+  calendarioId: string,
+): Promise<ResultadoCalendario<CalendarioComprobado>> {
+  if (!calendarioId) {
+    return fallo(
+      "no_configurado",
+      "Todavía no está configurado el calendario del hotel (GOOGLE_CALENDAR_ID).",
+    );
+  }
+
+  const respuesta = await llamar<{ summary?: string; accessRole?: string }>(
+    `/calendars/${encodeURIComponent(calendarioId)}/events`,
+    { busqueda: { maxResults: "1", fields: "summary,accessRole" } },
+  );
+  if (!respuesta.ok) return respuesta;
+
+  const acceso = respuesta.datos?.accessRole ?? null;
+  return {
+    ok: true,
+    datos: {
+      id: calendarioId,
+      nombre: respuesta.datos?.summary ?? null,
+      acceso,
+      puedeEscribir: accesoPermiteEscribir(acceso),
+    },
+  };
 }
 
 /** Lo que el sitio necesita decir para apuntar una reserva en el calendario. */
@@ -573,7 +688,16 @@ export async function eliminarCalendario(
   return borrado;
 }
 
-/** Los calendarios que la cuenta de servicio ve (suyos y compartidos). */
+/**
+ * Los calendarios a los que la cuenta de servicio está **suscrita**.
+ *
+ * ⚠️ NO es la lista de a lo que tiene acceso: un calendario que el hotel
+ * comparte con la cuenta de servicio casi nunca aparece aquí (ver la cabecera
+ * del módulo). Sirve para **descubrir** identificadores —los calendarios que la
+ * cuenta creó ella misma, o los que alguien añadió a su lista— y nunca para
+ * concluir que un calendario no es accesible. Para eso está
+ * {@link comprobarCalendario}.
+ */
 export async function listarCalendarios(): Promise<
   ResultadoCalendario<{ id: string; nombre: string; acceso: string }[]>
 > {
