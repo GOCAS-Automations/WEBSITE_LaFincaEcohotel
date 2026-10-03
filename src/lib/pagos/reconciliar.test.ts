@@ -24,7 +24,7 @@
  * DECISIÓN (qué se escribe, cuántos correos salen), no la sintaxis de PostgREST,
  * que ya está verificada contra la base real.
  */
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /* ---------------------------------------------------------------------------
  * Los dobles. `vi.mock` se iza, así que las funciones se declaran dentro de la
@@ -581,5 +581,140 @@ describe("reconciliarPagosPendientes", () => {
     const resumen = await reconciliarPagosPendientes(comoSupabase(base));
 
     expect(resumen.requierenAtencion).toEqual([REFERENCIA]);
+  });
+});
+
+/* ===========================================================================
+ * 7. El candado del ambiente: pruebas no confirma nada en producción
+ * ======================================================================== */
+
+/**
+ * ESTO ES LA PRUEBA DE UN AGUJERO QUE EXISTIÓ. 2026-10-03.
+ *
+ * El webhook tenía esta guarda desde el 2026-10-01 y la reconciliación no, de
+ * modo que con las llaves de PRUEBAS cargadas en Production un pago hecho con la
+ * tarjeta `4111 1111 1111 1111` confirmaba una reserva real: no por el webhook
+ * —que lo rechazaba— sino por la página de retorno, el cron o el botón del panel,
+ * que son las tres puertas de la reconciliación.
+ *
+ * Lo que se fija aquí son las tres propiedades del arreglo:
+ *
+ *   1. En producción con ambiente de pruebas **no se confirma nada** y no se
+ *      llega ni a preguntarle a Bold.
+ *   2. La reserva **no queda a medias**: sigue `pendiente`, con su `expira_at`, y
+ *      el barrido de vencidas la libera a su hora como cualquier otra sin pagar.
+ *   3. En la vista previa —donde Cesar prueba los pagos— **sigue reconciliando**.
+ *      Es la mitad del arreglo que es fácil romper sin darse cuenta.
+ */
+describe("reconciliarPago · ambiente de pruebas en producción", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  /** El despliegue peligroso: llaves de pruebas declaradas en el sitio real. */
+  function produccionConLlavesDePruebas() {
+    vi.stubEnv("BOLD_MODO", "pruebas");
+    vi.stubEnv("VERCEL_ENV", "production");
+  }
+
+  it("un pago de sandbox NO confirma la reserva", async () => {
+    produccionConLlavesDePruebas();
+    const datos = escenario();
+    /* Bold diría que está aprobado: en el sandbox «pagar» es gratis. */
+    vi.mocked(consultarEstadoPago).mockResolvedValue(respuestaBold("APPROVED"));
+
+    const resultado = await reconciliarPago(REFERENCIA, {
+      supabase: comoSupabase(datos),
+    });
+
+    expect(resultado.clave).toBe("ambiente_pruebas");
+    expect(resultado.confirmada).toBe(false);
+    expect(resultado.cambio).toBe(false);
+    expect(resultado.aplicado).toBeNull();
+
+    /* Ni una llamada a Bold: se corta antes de preguntar. */
+    expect(consultarEstadoPago).not.toHaveBeenCalled();
+    /* Y ni una escritura, en ninguna de las dos tablas. */
+    expect(datos.escrituras.pagos).toBe(0);
+    expect(datos.escrituras.reservas).toBe(0);
+    expect(avisarPagoAprobado).not.toHaveBeenCalled();
+  });
+
+  it("el rechazo se explica en español y dice que la reserva sigue pendiente", async () => {
+    produccionConLlavesDePruebas();
+    const datos = escenario();
+    vi.mocked(consultarEstadoPago).mockResolvedValue(respuestaBold("APPROVED"));
+
+    const { mensaje } = await reconciliarPago(REFERENCIA, {
+      supabase: comoSupabase(datos),
+    });
+
+    /* Quien lea el banner del panel tiene que entender que no es un fallo. */
+    expect(mensaje).toContain("pasarela de pruebas");
+    expect(mensaje).toContain("sigue pendiente");
+  });
+
+  it("la reserva no queda en un estado roto: sigue pendiente y con vencimiento", async () => {
+    produccionConLlavesDePruebas();
+    const vence = new Date(Date.now() + 10 * 60_000).toISOString();
+    const datos = escenario({ expira: vence });
+    vi.mocked(consultarEstadoPago).mockResolvedValue(respuestaBold("APPROVED"));
+
+    await reconciliarPago(REFERENCIA, { supabase: comoSupabase(datos) });
+
+    expect(datos.reservas[0].estado).toBe("pendiente");
+    expect(datos.reservas[0].monto_pagado).toBe(0);
+    /*
+      LO MÁS IMPORTANTE DE ESTE BLOQUE.
+
+      `expira_at` intacto es lo que garantiza que `liberarReservasVencidas()`
+      pueda soltar estas noches a su hora. Si el rechazo lo hubiera borrado, la
+      cabaña quedaría bloqueada para siempre por una reserva que nadie pagó — el
+      estado roto que esta prueba existe para impedir.
+    */
+    expect(datos.reservas[0].expira_at).toBe(vence);
+    /* Y el pago se queda como estaba, no como «rechazado»: no se sabe. */
+    expect(datos.pagos[0].estado).toBe("PROCESSING");
+  });
+
+  it("en la vista previa SÍ reconcilia: es donde se prueban los pagos", async () => {
+    /* `pruebas.lafincaecohotel.com`, la preview de `pruebas-pagos`. */
+    vi.stubEnv("BOLD_MODO", "pruebas");
+    vi.stubEnv("VERCEL_ENV", "preview");
+
+    const datos = escenario();
+    vi.mocked(consultarEstadoPago).mockResolvedValue(respuestaBold("APPROVED"));
+
+    const resultado = await reconciliarPago(REFERENCIA, {
+      supabase: comoSupabase(datos),
+    });
+
+    expect(resultado.clave).toBe("aplicado");
+    expect(resultado.confirmada).toBe(true);
+    expect(datos.reservas[0].estado).toBe("confirmada");
+    expect(datos.reservas[0].expira_at).toBeNull();
+    expect(avisarPagoAprobado).toHaveBeenCalledTimes(1);
+  });
+
+  it("el cron no toca nada y lo deja dicho en el registro", async () => {
+    produccionConLlavesDePruebas();
+    const datos = escenario();
+    vi.mocked(consultarEstadoPago).mockResolvedValue(respuestaBold("APPROVED"));
+    const registro = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const resumen = await reconciliarPagosPendientes(comoSupabase(datos));
+
+    expect(resumen.revisados).toBe(0);
+    expect(resumen.confirmados).toBe(0);
+    expect(consultarEstadoPago).not.toHaveBeenCalled();
+    expect(datos.escrituras.reservas).toBe(0);
+
+    /* El cron corre de madrugada y nadie lee su respuesta: el motivo tiene que
+       quedar en el log, y legible. */
+    const dicho = registro.mock.calls.map((argumentos) => String(argumentos[0])).join(" ");
+    expect(dicho).toContain("RECHAZADO POR AMBIENTE");
+    expect(dicho).toContain("BOLD_MODO=pruebas");
+
+    registro.mockRestore();
   });
 });

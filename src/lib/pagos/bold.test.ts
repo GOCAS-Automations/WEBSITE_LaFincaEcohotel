@@ -1,9 +1,11 @@
 import { createHash, createHmac } from "node:crypto";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   LARGO_MAXIMO_REFERENCIA,
   MONTO_MINIMO_BOLD,
+  ambienteDePruebasEnProduccion,
+  ambienteDeclarado,
   calcularFirmaDeEvento,
   calcularFirmaDeIntegridad,
   construirReferencia,
@@ -583,5 +585,68 @@ describe("las URLs de retorno (la causa del BTN-001)", () => {
     expect(urlDeRetornoValida("/reservar/confirmacion")).toBe(false);
     expect(urlDeRetornoValida("")).toBe(false);
     expect(urlDeRetornoValida("lafincaecohotel.com")).toBe(false);
+  });
+});
+
+/* ===========================================================================
+ * El candado del ambiente
+ * ======================================================================== */
+
+describe("ambienteDePruebasEnProduccion (el candado del ambiente)", () => {
+  /*
+    POR QUÉ ESTAS PRUEBAS, Y POR QUÉ SON CUATRO.
+
+    Esta función es lo único que separa «el sitio real da por pagada una reserva
+    que nadie pagó» de «no pasa nada». Hasta el 2026-10-03 la comprobación estaba
+    escrita a mano dentro del webhook y la reconciliación no la hacía; ahora la
+    hacen las dos llamando aquí, así que lo que hay que fijar es el contrato
+    exacto: cuándo dice `true` y, sobre todo, cuándo NO.
+
+    El `false` importa tanto como el `true`: si esto devolviera `true` en una
+    vista previa, la ronda de pruebas de `docs/GUIA_PRUEBAS.md` no podría
+    confirmar ni una reserva y parecería que el motor de pagos está roto.
+  */
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("bloquea: llaves de pruebas declaradas en el despliegue de producción", () => {
+    vi.stubEnv("BOLD_MODO", "pruebas");
+    vi.stubEnv("VERCEL_ENV", "production");
+
+    expect(ambienteDeclarado()).toBe("pruebas");
+    expect(ambienteDePruebasEnProduccion()).toBe(true);
+  });
+
+  it("no bloquea en una vista previa: ahí es donde se prueban los pagos", () => {
+    vi.stubEnv("BOLD_MODO", "pruebas");
+    vi.stubEnv("VERCEL_ENV", "preview");
+
+    expect(ambienteDePruebasEnProduccion()).toBe(false);
+  });
+
+  it("no bloquea en local", () => {
+    vi.stubEnv("BOLD_MODO", "pruebas");
+    vi.stubEnv("VERCEL_ENV", "development");
+
+    expect(ambienteDePruebasEnProduccion()).toBe(false);
+
+    vi.stubEnv("VERCEL_ENV", "");
+    expect(ambienteDePruebasEnProduccion()).toBe(false);
+  });
+
+  it("no bloquea en producción sin `BOLD_MODO`: es el despliegue bueno", () => {
+    vi.stubEnv("BOLD_MODO", "");
+    vi.stubEnv("VERCEL_ENV", "production");
+
+    expect(ambienteDePruebasEnProduccion()).toBe(false);
+  });
+
+  it("un marcador de plantilla en `BOLD_MODO` no cuenta como «pruebas»", () => {
+    /* `leerEntorno()` trata `REEMPLAZAR`, `TODO`… como «sin configurar». */
+    vi.stubEnv("BOLD_MODO", "REEMPLAZAR");
+    vi.stubEnv("VERCEL_ENV", "production");
+
+    expect(ambienteDePruebasEnProduccion()).toBe(false);
   });
 });
