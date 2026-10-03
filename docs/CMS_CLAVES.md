@@ -588,23 +588,37 @@ Página puente mientras no exista el motor de reservas.
 
 ```jsonc
 {
-  "intro": "…",
+  "intro": "Empieza por tu cabaña: …",
   "pasos": [
-    { "titulo": "1. Elige tus fechas", "texto": "…" },
-    { "titulo": "2. Elige tu cabaña", "texto": "…" },
-    { "titulo": "3. Elige tu plan",   "texto": "…" }
+    { "titulo": "Tu cabaña",          "texto": "…" },
+    { "titulo": "Tus fechas",         "texto": "…" },
+    { "titulo": "Tu plan",            "texto": "…" },
+    { "titulo": "Tus experiencias",   "texto": "…" },
+    { "titulo": "Cuánto pagas ahora", "texto": "…" }
   ],
   "nota": ""
 }
 ```
 
-**Los tres pasos tienen que describir el flujo REAL del selector**, que desde el
-motor de precios noche a noche es **fechas → cabaña → plan**, y no el
-«cabaña → plan → confirmamos» de antes (corregido el 2026-09-15). El plan solo
-se pregunta si la estadía incluye noches de fin de semana o festivos; entre
-semana sale solo de la fecha. El remate «Confirmamos y reservas con el 50 %» va
-al final del tercer paso: como cuarto paso mentía, porque en la pantalla no hay
-un cuarto paso.
+La forma de la clave **no cambió**: sigue siendo `intro`, una lista de `pasos`
+con `titulo` y `texto`, y `nota`. El título va **sin número**: la tarjeta ya pinta
+su círculo numerado.
+
+**Los pasos tienen que describir el flujo REAL del selector.** Desde el
+**2026-10-03** es **cabaña → fechas → plan → experiencias → cuánto se paga**: la
+cabaña va primero porque la disponibilidad es de cada cabaña y el calendario
+tacha las noches ocupadas de la elegida (antes era fechas → cabaña y se elegía a
+ciegas). El primer paso nombra también el **Día de Calma**, que se elige ahí
+mismo, al nivel de las cabañas. El plan solo se pregunta si la estadía incluye
+noches de fin de semana o festivos; entre semana sale solo de la fecha.
+
+El cambio de orden se llevó a la base con `scripts/actualizar-pasos-reservar.mjs`,
+que solo reemplaza `intro` y `pasos` si siguen siendo exactamente el texto
+anterior del seed: si el hotel los editó desde el panel, no los toca y lo dice.
+
+Historia: antes del 2026-09-15 eran tres pasos «cabaña → plan → confirmamos»;
+el remate «Confirmamos y reservas con el 50 %» como cuarto paso mentía, porque en
+la pantalla no había un cuarto paso.
 
 `nota` va **vacía**. Contenía «En La Finca no hay datáfono ni manejamos efectivo,
 y nunca pedimos datos de tarjeta por WhatsApp. Muy pronto vas a poder reservar y

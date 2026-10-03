@@ -50,16 +50,24 @@ Lo único que no puede pasar nunca es **llaves de pruebas con `PAGOS_ACTIVOS=1` 
 
 ## 2 · Motor de reservas
 
+El orden es **primero la cabaña, luego las fechas**. En `/reservar`, el paso 1 es «¿Dónde te quedas?» (las cinco cabañas y el Día de Calma) y el paso 2, «¿Cuándo?», el calendario.
+
+- [ ] **Sin cabaña elegida**, el paso de fechas se ve atenuado, no se puede abrir y dice «Elige primero tu cabaña para ver sus fechas libres». Con el teclado (tabulador) no se llega a él.
+- [ ] **Al elegir una cabaña, sus noches ocupadas salen tachadas y no se pueden elegir.** Prueba con una cabaña que tenga reservas en el calendario del hotel (por ejemplo, la 01 en octubre o noviembre).
+- [ ] **Se puede llegar el mismo día en que otro huésped sale**: si una reserva ocupa las noches del 10 y el 11, el 12 está libre para llegar; y quien llega antes puede salir como tarde el 10.
+- [ ] Con una llegada elegida justo antes de una noche ocupada, los días posteriores salen tachados y el calendario dice «como tarde, el …».
+- [ ] **Fechas que llegan sin cabaña** (desde la portada sin elegir cabaña): se conservan; al elegir cabaña, si están libres se quedan y si no, se quitan con un aviso corto.
+- [ ] En la **portada**, con una cabaña elegida en el módulo, el calendario tacha sus noches ocupadas; sin cabaña, solo los días en que no queda ninguna libre, y lo explica.
 - [ ] **Hospedaje entre semana**: elige lunes a jueves. Solo aparece Plan Entre Semana. Precio $350.000 por noche.
 - [ ] **Fin de semana**: viernes a domingo. Puedes elegir Estándar ($480.000) o Premium ($680.000), y cambiar entre ellos **sin perder las fechas**.
 - [ ] **Estadía mixta**: jueves → sábado. El desglose muestra una noche Entre Semana y las demás al plan elegido, con el total correcto.
 - [ ] **Víspera de festivo**: elige la noche anterior a un festivo entre semana. Debe cobrarse como fin de semana.
-- [ ] **Cabaña 02**: no debe ofrecerse para noches entre semana, y el sitio explica por qué.
+- [ ] **Cabaña 02**: su tarjeta dice «Solo noches de fin de semana o festivo»; al elegirla, las noches de lunes a jueves salen tachadas en el calendario, con la explicación escrita.
 - [ ] **Experiencias por noche** (paso 4): añade una a una noche concreta y comprueba que suma al total.
 - [ ] **Anticipo** (paso 5): mueve el deslizante entre 50 % y 100 %; el monto en pesos cambia en vivo.
-- [ ] **Día de Calma**: elige **una sola fecha sin salida**. Aparece el plan de día, $250.000, máximo 2 adultos y los cupos que quedan.
+- [ ] **Día de Calma**: en el paso 1 elige **Día de Calma**. El calendario pasa a pedir **un solo día** (sin salida) y tacha los días sin cupo. Aparece el plan de día, $250.000, máximo 2 adultos y los cupos que quedan.
 - [ ] **No se reserva para hoy**: abre el calendario y comprueba que **el día de hoy sale tachado** y no se puede pulsar (igual que los días que ya pasaron). El primer día elegible es **mañana**. Pruébalo también en el **Día de Calma** y en el calendario de la **portada**.
-- [ ] Intenta reservar una fecha ya ocupada: debe avisar en español, sin errores técnicos.
+- [ ] Intenta reservar una fecha ya ocupada (por ejemplo, entrando con `?cabana=…&entrada=…&salida=…` de unas noches ocupadas): debe avisar en español, sin errores técnicos.
 
 ## 3 · Pagos — **esta sección va en `pruebas.lafincaecohotel.com`**
 
