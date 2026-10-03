@@ -41,9 +41,12 @@ con permiso **«Hacer cambios en eventos»** (no basta «Ver todos los detalles�
 
 ### 1.4 🟠 Renovar el dominio antes del **4 de noviembre de 2026** — depende de **Cesar**, con el acceso del **hotel**
 
-El hosting viejo está cancelado y el dominio es lo único que lleva a la gente al sitio: **si vence, el hotel se queda sin web.** El acceso a Hostinger sigue sin llegar (lo tiene Amapola).
+El hosting viejo está cancelado y el dominio ya sirve desde Vercel: **esto no bloquea el lanzamiento.** Pero el dominio es lo único que lleva a la gente al sitio: **si vence, el hotel se queda sin web.** El acceso a Hostinger sigue sin llegar (lo tiene Amapola) y de él cuelgan dos cosas **separadas**, con urgencias distintas:
 
-**Qué desbloquea:** la continuidad del sitio. No bloquea el lanzamiento, pero tiene fecha dura.
+- **Renovar el dominio** — urgente, con fecha dura: **antes del 4 de noviembre de 2026**. Se hace en Hostinger.
+- **Acceso a los DNS para el correo corporativo** — sin prisa. Los DNS se siguen administrando en Hostinger (ahí están los TXT de Resend).
+
+**Qué desbloquea:** la continuidad del sitio. No bloquea el lanzamiento, pero la renovación tiene fecha dura.
 
 ### 1.5 🟡 Nombres y correos del equipo del hotel — depende del **hotel**
 
@@ -102,8 +105,7 @@ Lo que hago yo en cuanto cada cosa se desbloquee.
 
 **Lo que tengo pendiente sin depender de nadie**
 
-- [ ] **Hacer push de los cuatro commits locales de `main`** (el soporte de varios calendarios, el panel que los lista, el script `calendario:verificar` y la memoria). Hoy solo existen en el equipo de Cesar.
-- [ ] Reescribir la §2 de `docs/DESPLIEGUE_VERCEL.md`: todavía marca las cuatro variables de Resend como «🔴 PENDIENTE EN VERCEL» y ya están puestas.
+- [ ] **Hacer push de los commits locales de `main`** (el soporte de varios calendarios, el panel que los lista, el script `calendario:verificar` y la memoria). Hoy solo existen en el equipo de Cesar.
 - [ ] Decidir con el hotel la **política de retención** de datos y escribir la tarea que la aplique (auditoría P-2: solicitudes no concretadas a los 6 meses, datos de reserva a los 5 años). Antes hay que confirmar los plazos contables con su contadora.
 - [ ] `includeSubDomains` en HSTS cuando se confirme que todos los subdominios van por HTTPS, correo incluido (auditoría P-4). Hacerlo antes puede dejar al hotel sin correo.
 - [ ] Subir el DMARC del dominio de `p=NONE` a `p=quarantine` cuando lleve unas semanas enviando. No bloquea nada.
@@ -114,9 +116,9 @@ Lo que hago yo en cuanto cada cosa se desbloquee.
 
 El guion completo está en **`docs/GUIA_PRUEBAS.md`** (siete secciones, con las tarjetas de prueba, las variables que hay que poner antes y la limpieza final). No se duplica aquí: solo cuándo se corre cada ronda y qué cambia.
 
-**Ronda 1 — con Bold en modo de pruebas, antes de encender nada.** Las siete secciones. La §6 (calendario de Google) se salta mientras el panel diga «sin configurar». Al terminar, `PAGOS_ACTIVOS` vuelve a `0` y se borra todo lo creado (§7 de la guía: escribe en la base real).
+**Ronda 1 — con Bold en modo de pruebas, antes de encender nada.** Las siete secciones. La §6 (calendario de Google) se salta mientras el panel diga «sin configurar». Al terminar, se borra todo lo creado (§7 de la guía: escribe en la base real).
 
-> ⚠ **Dónde correrla.** Las llaves de pruebas de Bold ya existen en la **preview de la rama `pruebas-pagos`**: correr la ronda ahí evita dejar el sitio real con una pasarela que no cobra. Si se hace sobre Production —como dice hoy la guía—, que sea una ventana corta y vigilada: con llaves de prueba y `PAGOS_ACTIVOS=1`, un huésped real que entre a `/reservar` esa tarde puede «pagar» en el sandbox. El webhook tiene una guarda para ese caso; **la reconciliación no la tiene**, así que la ventana corta no es un formalismo.
+> ⚠ **Dónde correrla.** La **§3 (pagos) va en `pruebas.lafincaecohotel.com`**, la preview de la rama `pruebas-pagos`, que ya tiene las llaves de pruebas y `PAGOS_ACTIVOS=1` en su propio alcance. Production se queda con `PAGOS_ACTIVOS=0` hasta el lanzamiento, y la guía ya lo dice así. El resto de las secciones se recorren en el sitio real. Nunca llaves de pruebas con `PAGOS_ACTIVOS=1` en Production: un huésped que entrara a `/reservar` esa tarde podría «pagar» en el sandbox. Desde el 2026-10-03 el sitio además se defiende solo —el webhook **y** la reconciliación rechazan esa combinación y lo dejan dicho en los registros—, pero eso es la red de abajo, no el procedimiento.
 
 **Ronda 2 — con Bold en producción, el día del lanzamiento.** No se repite todo: solo la **§3 (pagos)** con una compra real pequeña y su reembolso, la **§4 (correos)** sobre esa compra, la **§6** si el calendario ya está conectado, y la **§7 (limpieza)**.
 
@@ -161,15 +163,18 @@ El guion completo está en **`docs/GUIA_PRUEBAS.md`** (siete secciones, con las 
 
 Todo esto está en `Preguntas_Finales_LaFinca.pdf` y en la §9 de `docs/DATOS_CLIENTE.md`.
 
-**Bloquea** (lo de la §1, más estas dos):
+**Bloquea el lanzamiento:**
 
 | Qué | Quién | Por qué bloquea |
 |---|---|---|
 | Llaves de producción de Bold, habilitadas en su panel | Amapola | Sin ellas no se cobra en línea |
 | Compartir el calendario «la finca» con la cuenta de servicio | el equipo del hotel | Sin ello la disponibilidad real no entra al sitio |
 | Nombres y correos de quienes usarán el panel | Juan Camilo | Sin ellos no hay entrega ni se borra el usuario de pruebas |
-| Acceso a Hostinger (o que renueven ellos el dominio) | Amapola | El dominio vence el 4 de noviembre |
 | **Mínimo de noches en fines de semana y festivos** | Amapola | Hoy el motor permite una sola noche siempre; si hay mínimo, lo está vendiendo mal |
+
+**No bloquea el lanzamiento, pero tiene fecha:**
+
+- **Renovar el dominio antes del 4 de noviembre de 2026** — Amapola da el acceso a Hostinger, o renueva ella y lo confirma por captura. Si vence, el hotel se queda sin web (§1.4).
 
 **No bloquea:**
 
@@ -179,7 +184,7 @@ Todo esto está en `Preguntas_Finales_LaFinca.pdf` y en la §9 de `docs/DATOS_CL
 - **Logo vectorial** (Santiago) y **licencia de la tipografía Intro** (Santiago). Mientras tanto van el de `public/marca/` y una tipografía equivalente.
 - **Fotos de cámara** de cada cabaña identificadas por número, foto del fondue, video de la finca.
 - Acceso a **Google Business Profile** y a **Google Analytics**.
-- **Correo corporativo** del hotel. Hoy las confirmaciones salen de `reservas@lafincaecohotel.com`, que solo envía y no tiene buzón; lo que contesta el huésped va al Gmail del hotel por `Reply-To`.
+- **Acceso a los DNS (Hostinger) y correo corporativo** del hotel; sin prisa. Hoy las confirmaciones salen de `reservas@lafincaecohotel.com`, que solo envía y no tiene buzón; lo que contesta el huésped va al Gmail del hotel por `Reply-To`.
 
 ---
 
@@ -195,7 +200,7 @@ Todo esto está en `Preguntas_Finales_LaFinca.pdf` y en la §9 de `docs/DATOS_CL
 | Las pruebas escriben en la base real | Fechas a tres meses o más y la limpieza de la §7 de la guía, sin saltársela |
 | Reaplicar los seeds borraría ediciones del panel | Nunca ejecutar `npm run db:aplicar` sin comparar antes la base con el seed |
 | Cambiar `GOOGLE_CALENDAR_ESCRIBIR_EN` con reservas ya apuntadas | Deja eventos huérfanos: `reservas.referencia_externa` guarda el id del evento, no su calendario. Es una decisión de puesta en marcha, no de operación |
-| Los cuatro commits de `main` solo existen en un equipo | Hacer push |
+| Los commits locales de `main` solo existen en un equipo | Hacer push |
 
 ---
 
