@@ -38,7 +38,7 @@ defecto, activarla en los tres salvo que se diga lo contrario.
 
 **Estado real en Vercel Production (3 de octubre de 2026):**
 
-- ✅ **Puestas:** las de Supabase, `NEXT_PUBLIC_SITE_URL`, `SITIO_PUBLICADO=1`,
+- ✅ **Puestas:** las de Supabase (incluida `SUPABASE_DB_URL`), `GOOGLE_PLACES_API_KEY` (esas dos con alcance Production y Preview), `NEXT_PUBLIC_SITE_URL`, `SITIO_PUBLICADO=1`,
   `CRON_SECRET` y las cuatro de Resend (`RESEND_API_KEY`, `EMAIL_FROM`,
   `EMAIL_NOTIFY_TO`, `EMAIL_REPLY_TO`). `PAGOS_ACTIVOS` está en `0`, a propósito.
 - 🔴 **Pendientes: solo dos**, las del calendario. Se cargan el día que el hotel
@@ -60,11 +60,11 @@ defecto, activarla en los tres salvo que se diga lo contrario.
 | `NEXT_PUBLIC_SUPABASE_URL` | No | Production, Preview, Development | ✅ **Puesta en Production.** URL del proyecto de Supabase de La Finca (`https://xxxx.supabase.co`) |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | No (es pública por diseño, pero no compartirla fuera de Vercel/Supabase) | Production, Preview, Development | ✅ **Puesta en Production.** Llave `anon` del mismo proyecto |
 | `SUPABASE_SERVICE_ROLE_KEY` | **Sí** | Production, Preview, Development | ✅ **Puesta en Production.** Llave `service_role` del proyecto. Nunca lleva `NEXT_PUBLIC_` — si algún día apareciera con ese prefijo, sería un error grave: quedaría expuesta en el navegador |
-| `SUPABASE_DB_URL` | **Sí** | Production, Preview, Development (solo hace falta si algún Route Handler o script corre migraciones en runtime; si no, puede omitirse en Vercel y usarse solo en local) | Cadena de conexión directa a Postgres del proyecto |
+| `SUPABASE_DB_URL` | **Sí** | Production, Preview, Development (solo hace falta si algún Route Handler o script corre migraciones en runtime; si no, puede omitirse en Vercel y usarse solo en local) | ✅ **Puesta en Production y Preview.** Cadena de conexión directa a Postgres del proyecto |
 | `NEXT_PUBLIC_SITE_URL` | No | Production, Preview, Development | ✅ **`https://lafincaecohotel.com`** — corregida el 2026-10-01 (estaba en `localhost`); el dominio real ya apunta a Vercel. Ver el apartado dedicado |
 | `IMAGENES_SIN_OPTIMIZAR` | No | — | Ver el apartado dedicado más abajo — se deja **vacía** en el primer deploy |
 | `SITIO_PUBLICADO` | No | Production (en Preview conviene dejarla fuera) | ✅ **`1` en Production desde el 2026-10-01.** Con `0` o sin definir el sitio se prohíbe a sí mismo en Google — ver el apartado dedicado |
-| `GOOGLE_PLACES_API_KEY` | **Sí** | Production, Preview, Development | Llave de la Places API (New) del proyecto de Google Cloud. Sin ella el bloque de reseñas simplemente no se publica: no bloquea el deploy |
+| `GOOGLE_PLACES_API_KEY` | **Sí** | Production, Preview, Development | ✅ **Puesta en Production y Preview.** Llave de la Places API (New) del proyecto de Google Cloud. Sin ella el bloque de reseñas simplemente no se publica: no bloquea el deploy |
 | `GOOGLE_CALENDAR_CREDENCIALES` | **Sí** | Production, Preview, Development | 🔴 **PENDIENTE EN VERCEL** (una de las dos únicas que faltan). JSON de la cuenta de servicio `lafinca-calendario@…` **en base64, en una sola línea** — ver el apartado dedicado más abajo |
 | `GOOGLE_CALENDAR_ID` | No | Production, Preview, Development | 🔴 **PENDIENTE EN VERCEL** (la otra de las dos que faltan), a la espera de que el hotel comparta su calendario «la finca». Es una **lista**: un identificador suelto (`general@group.calendar.google.com`) o varios con `=n` para atar cada uno a su cabaña (`general@…, cab1@…=1, cab2@…=2`). Mientras no esté, la integración no hace nada y el sitio funciona igual |
 | `GOOGLE_CALENDAR_ESCRIBIR_EN` | No | Production, Preview, Development | Opcional. En qué calendario se apuntan las reservas del panel; por defecto, el **primero** de `GOOGLE_CALENDAR_ID`. Se escribe siempre en uno solo para no duplicar eventos |
