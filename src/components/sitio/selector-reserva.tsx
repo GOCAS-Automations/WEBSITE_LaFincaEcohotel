@@ -21,6 +21,13 @@ import {
   textoCupo,
 } from "@/lib/reserva/dia-de-calma";
 import {
+  bloqueoDeCabana,
+  mesDe,
+  SIN_BLOQUEO,
+  tiposOfrecidosDe,
+  validarFechas,
+} from "@/lib/reserva/elegibilidad-calendario";
+import {
   esFechaISO,
   etiquetaTipoNoche,
   nochesDe,
@@ -53,7 +60,8 @@ import { LEGAL_ACTUALIZADO } from "@/lib/sitio";
 import { enlaceWhatsapp, mensajeDiaDeCalma, mensajeReserva } from "@/lib/whatsapp";
 
 import { CalendarioFechas } from "./calendario-fechas";
-import { IconoCheck } from "./iconos";
+import { IconoCheck, IconoFlecha } from "./iconos";
+import { useOcupacion } from "./usar-ocupacion";
 import {
   BotonPagar,
   EnlacePoliticaDatos,
@@ -70,14 +78,20 @@ import {
  * EL FLUJO, Y POR QUÉ ESTE Y NO OTRO
  * ---------------------------------------------------------------------------
  * En La Finca **el plan es una consecuencia de la noche**, no una elección
- * libre (§3 de `docs/DATOS_CLIENTE.md`). Así que el orden de las preguntas es:
+ * libre (§3 de `docs/DATOS_CLIENTE.md`). Y la disponibilidad es de CADA
+ * cabaña. Así que el orden de las preguntas es (decisión del cliente,
+ * 2026-10-03; antes eran fechas → cabaña):
  *
- *   1. **Fechas.** Nunca se bloquean. Cualquier rango es vendible. Y elegir
- *      **un solo día, sin salida**, es una respuesta válida: es el Día de
- *      Calma, que se explica solo y muestra el cupo que queda.
- *   2. **Cabaña**, entre las que tienen tarifa para TODAS las noches de esa
- *      estadía. La 02 solo se vende con Estándar, así que desaparece —con su
- *      explicación escrita— cuando hay noches entre semana.
+ *   1. **¿Dónde te quedas?** Las cinco cabañas y, al mismo nivel, el **Día de
+ *      Calma**: ahí decide el huésped si duerme o solo pasa el día.
+ *   2. **¿Cuándo?** El calendario, que ya sabe de qué cabaña se trata y TACHA
+ *      sus noches ocupadas (y, en la 02, las de lunes a jueves, que no vende).
+ *      Hasta que no hay cabaña elegida el paso se ve atenuado y no responde:
+ *      sin cabaña no hay ocupación que enseñar. Con el Día de Calma pasa a
+ *      modo de un solo día y tacha los días sin cupo.
+ *      Antes se elegían las fechas a ciegas y un aviso decía después «esas
+ *      noches ya están ocupadas». Ese aviso se queda en el resumen, como red
+ *      por si la ocupación cambió entre la carga y el envío.
  *   3. **Plan de fin de semana** (Estándar o Premium), y solo si la estadía
  *      toca viernes, sábado, domingo o festivo. Cambiar entre ellos NO toca
  *      las fechas.
@@ -311,6 +325,25 @@ export function SelectorReserva({
   */
   const [huesped, setHuesped] = useState<DatosHuesped>(HUESPED_VACIO);
 
+  /*
+    LAS FECHAS QUE LLEGAN ANTES QUE LA CABAÑA.
+    Quien viene de la portada con fechas y sin cabaña, o cambia de cabaña con
+    las fechas ya puestas, trae unas fechas que el calendario de ESA cabaña no
+    ha visto. Se conservan y, en cuanto se sabe qué cabaña es y su ocupación
+    está cargada, se comprueban con las mismas reglas del calendario
+    (`validarFechas`). Si no valen, se quitan y se dice en una frase
+    (`avisoFechas`): dejarlas puestas sería prometer noches que no hay.
+  */
+  const [fechasPorValidar, setFechasPorValidar] = useState(
+    Boolean(entradaInicial),
+  );
+  const [avisoFechas, setAvisoFechas] = useState<string | null>(null);
+
+  /** Mes que mira el calendario (`AAAA-MM`): de él sale qué ocupación pedir. */
+  const [mesCalendario, setMesCalendario] = useState(() =>
+    mesDe(entradaInicial || primeraLlegada),
+  );
+
   /* --- Las noches -------------------------------------------------------- */
 
   const rango = useMemo(() => validarRango(entrada, salida), [entrada, salida]);
@@ -390,9 +423,15 @@ export function SelectorReserva({
     cabaña, se le dice si esas noches están libres EN ELLA; si todavía no
     eligió, se cuenta cuántas cabañas del listado siguen libres. Es un AVISO,
     no una restricción: nunca deshabilita el botón de WhatsApp ni el paso
-    siguiente, ni le cambia la cabaña que escogió — igual que el calendario de
-    fechas (`calendario-fechas.tsx`), la última palabra la tiene el hotel al
-    confirmar por WhatsApp.
+    siguiente, ni le cambia la cabaña que escogió.
+
+    DESDE QUE EL CALENDARIO TACHA LO OCUPADO (2026-10-03) ESTE AVISO SE QUEDA
+    COMO RED. El calendario ya no deja elegir una noche tomada, pero su
+    ocupación se cargó al abrirlo y pudo cambiar después (otra persona pagó
+    entre medias, el hotel apuntó algo en su Google Calendar). Esta consulta
+    se hace con el rango exacto en el momento de elegirlo y lo dice si ya no
+    está libre. Por debajo, el servidor vuelve a comprobar al reservar y la
+    restricción de exclusión de Postgres tiene la última palabra.
   */
   const [disponibilidad, setDisponibilidad] = useState<{
     estado: "sin_fechas" | "cargando" | "ok" | "error";
@@ -440,35 +479,142 @@ export function SelectorReserva({
         ? `Tus fechas incluyen ${etiquetaTipoNoche("entre_semana", true)}: esas se cobran con el plan Entre Semana, más barato. Abajo lo ves noche por noche.`
         : null;
 
-  /* --- Cabañas: cuáles se pueden ofrecer para estas noches --------------- */
-
-  const cabanasConEstado = useMemo(
-    () =>
-      cabanas.map((cabana) => ({
-        cabana,
-        estado:
-          noches.length > 0
-            ? elegibilidadDeCabana(cabana, noches)
-            : ({ elegible: true } as const),
-      })),
-    [cabanas, noches],
-  );
-
-  const elegibles = cabanasConEstado.filter((fila) => fila.estado.elegible);
-  const descartadas = cabanasConEstado.filter((fila) => !fila.estado.elegible);
+  /* --- Paso 1: dónde se queda ------------------------------------------- */
 
   /*
-    Si la cabaña elegida deja de ser elegible al cambiar las fechas, se suelta.
-    Dejarla marcada produciría un resumen que promete algo que el hotel no
-    vende. Va en un efecto y no en el render porque cambia estado.
+    LAS CINCO CABAÑAS SE VEN SIEMPRE.
+    Antes este paso iba después de las fechas y escondía las cabañas que no
+    servían para ellas. Ahora va primero: se enseñan todas, y si ya hay fechas
+    puestas cada tarjeta dice si le sirven (con el aviso de disponibilidad, que
+    ya se consulta para el resumen). Elegir una que no sirva no es un error:
+    las fechas se comprueban contra ella y, si no valen, se quitan y se dice.
+  */
+  const cabana = cabanas.find((opcion) => opcion.slug === slug) ?? null;
+
+  /** El paso de fechas responde cuando ya se sabe dónde se queda. */
+  const lugarElegido = soloUnDia || cabana !== null;
+
+  function elegirCabana(nueva: string) {
+    setSlug(nueva);
+    setSoloUnDia(false);
+    if (entrada) {
+      setFechasPorValidar(true);
+      /* La ocupación que hace falta es la del mes de la llegada, no la del
+         mes que se quedó abierto en el calendario. */
+      setMesCalendario(mesDe(entrada));
+    }
+  }
+
+  /* --- La ocupación del calendario -------------------------------------- */
+
+  /*
+    Se carga en cuanto hay dónde quedarse: con cabaña, sus noches tomadas; con
+    el Día de Calma, los días sin cupo (vienen en la misma respuesta). La carga
+    y su caché por meses viven en `useOcupacion`, compartida con el módulo de
+    la portada.
+  */
+  const ocupacion = useOcupacion({ activa: lugarElegido, mes: mesCalendario });
+
+  const nochesOcupadas = useMemo(
+    () => (cabana && !soloUnDia ? (ocupacion.porCabana[cabana.slug] ?? []) : []),
+    [cabana, soloUnDia, ocupacion.porCabana],
+  );
+  const tiposCabana = useMemo(
+    () => (cabana ? tiposOfrecidosDe(cabana) : null),
+    [cabana],
+  );
+
+  /* La regla de la 02, en una frase, sacada de sus tarifas y no de su nombre. */
+  const notaTipos =
+    cabana && !soloUnDia && tiposCabana && tiposCabana.length === 1
+      ? `La ${cabana.nombre} solo se ofrece para ${etiquetaTipoNoche(tiposCabana[0], true)}: las demás salen tachadas.`
+      : null;
+
+  /**
+   * Lo que dice cada tarjeta de cabaña cuando ya hay fechas puestas (llegaron
+   * por la dirección, o se eligieron para otra cabaña). Sale de dos fuentes
+   * que ya existen: las tarifas (`elegibilidadDeCabana`, la regla de la 02) y
+   * la consulta de disponibilidad del resumen, que es del rango exacto.
+   */
+  function estadoEnFechas(
+    opcion: CabanaSeleccionable,
+  ): { libre: boolean; texto: string } | null {
+    if (soloUnDia || noches.length === 0) return null;
+    if (!elegibilidadDeCabana(opcion, noches).elegible) {
+      return { libre: false, texto: "No se ofrece para tus fechas." };
+    }
+    if (disponibilidad.estado !== "ok") return null;
+    const fila = disponibilidad.cabanas.find((item) => item.slug === opcion.slug);
+    if (!fila) return null;
+    return fechasDeNoche.some((fecha) => fila.ocupado.includes(fecha))
+      ? { libre: false, texto: "Ocupada en tus fechas." }
+      : { libre: true, texto: "Libre en tus fechas." };
+  }
+
+  /*
+    LAS FECHAS QUE TRAÍA, CONTRA LA CABAÑA (o el día) ELEGIDA.
+    Espera a que esté cargado el mes de la llegada —sin ocupación no se puede
+    decir nada—, salvo que la carga haya fallado: entonces no se quita nada y
+    deciden el aviso del resumen y el servidor.
   */
   useEffect(() => {
-    if (!slug) return;
-    const fila = cabanasConEstado.find((f) => f.cabana.slug === slug);
-    if (fila && !fila.estado.elegible) setSlug(null);
-  }, [slug, cabanasConEstado]);
+    if (!fechasPorValidar) return;
+    if (!entrada) {
+      setFechasPorValidar(false);
+      return;
+    }
+    if (!lugarElegido) return;
+    if (ocupacion.estado !== "error" && !ocupacion.mesCargado(mesDe(entrada))) {
+      return;
+    }
 
-  const cabana = elegibles.find((fila) => fila.cabana.slug === slug)?.cabana ?? null;
+    const sinCupo = new Set(ocupacion.diasSinCupo);
+    const tipos = cabana ? tiposOfrecidosDe(cabana) : null;
+    const resultado = validarFechas(
+      { entrada, salida, diaUnico: soloUnDia },
+      {
+        hoy,
+        minima: primeraLlegada,
+        bloqueo:
+          cabana && !soloUnDia
+            ? bloqueoDeCabana({
+                ocupadas: ocupacion.porCabana[cabana.slug] ?? [],
+                tiposOfrecidos: tipos,
+                nombreCabana: cabana.nombre,
+              })
+            : SIN_BLOQUEO,
+        sinCupo: (dia) => sinCupo.has(dia),
+      },
+    );
+
+    if (!resultado.valido) {
+      const fechas =
+        soloUnDia || !salida
+          ? formatearFechaCorta(entrada)
+          : `${formatearFechaCorta(entrada)} → ${formatearFechaCorta(salida)}`;
+      setAvisoFechas(
+        soloUnDia
+          ? `El ${fechas} ya no tiene cupo para el ${planDia?.nombre ?? "Día de Calma"}. Elige otro día: los que están llenos salen tachados.`
+          : resultado.causa === "no_ofrecida" && cabana && tipos?.length === 1
+            ? `Quitamos tus fechas (${fechas}): la ${cabana.nombre} solo se ofrece para ${etiquetaTipoNoche(tipos[0], true)}. Elige otras en el calendario.`
+            : `Quitamos tus fechas (${fechas}): no están libres en la ${cabana?.nombre ?? "cabaña elegida"}. Elige otras: las noches ocupadas salen tachadas.`,
+      );
+      setEntrada("");
+      setSalida("");
+    }
+    setFechasPorValidar(false);
+  }, [
+    fechasPorValidar,
+    entrada,
+    salida,
+    soloUnDia,
+    lugarElegido,
+    cabana,
+    ocupacion,
+    hoy,
+    primeraLlegada,
+    planDia,
+  ]);
 
   /*
     El texto final del aviso de disponibilidad, en una frase. El endpoint solo
@@ -565,15 +711,22 @@ export function SelectorReserva({
   /**
    * Cambia al modo de día CONSERVANDO la fecha de llegada como el día elegido.
    *
-   * Es el mismo gesto que ofrece el calendario («Vengo solo ese día»), y por
-   * eso hace lo mismo: solo se suelta la salida —no hay noche que dormir— y la
-   * preferencia de plan, que ya no significa nada. Lo llaman la nota del paso
-   * del plan y, cuando ese paso no existe, la nota suelta de más abajo.
+   * Es lo mismo que elegir «Día de Calma» en el paso 1: se suelta la cabaña y
+   * la salida —no hay noche que dormir— y la preferencia de plan, que ya no
+   * significa nada. Lo llaman ese paso, la nota del paso del plan y, cuando
+   * ese paso no existe, la nota suelta de más abajo.
    */
   function irAlDiaDeCalma() {
     setSoloUnDia(true);
+    setSlug(null);
     setSalida("");
     setPreferencia(null);
+    /* El día que traía se comprueba contra el cupo, como las fechas de una
+       cabaña recién elegida. */
+    if (entrada) {
+      setFechasPorValidar(true);
+      setMesCalendario(mesDe(entrada));
+    }
   }
 
   /* --- El total y el anticipo ------------------------------------------- */
@@ -701,15 +854,15 @@ export function SelectorReserva({
      dejaría un «3.» seguido de un «5.».
 
      El contador se incrementa en el MISMO orden en que se pintan los bloques
-     más abajo: fechas → Día de Calma → cabaña → plan → experiencias →
-     adicionales del día → pago. Los dos modos son excluyentes, así que en cada
-     uno la cuenta sale seguida. */
+     más abajo: dónde te quedas → cuándo → Día de Calma → plan → experiencias
+     → adicionales del día → pago → datos. Los dos modos son excluyentes, así
+     que en cada uno la cuenta sale seguida. */
   const adicionales = extras.filter((extra) => extra.tipo === "adicional");
 
   let contadorPaso = 1;
+  const numeroLugar = contadorPaso++;
   const numeroFechas = contadorPaso++;
   const numeroDia = soloUnDia ? contadorPaso++ : null;
-  const numeroCabana = soloUnDia ? null : contadorPaso++;
   const numeroPlan =
     !soloUnDia && hayFinDeSemana && planesFinDeSemana.length > 0
       ? contadorPaso++
@@ -804,114 +957,306 @@ export function SelectorReserva({
         data-fab-evitar=""
       >
         {/* ---------------------------------------------------------------
-            PASO 1 — FECHAS. Van primero porque son las que deciden el plan.
+            PASO 1 — DÓNDE TE QUEDAS. Va primero porque la disponibilidad es
+            de cada cabaña: sin saber cuál, el calendario no puede tachar
+            nada. El Día de Calma va al mismo nivel, en el mismo grupo de
+            opciones, porque aquí es donde se decide si se duerme o no.
         ---------------------------------------------------------------- */}
         <fieldset className="flex flex-col gap-4">
           <legend className="mb-4 font-titulo text-lg font-bold text-petroleo-900">
-            {numeroFechas}. ¿Qué fechas tienes en mente?
+            {numeroLugar}. ¿Dónde te quedas?
           </legend>
 
-          <div className="max-w-sm">
-            <CalendarioFechas
-              entrada={entrada}
-              salida={salida}
-              alCambiar={(nuevaEntrada, nuevaSalida) => {
-                setEntrada(nuevaEntrada);
-                setSalida(nuevaSalida);
-                /* Elegir una salida —o borrarlo todo— sale del modo de día:
-                   quien marca dos fechas quiere dormir. */
-                if (nuevaSalida || !nuevaEntrada) setSoloUnDia(false);
-              }}
-              hoy={hoy}
-              minima={primeraLlegada}
-              preferencia={preferencia}
-              nombrePreferencia={
-                preferencia === "entre_semana"
-                  ? (planes.find(
-                      (plan) => categoriaDePlan(plan) === "entre_semana",
-                    )?.nombre ?? null)
-                  : planFinDeSemana
-              }
-              alQuitarPreferencia={() => setPreferencia(null)}
-              diaUnico={soloUnDia}
-              alElegirDiaUnico={
-                planDia
-                  ? () => {
-                      setSoloUnDia(true);
-                      setSalida("");
-                      setPreferencia(null);
-                    }
-                  : undefined
-              }
-              alQuitarDiaUnico={() => setSoloUnDia(false)}
-            />
-          </div>
+          <p className="text-sm leading-relaxed text-crema-700">
+            Elige una de las cinco cabañas —todas son independientes y para dos
+            personas—
+            {planDia ? " o el Día de Calma, si vienes solo por el día" : ""}.
+            Luego te mostramos sus fechas libres.
+          </p>
 
-          {soloUnDia ? (
-            <p className="text-sm leading-relaxed text-crema-700">
-              Vienes <strong className="font-semibold text-petroleo-900">
-                solo ese día
-              </strong>
-              , sin hospedaje. Si prefieres quedarte a dormir, elige también una
-              fecha de salida.
-            </p>
-          ) : noches.length > 0 ? (
-            <p className="text-sm leading-relaxed text-crema-700">
-              Son <strong className="font-semibold text-petroleo-900">
-                {resumenEnPalabras(noches)}
-              </strong>
-              . Cada noche se cobra con la tarifa que le corresponde a su fecha.
-            </p>
-          ) : (
-            <p className="text-sm leading-relaxed text-crema-700">
-              Elige llegada y salida, {TEXTO_ANTELACION}: ninguna combinación
-              está prohibida, y si tu estadía mezcla días de semana y fin de
-              semana te lo desglosamos noche por noche.{" "}
-              {planDia
-                ? "¿Vienes solo por el día? Elige la fecha y marca «Vengo solo ese día»."
-                : null}
-            </p>
-          )}
-
-          {avisoDeCambio && !soloUnDia ? (
-            <p className="rounded-[var(--radius-tarjeta)] bg-brote-100 px-4 py-3 text-sm leading-relaxed text-oliva-800">
-              {avisoDeCambio}
-            </p>
-          ) : null}
-
-          {!soloUnDia ? (
-            <fieldset className="flex flex-col gap-3">
-              <legend className="mb-3 font-titulo text-sm font-semibold text-petroleo-900">
-                ¿Cuántos son?
-              </legend>
-              <div className="flex flex-wrap items-center gap-3">
-                {[1, 2].map((cantidad) => (
+          <ul className="grid gap-3 sm:grid-cols-2">
+            {cabanas.map((opcion) => {
+              const activa = !soloUnDia && opcion.slug === slug;
+              const precio = precioParaLista(
+                opcion,
+                noches.length > 0,
+                hayEntreSemana,
+                hayFinDeSemana,
+                planFinDeSemana,
+                adultos,
+              );
+              const tipos = tiposOfrecidosDe(opcion);
+              const soloUnTipo = tipos && tipos.length === 1 ? tipos[0] : null;
+              const enFechas = estadoEnFechas(opcion);
+              return (
+                <li key={opcion.slug}>
                   <label
-                    key={cantidad}
                     className={[
-                      "flex min-h-11 cursor-pointer items-center rounded-full border px-5 font-titulo text-sm font-semibold transition-all duration-200",
-                      adultos === cantidad
-                        ? "border-petroleo-600 bg-petroleo-50 text-petroleo-900"
-                        : "border-crema-300/80 bg-white text-crema-700 hover:border-petroleo-300",
+                      "flex h-full min-h-14 cursor-pointer flex-col justify-center gap-1 rounded-[var(--radius-tarjeta)] border px-4 py-3.5 transition-all duration-200",
+                      activa
+                        ? "border-petroleo-600 bg-petroleo-50 shadow-[var(--shadow-tenue)]"
+                        : "border-crema-300/80 bg-white hover:border-petroleo-300",
                     ].join(" ")}
                   >
                     <input
                       type="radio"
-                      name="adultos"
-                      value={cantidad}
-                      checked={adultos === cantidad}
-                      onChange={() => setAdultos(cantidad)}
+                      name="lugar"
+                      value={opcion.slug}
+                      checked={activa}
+                      onChange={() => elegirCabana(opcion.slug)}
                       className="sr-only"
                     />
-                    {cantidad === 1 ? "1 adulto" : "2 adultos"}
+                    <span className="flex items-center justify-between gap-3">
+                      <span className="font-titulo text-sm font-semibold text-petroleo-900">
+                        {opcion.nombre}
+                      </span>
+                      <span className="flex shrink-0 items-center gap-2">
+                        {precio !== null ? (
+                          <span className="text-right text-xs text-crema-600">
+                            {precio.etiqueta}
+                          </span>
+                        ) : null}
+                        {activa ? (
+                          <IconoCheck className="size-4 text-petroleo-600" />
+                        ) : null}
+                      </span>
+                    </span>
+                    {/* La regla de la 02 se dice en la tarjeta, antes de
+                        elegirla: que sus lunes a jueves salgan tachados no
+                        puede ser una sorpresa. */}
+                    {soloUnTipo ? (
+                      <span className="text-xs leading-snug text-crema-700">
+                        Solo {etiquetaTipoNoche(soloUnTipo, true)}.
+                      </span>
+                    ) : null}
+                    {enFechas ? (
+                      <span
+                        className={[
+                          "text-xs leading-snug font-medium",
+                          enFechas.libre ? "text-petroleo-700" : "text-crema-700",
+                        ].join(" ")}
+                      >
+                        {enFechas.texto}
+                      </span>
+                    ) : null}
                   </label>
-                ))}
-                <p className="text-sm text-crema-600">
-                  Las cabañas son para dos. La Finca no recibe menores de edad.
-                </p>
-              </div>
-            </fieldset>
+                </li>
+              );
+            })}
+
+            {planDia ? (
+              <li>
+                <label
+                  className={[
+                    "flex h-full min-h-14 cursor-pointer flex-col justify-center gap-1 rounded-[var(--radius-tarjeta)] border px-4 py-3.5 transition-all duration-200",
+                    soloUnDia
+                      ? "border-petroleo-600 bg-petroleo-50 shadow-[var(--shadow-tenue)]"
+                      : "border-dashed border-oliva-500/50 bg-brote-100/50 hover:border-petroleo-300",
+                  ].join(" ")}
+                >
+                  <input
+                    type="radio"
+                    name="lugar"
+                    value="dia-de-calma"
+                    checked={soloUnDia}
+                    onChange={irAlDiaDeCalma}
+                    className="sr-only"
+                  />
+                  <span className="flex items-center justify-between gap-3">
+                    <span className="font-titulo text-sm font-semibold text-petroleo-900">
+                      {planDia.nombre}
+                    </span>
+                    <span className="flex shrink-0 items-center gap-2">
+                      <span className="text-right text-xs text-crema-600">
+                        {typeof planDia.precio_base === "number"
+                          ? `${formatearCOP(planDia.precio_base)} para dos`
+                          : "Consultar"}
+                      </span>
+                      {soloUnDia ? (
+                        <IconoCheck className="size-4 text-petroleo-600" />
+                      ) : null}
+                    </span>
+                  </span>
+                  <span className="text-xs leading-snug text-crema-700">
+                    Solo el día, sin dormir:{" "}
+                    {planDia.horario ?? HORARIO_DIA_POR_DEFECTO}
+                  </span>
+                </label>
+              </li>
+            ) : null}
+          </ul>
+        </fieldset>
+
+        {/* ---------------------------------------------------------------
+            PASO 2 — CUÁNDO. El calendario ya sabe de qué cabaña se trata y
+            tacha sus noches ocupadas.
+
+            SIN CABAÑA, ATENUADO Y QUIETO, PERO A LA VISTA.
+            No se oculta: el huésped tiene que ver que es lo siguiente. Va en
+            un `<fieldset disabled>`, que apaga de verdad todo lo que lleva
+            dentro —el botón del calendario y los botones de huéspedes— y lo
+            saca del orden del tabulador sin trucos de `tabIndex`. La frase
+            que explica por qué está apagado va FUERA de la parte atenuada,
+            con su contraste normal: lo que se atenúa es el control, no la
+            explicación.
+        ---------------------------------------------------------------- */}
+        <fieldset
+          disabled={!lugarElegido}
+          aria-describedby={lugarElegido ? undefined : "paso-fechas-espera"}
+          className="flex flex-col gap-4"
+        >
+          <legend className="mb-4 font-titulo text-lg font-bold text-petroleo-900">
+            {numeroFechas}. {soloUnDia ? "¿Qué día vienes?" : "¿Cuándo?"}
+          </legend>
+
+          {!lugarElegido ? (
+            <p
+              id="paso-fechas-espera"
+              className="flex items-start gap-2 rounded-[var(--radius-tarjeta)] bg-petroleo-50 px-4 py-3 text-sm leading-relaxed font-medium text-petroleo-800"
+            >
+              <IconoFlecha className="mt-0.5 size-4 shrink-0 -rotate-90" />
+              {entrada
+                ? `Elige primero tu cabaña y comprobamos que tus fechas (${
+                    salida
+                      ? `${formatearFechaCorta(entrada)} → ${formatearFechaCorta(salida)}`
+                      : formatearFechaCorta(entrada)
+                  }) estén libres en ella.`
+                : "Elige primero tu cabaña para ver sus fechas libres."}
+            </p>
           ) : null}
+
+          <div
+            className={[
+              "flex flex-col gap-4 transition-opacity duration-300",
+              lugarElegido ? "" : "pointer-events-none opacity-45 select-none",
+            ].join(" ")}
+          >
+            <div className="max-w-sm">
+              <CalendarioFechas
+                entrada={entrada}
+                salida={salida}
+                alCambiar={(nuevaEntrada, nuevaSalida) => {
+                  setEntrada(nuevaEntrada);
+                  setSalida(nuevaSalida);
+                  /* Lo que elige en el calendario ya cumple sus reglas:
+                     no hay nada pendiente de comprobar ni aviso que dejar. */
+                  setFechasPorValidar(false);
+                  setAvisoFechas(null);
+                }}
+                hoy={hoy}
+                minima={primeraLlegada}
+                preferencia={preferencia}
+                nombrePreferencia={
+                  preferencia === "entre_semana"
+                    ? (planes.find(
+                        (plan) => categoriaDePlan(plan) === "entre_semana",
+                      )?.nombre ?? null)
+                    : planFinDeSemana
+                }
+                alQuitarPreferencia={() => setPreferencia(null)}
+                diaUnico={soloUnDia}
+                nochesOcupadas={nochesOcupadas}
+                tiposDeNocheOfrecidos={soloUnDia ? null : tiposCabana}
+                nombreCabana={cabana?.nombre ?? null}
+                diasSinCupo={soloUnDia ? ocupacion.diasSinCupo : undefined}
+                cargandoOcupacion={ocupacion.estado === "cargando"}
+                nota={
+                  ocupacion.estado === "error"
+                    ? "No pudimos consultar las fechas ocupadas ahora mismo. Puedes elegir igual: te confirmamos la disponibilidad antes de cobrar."
+                    : notaTipos
+                }
+                alCambiarMes={setMesCalendario}
+              />
+            </div>
+
+            {avisoFechas ? (
+              <p
+                role="status"
+                className="rounded-[var(--radius-tarjeta)] bg-crema-100 px-4 py-3 text-sm leading-relaxed text-crema-800"
+              >
+                {avisoFechas}
+              </p>
+            ) : null}
+
+            {soloUnDia ? (
+              <p className="text-sm leading-relaxed text-crema-700">
+                {entrada ? (
+                  <>
+                    Vienes{" "}
+                    <strong className="font-semibold text-petroleo-900">
+                      solo ese día
+                    </strong>
+                    , sin hospedaje. Si prefieres quedarte a dormir, elige una
+                    cabaña en el paso anterior.
+                  </>
+                ) : (
+                  `Elige el día de tu visita, ${TEXTO_ANTELACION}. Los días que ya no tienen cupo salen tachados.`
+                )}
+              </p>
+            ) : noches.length > 0 ? (
+              <p className="text-sm leading-relaxed text-crema-700">
+                Son{" "}
+                <strong className="font-semibold text-petroleo-900">
+                  {resumenEnPalabras(noches)}
+                </strong>
+                . Cada noche se cobra con la tarifa que le corresponde a su
+                fecha.
+              </p>
+            ) : (
+              <p className="text-sm leading-relaxed text-crema-700">
+                Elige llegada y salida, {TEXTO_ANTELACION}. Las noches que ya
+                están ocupadas salen tachadas; si tu estadía mezcla días de
+                semana y fin de semana, te la desglosamos noche por noche.
+              </p>
+            )}
+
+            {notaTipos ? (
+              <p className="text-sm leading-relaxed text-crema-700">
+                {notaTipos}
+              </p>
+            ) : null}
+
+            {avisoDeCambio && !soloUnDia ? (
+              <p className="rounded-[var(--radius-tarjeta)] bg-brote-100 px-4 py-3 text-sm leading-relaxed text-oliva-800">
+                {avisoDeCambio}
+              </p>
+            ) : null}
+
+            {!soloUnDia ? (
+              <fieldset className="flex flex-col gap-3">
+                <legend className="mb-3 font-titulo text-sm font-semibold text-petroleo-900">
+                  ¿Cuántos son?
+                </legend>
+                <div className="flex flex-wrap items-center gap-3">
+                  {[1, 2].map((cantidad) => (
+                    <label
+                      key={cantidad}
+                      className={[
+                        "flex min-h-11 cursor-pointer items-center rounded-full border px-5 font-titulo text-sm font-semibold transition-all duration-200",
+                        adultos === cantidad
+                          ? "border-petroleo-600 bg-petroleo-50 text-petroleo-900"
+                          : "border-crema-300/80 bg-white text-crema-700 hover:border-petroleo-300",
+                      ].join(" ")}
+                    >
+                      <input
+                        type="radio"
+                        name="adultos"
+                        value={cantidad}
+                        checked={adultos === cantidad}
+                        onChange={() => setAdultos(cantidad)}
+                        className="sr-only"
+                      />
+                      {cantidad === 1 ? "1 adulto" : "2 adultos"}
+                    </label>
+                  ))}
+                  <p className="text-sm text-crema-600">
+                    Las cabañas son para dos. La Finca no recibe menores de
+                    edad.
+                  </p>
+                </div>
+              </fieldset>
+            ) : null}
+          </div>
         </fieldset>
 
         {/* ---------------------------------------------------------------
@@ -1038,94 +1383,6 @@ export function SelectorReserva({
         ) : null}
 
         {/* ---------------------------------------------------------------
-            PASO 2 — CABAÑA, solo las que sirven para esas noches.
-        ---------------------------------------------------------------- */}
-        {!soloUnDia ? (
-          <fieldset className="flex flex-col gap-4">
-            <legend className="mb-4 font-titulo text-lg font-bold text-petroleo-900">
-              {numeroCabana}. Elige tu cabaña
-            </legend>
-
-            <ul className="grid gap-3 sm:grid-cols-2">
-              {elegibles.map(({ cabana: opcion }) => {
-                const activa = opcion.slug === slug;
-                const precio = precioParaLista(
-                  opcion,
-                  noches.length > 0,
-                  hayEntreSemana,
-                  hayFinDeSemana,
-                  planFinDeSemana,
-                  adultos,
-                );
-                return (
-                  <li key={opcion.slug}>
-                    <label
-                      className={[
-                        "flex min-h-14 cursor-pointer items-center justify-between gap-3 rounded-[var(--radius-tarjeta)] border px-4 py-3.5 transition-all duration-200",
-                        activa
-                          ? "border-petroleo-600 bg-petroleo-50 shadow-[var(--shadow-tenue)]"
-                          : "border-crema-300/80 bg-white hover:border-petroleo-300",
-                      ].join(" ")}
-                    >
-                      <input
-                        type="radio"
-                        name="cabana"
-                        value={opcion.slug}
-                        checked={activa}
-                        onChange={() => setSlug(opcion.slug)}
-                        className="sr-only"
-                      />
-                      <span className="font-titulo text-sm font-semibold text-petroleo-900">
-                        {opcion.nombre}
-                      </span>
-                      <span className="flex shrink-0 items-center gap-2">
-                        {precio !== null ? (
-                          <span className="text-right text-xs text-crema-600">
-                            {precio.etiqueta}
-                          </span>
-                        ) : null}
-                        {activa ? (
-                          <IconoCheck className="size-4 text-petroleo-600" />
-                        ) : null}
-                      </span>
-                    </label>
-                  </li>
-                );
-              })}
-            </ul>
-
-            {/*
-              LAS QUE NO SE PUEDEN, CON SU MOTIVO.
-              Que una cabaña desaparezca sin explicación se lee como un error del
-              sitio. La 02 solo se vende con el plan Estándar: hay que decirlo.
-            */}
-            {descartadas.length > 0 ? (
-              <ul className="flex flex-col gap-2">
-                {descartadas.map(({ cabana: opcion, estado }) => (
-                  <li
-                    key={opcion.slug}
-                    className="rounded-[var(--radius-tarjeta)] border border-crema-200 bg-crema-50/70 px-4 py-3 text-sm leading-snug text-crema-700"
-                  >
-                    <span className="font-titulo font-semibold text-crema-800">
-                      {opcion.nombre}
-                    </span>{" "}
-                    — no disponible para estas fechas.{" "}
-                    {!estado.elegible ? estado.motivo : null}
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-
-            {elegibles.length === 0 ? (
-              <p className="rounded-[var(--radius-tarjeta)] bg-petroleo-50 px-4 py-3 text-sm text-petroleo-800">
-                Ninguna cabaña cubre esas fechas. Prueba con otras o escríbenos
-                por WhatsApp y te armamos la estadía.
-              </p>
-            ) : null}
-          </fieldset>
-        ) : null}
-
-        {/* ---------------------------------------------------------------
             PASO 3 — PLAN DE FIN DE SEMANA. Solo si hace falta.
         ---------------------------------------------------------------- */}
         {numeroPlan !== null ? (
@@ -1247,10 +1504,11 @@ export function SelectorReserva({
           El paso del plan solo existe si la estadía toca fin de semana o
           festivo: quien elija de lunes a jueves no lo ve, y se quedaría sin
           enterarse de que el plan de día existe. Aparece en el mismo sitio del
-          flujo —justo después de la cabaña— para que se lea igual en los dos
-          casos.
+          flujo —justo después de las fechas— para que se lea igual en los dos
+          casos. Solo con una cabaña elegida: sin nada elegido, el Día de Calma
+          ya está a la vista en el paso 1, al lado de las cabañas.
         */}
-        {!soloUnDia && numeroPlan === null && planDia ? (
+        {cabana && !soloUnDia && numeroPlan === null && planDia ? (
           <NotaDiaDeCalma
             plan={planDia}
             fecha={entrada}
@@ -1585,7 +1843,7 @@ export function SelectorReserva({
 
               {!cotizacion ? (
                 <p className="text-sm leading-relaxed text-crema-600">
-                  Elige fechas y cabaña y te mostramos el precio noche por noche.
+                  Elige cabaña y fechas y te mostramos el precio noche por noche.
                 </p>
               ) : null}
             </>
