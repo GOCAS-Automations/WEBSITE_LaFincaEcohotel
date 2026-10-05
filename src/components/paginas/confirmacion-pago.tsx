@@ -206,7 +206,7 @@ export async function PaginaConfirmacion({ referencia, abandono }: Props) {
                   <span>
                     {vista.tipo === "dia"
                       ? `El Día de Calma es de ${HORARIO_DIA_POR_DEFECTO}.`
-                      : `Entrada desde las ${LLEGADA.checkIn} y salida hasta las ${LLEGADA.checkOut}.`}
+                      : `Entrada desde las ${LLEGADA.checkIn}, con llegada a más tardar a las ${LLEGADA.hasta}, y salida hasta las ${LLEGADA.checkOut}.`}
                   </span>
                 </li>
               </ul>

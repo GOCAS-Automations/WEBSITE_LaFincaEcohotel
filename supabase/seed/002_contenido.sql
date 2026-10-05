@@ -274,7 +274,7 @@ insert into contenido (clave, valor) values
     },
     {
       "pregunta": "¿A qué hora puedo llegar y a qué hora debo salir?",
-      "respuesta": "Desde la 1:00 p. m. puedes usar el restaurante, los senderos, los decks y las zonas sociales. La cabaña se entrega a las 3:00 p. m. El check-out es a la 1:00 p. m."
+      "respuesta": "Desde la 1:00 p. m. puedes usar el restaurante, los senderos, los decks y las zonas sociales. La cabaña se entrega a las 3:00 p. m. y puedes llegar hasta las 7:00 p. m. El check-out es a las 12:00 m."
     },
     {
       "pregunta": "¿Cómo se reserva y cómo se paga?",
@@ -764,7 +764,7 @@ insert into contenido (clave, valor) values
     {
       "titulo": "5. Llegada, salida y estadía",
       "parrafos": [
-        "Desde las 13:00 puedes usar el restaurante, los senderos, los decks y las zonas sociales. La cabaña se entrega a las 15:00 y la salida es hasta las 13:00. Los cambios de horario dependen de la disponibilidad y deben acordarse previamente.",
+        "Desde las 13:00 puedes usar el restaurante, los senderos, los decks y las zonas sociales. La cabaña se entrega a las 15:00 y la salida es hasta las 12:00 m. Los cambios de horario dependen de la disponibilidad y deben acordarse previamente.",
         "El restaurante atiende todos los días en el horario publicado en el sitio y es de uso exclusivo para huéspedes. El desayuno está incluido en los tres planes de hospedaje.",
         "La Finca es un establecimiento para adultos. No se permite el ingreso ni el alojamiento de menores de edad en ninguna de las cabañas ni en las zonas comunes, sin excepción. La reserva se entiende hecha para huéspedes mayores de dieciocho (18) años, y el incumplimiento de esta condición faculta al hotel para no prestar el servicio, sin derecho a reembolso."
       ]

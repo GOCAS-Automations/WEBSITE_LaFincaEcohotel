@@ -135,13 +135,18 @@ export const SITIO = {
    * estructurados, las preguntas frecuentes y los documentos legales: si mañana
    * cambia el horario de entrada, debe cambiar en un solo sitio.
    *
-   * CONFIRMADAS por el hotel en septiembre de 2026 (§5 de
-   * `docs/DATOS_CLIENTE.md`). Antes eran los valores habituales del sector; el
-   * check-out real es la 1:00 p. m., no el mediodía.
+   * CONFIRMADAS por el hotel (§5 de `docs/DATOS_CLIENTE.md`). El 2026-10-05 el
+   * check-out pasó de la 1:00 p. m. a las **12:00 m.** y se fijó la **hora
+   * límite de llegada: 7:00 p. m.**, todo el año y para todos los planes de
+   * hospedaje.
    *
    * `llegadaZonas` no es el check-in: desde la 1:00 p. m. ya se pueden usar el
    * restaurante, los senderos y las zonas sociales, aunque la cabaña se
    * entregue a las 3:00 p. m.
+   *
+   * Las horas van en 24 h porque las lee el JSON-LD (`checkinTime`,
+   * `checkoutTime`); `texto` es cómo se escriben para el huésped, con la
+   * convención colombiana: «12:00 m.», nunca «12:00 p. m.», que es ambiguo.
    *
    * TODO (Amapola): ¿aplica mínimo de noches en fines de semana o festivos?
    * Entre semana confirmaron que no hay mínimo.
@@ -149,7 +154,15 @@ export const SITIO = {
   estadia: {
     llegadaZonas: "13:00",
     checkIn: "15:00",
-    checkOut: "13:00",
+    /** Hora límite de llegada. */
+    llegadaHasta: "19:00",
+    checkOut: "12:00",
+    texto: {
+      llegadaZonas: "1:00 p. m.",
+      checkIn: "3:00 p. m.",
+      llegadaHasta: "7:00 p. m.",
+      checkOut: "12:00 m.",
+    },
     admiteMascotas: true,
     permiteFumar: false,
   },

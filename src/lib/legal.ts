@@ -306,7 +306,7 @@ function documentosFuente(): Record<ClaveLegal, DocumentoFuente> {
           titulo: "5. Llegada, salida y estadía",
           bloques: [
             p(
-              `Desde las ${SITIO.estadia.llegadaZonas} puedes usar el restaurante, los senderos, los decks y las zonas sociales. La cabaña se entrega a las ${SITIO.estadia.checkIn} y la salida es hasta las ${SITIO.estadia.checkOut}. Los cambios de horario dependen de la disponibilidad y deben acordarse previamente.`,
+              `Desde las ${SITIO.estadia.llegadaZonas} puedes usar el restaurante, los senderos, los decks y las zonas sociales. La cabaña se entrega a las ${SITIO.estadia.checkIn} y la salida es hasta las ${SITIO.estadia.texto.checkOut} Los cambios de horario dependen de la disponibilidad y deben acordarse previamente.`,
             ),
             p(
               "El restaurante atiende todos los días en el horario publicado en el sitio y es de uso exclusivo para huéspedes. El desayuno está incluido en los tres planes de hospedaje.",

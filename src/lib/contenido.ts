@@ -758,7 +758,7 @@ const RESPALDO_FAQ: ContenidoFaq = {
     {
       pregunta: "¿A qué hora puedo llegar y a qué hora debo salir?",
       respuesta:
-        "Desde la 1:00 p. m. puedes usar el restaurante, los senderos, los decks y las zonas sociales. La cabaña se entrega a las 3:00 p. m. El check-out es a la 1:00 p. m.",
+        "Desde la 1:00 p. m. puedes usar el restaurante, los senderos, los decks y las zonas sociales. La cabaña se entrega a las 3:00 p. m. y puedes llegar hasta las 7:00 p. m. El check-out es a las 12:00 m.",
     },
     {
       pregunta: "¿Cómo se reserva y cómo se paga?",

@@ -41,6 +41,7 @@
  * equipo del hotel, que no es técnico.
  */
 import { formatearCOP, formatearFecha, formatearFechaCorta } from "../utils/formato";
+import { SITIO } from "../sitio";
 
 /* ===========================================================================
  * Datos de entrada
@@ -172,10 +173,12 @@ type Contexto = {
  */
 export const LLEGADA = {
   /** Desde esta hora se pueden usar restaurante, senderos, decks y zonas sociales. */
-  desde: "1:00 p. m.",
+  desde: SITIO.estadia.texto.llegadaZonas,
   /** Entrega de la cabaña. */
-  checkIn: "3:00 p. m.",
-  checkOut: "1:00 p. m.",
+  checkIn: SITIO.estadia.texto.checkIn,
+  /** Hora límite de llegada (confirmada el 2026-10-05). */
+  hasta: SITIO.estadia.texto.llegadaHasta,
+  checkOut: SITIO.estadia.texto.checkOut,
 } as const;
 
 /** Franja del Día de Calma. Nunca se usa la palabra «pasadía». */
@@ -709,7 +712,7 @@ export function renderReservaConfirmada({
         "Puedes llegar desde las 10:00 a. m. y quedarte hasta las 5:00 p. m.",
       ])
     : lista([
-        `<strong>Entrega de la cabaña (check-in): ${LLEGADA.checkIn}</strong>`,
+        `<strong>Entrega de la cabaña (check-in): ${LLEGADA.checkIn}</strong>. La hora límite de llegada es a las ${LLEGADA.hasta}.`,
         `<strong>Check-out: ${LLEGADA.checkOut}</strong>`,
         `Puedes llegar <strong>desde la ${LLEGADA.desde}</strong> y usar el restaurante, los senderos, los decks y las zonas sociales mientras alistamos tu cabaña.`,
       ]);
@@ -772,7 +775,7 @@ export function renderReservaConfirmada({
           "- El Día de Calma no incluye hospedaje: es un día completo en la finca, sin noche.",
         ]
       : [
-          `- Entrega de la cabaña (check-in): ${LLEGADA.checkIn}`,
+          `- Entrega de la cabaña (check-in): ${LLEGADA.checkIn}. La hora límite de llegada es a las ${LLEGADA.hasta}.`,
           `- Check-out: ${LLEGADA.checkOut}`,
           `- Puedes llegar desde la ${LLEGADA.desde} y usar el restaurante, los senderos, los decks y las zonas sociales mientras alistamos tu cabaña.`,
         ]),
