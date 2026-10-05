@@ -712,7 +712,7 @@ export function renderReservaConfirmada({
         "Puedes llegar desde las 10:00 a. m. y quedarte hasta las 5:00 p. m.",
       ])
     : lista([
-        `<strong>Entrega de la cabaña (check-in): ${LLEGADA.checkIn}</strong>. La hora límite de llegada es a las ${LLEGADA.hasta}.`,
+        `<strong>Entrega de la cabaña (check-in): ${LLEGADA.checkIn}</strong> · Hora límite de llegada: <strong>${LLEGADA.hasta}</strong>`,
         `<strong>Check-out: ${LLEGADA.checkOut}</strong>`,
         `Puedes llegar <strong>desde la ${LLEGADA.desde}</strong> y usar el restaurante, los senderos, los decks y las zonas sociales mientras alistamos tu cabaña.`,
       ]);
@@ -775,7 +775,7 @@ export function renderReservaConfirmada({
           "- El Día de Calma no incluye hospedaje: es un día completo en la finca, sin noche.",
         ]
       : [
-          `- Entrega de la cabaña (check-in): ${LLEGADA.checkIn}. La hora límite de llegada es a las ${LLEGADA.hasta}.`,
+          `- Entrega de la cabaña (check-in): ${LLEGADA.checkIn} · Hora límite de llegada: ${LLEGADA.hasta}`,
           `- Check-out: ${LLEGADA.checkOut}`,
           `- Puedes llegar desde la ${LLEGADA.desde} y usar el restaurante, los senderos, los decks y las zonas sociales mientras alistamos tu cabaña.`,
         ]),
