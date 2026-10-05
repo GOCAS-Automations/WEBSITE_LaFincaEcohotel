@@ -20,7 +20,8 @@ import {
   getSeccionPlanes,
   type AlojamientoPublico,
 } from "@/lib/contenido";
-import { formatearCOP } from "@/lib/utils/formato";
+import { avisoDeTemporadas } from "@/lib/reserva/temporadas";
+import { formatearCOP, hoyEnBogota } from "@/lib/utils/formato";
 import { enlaceWhatsapp, mensajeCabana } from "@/lib/whatsapp";
 
 /**
@@ -44,6 +45,15 @@ export async function PaginaAlojamiento({
 
   const otras = todos.filter((otra) => otra.id !== alojamiento.id).slice(0, 3);
   const amenidades = alojamiento.amenidades ?? [];
+
+  /* Si una temporada activa o próxima cambia el precio de esta cabaña, se dice
+     en una línea discreta bajo los planes. Las tarjetas siguen con la base (es
+     lo que vale casi todo el año); el precio exacto de cada noche lo da el
+     motor de reservas. */
+  const avisoTemporada = avisoDeTemporadas(
+    alojamiento.tarifas.flatMap((tarifa) => tarifa.temporadas),
+    hoyEnBogota(),
+  );
 
   return (
     <>
@@ -200,7 +210,15 @@ export async function PaginaAlojamiento({
             ))}
           </ul>
 
-          <p className="mt-8 text-center text-sm text-crema-600 italic">
+          {avisoTemporada ? (
+            <p className="mx-auto mt-8 max-w-2xl text-center text-sm leading-relaxed text-crema-700">
+              {avisoTemporada}
+            </p>
+          ) : null}
+
+          <p
+            className={`${avisoTemporada ? "mt-2" : "mt-8"} text-center text-sm text-crema-600 italic`}
+          >
             {seccionPlanes.nota}
           </p>
           </div>
