@@ -81,8 +81,13 @@ export interface Plan {
 
 export interface Tarifa {
   id: string;
-  alojamiento_id: string;
+  /** La cabaña de una tarifa base. `null` en las de temporada (su alcance es el de la temporada). */
+  alojamiento_id: string | null;
   plan_id: string;
+  /** `null` = tarifa base. Con valor, precio de esa temporada (migración 017). */
+  temporada_id: string | null;
+  /** Copia del alcance de la temporada, atada por llave. `null` en las base. */
+  temporada_alcance: string | null;
   /** Precio por noche en pesos colombianos, entero. */
   precio_noche: number;
   /**
@@ -91,11 +96,26 @@ export interface Tarifa {
    * ($200.000 en vez de $350.000).
    */
   precio_noche_1_persona: number | null;
-  /** `daterange` de Postgres; `null` = tarifa base todo el año. */
+  /**
+   * `daterange` de Postgres; `null` = tarifa base todo el año. En las de
+   * temporada es copia de `temporadas.noches` (la llave impide que difiera).
+   */
   vigencia: string | null;
   /** Días ISO (1 = lunes … 7 = domingo) en los que aplica la tarifa. */
   dias_semana: number[] | null;
   created_at: string;
+}
+
+/** Una temporada: tarifas para fechas concretas (migración 017). */
+export interface TemporadaFila {
+  id: string;
+  nombre: string;
+  /** `null` = todas las cabañas. */
+  alojamiento_id: string | null;
+  /** `daterange` `[primera noche, día siguiente a la última)`. */
+  noches: string;
+  creado_at: string;
+  actualizado_at: string;
 }
 
 export interface Extra {

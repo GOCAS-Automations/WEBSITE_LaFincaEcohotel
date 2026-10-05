@@ -61,6 +61,7 @@ async function verificar(cliente) {
     "alojamientos",
     "planes",
     "tarifas",
+    "temporadas",
     "extras",
     "reservas",
     "reserva_extras",
