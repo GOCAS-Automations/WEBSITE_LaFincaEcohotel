@@ -39,12 +39,14 @@
  * Formatear es trabajo de quien lo pinta.
  */
 
+import type { FechaISO } from "../utils/formato";
 import {
   contarPorTipo,
   etiquetaTipoNoche,
   type Noche,
   type TipoNoche,
 } from "./noches";
+import { temporadaDeNoche, type TemporadaDeTarifa } from "./temporadas";
 
 /* ===========================================================================
  * Lo que este módulo necesita saber del catálogo
@@ -62,10 +64,16 @@ export type PlanCotizable = {
 /** Una tarifa publicada: un plan con su precio para una cabaña concreta. */
 export type TarifaCotizable = {
   plan: PlanCotizable;
-  /** Precio por noche para dos personas, entero COP. */
+  /** Precio BASE por noche para dos personas, entero COP. */
   precio_noche: number;
-  /** Precio por noche si viaja una sola persona. `null` = se cobra igual. */
+  /** Precio base si viaja una sola persona. `null` = se cobra igual. */
   precio_noche_1_persona: number | null;
+  /**
+   * Las temporadas que cambian el precio de ESTA tarifa en unas fechas (de
+   * esta cabaña o de todas), ya filtradas a este plan. Vacío o ausente = se
+   * cobra siempre la base. Ver `src/lib/reserva/temporadas.ts`.
+   */
+  temporadas?: TemporadaDeTarifa[];
 };
 
 /** Una cabaña con las tarifas que tiene cargadas. */
@@ -200,6 +208,8 @@ export type LineaNoche = {
   precio: number;
   /** Cierto si se cobró la tarifa de una sola persona. */
   tarifaUnaPersona: boolean;
+  /** Nombre de la temporada que puso el precio; `null` = tarifa base. */
+  temporada: string | null;
 };
 
 export type Cotizacion =
@@ -295,7 +305,11 @@ export function cotizar({
   const lineas: LineaNoche[] = noches.map((noche) => {
     const tarifa =
       noche.tipo === "entre_semana" ? tarifaEntreSemana! : tarifaFinDeSemana!;
-    const { precio, unaPersona } = precioDeTarifa(tarifa, adultos);
+    const { precio, unaPersona, temporada } = precioDeNoche(
+      tarifa,
+      noche.fecha,
+      adultos,
+    );
     return {
       fecha: noche.fecha,
       tipo: noche.tipo,
@@ -303,6 +317,7 @@ export function cotizar({
       plan: tarifa.plan.nombre,
       precio,
       tarifaUnaPersona: unaPersona,
+      temporada,
     };
   });
 
@@ -324,21 +339,60 @@ export function cotizar({
 }
 
 /**
- * El precio de una noche con esa tarifa.
+ * EL PRECIO DE UNA NOCHE. Es la única función que lo decide.
  *
- * La tarifa de una sola persona se aplica siempre que exista y viaje una sola
- * persona. Hoy solo la publica el plan Entre Semana ($200.000 frente a
- * $350.000), pero la regla se escribe sobre el DATO y no sobre el nombre del
- * plan: si mañana el hotel carga una para Estándar, funciona sola.
+ * La usan todos los que cotizan: `cotizar()` (motor público y `/api/reservar`,
+ * que es quien cobra), las tarjetas de cabaña y de plan de `/reservar` y el
+ * precio sugerido del formulario de reserva manual del panel. Si mañana cambia
+ * la regla, cambia aquí y en ningún otro sitio.
+ *
+ * 1. **Qué tarifa** ya viene decidida: la del plan que toca a esa noche (el
+ *    tipo de noche manda, nunca la temporada).
+ * 2. **Qué precio**: el de la temporada que manda esa noche —la de la cabaña
+ *    antes que la de todas (`temporadaDeNoche`)— o, si no hay, la base.
+ * 3. **Una persona**: se cobra el precio de una persona si existe en lo que
+ *    manda esa noche. La regla se escribe sobre el DATO y no sobre el nombre
+ *    del plan: hoy solo lo tiene Entre Semana ($200.000 frente a $350.000),
+ *    pero si mañana el hotel carga uno para Estándar, funciona solo.
  */
-function precioDeTarifa(
+export function precioDeNoche(
   tarifa: TarifaCotizable,
+  fecha: FechaISO,
   adultos: number,
-): { precio: number; unaPersona: boolean } {
-  if (adultos === 1 && typeof tarifa.precio_noche_1_persona === "number") {
-    return { precio: tarifa.precio_noche_1_persona, unaPersona: true };
+): { precio: number; unaPersona: boolean; temporada: string | null } {
+  const temporada = temporadaDeNoche(tarifa.temporadas, fecha);
+  const fuente = temporada ?? tarifa;
+  const nombre = temporada?.nombre ?? null;
+  if (adultos === 1 && typeof fuente.precio_noche_1_persona === "number") {
+    return {
+      precio: fuente.precio_noche_1_persona,
+      unaPersona: true,
+      temporada: nombre,
+    };
   }
-  return { precio: tarifa.precio_noche, unaPersona: false };
+  return { precio: fuente.precio_noche, unaPersona: false, temporada: nombre };
+}
+
+/**
+ * El precio más bajo y el más alto de una tarifa en unas noches.
+ *
+ * Para las tarjetas de `/reservar`: si las noches elegidas no cuestan todas lo
+ * mismo (una estadía que entra en temporada), la tarjeta enseña el rango en
+ * vez de un número que solo vale para algunas. Sin noches, el precio base.
+ */
+export function rangoDePrecios(
+  tarifa: TarifaCotizable,
+  fechas: readonly FechaISO[],
+  adultos: number,
+): { minimo: number; maximo: number } {
+  if (fechas.length === 0) {
+    const base = precioDeNoche({ ...tarifa, temporadas: [] }, "", adultos);
+    return { minimo: base.precio, maximo: base.precio };
+  }
+  const precios = fechas.map(
+    (fecha) => precioDeNoche(tarifa, fecha, adultos).precio,
+  );
+  return { minimo: Math.min(...precios), maximo: Math.max(...precios) };
 }
 
 /* ===========================================================================
@@ -362,7 +416,10 @@ export function desgloseEnTexto(
     const etiqueta = linea.festivo
       ? `${formatearFecha(linea.fecha)} (${linea.festivo})`
       : formatearFecha(linea.fecha);
-    return `• ${etiqueta} — ${linea.plan}: ${formatearMoneda(linea.precio)}`;
+    const plan = linea.temporada
+      ? `${linea.plan}, ${linea.temporada}`
+      : linea.plan;
+    return `• ${etiqueta} — ${plan}: ${formatearMoneda(linea.precio)}`;
   });
   lineas.push(`Total: ${formatearMoneda(cotizacion.total)}`);
   return lineas;

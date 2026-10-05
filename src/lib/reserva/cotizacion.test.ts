@@ -167,6 +167,7 @@ describe("cotizar", () => {
         plan: "Entre Semana",
         precio: P_ENTRE_SEMANA,
         tarifaUnaPersona: false,
+        temporada: null,
       },
       {
         fecha: "2026-09-18",
@@ -175,6 +176,7 @@ describe("cotizar", () => {
         plan: "Estándar",
         precio: P_ESTANDAR,
         tarifaUnaPersona: false,
+        temporada: null,
       },
     ]);
     expect(cotizacion.total).toBe(P_ENTRE_SEMANA + P_ESTANDAR); // 830.000

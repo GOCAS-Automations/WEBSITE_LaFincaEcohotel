@@ -58,6 +58,8 @@ import {
   validarRango,
 } from "../reserva/noches";
 import { ocupaCalendario } from "../reserva/holds";
+import { temporadasDeTarifa, type Temporada } from "../reserva/temporadas";
+import { leerTemporadas } from "../reserva/temporadas-db";
 import {
   normalizarPorcentajeAnticipo,
   resumenDePago,
@@ -443,6 +445,24 @@ async function cotizarHospedaje(
     };
   }
 
+  /* Las temporadas que tocan ESTA estadía en ESTA cabaña (las suyas y las de
+     todas), recién leídas: se cobra el precio de temporada de cada noche. Si
+     no se pueden leer, no se cobra la base a ciegas: sería cobrar diciembre a
+     precio de octubre. */
+  let temporadas: Temporada[];
+  try {
+    temporadas = await leerTemporadas(supabase, {
+      alojamientoId: String(alojamiento.id),
+      desde: entrada,
+      hasta: salida,
+    });
+  } catch {
+    return {
+      ok: false,
+      motivo: "No pudimos leer las tarifas ahora mismo. Inténtalo en un momento.",
+    };
+  }
+
   const planesPorId = new Map(filasPlanes.map((plan) => [String(plan.id), plan]));
 
   /* `CabanaCotizable` es exactamente lo que espera `cotizar()`: el mismo tipo
@@ -466,6 +486,11 @@ async function cotizarHospedaje(
             tarifa.precio_noche_1_persona === undefined
               ? null
               : Number(tarifa.precio_noche_1_persona),
+          temporadas: temporadasDeTarifa(
+            temporadas,
+            String(alojamiento.id),
+            String(tarifa.plan_id),
+          ),
         };
       })
       .filter((tarifa): tarifa is NonNullable<typeof tarifa> => tarifa !== null),
