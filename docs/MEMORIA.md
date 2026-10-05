@@ -199,6 +199,9 @@
 | 2026-10-02 | ⚠ **La antelación mínima es una regla del SITIO PÚBLICO, nunca del panel.** El equipo del hotel tiene que poder registrar una reserva de hoy —las de WhatsApp a última hora, con el huésped ya en camino— y bloquear el día en curso. Por eso el alta manual no pasa por `cotizarEnServidor()` y su formulario sigue trayendo hoy por defecto. Aplicarle la constante del público le costaría al hotel las reservas de última hora. |
 | 2026-10-03 | ⚠ **`calendarList.list` NO dice a qué calendarios tiene acceso una cuenta de servicio.** Devuelve sus *suscripciones*, no sus *permisos*: compartir un calendario con ella concede la ACL, pero nadie «acepta» la invitación —una cuenta de servicio no tiene interfaz donde hacerlo—, así que su `calendarList` se queda **vacía** aunque lea los siete calendarios del hotel sin un fallo. El diagnóstico del panel dependía de esa lista y decía «no veo ningún calendario» con todo funcionando. **La verdad es `events.list`**, que además trae el nombre (`summary`) y el permiso real (`accessRole`) en la misma respuesta. `calendarList` solo sirve para descubrir identificadores que nadie nos ha dado, y su silencio no prueba nada. |
 | 2026-10-03 | **De los siete calendarios del hotel, solo UNO está compartido con permiso de escritura** («Reservas Finca Villarreal - Sitio Web», `65f3342a…`, `writer`); el general y los cinco por cabaña van en `reader`. Es la configuración correcta, pero hace real una distinción que antes era teórica: si ese permiso se cayera, cada reserva del panel se quedaría sin apuntar y nadie se enteraría. Por eso el sitio lo comprueba y lo avisa en la franja de estado del panel («No puede apuntar reservas»), sin esperar a la primera reserva perdida. |
+| 2026-10-05 | **Las temporadas son una tabla `temporadas` con sus precios como filas de `tarifas`, y las fechas viven en UN sitio.** La fila de precio lleva copia de alcance y fechas solo para que la exclusión gist (alcance, plan, noches) funcione, y esa copia está atada por llave compuesta `match full` + `on update cascade`: no puede desincronizarse. Se descartó usar solo `tarifas.vigencia` (sin nombre ni «todas las cabañas», y una copia de las fechas por plan) y una tabla de precios aparte (habría que reimplementar la exclusión con un trigger). |
+| 2026-10-05 | ⚠ **`precioDeNoche()` (`src/lib/reserva/cotizacion.ts`) es la ÚNICA función que pone precio a una noche.** Precedencia: temporada de la cabaña > de todas > base, plan por plan. La temporada cambia el precio, nunca el plan; y se cuelga solo de tarifas base existentes, así que no puede habilitar un plan que la cabaña no tiene. La usan el motor, `/api/reservar`, las tarjetas de `/reservar` y la reserva manual del panel. |
+| 2026-10-05 | **Check-out a las 12:00 m. y hora límite de llegada a las 7:00 p. m.** (confirmado por el hotel). Se escribe «12:00 m.» o «mediodía», nunca «12:00 p. m.». Fuente única en código: `SITIO.estadia` (24 h para el JSON-LD y `texto` para el huésped). |
 
 ## Registro de sesiones
 
@@ -3413,3 +3416,114 @@ con y sin cabaña. Comprobado en el DOM: 0 celdas con `disabled`, motivo en cada
 - La hoja del calendario de la portada en el teléfono sigue posicionándose respecto
   del formulario (el `backdrop-blur` del módulo crea un bloque contenedor para
   `fixed`): se ve bien a 390, pero no es la hoja inferior que describe el código.
+
+### 2026-10-05 — Temporadas (tarifas por fechas) y los horarios nuevos
+
+Pedido del hotel: crear, editar y borrar tarifas para fechas concretas desde el panel, para una
+cabaña o para todas, y dejar cargada la de fin de año. A mitad de ronda, Cesar confirmó el rango y
+pidió cambiar los horarios (abajo).
+
+#### El modelo (migración 017, aplicada a la base real antes del push)
+
+- **`temporadas`**: `nombre`, `alojamiento_id` (null = todas las cabañas), `noches daterange`
+  `[primera noche, última + 1)` y `alcance` (columna generada: la cabaña o el uuid nulo). Es la
+  **única fuente de las fechas**.
+- **Precios = filas de `tarifas`** con `temporada_id`. Su `vigencia` y `temporada_alcance` son
+  copia atada por llave compuesta `(temporada_id, temporada_alcance, vigencia)` → `temporadas (id,
+  alcance, noches)` `match full on update cascade on delete cascade`: escribir otras fechas en la
+  fila lo rechaza la llave, y mover la temporada las mueve todas. `match full` impide además una
+  `vigencia` suelta sin temporada. `tarifas_base_o_temporada`: la base lleva cabaña y no temporada;
+  la de temporada, al revés. Ensayada en una transacción deshecha contra la base real (cascada por
+  la columna generada, llave, exclusión, RLS de `anon`) antes de aplicarla.
+- **Sin solapes**: `tarifas_temporadas_sin_cruce` = `exclude using gist (temporada_alcance with =,
+  plan_id with =, vigencia with &&) where temporada_id is not null`. Dos de todas, o dos de la misma
+  cabaña, no pueden fijar precio al mismo plan en noches cruzadas; una de cabaña sí convive con una
+  de todas. El panel hace antes la misma comprobación (`crucesDeTemporada`) para nombrar la
+  temporada con la que choca; la exclusión queda de red, traducida al mismo mensaje.
+- **`guardar_temporada()`** (`security invoker`, solo `authenticated` y `service_role`) escribe
+  temporada y precios en una transacción: primero quita los planes que salen, luego mueve fechas,
+  luego escribe precios.
+- **RLS**: `temporadas` y las filas de temporada de `tarifas` se leen en público solo si no han
+  terminado (`upper(noches) > hoy en Bogotá`); escritura solo autenticada. `grant select` a `anon`
+  explícito (lección de la 011) y sin `truncate` para `authenticated`.
+- **Compatible hacia atrás**: todo el código anterior lee `tarifas` con `.is("vigencia", null)`, así
+  que el despliegue viejo siguió cobrando la base hasta el push. La unicidad de la base
+  (`tarifas_base_unica … where vigencia is null`) no cambia.
+- **Las reservas hechas no se recalculan**: `reservas.subtotal_alojamiento`, `total`,
+  `monto_anticipo` y `reserva_extras.precio_unitario` son enteros congelados sin referencia a
+  `tarifas`, no hay triggers que los recalculen, y el formulario del panel abre una reserva
+  existente con su valor guardado (`subtotalTocado = Boolean(reserva)`).
+
+#### Una sola función de precio
+
+`precioDeNoche(tarifa, fecha, adultos)` en `cotizacion.ts`. Caminos que cotizaban y ahora pasan por
+ella: `cotizar()` (motor y `/api/reservar` vía `cotizarEnServidor`, que lee las temporadas de esa
+cabaña que tocan la estadía con `service_role` y, si no puede leerlas, **no cobra**), `precioParaLista`
+de las tarjetas de cabaña (tenía su propio `precioDe`), las tarjetas de plan (`rangoDePrecios`) y
+el **formulario de reserva manual** (era `precio base × noches`; ahora suma noche por noche y, de
+paso, respeta el precio de una persona). Único toque en `src/lib/pagos/`: `cotizar-en-servidor.ts`
+lee y cuelga las temporadas; Bold no se tocó. Las temporadas se cuelgan solo de tarifas base
+existentes (`temporadasDeTarifa`), así que la 02 sigue sin Entre Semana aunque la de todas lo tenga.
+
+Día de Calma: **fuera**. Su precio vive en `planes.precio_base`, no en `tarifas`.
+
+#### Panel — sección «Temporadas» (`/admin/temporadas`, `requireAdmin()` como los precios base)
+
+Listado en «Activas ahora», «Próximas» y «Pasadas»; formulario con «Nombre de la temporada»,
+«Primera noche», «Última noche», «¿A qué cabañas aplica?» y por plan «Precio por noche (2 personas)»
+y «Precio si viaja una sola persona», cada uno con «Base: $… · +15 % sobre la base». Aviso en vivo
+de cruces (rojo) y de quién manda cuando convive con una de otro alcance (azul). Botones «Nueva
+temporada», «Crear temporada», «Guardar cambios», «Cancelar», «Editar», «Borrar» y «Borrar
+temporada», con confirmación que dice que las reservas hechas no cambian. La ficha de cada cabaña
+dice qué temporadas la afectan. Borrar un plan con precios de temporada se bloquea con un mensaje.
+
+#### Sitio público
+
+Desglose noche por noche con el nombre de la temporada bajo cada noche afectada; tarjetas de plan
+con «$480.000 a $552.000 por noche» y «Según la noche…» cuando las noches no cuestan lo mismo; ficha
+de cabaña con «Del 1 de diciembre al 8 de enero aplican tarifas de temporada; al reservar ves el
+precio exacto de cada noche». Listados, «desde» y JSON-LD siguen con la base. El mensaje de
+WhatsApp nombra la temporada.
+
+#### Datos
+
+`scripts/cargar-temporada-fin-de-ano.mjs` (simula por defecto, `--ejecutar` escribe): la primera
+ejecución la creó; la segunda dijo «Ya está al día». **Rango 1 dic 2026 – 8 ene 2027 para los tres
+planes, confirmado por el hotel el 2026-10-05** (ya no es supuesto).
+
+#### Horarios nuevos (confirmados el 2026-10-05, todo el año, todos los planes de hospedaje)
+
+Check-in 3:00 p. m. (igual) · **hora límite de llegada 7:00 p. m.** (nueva) · **check-out 12:00 m.**
+(antes 1:00 p. m.). Desde la 1:00 p. m. zonas sociales y el Día de Calma: igual. Cambiado en
+`SITIO.estadia` (`checkOut: "12:00"`, `llegadaHasta: "19:00"` y `texto`), JSON-LD (`checkoutTime`
+sale de ahí), correo de confirmación (`LLEGADA`, ahora con la hora límite junto al check-in, en HTML
+y en texto), página de confirmación del pago, respaldo de la FAQ y de los términos, seed, y en la
+base con `scripts/actualizar-horarios.mjs`: la respuesta de la FAQ «¿A qué hora puedo llegar…?» y,
+en **Términos §5, solo la hora** («la salida es hasta las 13:00.» → «… hasta las 12:00 m.»). La
+fecha «actualizado» de los términos (2026-09-30) no se tocó. Los eventos de Google Calendar no
+llevan horarios. De paso: el correo y la página de confirmación del pago escribían «p. m..» (la
+hora ya termina en punto); corregido.
+
+⚠ **Caché de datos tras un cambio hecho por script**: la FAQ y los términos se leen con la Data
+Cache de Next (etiqueta `contenido-publico`, una hora), que sobrevive a un build nuevo. En local,
+tras correr el script, `/faq` siguió con el texto viejo hasta que un guardado del panel llamó a
+`revalidarSitioPublico()`. En producción pasa lo mismo: o se espera la hora, o se guarda cualquier
+cosa en el panel (por ejemplo, «Guardar cambios» en la temporada, sin tocar nada).
+
+#### Verificación
+
+`tsc` limpio · `npm test` 443 en verde (398 + 45) · `next build` sin errores · eslint limpio en lo
+tocado. Capturas con Chrome headless contra `next start` en `localhost:3117`, a 1440 y 390: panel
+(listado, edición con los cuatro «+15 %», ficha de la Cabaña 01), `/reservar` Cabaña 01 entre semana
+y fin de semana de diciembre (Estándar y Premium), el cruce 30 nov → 2 dic, el rango en las
+tarjetas, la Cabaña 02 en diciembre y la ficha pública. Recorrido real del panel contra la base:
+crear una temporada de prueba de la Cabaña 03, verla en el motor (manda sobre la de todas), cruce
+rechazado con su mensaje, regla de una persona, editar y borrar (base limpia al terminar). Sesión con
+el usuario de pruebas rotando su contraseña por la Admin API y rotándola de nuevo al terminar.
+
+#### Hallazgo que queda anotado (no se tocó)
+
+`esVisperaDeFestivo()` (`noches.ts`) solo cuenta la víspera si el festivo cae de lunes a jueves:
+con un festivo en **viernes** (25 dic 2026, 1 ene 2027) el jueves anterior se cobra como entre
+semana. El comentario dice que se excluyen los festivos de sábado y domingo, así que parece un
+`<= 4` que debía ser `<= 5`. Cambia precios: decidirlo con Cesar.
