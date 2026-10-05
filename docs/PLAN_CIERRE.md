@@ -105,7 +105,6 @@ Lo que hago yo en cuanto cada cosa se desbloquee.
 
 **Lo que tengo pendiente sin depender de nadie**
 
-- [ ] **Hacer push de los commits locales de `main`** (el soporte de varios calendarios, el panel que los lista, el script `calendario:verificar` y la memoria). Hoy solo existen en el equipo de Cesar.
 - [ ] Decidir con el hotel la **política de retención** de datos y escribir la tarea que la aplique (auditoría P-2: solicitudes no concretadas a los 6 meses, datos de reserva a los 5 años). Antes hay que confirmar los plazos contables con su contadora.
 - [ ] `includeSubDomains` en HSTS cuando se confirme que todos los subdominios van por HTTPS, correo incluido (auditoría P-4). Hacerlo antes puede dejar al hotel sin correo.
 - [ ] Subir el DMARC del dominio de `p=NONE` a `p=quarantine` cuando lleve unas semanas enviando. No bloquea nada.
@@ -200,7 +199,6 @@ Todo esto está en `Preguntas_Finales_LaFinca.pdf` y en la §9 de `docs/DATOS_CL
 | Las pruebas escriben en la base real | Fechas a tres meses o más y la limpieza de la §7 de la guía, sin saltársela |
 | Reaplicar los seeds borraría ediciones del panel | Nunca ejecutar `npm run db:aplicar` sin comparar antes la base con el seed |
 | Cambiar `GOOGLE_CALENDAR_ESCRIBIR_EN` con reservas ya apuntadas | Deja eventos huérfanos: `reservas.referencia_externa` guarda el id del evento, no su calendario. Es una decisión de puesta en marcha, no de operación |
-| Los commits locales de `main` solo existen en un equipo | Hacer push |
 
 ---
 
@@ -229,3 +227,5 @@ El detalle de cada uno está en `docs/MEMORIA.md`.
 | Datos fiscales (Raquel Lenis García · NIT 66830269-5), legales aprobados y correo de contacto | Aplicados |
 | Código del calendario de Google, incluidos varios calendarios por cabaña y los scripts de verificación | Listo — falta solo que lo compartan (§1.3) |
 | Manual del panel DOC-LF-2026-05 y los documentos del cliente corregidos de Wompi a Bold | Entregables al día |
+| Temporadas (tarifas por fechas) desde el panel, y la «Temporada de fin de año» cargada (1 dic 2026 – 8 ene 2027, +15 %, rango confirmado) | Hecho el 2026-10-05 — falta actualizar el manual del panel con la sección nueva |
+| Horarios: check-out a las 12:00 m. y hora límite de llegada a las 7:00 p. m. (sitio, correo, FAQ y términos) | Hecho el 2026-10-05 |

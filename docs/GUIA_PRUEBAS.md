@@ -108,6 +108,35 @@ Entra en `lafincaecohotel.com/admin` con la cuenta propietaria.
 - [ ] **Usuarios**: crea una cuenta de equipo, entra con ella y comprueba que **no** ve la sección Usuarios. Bórrala.
 - [ ] Sube una **foto nueva** desde el panel y comprueba que aparece en el sitio.
 
+### Temporadas (tarifas por fechas)
+
+Usa fechas a tres meses o más y una cabaña libre. La «Temporada de fin de año» ya está cargada:
+**no la borres**; crea una de prueba y bórrala al terminar.
+
+- [ ] **Temporadas** aparece en el menú. El listado muestra la «Temporada de fin de año» en
+      **Próximas** (o **Activas ahora** si ya es diciembre), con «1 dic 2026 – 8 ene 2027 · 39 noches ·
+      Todas las cabañas» y sus tres precios.
+- [ ] Ábrela con **Editar**: al lado de cada uno de los cuatro precios dice **«+15 % sobre la base»**.
+      No guardes nada.
+- [ ] **Crear**: «Nueva temporada» → nombre «Prueba», primera y última noche en dos fechas futuras,
+      «Solo la Cabaña 03», precio de Premium distinto del de la base → **Crear temporada**. Vuelve al
+      listado con «Temporada «Prueba» creada» y aparece en Próximas como «Solo la Cabaña 03».
+- [ ] **Verla en el motor**: en `/reservar`, Cabaña 03, esas fechas en fin de semana y plan Premium.
+      Cada noche del desglose lleva debajo el nombre **«Prueba»** y el precio nuevo; el total cuadra.
+      Una noche fuera del rango sale con el precio de siempre y sin nombre de temporada.
+- [ ] **Cruce rechazado**: «Nueva temporada» para **todas las cabañas** del 20 al 27 de diciembre con
+      precio de Estándar. Antes de guardar aparece el aviso rojo «Se cruza con «Temporada de fin de
+      año»…», y al guardar sale el mismo mensaje y no se crea nada.
+- [ ] **Una persona**: «Nueva temporada» con precio de Entre Semana solo para dos personas → no deja
+      guardar y explica que hacen falta los dos precios o ninguno.
+- [ ] **Editar**: cambia el precio de «Prueba», guarda («Cambios guardados…») y recarga `/reservar`:
+      el desglose muestra el precio nuevo.
+- [ ] **Borrar**: en la ficha de «Prueba», **Borrar temporada** → la confirmación dice que las
+      reservas ya hechas no cambian → acepta. En `/reservar` esas noches vuelven al precio base.
+- [ ] La ficha de una cabaña en el panel (Cabañas → Cabaña 01) dice debajo de los precios
+      «Temporadas que cambian estos precios: «Temporada de fin de año»…».
+- [ ] La Cabaña 02 sigue sin ofrecerse entre semana en diciembre (sus lunes a jueves salen tachados).
+
 ## 6 · Calendario de Google (solo si ya está conectado)
 
 Esta sección se hace **solo si el panel dice «Calendario del hotel: conectado»**.

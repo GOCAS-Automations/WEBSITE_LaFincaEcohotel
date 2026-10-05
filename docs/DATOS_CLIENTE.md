@@ -61,6 +61,25 @@ Tarifas referenciales de temporada baja; pueden variar en festivos y alta demand
 | **Premium** | **$680.000** (2 pers.) | Viernes a domingo y festivos | Todo lo del Estándar + alimentación a la carta (cena de llegada, desayuno y almuerzo de salida), 1 botella de vino, 2 sodas naturales, fogata con pinchos de masmelos. Con Premium la cena se sirve en la cabaña si hay experiencia |
 | **Día de Calma** | **$250.000** (2 pers.) | 10:00 a.m.–5:00 p.m. | Almuerzo a la carta, refrigerio (chocolate/aguapanela/café con queso), acceso a piscina, turco, decks, senderos y salón. **Sin hospedaje.** No usar la palabra «pasadía» |
 
+### Temporada de fin de año (tarifa por fechas)
+
+**Todas las cabañas, primera noche 1 de diciembre de 2026, última noche 8 de enero de 2027, ambas
+incluidas, para los tres planes de hospedaje.** Son exactamente +15 % sobre la base. El rango para
+los tres planes lo **confirmó el hotel el 2026-10-05** (antes solo se había dado explícitamente para
+Entre Semana; para Estándar y Premium habían dicho «tarifas de diciembre»).
+
+| Plan | 2 personas | 1 persona |
+|---|---|---|
+| Entre Semana | **$402.500** | **$230.000** |
+| Estándar | **$552.000** | — |
+| Premium | **$782.000** | — |
+
+El Día de Calma no cambia. Está cargada en la base (`scripts/cargar-temporada-fin-de-ano.mjs`) y
+se edita desde el panel, en **Temporadas**. Cómo se aplica: el tipo de noche sigue eligiendo el
+plan y la temporada solo cambia su precio; una temporada de una cabaña manda sobre una de todas;
+nunca habilita un plan que la cabaña no tiene (la 02 sigue sin venderse entre semana). Detalle en
+`docs/MEMORIA.md` (2026-10-05).
+
 Correcciones sobre el seed provisional: Premium era $650.000 → **$680.000**; Estándar $450.000 →
 **$480.000**; falta la tarifa de 1 persona en Entre Semana y el plan Día de Calma.
 
@@ -309,6 +328,8 @@ que el navegador pueda falsificar.
       de pago antes de la llegada.
 - [ ] Video: definir con Juan Camilo; sugieren embeber links de Instagram.
 - [ ] ¿Mínimo de noches en fines de semana/festivos?
+- [x] **Rango de la Temporada de fin de año para los tres planes**: del 1 de diciembre de 2026 al
+      8 de enero de 2027, ambas noches incluidas. Confirmado por el hotel el 2026-10-05 (§3).
 - [x] **Hora límite de llegada: 7:00 p. m.**, y check-out a las **12:00 m.** (antes 1:00 p. m.).
       Confirmado por el hotel el 2026-10-05, todo el año y para todos los planes de hospedaje (§5).
 - [ ] **Día de Calma**: confirmar si el anticipo mínimo es el mismo 50 % del hospedaje (el sitio ya
