@@ -135,8 +135,10 @@ export function esVisperaDeFestivo(fecha: FechaISO): boolean {
   const siguiente = sumarDias(fecha, 1);
   if (!esFestivo(siguiente)) return false;
   /* Si el festivo cae en sábado o domingo, la víspera es viernes o sábado:
-     ya son fin de semana por su cuenta y no hay nada que decidir. */
-  return diaDeLaSemana(siguiente) <= 4;
+     ya son fin de semana por su cuenta y no hay nada que decidir. Un festivo
+     en VIERNES sí cuenta: su víspera es un jueves, que sin esta regla se
+     cobraría entre semana (así pasaba con el 24 y el 31 de diciembre de 2026). */
+  return diaDeLaSemana(siguiente) <= 5;
 }
 
 /**

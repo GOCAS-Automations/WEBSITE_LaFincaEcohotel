@@ -94,10 +94,21 @@ describe("la víspera de un festivo", () => {
     expect(esVisperaDeFestivo("2026-09-16")).toBe(false);
   });
 
+  it("la víspera de un festivo en viernes es el jueves, y cuenta", () => {
+    /* Navidad y Año Nuevo de 2026–2027 caen en viernes: el 24 y el 31 de
+       diciembre son jueves y se llenan como fin de semana. */
+    expect(diaDeLaSemana("2026-12-24")).toBe(4);
+    expect(esVisperaDeFestivo("2026-12-24")).toBe(true);
+    expect(tipoDeNoche("2026-12-24")).toBe("fin_de_semana");
+    expect(esVisperaDeFestivo("2026-12-31")).toBe(true);
+    expect(tipoDeNoche("2026-12-31")).toBe("fin_de_semana");
+  });
+
   it("no es víspera si el festivo cae en fin de semana", () => {
-    /* Viernes Santo de 2026 (3 de abril) es viernes: el jueves 2 —que además
-       es festivo— no se marca como víspera, porque el siguiente es viernes. */
-    expect(esVisperaDeFestivo("2026-04-02")).toBe(false);
+    /* 7 de agosto de 2027 (Batalla de Boyacá) es sábado: su víspera es un
+       viernes, que ya es fin de semana por sí solo. */
+    expect(diaDeLaSemana("2027-08-07")).toBe(6);
+    expect(esVisperaDeFestivo("2027-08-06")).toBe(false);
   });
 
   it("la víspera se cobra como fin de semana (decisión del cliente)", () => {
