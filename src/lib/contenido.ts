@@ -45,6 +45,12 @@ import {
   type DocumentoLegal,
 } from "./legal";
 import type { Alojamiento, Extra, Plan } from "./tipos/basedatos";
+import {
+  temporadasDeTarifa,
+  type Temporada,
+  type TemporadaDeTarifa,
+} from "./reserva/temporadas";
+import { leerTemporadas } from "./reserva/temporadas-db";
 
 /* ===========================================================================
  * Tipos del contenido editable
@@ -1269,6 +1275,13 @@ export type TarifaDePlan = {
   precio_noche_1_persona: number | null;
   /** Días ISO en los que aplica (1 = lunes). `null` = todos. */
   dias_semana: number[] | null;
+  /**
+   * Las temporadas que cambian el precio de esta tarifa en unas fechas (las
+   * de esta cabaña y las de todas). Solo las usa el motor de `/reservar` y
+   * la línea de aviso de la ficha: los listados, el «desde» y el JSON-LD
+   * siguen enseñando la base.
+   */
+  temporadas: TemporadaDeTarifa[];
 };
 
 export type AlojamientoPublico = Alojamiento & {
@@ -1342,13 +1355,31 @@ export const getPlanes = cache(async (): Promise<Plan[]> => {
   }
 });
 
-/** Tarifas base (sin vigencia) agrupadas por cabaña. */
+/**
+ * Las temporadas que no han terminado (RLS ya esconde las pasadas al público).
+ * Si la base falla, el sitio sigue con la base: aquí solo se MIRA el precio;
+ * quien cobra (`/api/reservar`) las vuelve a leer y no sigue sin ellas.
+ */
+const getTemporadas = cache(async (): Promise<Temporada[]> => {
+  try {
+    return await leerTemporadas(crearClientePublico());
+  } catch (error) {
+    console.error(
+      "[contenido] temporadas:",
+      error instanceof Error ? error.message : error,
+    );
+    return [];
+  }
+});
+
+/** Tarifas base (sin vigencia) agrupadas por cabaña, con sus temporadas. */
 const getTarifasPorAlojamiento = cache(
   async (): Promise<Map<string, TarifaDePlan[]>> => {
     const agrupadas = new Map<string, TarifaDePlan[]>();
 
-    const [planes, filas] = await Promise.all([
+    const [planes, temporadas, filas] = await Promise.all([
       getPlanes(),
+      getTemporadas(),
       (async () => {
         try {
           const supabase = crearClientePublico();
@@ -1385,6 +1416,7 @@ const getTarifasPorAlojamiento = cache(
         precio_noche: fila.precio_noche,
         precio_noche_1_persona: fila.precio_noche_1_persona ?? null,
         dias_semana: fila.dias_semana,
+        temporadas: temporadasDeTarifa(temporadas, fila.alojamiento_id, plan.id),
       });
       agrupadas.set(fila.alojamiento_id, lista);
     }

@@ -10,6 +10,8 @@ import {
   elegibilidadDeCabana,
   planCubre,
   planesDeFinDeSemana,
+  precioDeNoche,
+  rangoDePrecios,
   type CabanaCotizable,
   type PlanCotizable,
 } from "@/lib/reserva/cotizacion";
@@ -36,6 +38,7 @@ import {
   TEXTO_ANTELACION,
   tieneFinDeSemana,
   validarRango,
+  type Noche,
   type TipoNoche,
 } from "@/lib/reserva/noches";
 import {
@@ -357,6 +360,15 @@ export function SelectorReserva({
   );
   const hayFinDeSemana = tieneFinDeSemana(noches);
   const hayEntreSemana = noches.some((noche) => noche.tipo === "entre_semana");
+  /* Las noches que se cobran con el plan de fin de semana elegido: con ellas
+     se calcula el precio que enseña cada tarjeta de plan. */
+  const fechasFinDeSemana = useMemo(
+    () =>
+      noches
+        .filter((noche) => noche.tipo === "fin_de_semana")
+        .map((noche) => noche.fecha),
+    [noches],
+  );
 
   /* --- El cupo del Día de Calma ----------------------------------------- */
 
@@ -826,6 +838,7 @@ export function SelectorReserva({
                 plan: linea.plan,
                 precio: linea.precio,
                 festivo: linea.festivo,
+                temporada: linea.temporada,
               }))
             : null,
           extras: extrasElegidos.map((extra) => ({
@@ -979,9 +992,7 @@ export function SelectorReserva({
               const activa = !soloUnDia && opcion.slug === slug;
               const precio = precioParaLista(
                 opcion,
-                noches.length > 0,
-                hayEntreSemana,
-                hayFinDeSemana,
+                noches,
                 planFinDeSemana,
                 adultos,
               );
@@ -1406,7 +1417,16 @@ export function SelectorReserva({
                   (t) => t.plan.nombre === opcion.nombre,
                 );
                 const disponible = !cabana || Boolean(tarifa);
-                const precio = tarifa?.precio_noche ?? opcion.precio_base;
+                /* El precio de ESTAS noches de fin de semana con este plan,
+                   con la misma función que cobra. Si no cuestan todas lo
+                   mismo (la estadía entra en temporada), se enseña el rango:
+                   un solo número mentiría para alguna de ellas. */
+                const precios = tarifa
+                  ? rangoDePrecios(tarifa, fechasFinDeSemana, adultos)
+                  : null;
+                const precio = precios ? precios.minimo : opcion.precio_base;
+                const varia =
+                  precios !== null && precios.minimo !== precios.maximo;
                 return (
                   <li key={opcion.nombre}>
                     <label
@@ -1438,14 +1458,24 @@ export function SelectorReserva({
                           {opcion.nombre}
                         </span>
                         <span className="font-titulo text-base font-bold text-petroleo-700">
-                          {precio !== null
-                            ? `${formatearCOP(precio)}`
-                            : "Consultar"}
+                          {precio === null
+                            ? "Consultar"
+                            : varia && precios
+                              ? `${formatearCOP(precios.minimo)} a ${formatearCOP(precios.maximo)}`
+                              : formatearCOP(precio)}
                           <span className="ml-1 text-xs font-medium text-crema-600">
                             por noche
                           </span>
                         </span>
                       </span>
+
+                      {varia ? (
+                        <span className="text-[0.75rem] leading-snug text-crema-700">
+                          Según la noche: tus fechas incluyen tarifa de
+                          temporada. Mira el detalle noche por noche en el
+                          resumen.
+                        </span>
+                      ) : null}
 
                       {opcion.incluye.length > 0 ? (
                         <ul className="mt-0.5 flex flex-col gap-1">
@@ -1813,6 +1843,13 @@ export function SelectorReserva({
                           <span className="ml-1.5 text-xs text-crema-600">
                             {linea.festivo ?? linea.plan}
                           </span>
+                          {/* El nombre de la temporada explica por qué esa
+                              noche cuesta distinto que la de al lado. */}
+                          {linea.temporada ? (
+                            <span className="block text-xs font-medium text-dorado-800">
+                              {linea.temporada}
+                            </span>
+                          ) : null}
                         </span>
                         <span className="font-medium text-petroleo-900">
                           {formatearCOP(linea.precio)}
@@ -2265,42 +2302,44 @@ function FilaExtra({
  */
 function precioParaLista(
   cabana: CabanaCotizable,
-  hayFechas: boolean,
-  hayEntreSemana: boolean,
-  hayFinDeSemana: boolean,
+  noches: Noche[],
   planFinDeSemana: string | null,
   adultos: number,
 ): { etiqueta: string } | null {
-  const precioDe = (tarifa: CabanaCotizable["tarifas"][number]) =>
-    adultos === 1 && typeof tarifa.precio_noche_1_persona === "number"
-      ? tarifa.precio_noche_1_persona
-      : tarifa.precio_noche;
-
-  if (!hayFechas) {
-    const precios = cabana.tarifas.map(precioDe);
+  if (noches.length === 0) {
+    /* Sin fechas, el «desde» del catálogo: la tarifa base. */
+    const precios = cabana.tarifas.map(
+      (tarifa) => rangoDePrecios(tarifa, [], adultos).minimo,
+    );
     if (precios.length === 0) return null;
     return { etiqueta: `desde ${formatearCOP(Math.min(...precios))}` };
   }
 
-  /* Con fechas puestas: si la estadía es de un solo tipo de noche, se puede
-     nombrar el precio exacto por noche. Si es mixta, el total manda y aquí se
-     enseña el más bajo de los dos con un «desde». */
-  const relevantes = cabana.tarifas.filter((tarifa) => {
-    if (hayFinDeSemana && planCubre(tarifa.plan, "fin_de_semana")) {
-      return !planFinDeSemana || tarifa.plan.nombre === planFinDeSemana;
+  /* Con fechas puestas: el precio de CADA noche con la tarifa que le toca,
+     calculado por `precioDeNoche()` —la misma función con que se cobra—, así
+     que una noche de temporada ya cuenta. Si todas cuestan lo mismo, se nombra
+     el precio exacto; si no (estadía mixta, o que entra en temporada), el más
+     bajo con un «desde» y el total manda. */
+  const precios: number[] = [];
+  for (const tarifa of cabana.tarifas) {
+    for (const noche of noches) {
+      const sirve =
+        noche.tipo === "fin_de_semana"
+          ? planCubre(tarifa.plan, "fin_de_semana") &&
+            (!planFinDeSemana || tarifa.plan.nombre === planFinDeSemana)
+          : planCubre(tarifa.plan, "entre_semana");
+      if (sirve) precios.push(precioDeNoche(tarifa, noche.fecha, adultos).precio);
     }
-    if (hayEntreSemana && planCubre(tarifa.plan, "entre_semana")) return true;
-    return false;
-  });
+  }
 
-  if (relevantes.length === 0) return null;
-  const precios = relevantes.map(precioDe);
+  if (precios.length === 0) return null;
   const minimo = Math.min(...precios);
+  const maximo = Math.max(...precios);
 
   return {
     etiqueta:
-      precios.length > 1 || (hayEntreSemana && hayFinDeSemana)
-        ? `desde ${formatearCOP(minimo)} / noche`
-        : `${formatearCOP(minimo)} / noche`,
+      minimo === maximo
+        ? `${formatearCOP(minimo)} / noche`
+        : `desde ${formatearCOP(minimo)} / noche`,
   };
 }

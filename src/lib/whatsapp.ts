@@ -87,6 +87,8 @@ export type NocheDelMensaje = {
   precio: number;
   /** Nombre del festivo, si esa noche lo es. */
   festivo?: string | null;
+  /** Nombre de la temporada, si el precio de esa noche es de temporada. */
+  temporada?: string | null;
 };
 
 /** Una experiencia o adicional elegido, con la noche a la que pertenece. */
@@ -198,7 +200,10 @@ export function mensajeReserva({
       const cuando = noche.festivo
         ? `${noche.fecha} (${noche.festivo})`
         : noche.fecha;
-      return `• ${cuando} — ${noche.plan}: ${formatearCOP(noche.precio)}`;
+      const plan = noche.temporada
+        ? `${noche.plan}, ${noche.temporada}`
+        : noche.plan;
+      return `• ${cuando} — ${plan}: ${formatearCOP(noche.precio)}`;
     });
     bloques.push(["Noche por noche:", ...lineas].join("\n"));
   }

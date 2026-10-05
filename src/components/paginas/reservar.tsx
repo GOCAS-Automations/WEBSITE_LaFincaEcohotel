@@ -72,8 +72,8 @@ export async function PaginaReservar() {
     LO QUE NECESITA EL MOTOR DE PRECIOS.
     No basta con el nombre del plan y un número: para saber qué noche cubre cada
     tarifa hace falta `tipo` y `dias_aplica` del plan, y para cotizar a una sola
-    persona hace falta `precio_noche_1_persona`. Ver
-    `src/lib/reserva/cotizacion.ts`.
+    persona hace falta `precio_noche_1_persona`, y para las fechas con tarifa
+    de temporada, sus `temporadas`. Ver `src/lib/reserva/cotizacion.ts`.
   */
   const cabanas: CabanaSeleccionable[] = alojamientos.map((alojamiento) => ({
     slug: alojamiento.slug,
@@ -86,6 +86,9 @@ export async function PaginaReservar() {
       },
       precio_noche: tarifa.precio_noche,
       precio_noche_1_persona: tarifa.precio_noche_1_persona,
+      /* Las temporadas viajan con su tarifa: el desglose enseña el precio de
+         cada noche con el mismo cálculo con que cobra el servidor. */
+      temporadas: tarifa.temporadas,
     })),
   }));
 
