@@ -88,15 +88,15 @@ export async function guardarPlanAction(
       const { error } = await supabase.from("planes").update(datos).eq("id", id);
       if (error) throw traducirErrorPostgres(error, CONTEXTO_ERRORES);
 
-      // Si el plan pasó a ser de día, sus precios por cabaña ya no significan
-      // nada: se retiran para que ninguna pantalla los siga sumando.
+      // Si el plan pasó a ser de día, sus precios por cabaña —y los de las
+      // temporadas— ya no significan nada: se retiran para que ninguna
+      // pantalla los siga sumando.
       let aviso = "";
       if (esDeDia) {
         const { count, error: errorTarifas } = await supabase
           .from("tarifas")
           .delete({ count: "exact" })
-          .eq("plan_id", id)
-          .is("vigencia", null);
+          .eq("plan_id", id);
         if (errorTarifas) throw new Error(errorTarifas.message);
         if ((count ?? 0) > 0) {
           aviso =
@@ -201,9 +201,19 @@ export async function eliminarPlanAction(formData: FormData) {
   const { supabase } = await requireAdmin();
   const id = String(formData.get("id") ?? "").trim();
 
-  const [conteoReservas, conteoTarifas] = await Promise.all([
+  const [conteoReservas, conteoTarifas, conteoTemporadas] = await Promise.all([
     supabase.from("reservas").select("id", { count: "exact", head: true }).eq("plan_id", id),
-    supabase.from("tarifas").select("id", { count: "exact", head: true }).eq("plan_id", id),
+    supabase
+      .from("tarifas")
+      .select("id", { count: "exact", head: true })
+      .eq("plan_id", id)
+      .is("vigencia", null),
+    /* Los precios de temporada también se borrarían en cascada, en silencio. */
+    supabase
+      .from("tarifas")
+      .select("id", { count: "exact", head: true })
+      .eq("plan_id", id)
+      .not("temporada_id", "is", null),
   ]);
 
   if (conteoReservas.error) {
@@ -211,6 +221,9 @@ export async function eliminarPlanAction(formData: FormData) {
   }
   if (conteoTarifas.error) {
     redirect(`${RUTA_LISTA}?error=${encodeURIComponent(conteoTarifas.error.message)}`);
+  }
+  if (conteoTemporadas.error) {
+    redirect(`${RUTA_LISTA}?error=${encodeURIComponent(conteoTemporadas.error.message)}`);
   }
 
   const reservas = conteoReservas.count ?? 0;
@@ -228,6 +241,15 @@ export async function eliminarPlanAction(formData: FormData) {
     redirect(
       `${RUTA_LISTA}?error=${encodeURIComponent(
         `No se puede borrar: este plan tiene precio asignado en ${tarifas} cabaña(s). Pausalo en vez de borrarlo, o primero quítale el precio en cada cabaña.`,
+      )}`,
+    );
+  }
+
+  const temporadas = conteoTemporadas.count ?? 0;
+  if (temporadas > 0) {
+    redirect(
+      `${RUTA_LISTA}?error=${encodeURIComponent(
+        `No se puede borrar: este plan tiene precio en ${temporadas} temporada(s). Pausalo en vez de borrarlo, o primero quítale ese precio en «Temporadas».`,
       )}`,
     );
   }

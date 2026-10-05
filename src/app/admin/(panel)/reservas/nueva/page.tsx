@@ -9,9 +9,9 @@ import {
   Tarjeta,
 } from "@/components/admin/ui";
 import { requireAdmin } from "@/lib/admin/auth";
+import { tarifasParaReservaManual } from "@/lib/admin/temporadas";
 import {
   extrasActivos,
-  mapaDeTarifas,
   opcionesAlojamiento,
   opcionesPlan,
 } from "@/lib/admin/datos";
@@ -25,7 +25,7 @@ export default async function PaginaNuevaReserva() {
   const [alojamientos, planes, tarifas, extras] = await Promise.all([
     opcionesAlojamiento(supabase),
     opcionesPlan(supabase),
-    mapaDeTarifas(supabase),
+    tarifasParaReservaManual(supabase),
     extrasActivos(supabase),
   ]);
 

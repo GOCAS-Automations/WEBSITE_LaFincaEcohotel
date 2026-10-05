@@ -15,7 +15,10 @@ import {
   obtenerAlojamiento,
   tarifasDeAlojamiento,
 } from "@/lib/admin/datos";
+import { temporadasQueAfectan } from "@/lib/admin/temporadas";
 import { esUuid } from "@/lib/admin/validacion";
+import { rangoLegible } from "@/lib/reserva/temporadas";
+import { hoyEnBogota } from "@/lib/utils/formato";
 
 export const metadata: Metadata = { title: "Editar cabaña" };
 export const dynamic = "force-dynamic";
@@ -36,9 +39,10 @@ export default async function PaginaEditarCabana({
   const alojamiento = await obtenerAlojamiento(supabase, id);
   if (!alojamiento) notFound();
 
-  const [galeria, tarifas] = await Promise.all([
+  const [galeria, tarifas, temporadas] = await Promise.all([
     galeriaDeAlojamiento(supabase, id),
     tarifasDeAlojamiento(supabase, id),
+    temporadasQueAfectan(supabase, id, hoyEnBogota()),
   ]);
 
   return (
@@ -66,6 +70,12 @@ export default async function PaginaEditarCabana({
             alojamiento={alojamiento}
             galeria={galeria}
             tarifas={tarifas}
+            temporadas={temporadas.map((temporada) => ({
+              id: temporada.id,
+              nombre: temporada.nombre,
+              fechas: rangoLegible(temporada),
+              soloEsta: temporada.alojamientoId !== null,
+            }))}
           />
         </CuerpoTarjeta>
       </Tarjeta>

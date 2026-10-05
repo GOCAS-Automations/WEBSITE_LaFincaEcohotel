@@ -23,6 +23,7 @@ export type ElementoNav = {
     | "candado"
     | "cabana"
     | "capas"
+    | "sol"
     | "brujula"
     | "regalo"
     | "personas"
@@ -44,6 +45,7 @@ export const NAV_PANEL: ElementoNav[] = [
   { href: "/admin/bloqueos", etiqueta: "Bloqueos", icono: "candado" },
   { href: "/admin/alojamientos", etiqueta: "Cabañas", icono: "cabana" },
   { href: "/admin/planes", etiqueta: "Planes", icono: "capas" },
+  { href: "/admin/temporadas", etiqueta: "Temporadas", icono: "sol" },
   { href: "/admin/experiencias", etiqueta: "Experiencias", icono: "brujula" },
   { href: "/admin/adicionales", etiqueta: "Adicionales", icono: "regalo" },
   { href: "/admin/contenido", etiqueta: "Contenido del sitio", icono: "texto" },
@@ -64,6 +66,7 @@ const TRAZOS: Record<ElementoNav["icono"], string> = {
   cabana: "M3 11 12 4l9 7M5.5 9.5V20h13V9.5M10 20v-5h4v5",
   capas:
     "M12 3 21 8 12 13 3 8 12 3ZM3.5 12 12 16.5 20.5 12M3.5 16 12 20.5 20.5 16",
+  sol: "M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm0-13v2m0 14v2M5.6 5.6l1.4 1.4m10 10 1.4 1.4M3 12h2m14 0h2M5.6 18.4l1.4-1.4m10-10 1.4-1.4",
   brujula:
     "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm2.8-11.8-1.6 4.6-4.6 1.6 1.6-4.6 4.6-1.6Z",
   regalo:

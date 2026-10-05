@@ -141,14 +141,26 @@ function FilaTarifa({ tarifa }: { tarifa: TarifaAdmin }) {
   );
 }
 
+/** Una temporada activa o próxima que cambia los precios de esta cabaña. */
+export type TemporadaDeLaCabana = {
+  id: string;
+  nombre: string;
+  /** «1 dic 2026 – 8 ene 2027». */
+  fechas: string;
+  /** Cierto si es solo de esta cabaña; falso si es de todas. */
+  soloEsta: boolean;
+};
+
 export function FormularioAlojamiento({
   alojamiento,
   galeria,
   tarifas,
+  temporadas = [],
 }: {
   alojamiento: Alojamiento | null;
   galeria: ImagenGaleriaAdmin[];
   tarifas: TarifaAdmin[];
+  temporadas?: TemporadaDeLaCabana[];
 }) {
   const [nombre, setNombre] = useState(alojamiento?.nombre ?? "");
   const [slug, setSlug] = useState(alojamiento?.slug ?? "");
@@ -310,6 +322,33 @@ export function FormularioAlojamiento({
             Los planes de día (los que no incluyen noche) no se listan aquí:
             llevan un solo precio para todo el hotel, que se edita en «Planes».
           </p>
+          {alojamiento ? (
+            <p className="mt-3 rounded-tarjeta bg-dorado-500/[0.08] p-3.5 text-[0.8125rem] leading-relaxed text-crema-800 ring-1 ring-dorado-500/20">
+              {temporadas.length === 0 ? (
+                <>
+                  Estos son los precios de todo el año: ninguna temporada los
+                  cambia ahora.{" "}
+                </>
+              ) : (
+                <>
+                  <span className="font-semibold">Temporadas que cambian estos precios:</span>{" "}
+                  {temporadas.map((temporada, indice) => (
+                    <span key={temporada.id}>
+                      {indice > 0 ? "; " : ""}«{temporada.nombre}» ({temporada.fechas},{" "}
+                      {temporada.soloEsta ? "solo esta cabaña" : "todas las cabañas"})
+                    </span>
+                  ))}
+                  .{" "}
+                </>
+              )}
+              <Link
+                href="/admin/temporadas"
+                className="font-semibold text-petroleo-700 underline-offset-4 hover:underline"
+              >
+                {temporadas.length === 0 ? "Crear una en «Temporadas»" : "Verlas en «Temporadas»"}
+              </Link>
+            </p>
+          ) : null}
         </div>
 
         <Divisor titulo="Fotos de la cabaña" />

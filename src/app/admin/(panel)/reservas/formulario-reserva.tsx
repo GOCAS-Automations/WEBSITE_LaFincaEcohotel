@@ -42,6 +42,7 @@ import {
   normalizarPorcentajeAnticipo,
   type PorcentajeAnticipo,
 } from "@/lib/reserva/total";
+import { precioDeNoche, type TarifaCotizable } from "@/lib/reserva/cotizacion";
 import { formatearCOP } from "@/lib/utils/formato";
 import type {
   EstadoReserva,
@@ -96,8 +97,12 @@ export function FormularioReserva({
   reserva: ReservaAdmin | null;
   alojamientos: OpcionAlojamiento[];
   planes: OpcionPlan[];
-  /** Precios base indexados por `alojamientoId|planId`. */
-  tarifas: Record<string, number>;
+  /**
+   * Las tarifas de cada cabaña × plan, con sus temporadas, indexadas por
+   * `alojamientoId|planId`. El valor sugerido sale de `precioDeNoche()`, la
+   * misma función con que cobra el sitio.
+   */
+  tarifas: Record<string, TarifaCotizable>;
   extras: Extra[];
   extrasElegidos: ExtraDeReserva[];
 }) {
@@ -225,12 +230,33 @@ export function FormularioReserva({
   /* --- El precio sugerido ----------------------------------------------- */
 
   const planElegido = planes.find((plan) => plan.id === planId) ?? null;
-  const precioNoche = esDia ? null : (tarifas[`${alojamientoId}|${planId}`] ?? null);
+  const tarifa = esDia ? null : (tarifas[`${alojamientoId}|${planId}`] ?? null);
+
+  /* Noche por noche con `precioDeNoche()`: la misma regla que el sitio
+     (temporadas incluidas, y el precio de una persona si viaja una sola). Aquí
+     el plan lo elige el equipo, no el tipo de noche: es una reserva pactada a
+     mano y el valor queda editable. */
+  const preciosPorNoche = useMemo(() => {
+    if (!tarifa) return [];
+    const adultos = Number(personas) === 1 ? 1 : 2;
+    return fechasDeNoche.map((fecha) => precioDeNoche(tarifa, fecha, adultos));
+  }, [tarifa, fechasDeNoche, personas]);
+  const precioNoche = preciosPorNoche[0]?.precio ?? tarifa?.precio_noche ?? null;
+  const mismoPrecioTodasLasNoches = preciosPorNoche.every(
+    (linea) => linea.precio === preciosPorNoche[0]?.precio,
+  );
+  const temporadasEnLaEstadia = [
+    ...new Set(
+      preciosPorNoche
+        .map((linea) => linea.temporada)
+        .filter((nombre): nombre is string => nombre !== null),
+    ),
+  ];
 
   const sugerido = esDia
     ? (planElegido?.precio_base ?? null)
-    : precioNoche !== null
-      ? precioNoche * noches
+    : tarifa
+      ? preciosPorNoche.reduce((suma, linea) => suma + linea.precio, 0)
       : null;
 
   // Mientras nadie toque el importe a mano, sigue a la tarifa.
@@ -615,8 +641,10 @@ export function FormularioReserva({
                 planElegido?.precio_base !== undefined
                 ? `Precio publicado del plan: ${formatearCOP(planElegido.precio_base)} para dos personas. Puedes cambiarlo si acordaste otro valor.`
                 : "Ese plan no tiene precio publicado. Escribe el valor acordado."
-              : precioNoche !== null
-                ? `Tarifa de esa cabaña con ese plan: ${formatearCOP(precioNoche)} por noche × ${noches} = ${formatearCOP(sugerido ?? 0)}. Puedes cambiarlo si acordaste otro precio.`
+              : tarifa && precioNoche !== null
+                ? mismoPrecioTodasLasNoches
+                  ? `Tarifa de esa cabaña con ese plan: ${formatearCOP(precioNoche)} por noche × ${noches} = ${formatearCOP(sugerido ?? 0)}${temporadasEnLaEstadia.length > 0 ? ` (${temporadasEnLaEstadia.join(", ")})` : ""}. Puedes cambiarlo si acordaste otro precio.`
+                  : `Suma noche por noche de esa cabaña con ese plan: ${formatearCOP(sugerido ?? 0)} por ${noches} noches; algunas tienen precio de ${temporadasEnLaEstadia.join(", ")}. Puedes cambiarlo si acordaste otro precio.`
                 : "Esa cabaña no tiene precio para ese plan. Escribe el valor acordado."
           }
         >

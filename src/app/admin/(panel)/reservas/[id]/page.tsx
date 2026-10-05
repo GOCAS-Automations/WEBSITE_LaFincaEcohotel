@@ -21,10 +21,10 @@ import {
 import { calcularAnticipo } from "@/lib/reserva/total";
 
 import { requireAdmin } from "@/lib/admin/auth";
+import { tarifasParaReservaManual } from "@/lib/admin/temporadas";
 import {
   extrasActivos,
   extrasDeReserva,
-  mapaDeTarifas,
   obtenerReserva,
   opcionesAlojamiento,
   opcionesPlan,
@@ -74,7 +74,7 @@ export default async function PaginaReserva({
     await Promise.all([
       opcionesAlojamiento(supabase),
       opcionesPlan(supabase),
-      mapaDeTarifas(supabase),
+      tarifasParaReservaManual(supabase),
       extrasActivos(supabase),
       extrasDeReserva(supabase, id),
       /*
