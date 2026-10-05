@@ -177,7 +177,7 @@ Todo esto está en `Preguntas_Finales_LaFinca.pdf` y en la §9 de `docs/DATOS_CL
 
 **No bloquea:**
 
-- Política de cancelación del **Día de Calma**, y si se le puede añadir jacuzzi. (El anticipo del 50 % ya lo aplica el sitio y lo dice en pantalla; falta solo que lo ratifiquen.)
+- Política de cancelación del **Día de Calma**, si se le puede añadir jacuzzi, y si tiene **hora límite de llegada** dentro de su horario de 10:00 a. m. a 5:00 p. m. (pregunta 1.4 del documento de preguntas finales; la llegada hasta las 7:00 p. m. confirmada el 2026-10-05 es la del hospedaje, no la de este plan). (El anticipo del 50 % ya lo aplica el sitio y lo dice en pantalla; falta solo que lo ratifiquen.)
 - **Revisión jurídica** de los cuatro textos legales. El cliente los aprobó el 2026-09-30 y se revisaron contra la Ley 1581 de 2012, pero no por un abogado (auditoría P-7).
 - Redacción exacta de la regla de **solo adultos** para FAQ y términos.
 - **Logo vectorial** (Santiago) y **licencia de la tipografía Intro** (Santiago). Mientras tanto van el de `public/marca/` y una tipografía equivalente.
