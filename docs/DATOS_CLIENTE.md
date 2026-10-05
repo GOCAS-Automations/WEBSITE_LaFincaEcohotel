@@ -172,8 +172,14 @@ nuestro propio sitio se ignoran.
 
 ## 5. Políticas y reglas de la casa
 
-- **Llegada:** desde la **1:00 p.m.** se pueden usar restaurante, senderos, decks y zonas sociales.
-  **Entrega de la cabaña (check-in): 3:00 p.m.** · **Check-out: 1:00 p.m.**
+- **Llegada:** desde la **1:00 p. m.** se pueden usar restaurante, senderos, decks y zonas sociales.
+  **Entrega de la cabaña (check-in): 3:00 p. m.** · **Hora límite de llegada: 7:00 p. m.** ·
+  **Check-out: 12:00 m.** Todo el año y para todos los planes de hospedaje (confirmado por el hotel
+  el **2026-10-05**: el check-out era a la 1:00 p. m. y la hora límite de llegada no existía). Se
+  escribe «12:00 m.» o «mediodía», **nunca «12:00 p. m.»**, que es ambiguo. En el código viven en
+  `SITIO.estadia` (`src/lib/sitio.ts`), de donde los leen el correo de confirmación, el JSON-LD y
+  el respaldo de los legales; la FAQ y los términos de la base se actualizaron con
+  `scripts/actualizar-horarios.mjs`.
 - **Reserva y pago:** anticipo de **mínimo el 50 %** para confirmar (el huésped elige en el sitio
   cuánto adelanta, de 50 a 100 %); el resto, antes de la llegada, por link de pago enviado con
   anticipación. En la finca **no hay datáfono ni se maneja efectivo**.
@@ -303,6 +309,8 @@ que el navegador pueda falsificar.
       de pago antes de la llegada.
 - [ ] Video: definir con Juan Camilo; sugieren embeber links de Instagram.
 - [ ] ¿Mínimo de noches en fines de semana/festivos?
+- [x] **Hora límite de llegada: 7:00 p. m.**, y check-out a las **12:00 m.** (antes 1:00 p. m.).
+      Confirmado por el hotel el 2026-10-05, todo el año y para todos los planes de hospedaje (§5).
 - [ ] **Día de Calma**: confirmar si el anticipo mínimo es el mismo 50 % del hospedaje (el sitio ya
       lo aplica y lo dice en pantalla), la política de cancelación y si se puede añadir jacuzzi.
       (Cerrado el 2026-09-15: son 1 o 2 adultos por reserva, así que no hace falta tarifa por persona
