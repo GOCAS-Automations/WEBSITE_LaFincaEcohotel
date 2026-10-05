@@ -46,10 +46,16 @@ const FAQ_ANTERIOR =
 const FAQ_NUEVA =
   "Desde la 1:00 p. m. puedes usar el restaurante, los senderos, los decks y las zonas sociales. La cabaña se entrega a las 3:00 p. m. y puedes llegar hasta las 7:00 p. m. El check-out es a las 12:00 m.";
 
-const LEGAL_ANTERIOR =
-  "Desde las 13:00 puedes usar el restaurante, los senderos, los decks y las zonas sociales. La cabaña se entrega a las 15:00 y la salida es hasta las 13:00. Los cambios de horario dependen de la disponibilidad y deben acordarse previamente.";
+/* Las dos versiones previas del párrafo: la original (salida a las 13:00) y la
+   de la primera pasada del 2026-10-05 (salida a las 12:00 m., sin la llegada). */
+const LEGAL_ANTERIORES = [
+  "Desde las 13:00 puedes usar el restaurante, los senderos, los decks y las zonas sociales. La cabaña se entrega a las 15:00 y la salida es hasta las 13:00. Los cambios de horario dependen de la disponibilidad y deben acordarse previamente.",
+  "Desde las 13:00 puedes usar el restaurante, los senderos, los decks y las zonas sociales. La cabaña se entrega a las 15:00 y la salida es hasta las 12:00 m. Los cambios de horario dependen de la disponibilidad y deben acordarse previamente.",
+];
 const LEGAL_NUEVO =
-  "Desde las 13:00 puedes usar el restaurante, los senderos, los decks y las zonas sociales. La cabaña se entrega a las 15:00 y la salida es hasta las 12:00 m. Los cambios de horario dependen de la disponibilidad y deben acordarse previamente.";
+  "Desde las 13:00 puedes usar el restaurante, los senderos, los decks y las zonas sociales. La cabaña se entrega a las 15:00, se puede llegar hasta las 19:00 y la salida es hasta las 12:00 m. Los cambios de horario dependen de la disponibilidad y deben acordarse previamente.";
+/** «Última actualización» de los términos (igual que TERMINOS_ACTUALIZADO en src/lib/sitio.ts). */
+const TERMINOS_FECHA = "2026-10-05";
 
 /* ===========================================================================
  * Utilidades
@@ -143,13 +149,20 @@ const resumen = [];
     secciones.forEach((seccion, s) => {
       (Array.isArray(seccion?.parrafos) ? seccion.parrafos : []).forEach((parrafo, p) => {
         const texto = String(parrafo ?? "").trim();
-        if (texto === LEGAL_ANTERIOR) encontrado = [s, p];
+        if (LEGAL_ANTERIORES.includes(texto)) encontrado = [s, p];
         if (texto === LEGAL_NUEVO) yaNuevo = true;
       });
     });
 
-    if (yaNuevo) {
+    if (yaNuevo && terminos.actualizado === TERMINOS_FECHA) {
       resumen.push(["legal.terminos", "ya está al día"]);
+    } else if (yaNuevo) {
+      if (ejecutar) {
+        await escribir("legal.terminos", { ...terminos, actualizado: TERMINOS_FECHA });
+        resumen.push(["legal.terminos", `fecha de actualización puesta en ${TERMINOS_FECHA}`]);
+      } else {
+        resumen.push(["legal.terminos", `se pondría la fecha de actualización en ${TERMINOS_FECHA}`]);
+      }
     } else if (encontrado) {
       if (ejecutar) {
         const [s, p] = encontrado;
@@ -158,10 +171,10 @@ const resumen = [];
             ? { ...seccion, parrafos: seccion.parrafos.map((texto, j) => (j === p ? LEGAL_NUEVO : texto)) }
             : seccion,
         );
-        await escribir("legal.terminos", { ...terminos, secciones: nuevas });
-        resumen.push(["legal.terminos", "actualizado (solo la hora de salida)"]);
+        await escribir("legal.terminos", { ...terminos, actualizado: TERMINOS_FECHA, secciones: nuevas });
+        resumen.push(["legal.terminos", `actualizado (solo el párrafo de horarios y la fecha, ${TERMINOS_FECHA})`]);
       } else {
-        resumen.push(["legal.terminos", "se ACTUALIZARÍA (solo la hora de salida)"]);
+        resumen.push(["legal.terminos", `se ACTUALIZARÍA (solo el párrafo de horarios y la fecha, ${TERMINOS_FECHA})`]);
       }
     } else {
       const seccion = secciones.find((item) => /Llegada, salida/i.test(String(item?.titulo ?? "")));

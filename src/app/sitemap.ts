@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 
 import { getAlojamientos, getUltimaModificacion } from "@/lib/contenido";
-import { DOCUMENTOS_LEGALES, LEGAL_ACTUALIZADO, SITIO } from "@/lib/sitio";
+import { DOCUMENTOS_LEGALES, LEGAL_ACTUALIZADO, SITIO, TERMINOS_ACTUALIZADO } from "@/lib/sitio";
 
 export const revalidate = 3600;
 
@@ -102,7 +102,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // la de la última revisión del TEXTO, no la del despliegue.
     ...DOCUMENTOS_LEGALES.map((documento) => ({
       url: url(documento.href),
-      lastModified: new Date(`${LEGAL_ACTUALIZADO}T00:00:00Z`),
+      lastModified: new Date(
+        `${documento.href === "/legal/terminos" ? TERMINOS_ACTUALIZADO : LEGAL_ACTUALIZADO}T00:00:00Z`,
+      ),
       changeFrequency: "yearly" as const,
       priority: 0.3,
     })),

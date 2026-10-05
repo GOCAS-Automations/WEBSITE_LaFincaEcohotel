@@ -277,6 +277,15 @@ export const DOCUMENTOS_LEGALES: readonly EnlaceLegal[] = [
  */
 export const LEGAL_ACTUALIZADO = "2026-09-30";
 
+/**
+ * Revisión propia de los términos: el 2026-10-05 cambiaron la hora de salida
+ * (12:00 m.) y se añadió la hora límite de llegada (7:00 p. m.). Va aparte de
+ * `LEGAL_ACTUALIZADO` porque esa fecha es también la VERSIÓN de la política de
+ * datos que acepta el huésped (`autorizacion_datos_version`), y esa política
+ * no cambió.
+ */
+export const TERMINOS_ACTUALIZADO = "2026-10-05";
+
 /* ---------------------------------------------------------------------------
  * Imagen social por defecto
  * ------------------------------------------------------------------------- */

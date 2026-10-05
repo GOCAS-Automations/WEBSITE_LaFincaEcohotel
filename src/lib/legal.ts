@@ -42,7 +42,7 @@
  * natural: Raquel Lenis García, NIT 66830269-5) y el cliente aprobó los
  * textos; la revisión jurídica posterior sigue pendiente.
  */
-import { LEGAL_ACTUALIZADO, SITIO } from "./sitio";
+import { LEGAL_ACTUALIZADO, SITIO, TERMINOS_ACTUALIZADO } from "./sitio";
 
 export type ClaveLegal =
   | "privacidad"
@@ -257,7 +257,7 @@ function documentosFuente(): Record<ClaveLegal, DocumentoFuente> {
       descripcion:
         "Términos y condiciones de La Finca Eco Hotel: uso del sitio, reservas, tarifas, pagos y normas de la estadía en la reserva natural.",
       ruta: "/legal/terminos",
-      actualizado: LEGAL_ACTUALIZADO,
+      actualizado: TERMINOS_ACTUALIZADO,
       secciones: [
         {
           titulo: "1. Objeto y aceptación",
@@ -306,7 +306,7 @@ function documentosFuente(): Record<ClaveLegal, DocumentoFuente> {
           titulo: "5. Llegada, salida y estadía",
           bloques: [
             p(
-              `Desde las ${SITIO.estadia.llegadaZonas} puedes usar el restaurante, los senderos, los decks y las zonas sociales. La cabaña se entrega a las ${SITIO.estadia.checkIn} y la salida es hasta las ${SITIO.estadia.texto.checkOut} Los cambios de horario dependen de la disponibilidad y deben acordarse previamente.`,
+              `Desde las ${SITIO.estadia.llegadaZonas} puedes usar el restaurante, los senderos, los decks y las zonas sociales. La cabaña se entrega a las ${SITIO.estadia.checkIn}, se puede llegar hasta las ${SITIO.estadia.llegadaHasta} y la salida es hasta las ${SITIO.estadia.texto.checkOut} Los cambios de horario dependen de la disponibilidad y deben acordarse previamente.`,
             ),
             p(
               "El restaurante atiende todos los días en el horario publicado en el sitio y es de uso exclusivo para huéspedes. El desayuno está incluido en los tres planes de hospedaje.",

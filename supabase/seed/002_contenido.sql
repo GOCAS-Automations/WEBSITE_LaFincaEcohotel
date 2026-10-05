@@ -734,7 +734,7 @@ insert into contenido (clave, valor) values
   "titulo": "Términos y condiciones",
   "entrada": "Las reglas de uso del sitio y las condiciones de la reserva y la estadía.",
   "descripcion": "Términos y condiciones de La Finca Eco Hotel: uso del sitio, reservas, tarifas, pagos y normas de la estadía en la reserva natural.",
-  "actualizado": "2026-09-30",
+  "actualizado": "2026-10-05",
   "secciones": [
     {
       "titulo": "1. Objeto y aceptación",
@@ -764,7 +764,7 @@ insert into contenido (clave, valor) values
     {
       "titulo": "5. Llegada, salida y estadía",
       "parrafos": [
-        "Desde las 13:00 puedes usar el restaurante, los senderos, los decks y las zonas sociales. La cabaña se entrega a las 15:00 y la salida es hasta las 12:00 m. Los cambios de horario dependen de la disponibilidad y deben acordarse previamente.",
+        "Desde las 13:00 puedes usar el restaurante, los senderos, los decks y las zonas sociales. La cabaña se entrega a las 15:00, se puede llegar hasta las 19:00 y la salida es hasta las 12:00 m. Los cambios de horario dependen de la disponibilidad y deben acordarse previamente.",
         "El restaurante atiende todos los días en el horario publicado en el sitio y es de uso exclusivo para huéspedes. El desayuno está incluido en los tres planes de hospedaje.",
         "La Finca es un establecimiento para adultos. No se permite el ingreso ni el alojamiento de menores de edad en ninguna de las cabañas ni en las zonas comunes, sin excepción. La reserva se entiende hecha para huéspedes mayores de dieciocho (18) años, y el incumplimiento de esta condición faculta al hotel para no prestar el servicio, sin derecho a reembolso."
       ]
