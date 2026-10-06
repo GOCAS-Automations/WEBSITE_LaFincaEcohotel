@@ -151,7 +151,17 @@ function FilaCabana({
   const ruta = `/alojamientos/${alojamiento.slug}`;
 
   return (
-    <article className="grid items-center gap-8 lg:grid-cols-[1.15fr_1fr] lg:gap-14">
+    <article
+      className={[
+        "grid items-center gap-8 lg:gap-14",
+        // El ancho más generoso (`1.15fr`) tiene que caer SIEMPRE en la columna
+        // de la foto. Las columnas se asignan por el orden visual (`order`), no
+        // por el del código: en las filas invertidas el texto pasa a ser la
+        // primera columna, y con un solo `grid-cols` fijo la foto caía en la
+        // estrecha (`1fr`) y salía ~13 % más pequeña que las demás.
+        invertida ? "lg:grid-cols-[1fr_1.15fr]" : "lg:grid-cols-[1.15fr_1fr]",
+      ].join(" ")}
+    >
       {/*
         La foto enlaza a la ficha —en móvil, tocarla es el gesto natural— pero
         con `tabIndex={-1}`: quien navega con teclado no tiene que pasar dos
@@ -164,7 +174,9 @@ function FilaCabana({
         tabIndex={-1}
         className={[
           "group relative block overflow-hidden bg-crema-200 shadow-[var(--shadow-elevada)]",
-          "aspect-4/3 rounded-[var(--radius-generoso)] sm:aspect-16/10",
+          // Misma proporción a todos los anchos: las fotos web miden 1448×923
+          // (1,57), casi exactamente 16:10, así que no se recorta nada útil.
+          "aspect-16/10 rounded-[var(--radius-generoso)]",
           invertida
             ? "rounded-br-[5rem] lg:order-2"
             : "rounded-bl-[5rem] lg:order-1",
