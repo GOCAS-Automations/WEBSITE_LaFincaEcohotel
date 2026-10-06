@@ -76,6 +76,10 @@ export const MOTIVO_TODAS_OCUPADAS =
   "ocupado: esa noche no queda ninguna cabaña libre";
 export const MOTIVO_TRAS_OCUPADA =
   "no se puede salir ese día: antes hay una noche ocupada";
+export const MOTIVO_TRAS_TODAS_OCUPADAS =
+  "no se puede salir ese día: antes hay una noche sin ninguna cabaña libre";
+export const MOTIVO_TRAS_NO_OFRECIDA =
+  "no se puede salir ese día: antes hay una noche que esta cabaña no vende";
 export const MOTIVO_SIN_CUPO = "sin cupo: ese día ya está completo";
 
 /** «no disponible: la Cabaña 02 no se ofrece para noches entre semana». */
@@ -87,13 +91,46 @@ export function motivoNoOfrecida(
   return `no disponible: ${quien} no se ofrece para ${etiquetaTipoNoche(tipo, true)}`;
 }
 
+/**
+ * El motivo de los días que quedan DETRÁS de una noche que la cabaña no vende,
+ * mientras se elige la salida: «no se puede salir ese día: antes hay una noche
+ * entre semana, y la Cabaña 02 no la vende».
+ *
+ * Antes se decía «antes hay una noche ocupada», que era falso: nadie la tenía
+ * reservada, simplemente esa cabaña no se ofrece esa noche.
+ */
+export function motivoTrasNoOfrecida(
+  tipo: TipoNoche,
+  nombreCabana?: string | null,
+): string {
+  const quien = nombreCabana ? `la ${nombreCabana}` : "esta cabaña";
+  return `no se puede salir ese día: antes hay una ${etiquetaTipoNoche(tipo)}, y ${quien} no la vende`;
+}
+
 /* ===========================================================================
  * Bloqueos de noche
  * ======================================================================== */
 
 export type CausaBloqueo = "ocupada" | "no_ofrecida";
 
-export type Bloqueo = { causa: CausaBloqueo; motivo: string };
+export type Bloqueo = {
+  causa: CausaBloqueo;
+  /** Por qué no se puede dormir ESA noche (llegada, o validar fechas). */
+  motivo: string;
+  /**
+   * Por qué no se puede SALIR después de esa noche, mientras se elige la
+   * salida. Sin él se usa el genérico de la causa.
+   */
+  motivoTras?: string;
+};
+
+/** El motivo de los días posteriores al tope de salida, según qué lo puso. */
+export function motivoTrasBloqueo(bloqueo: Bloqueo | null): string {
+  if (bloqueo?.motivoTras) return bloqueo.motivoTras;
+  return bloqueo?.causa === "no_ofrecida"
+    ? MOTIVO_TRAS_NO_OFRECIDA
+    : MOTIVO_TRAS_OCUPADA;
+}
 
 /** Dice si esa noche está bloqueada (y por qué) o `null` si está libre. */
 export type BloqueoDeNoche = (noche: FechaISO) => Bloqueo | null;
@@ -142,13 +179,23 @@ export function bloqueoDeCabana({
   const conjunto = new Set(ocupadas);
   const tipos = tiposOfrecidos ? new Set(tiposOfrecidos) : null;
   return (noche) => {
-    if (conjunto.has(noche)) return { causa: "ocupada", motivo: motivoOcupada };
+    if (conjunto.has(noche)) {
+      return {
+        causa: "ocupada",
+        motivo: motivoOcupada,
+        motivoTras:
+          motivoOcupada === MOTIVO_TODAS_OCUPADAS
+            ? MOTIVO_TRAS_TODAS_OCUPADAS
+            : MOTIVO_TRAS_OCUPADA,
+      };
+    }
     if (tipos) {
       const tipo = tipoDeNoche(noche);
       if (!tipos.has(tipo)) {
         return {
           causa: "no_ofrecida",
           motivo: motivoNoOfrecida(tipo, nombreCabana),
+          motivoTras: motivoTrasNoOfrecida(tipo, nombreCabana),
         };
       }
     }
@@ -170,7 +217,7 @@ export function bloqueoComun(
   if (bloqueos.length === 0) return SIN_BLOQUEO;
   return (noche) =>
     bloqueos.every((bloqueo) => bloqueo(noche) !== null)
-      ? { causa: "ocupada", motivo }
+      ? { causa: "ocupada", motivo, motivoTras: MOTIVO_TRAS_TODAS_OCUPADAS }
       : null;
 }
 
@@ -244,9 +291,34 @@ export type EstadoDia = {
    * un día que simplemente ya pasó.
    */
   ocupado: boolean;
+  /**
+   * Por qué está tachado, cuando `ocupado`: la noche está **ocupada**, la
+   * cabaña **no la vende** (la 02 entre semana), el Día de Calma está **sin
+   * cupo**, o —eligiendo la salida— el día queda detrás de una noche de
+   * alguna de las dos primeras clases (`tras_ocupada`, `tras_no_ofrecida`).
+   * Sirve para que la explicación de la pantalla no llame «ocupada» a una
+   * noche que nadie tiene. `null` si no está tachado.
+   */
+  causa: CausaTachado | null;
 };
 
-const LIBRE: EstadoDia = { activable: true, motivo: null, ocupado: false };
+export type CausaTachado =
+  | CausaBloqueo
+  | "sin_cupo"
+  | "tras_ocupada"
+  | "tras_no_ofrecida";
+
+const LIBRE: EstadoDia = {
+  activable: true,
+  motivo: null,
+  ocupado: false,
+  causa: null,
+};
+
+/** Apagado por el calendario en sí (pasado, antelación, antes de la llegada). */
+function apagado(motivo: string): EstadoDia {
+  return { activable: false, motivo, ocupado: false, causa: null };
+}
 
 /** La primera fecha elegible: `minima` si va por delante de hoy. */
 export function primeraElegible(
@@ -281,6 +353,12 @@ export function evaluadorDeDias(
   estado: (dia: FechaISO) => EstadoDia;
   /** Última salida posible mientras se elige la salida; si no, `null`. */
   tope: FechaISO | null;
+  /**
+   * Qué puso el tope: una noche **ocupada** o una que la cabaña **no vende**.
+   * `null` si no hay tope. Para que la ayuda diga la verdad: «como tarde el
+   * lunes: esa noche la Cabaña 02 no la vende», no «ya no está libre».
+   */
+  causaTope: CausaBloqueo | null;
   primera: FechaISO;
 } {
   const { hoy } = reglas;
@@ -289,37 +367,49 @@ export function evaluadorDeDias(
   const primera = primeraElegible(hoy, reglas.minima);
   const salidaEnCurso = eligiendoSalida(fase);
   const tope = salidaEnCurso ? topeDeSalida(fase.entrada, bloqueo) : null;
+  const bloqueoDelTope = tope !== null ? bloqueo(tope) : null;
+  const trasElTope: EstadoDia = {
+    activable: false,
+    motivo: motivoTrasBloqueo(bloqueoDelTope),
+    ocupado: true,
+    causa:
+      bloqueoDelTope?.causa === "no_ofrecida" ? "tras_no_ofrecida" : "tras_ocupada",
+  };
 
   const estado = (dia: FechaISO): EstadoDia => {
-    if (dia < hoy) return { activable: false, motivo: MOTIVO_PASADO, ocupado: false };
+    if (dia < hoy) return apagado(MOTIVO_PASADO);
 
     if (salidaEnCurso) {
-      if (dia <= fase.entrada) {
-        return { activable: false, motivo: MOTIVO_ANTES_DE_LLEGADA, ocupado: false };
-      }
-      if (tope !== null && dia > tope) {
-        return { activable: false, motivo: MOTIVO_TRAS_OCUPADA, ocupado: true };
-      }
+      if (dia <= fase.entrada) return apagado(MOTIVO_ANTES_DE_LLEGADA);
+      if (tope !== null && dia > tope) return trasElTope;
       return LIBRE;
     }
 
-    if (dia < primera) {
-      return { activable: false, motivo: MOTIVO_SIN_ANTELACION, ocupado: false };
-    }
+    if (dia < primera) return apagado(MOTIVO_SIN_ANTELACION);
 
     if (fase.diaUnico) {
       return sinCupo(dia)
-        ? { activable: false, motivo: MOTIVO_SIN_CUPO, ocupado: true }
+        ? { activable: false, motivo: MOTIVO_SIN_CUPO, ocupado: true, causa: "sin_cupo" }
         : LIBRE;
     }
 
     const bloqueada = bloqueo(dia);
     return bloqueada
-      ? { activable: false, motivo: bloqueada.motivo, ocupado: true }
+      ? {
+          activable: false,
+          motivo: bloqueada.motivo,
+          ocupado: true,
+          causa: bloqueada.causa,
+        }
       : LIBRE;
   };
 
-  return { estado, tope, primera };
+  return {
+    estado,
+    tope,
+    causaTope: bloqueoDelTope?.causa ?? null,
+    primera,
+  };
 }
 
 /* ===========================================================================

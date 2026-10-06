@@ -15,6 +15,7 @@ import {
   MOTIVO_SIN_CUPO,
   MOTIVO_TODAS_OCUPADAS,
   MOTIVO_TRAS_OCUPADA,
+  MOTIVO_TRAS_TODAS_OCUPADAS,
   nochesBloqueadas,
   repartirPorMes,
   sumarMeses,
@@ -81,6 +82,7 @@ describe("llegada: un día con la noche ocupada no puede ser entrada", () => {
       activable: true,
       motivo: null,
       ocupado: false,
+      causa: null,
     });
   });
 
@@ -298,6 +300,63 @@ describe("Cabaña 02: solo noches de fin de semana o festivo", () => {
     ).toMatchObject({ valido: false, causa: "no_ofrecida", fecha: "2026-10-05" });
   });
 
+  /*
+    EL CASO DE LA AUDITORÍA (2026-10-05): llegada el domingo 25/10/2026. La
+    noche del lunes 26 la 02 no la vende, así que el tope de salida es el 26.
+    El martes 27 decía «antes hay una noche ocupada», y nadie la tenía.
+  */
+  it("tras una noche que la 02 no vende, el motivo lo dice así y no «ocupada»", () => {
+    const evaluador = evaluadorDeDias(
+      { entrada: "2026-10-25", salida: "" },
+      reglas({ bloqueo: DOS }),
+    );
+    expect(evaluador.tope).toBe("2026-10-26");
+    expect(evaluador.causaTope).toBe("no_ofrecida");
+    expect(evaluador.estado("2026-10-26").activable).toBe(true);
+    const martes = evaluador.estado("2026-10-27");
+    expect(martes).toEqual({
+      activable: false,
+      ocupado: true,
+      causa: "tras_no_ofrecida",
+      motivo:
+        "no se puede salir ese día: antes hay una noche entre semana, y la Cabaña 02 no la vende",
+    });
+    expect(martes.motivo).not.toMatch(/ocupad/);
+  });
+
+  it("sin nombre de cabaña, el motivo genérico tampoco habla de ocupación", () => {
+    const sinNombre = bloqueoDeCabana({ ocupadas: [], tiposOfrecidos: ["fin_de_semana"] });
+    const estado = evaluadorDeDias(
+      { entrada: "2026-10-25", salida: "" },
+      reglas({ bloqueo: sinNombre }),
+    ).estado("2026-10-28");
+    expect(estado.motivo).toBe(
+      "no se puede salir ese día: antes hay una noche entre semana, y esta cabaña no la vende",
+    );
+  });
+
+  it("si lo que corta es una reserva, sigue diciendo «ocupada»", () => {
+    const dosConReserva = bloqueoDeCabana({
+      ocupadas: ["2026-10-24"],
+      tiposOfrecidos: ["fin_de_semana"],
+      nombreCabana: "Cabaña 02",
+    });
+    const evaluador = evaluadorDeDias(
+      { entrada: "2026-10-23", salida: "" },
+      reglas({ bloqueo: dosConReserva }),
+    );
+    expect(evaluador.causaTope).toBe("ocupada");
+    expect(evaluador.estado("2026-10-25")).toMatchObject({
+      causa: "tras_ocupada",
+      motivo: MOTIVO_TRAS_OCUPADA,
+    });
+  });
+
+  it("al llegar, un martes de la 02 se marca «no_ofrecida» y uno reservado «ocupada»", () => {
+    expect(llegada("2026-10-06", { bloqueo: DOS }).causa).toBe("no_ofrecida");
+    expect(llegada("2026-10-10").causa).toBe("ocupada");
+  });
+
   it("una noche ocupada se nombra como ocupada aunque además sea entre semana", () => {
     const dosOcupada = bloqueoDeCabana({
       ocupadas: ["2026-10-06"],
@@ -316,6 +375,7 @@ describe("portada sin cabaña: solo se tacha si TODAS están bloqueadas", () => 
     expect(comun("2026-10-10")).toEqual({
       causa: "ocupada",
       motivo: MOTIVO_TODAS_OCUPADAS,
+      motivoTras: MOTIVO_TRAS_TODAS_OCUPADAS,
     });
     expect(comun("2026-10-11")).toBeNull();
   });
@@ -346,7 +406,12 @@ describe("Día de Calma: se tachan los días sin cupo, no las noches ocupadas", 
       { entrada: "", salida: "", diaUnico: true },
       reglas({ sinCupo }),
     ).estado("2026-10-10");
-    expect(estado).toEqual({ activable: false, motivo: MOTIVO_SIN_CUPO, ocupado: true });
+    expect(estado).toEqual({
+      activable: false,
+      motivo: MOTIVO_SIN_CUPO,
+      ocupado: true,
+      causa: "sin_cupo",
+    });
   });
 
   it("una noche ocupada de cabaña no afecta al Día de Calma", () => {

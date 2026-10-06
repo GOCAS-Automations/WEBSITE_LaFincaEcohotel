@@ -479,6 +479,11 @@ export function CalendarioFechas({
   const estadoDeDia = evaluador.estado;
   /** Última salida posible mientras se elige la salida (o `null`). */
   const tope = evaluador.tope;
+  /* Qué puso ese tope: una noche reservada o una que la cabaña no vende (la
+     02 entre semana). No es lo mismo y la ayuda no puede decir «ocupada»
+     de una noche que nadie tiene. */
+  const topeNoOfrecido = evaluador.causaTope === "no_ofrecida";
+  const estaCabana = nombreCabana ? `la ${nombreCabana}` : "esta cabaña";
 
   /* --- Selección -------------------------------------------------------- */
 
@@ -589,11 +594,19 @@ export function CalendarioFechas({
   const semanas = semanasDelMes(mes);
   /* ¿Hay algo tachado por ocupación en el mes que se ve? Entonces se explica
      qué significa el tachado, debajo de la rejilla. */
-  const hayOcupados = semanas.some((semana) =>
-    semana.some(
-      (dia) => dia.slice(0, 7) === mes.slice(0, 7) && estadoDeDia(dia).ocupado,
+  const causasTachadas = new Set(
+    semanas.flatMap((semana) =>
+      semana
+        .filter((dia) => dia.slice(0, 7) === mes.slice(0, 7))
+        .map((dia) => estadoDeDia(dia).causa)
+        .filter((causa) => causa !== null),
     ),
   );
+  const hayOcupados = causasTachadas.size > 0;
+  /* Eligiendo la llegada, ¿lo tachado es solo lo que la cabaña no vende? */
+  const soloNoOfrecidas =
+    causasTachadas.has("no_ofrecida") && !causasTachadas.has("ocupada");
+  const algunaNoOfrecida = causasTachadas.has("no_ofrecida");
 
   /* La ayuda de arriba de la rejilla, según la fase. */
   const ayuda = diaUnico
@@ -604,9 +617,13 @@ export function CalendarioFechas({
         : "Elige el día de la visita. Es un día completo, sin dormir."
     : eligiendoSalida
       ? tope !== null && tope <= entrada
-        ? "Esa llegada ya no está libre. Borra las fechas y elige otra."
+        ? topeNoOfrecido
+          ? `Esa noche ${estaCabana} no la vende. Borra las fechas y elige otra llegada.`
+          : "Esa llegada ya no está libre. Borra las fechas y elige otra."
         : tope !== null
-          ? `Ahora elige el día de salida. Como tarde, el ${formatearFechaConDia(tope)}: esa noche ya no está libre.`
+          ? topeNoOfrecido
+            ? `Ahora elige el día de salida. Como tarde, el ${formatearFechaConDia(tope)}: esa noche ${estaCabana} no la vende.`
+            : `Ahora elige el día de salida. Como tarde, el ${formatearFechaConDia(tope)}: esa noche ya no está libre.`
           : "Ahora elige el día de salida. Cuentan las noches, no los días: si sales el sábado, el sábado no se cobra."
       : primera > hoy
         ? `Elige el día de llegada, ${TEXTO_ANTELACION}: a cada noche le ponemos su tarifa. Para llegar hoy mismo, escríbenos por WhatsApp.`
@@ -975,8 +992,14 @@ export function CalendarioFechas({
               {diaUnico
                 ? "Tachado: ese día ya no tiene cupo."
                 : eligiendoSalida
-                  ? "Tachado: para salir ese día habría que pasar una noche ocupada."
-                  : "Tachado: esa noche ya está ocupada. Sí puedes llegar el día en que otro huésped sale."}
+                  ? topeNoOfrecido
+                    ? `Tachado: para salir ese día habría que pasar una noche que ${estaCabana} no vende.`
+                    : "Tachado: para salir ese día habría que pasar una noche ocupada."
+                  : soloNoOfrecidas
+                    ? `Tachado: noches que ${estaCabana} no vende.`
+                    : algunaNoOfrecida
+                      ? `Tachado: noches ocupadas o que ${estaCabana} no vende. Sí puedes llegar el día en que otro huésped sale.`
+                      : "Tachado: esa noche ya está ocupada. Sí puedes llegar el día en que otro huésped sale."}
             </p>
           ) : null}
 
