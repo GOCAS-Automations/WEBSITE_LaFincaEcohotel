@@ -593,17 +593,18 @@ export async function PaginaInicio() {
 
               {/*
                 CUATRO planes, no tres: a los tres de hospedaje se suma el Día
-                de Calma, que no incluye noche. En `lg` van los cuatro en fila;
-                en tabletas, dos y dos. El destacado es el Estándar, que es el
-                que más se vende de viernes a domingo.
+                de Calma, que no incluye noche. Desde `xl` van los cuatro en
+                fila; hasta ahí, dos y dos (a 1024 px, cuatro columnas dejaban
+                tarjetas de 200 px). El destacado es el Estándar, que es el que
+                más se vende de viernes a domingo.
               */}
-              <ul className={`${RITMO.trasTitulo} grid items-stretch gap-5 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6`}>
+              <ul className={`${RITMO.trasTitulo} ${REJILLA.lista}`}>
                 {planes.map((entrada, indice) => (
                   <Revelar
                     key={entrada.plan.id}
                     como="li"
-                    retraso={(indice % 3) * 90}
-                    className="h-full"
+                    retraso={(indice % 4) * 90}
+                    className={REJILLA.cuarto}
                   >
                     <TarjetaPlan
                       plan={entrada.plan}

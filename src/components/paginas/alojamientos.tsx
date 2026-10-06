@@ -77,7 +77,7 @@ export async function PaginaAlojamientos() {
         */}
         <ColibriesSueltos tono="claro" />
         <RamaBotanica
-          className="absolute top-[12%] right-[-4%] hidden w-52 text-oliva-400/25 lg:block"
+          className="absolute top-[12%] right-[-4%] hidden w-52 text-oliva-400/25 2xl:block"
           ritmo="lenta"
           espejo
         />
@@ -220,7 +220,7 @@ function FilaCabana({
         ) : null}
 
         {amenidades.length > 0 ? (
-          <ul className="mt-1 grid gap-2 sm:grid-cols-2">
+          <ul className="mt-1 grid gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
             {amenidades.map((amenidad) => (
               <li
                 key={amenidad}

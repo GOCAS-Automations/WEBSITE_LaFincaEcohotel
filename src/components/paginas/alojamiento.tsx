@@ -13,7 +13,12 @@ import { TarjetaPlan } from "@/components/sitio/tarjeta-plan";
 import { Boton } from "@/components/ui/boton";
 import { Galeria } from "@/components/ui/galeria";
 import { Revelar } from "@/components/ui/revelar";
-import { EncabezadoSeccion, RITMO, Seccion } from "@/components/ui/seccion";
+import {
+  EncabezadoSeccion,
+  REJILLA,
+  RITMO,
+  Seccion,
+} from "@/components/ui/seccion";
 import {
   getAlojamientos,
   getContacto,
@@ -190,13 +195,16 @@ export async function PaginaAlojamiento({
             descripcion="El precio depende del plan, no de la cabaña: elige el nivel de servicio que quieres."
           />
 
-          <ul className={`${RITMO.trasTitulo} grid items-stretch gap-6 lg:grid-cols-3`}>
+          {/* `REJILLA`: la Cabaña 02 solo tiene el plan Estándar, y en una
+              rejilla de tres columnas quedaba pegado a la izquierda bajo un
+              título centrado. */}
+          <ul className={`${RITMO.trasTitulo} ${REJILLA.lista}`}>
             {alojamiento.tarifas.map((tarifa, indice) => (
               <Revelar
                 key={tarifa.plan.id}
                 como="li"
-                retraso={indice * 90}
-                className="h-full"
+                retraso={(indice % 3) * 90}
+                className={REJILLA.tercio}
               >
                 <TarjetaPlan
                   plan={tarifa.plan}
@@ -240,13 +248,13 @@ export async function PaginaAlojamiento({
             alineacion="izquierda"
           />
 
-          <ul className={`${RITMO.trasTitulo} grid gap-6 sm:grid-cols-2 lg:grid-cols-3`}>
+          <ul className={`${RITMO.trasTitulo} ${REJILLA.lista}`}>
             {otras.map((otra, indice) => (
               <Revelar
                 key={otra.id}
                 como="li"
-                retraso={indice * 90}
-                className="h-full"
+                retraso={(indice % 3) * 90}
+                className={REJILLA.tercio}
               >
                 <TarjetaCabana alojamiento={otra} />
               </Revelar>

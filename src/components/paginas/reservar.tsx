@@ -153,6 +153,10 @@ export async function PaginaReservar() {
             `p-4` en vez de `p-5` y el número a 1.75rem. Con cinco tarjetas y
             dos columnas la última queda sola en su fila: `sm:col-span-2` la
             deja a lo ancho, que se lee como un cierre y no como un hueco.
+            Entre `lg` y `xl` van en UNA columna: la de texto mide ahí unos
+            440 px y en dos columnas cada paso se quedaba en 149 px. Ojo: el
+            `col-span-2` de la última tiene que volver a 1 en ese tramo, o
+            crea una segunda columna implícita.
           */}
           <div className="flex flex-col justify-center gap-5">
             <p className="text-base leading-relaxed text-crema-700">
@@ -160,7 +164,7 @@ export async function PaginaReservar() {
             </p>
 
             {contenido.pasos.length > 0 ? (
-              <ol className="grid gap-3 sm:grid-cols-2">
+              <ol className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
                 {contenido.pasos.map((paso, indice) => (
                   <Revelar
                     key={paso.titulo}
@@ -169,7 +173,7 @@ export async function PaginaReservar() {
                     className={
                       indice === contenido.pasos.length - 1 &&
                       contenido.pasos.length % 2 === 1
-                        ? "sm:col-span-2"
+                        ? "sm:col-span-2 lg:col-span-1 xl:col-span-2"
                         : undefined
                     }
                   >
