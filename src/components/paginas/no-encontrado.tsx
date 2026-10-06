@@ -24,8 +24,9 @@ import { enlaceWhatsapp } from "@/lib/whatsapp";
  * SIN FOTO desde el 2026-10-06. Era una foto de las zonas comunes metida en un
  * cuadrado con `object-contain`, que la dejaba con franjas vacías y no decía
  * nada de «te perdiste». La identidad la ponen ahora la neblina de marca y un
- * «404» grande y tenue en la tipografía de títulos. El campo «imagen» de esta
- * sección en el panel queda sin uso.
+ * «404» grande y tenue en la tipografía de títulos. El campo «imagen» se
+ * retiró también del panel, del tipo, del respaldo y del seed, y de la base se
+ * quitó con `scripts/quitar-imagen-404.mjs`.
  */
 export async function ContenidoNoEncontrado() {
   const [contenido, contacto] = await Promise.all([

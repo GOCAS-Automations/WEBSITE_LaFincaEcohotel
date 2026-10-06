@@ -628,21 +628,6 @@ export function FormularioNoEncontrado({ valor }: { valor: Valor }) {
             maxLength={200}
           />
         </Campo>
-        <Campo etiqueta="Foto">
-          <CampoImagen
-            name="imagen"
-            urlInicial={texto(valor, "imagen")}
-            proporcion="apaisada"
-          />
-        </Campo>
-        <Campo etiqueta="Descripción de la foto" htmlFor="ne_alt">
-          <Entrada
-            id="ne_alt"
-            name="imagen_alt"
-            defaultValue={texto(valor, "imagen_alt")}
-            maxLength={300}
-          />
-        </Campo>
       </div>
     </FormularioAccion>
   );

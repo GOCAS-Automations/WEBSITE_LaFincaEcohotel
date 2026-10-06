@@ -332,8 +332,6 @@ export type ContenidoNoEncontrado = {
   mensaje: string;
   cta_texto: string;
   cta_href: string;
-  imagen: string;
-  imagen_alt: string;
 };
 
 /* ===========================================================================
@@ -1034,8 +1032,6 @@ const RESPALDO_NO_ENCONTRADO: ContenidoNoEncontrado = {
     "La dirección que buscas no existe o cambió de lugar. Vuelve al inicio o escríbenos por WhatsApp y te orientamos.",
   cta_texto: "Volver al inicio",
   cta_href: "/",
-  imagen: ZONAS_COMUNES[3].url,
-  imagen_alt: ZONAS_COMUNES[3].alt,
 };
 
 /* ===========================================================================

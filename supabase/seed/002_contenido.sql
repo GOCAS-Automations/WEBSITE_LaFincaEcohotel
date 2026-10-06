@@ -668,9 +668,7 @@ insert into contenido (clave, valor) values
   "titulo": "Esta página se perdió en la neblina",
   "mensaje": "La dirección que buscas no existe o cambió de lugar. Vuelve al inicio o escríbenos por WhatsApp y te orientamos.",
   "cta_texto": "Volver al inicio",
-  "cta_href": "/",
-  "imagen": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/03.webp",
-  "imagen_alt": "Deck de inmersión metálico suspendido entre los árboles del bosque de niebla"
+  "cta_href": "/"
 }$json$::jsonb),
 
 ('legal.privacidad', $json${

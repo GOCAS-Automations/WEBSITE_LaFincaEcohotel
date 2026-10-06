@@ -4141,3 +4141,12 @@ Cabaña 01 768, planes 1024, `/reservar` 1024, galería 390, legales 1920, confi
 Servidores locales cerrados. En la última pasada los avatares de Google fallaban en Chromium con
 `ERR_BLOCKED_BY_ORB` (Google limitó al equipo tras cientos de cargas); con `curl` responden 200 y en la
 primera pasada cargaban: no es del código.
+
+### 2026-10-06 — Restos de la foto de la 404 retirados
+
+Se quitaron `imagen` e `imagen_alt` de la 404: tipo `ContenidoNoEncontrado`, respaldo, formulario y acción
+del panel, seed (regenerado con `npm run seed:contenido`) y `docs/CMS_CLAVES.md`. En la base real, la fila
+`no_encontrado` se limpió con `scripts/quitar-imagen-404.mjs` (simulacro por defecto, `--ejecutar` para
+escribir; idempotente; titular, mensaje y botón intactos). La foto era `web/zonas-comunes/03.webp` y **no se
+borró del bucket**: sigue en uso en las claves `galeria`, `lugar` y `home.planes`, y en `src/lib/fotos.ts`
+(`ZONAS_COMUNES[3]`, `fondoBosque`). `npm run imagenes:limpiar` en simulacro: 0 huérfanos.

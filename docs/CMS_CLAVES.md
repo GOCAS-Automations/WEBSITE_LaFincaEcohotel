@@ -636,11 +636,12 @@ pueda publicar un aviso puntual desde el panel; vacío, el bloque no se pinta.
   "titulo": "Esta página se perdió en la neblina",
   "mensaje": "…",
   "cta_texto": "Volver al inicio",
-  "cta_href": "/",
-  "imagen": "https://…",
-  "imagen_alt": "…"
+  "cta_href": "/"
 }
 ```
+
+La página 404 ya no lleva foto (2026-10-06): se quitaron `imagen` e
+`imagen_alt` del tipo, del respaldo, del panel y de la base.
 
 Al editarla hay que revalidar también `/_not-found`:
 

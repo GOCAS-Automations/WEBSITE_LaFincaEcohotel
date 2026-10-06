@@ -452,8 +452,6 @@ export async function guardarNoEncontradoAction(
         mensaje: textoOpcional(formData, "mensaje", 600) ?? "",
         cta_texto: textoOpcional(formData, "cta_texto", 60) ?? "",
         cta_href: textoOpcional(formData, "cta_href", 200) ?? "",
-        imagen: urlImagenOpcional(formData, "imagen"),
-        imagen_alt: textoOpcional(formData, "imagen_alt", 300) ?? "",
       },
       "reservar",
     );
