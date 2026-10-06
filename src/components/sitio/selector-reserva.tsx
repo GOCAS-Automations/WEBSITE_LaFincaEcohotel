@@ -2027,8 +2027,11 @@ function BloqueTotales({ pago }: { pago: ResumenDePago }) {
   return (
     <div className="flex flex-col gap-2 border-t border-crema-200 pt-4">
       <p className="flex items-baseline justify-between gap-3">
+        {/* «Total», no «Total estimado»: el desglose ya trae festivos y
+            tarifas diferenciales, y es exactamente lo que se cobra (la nota
+            de las tarifas lo dice debajo). */}
         <span className="font-titulo text-sm font-semibold text-crema-700">
-          Total estimado
+          Total
         </span>
         <span className="font-titulo text-2xl font-extrabold text-petroleo-700">
           {formatearCOP(pago.total)}

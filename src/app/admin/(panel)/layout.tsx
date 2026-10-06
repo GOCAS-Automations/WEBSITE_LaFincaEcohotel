@@ -47,11 +47,17 @@ export default async function LayoutPanel({
             >
               Ver el sitio
             </Link>
-            {/* «Mi cuenta» (con «Cambiar mi contraseña») para cualquier rol.
-                En escritorio se lee el correo; en el celular, la palabra. */}
+            <span
+              className="hidden max-w-[14rem] truncate text-[0.8125rem] text-crema-600 lg:inline"
+              title={usuario.email ?? ""}
+            >
+              {usuario.email}
+            </span>
+            {/* «Mi cuenta» (con «Cambiar mi contraseña») para cualquier rol,
+                con esas mismas palabras en el celular y en el computador:
+                es como la nombran Usuarios y la guía. */}
             <Link
               href="/admin/cuenta"
-              title={`Mi cuenta${usuario.email ? ` · ${usuario.email}` : ""}`}
               className="inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 py-1.5 text-[0.8125rem] font-semibold text-crema-700 transition-colors hover:bg-crema-900/[0.06] hover:text-crema-900"
             >
               <svg
@@ -67,10 +73,7 @@ export default async function LayoutPanel({
                 <circle cx="12" cy="8" r="3.5" />
                 <path d="M5 20a7 7 0 0 1 14 0" />
               </svg>
-              <span className="md:hidden">Mi cuenta</span>
-              <span className="hidden max-w-[14rem] truncate font-normal md:inline">
-                {usuario.email ?? "Mi cuenta"}
-              </span>
+              Mi cuenta
             </Link>
             <form action={salirAction}>
               <BotonEnviar

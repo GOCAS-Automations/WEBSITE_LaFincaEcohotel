@@ -31,12 +31,12 @@ export default async function PaginaMiCuenta() {
       <div className="space-y-6">
         <Tarjeta>
           <CuerpoTarjeta>
-            <dl className="grid gap-4 sm:grid-cols-2">
+            <dl className="grid gap-4">
               <div className="min-w-0">
                 <dt className="text-[0.75rem] font-semibold uppercase tracking-[0.08em] text-crema-600">
                   Correo
                 </dt>
-                <dd className="mt-1 truncate text-[0.9375rem] font-semibold text-crema-900">
+                <dd className="mt-1 text-[0.9375rem] font-semibold text-crema-900 [overflow-wrap:anywhere]">
                   {correo || "Sin correo"}
                 </dd>
               </div>
