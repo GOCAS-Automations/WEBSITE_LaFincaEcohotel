@@ -72,7 +72,7 @@ export async function crearUsuarioAction(
 
     refrescarPanel(RUTA);
     return estadoOk(
-      `Cuenta creada para ${correo} con el rol ${ETIQUETA_ROL[rol]}. Pásale la contraseña y dile que la cambie en cuanto entre.`,
+      `Cuenta creada para ${correo} con el rol ${ETIQUETA_ROL[rol]}. Pásale la contraseña y dile que, al entrar, la cambie en «Mi cuenta» (arriba a la derecha).`,
     );
   });
 }
@@ -157,7 +157,7 @@ export async function restablecerContrasenaAction(
 
     refrescarPanel(RUTA);
     return estadoOk(
-      `Contraseña cambiada para ${objetivo.correo}. Pásasela y dile que la cambie al entrar; su sesión actual sigue abierta hasta que salga.`,
+      `Contraseña cambiada para ${objetivo.correo}. Pásasela y dile que, al entrar, la cambie en «Mi cuenta» (arriba a la derecha); su sesión actual sigue abierta hasta que salga.`,
     );
   });
 }

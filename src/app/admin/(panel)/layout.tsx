@@ -47,12 +47,31 @@ export default async function LayoutPanel({
             >
               Ver el sitio
             </Link>
-            <span
-              className="hidden max-w-[14rem] truncate text-[0.8125rem] text-crema-600 md:inline"
-              title={usuario.email ?? ""}
+            {/* «Mi cuenta» (con «Cambiar mi contraseña») para cualquier rol.
+                En escritorio se lee el correo; en el celular, la palabra. */}
+            <Link
+              href="/admin/cuenta"
+              title={`Mi cuenta${usuario.email ? ` · ${usuario.email}` : ""}`}
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 py-1.5 text-[0.8125rem] font-semibold text-crema-700 transition-colors hover:bg-crema-900/[0.06] hover:text-crema-900"
             >
-              {usuario.email}
-            </span>
+              <svg
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="size-4 shrink-0"
+              >
+                <circle cx="12" cy="8" r="3.5" />
+                <path d="M5 20a7 7 0 0 1 14 0" />
+              </svg>
+              <span className="md:hidden">Mi cuenta</span>
+              <span className="hidden max-w-[14rem] truncate font-normal md:inline">
+                {usuario.email ?? "Mi cuenta"}
+              </span>
+            </Link>
             <form action={salirAction}>
               <BotonEnviar
                 tono="secundario"

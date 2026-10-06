@@ -92,7 +92,7 @@ export default async function PaginaUsuarios({
         <Tarjeta>
           <CabeceraTarjeta
             titulo="Crear una cuenta"
-            descripcion="Escribe el correo de la persona y una contraseña temporal. Pásasela por un canal seguro y dile que la cambie en cuanto entre."
+            descripcion="Escribe el correo de la persona y una contraseña temporal. Pásasela por un canal seguro y dile que, al entrar, la cambie en «Mi cuenta» (arriba a la derecha) → «Cambiar mi contraseña»."
           />
           <CuerpoTarjeta>
             <FormularioNuevoUsuario />
