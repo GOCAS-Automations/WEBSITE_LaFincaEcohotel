@@ -33,6 +33,13 @@ export default defineConfig({
       "server-only": fileURLToPath(
         new URL("node_modules/server-only/empty.js", import.meta.url),
       ),
+      /**
+       * El mismo `@/` de `tsconfig.json`. Hace falta para probar un Route
+       * Handler entero (`src/lib/pagos/respuesta-publica.test.ts`): la
+       * respuesta pública es lo que hay que vigilar, no solo la función de
+       * dentro. Solo casa `@` y `@/…`, no los paquetes `@supabase/…`.
+       */
+      "@": fileURLToPath(new URL("src", import.meta.url)),
     },
   },
 });

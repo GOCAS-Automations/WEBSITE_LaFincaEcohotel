@@ -59,7 +59,11 @@ import {
   type SolicitudDeReserva,
 } from "./cotizar-en-servidor";
 import { REINTENTOS_CODIGO, siguienteCodigo } from "../admin/codigo-reserva";
-import { buscarChoques, describirChoques } from "../admin/disponibilidad";
+import {
+  buscarChoques,
+  describirChoques,
+  mensajeNochesOcupadasParaHuesped,
+} from "../admin/disponibilidad";
 import { aRangoFechas, formatearEstadia } from "../utils/formato";
 import { LEGAL_ACTUALIZADO } from "../sitio";
 import { calcularVencimiento } from "../reserva/holds";
@@ -163,7 +167,22 @@ export async function crearReservaYCobro(
         cotizacion.salida,
       );
       if (choques.length > 0) {
-        return fallo(describirChoques(choques), "ocupado");
+        /*
+          EL DETALLE, SOLO EN EL REGISTRO DEL SERVIDOR.
+          `describirChoques()` nombra al otro huésped, el código de su reserva
+          o el título del evento de Google. Devolverlo al navegador dejaba a
+          cualquiera averiguar con un POST a mano quién se aloja cuándo (Ley
+          1581 de 2012). El huésped lee una frase genérica; el equipo, si hace
+          falta, encuentra el porqué en los registros.
+        */
+        console.warn(
+          `[pagos] noches ocupadas al reservar (${cotizacion.entrada} → ${cotizacion.salida}):`,
+          describirChoques(choques),
+        );
+        return fallo(
+          mensajeNochesOcupadasParaHuesped(cotizacion.alojamientoNombre),
+          "ocupado",
+        );
       }
     } catch (error) {
       console.error(

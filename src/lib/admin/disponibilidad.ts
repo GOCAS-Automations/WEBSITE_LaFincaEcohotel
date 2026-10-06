@@ -185,10 +185,33 @@ export async function buscarChoques(
   return choques;
 }
 
-/** Mensaje único, listo para el banner de error. */
+/**
+ * Mensaje único, listo para el banner de error **del panel** (bloqueos).
+ *
+ * ⚠️ Lleva el nombre del huésped, el código de su reserva o el título del
+ * evento de Google: NUNCA debe llegar a una respuesta pública. El sitio usa
+ * {@link mensajeNochesOcupadasParaHuesped}; este detalle va solo a los
+ * registros del servidor.
+ */
 export function describirChoques(choques: Choque[]): string {
   const lista = choques.map((item) => `• ${item.descripcion}`).join("\n");
   return `Esas fechas ya están ocupadas en esa cabaña:\n${lista}`;
+}
+
+/**
+ * Lo que lee el HUÉSPED cuando las noches que pidió ya están ocupadas.
+ *
+ * Genérico a propósito (Ley 1581 de 2012): no dice quién las tiene, ni el
+ * código de esa reserva, ni el título del evento del calendario del hotel.
+ * Con el detalle, un POST a mano sobre unas fechas cualquiera dejaba saber
+ * quién se aloja cuándo. Solo nombra la cabaña, que es la que eligió el
+ * propio huésped.
+ */
+export function mensajeNochesOcupadasParaHuesped(
+  nombreCabana: string | null | undefined,
+): string {
+  const cabana = nombreCabana ? `en la ${nombreCabana}` : "en esa cabaña";
+  return `Esas noches ya no están disponibles ${cabana}. Elige otras fechas o escríbenos por WhatsApp.`;
 }
 
 /**
