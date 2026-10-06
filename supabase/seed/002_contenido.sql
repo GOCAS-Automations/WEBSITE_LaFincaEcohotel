@@ -116,7 +116,7 @@ insert into contenido (clave, valor) values
   "antetitulo": "Planes y tarifas",
   "titulo": "Elige tu plan",
   "descripcion": "El precio lo pone el plan, no la cabaña: eliges el nivel de servicio que quieres y lo disfrutas en la cabaña que prefieras.",
-  "nota": "Tarifas referenciales de temporada baja. Pueden variar en festivos y alta demanda. IVA incluido.",
+  "nota": "Precios por noche, IVA incluido. Un festivo o una tarifa especial puede cambiar el valor de una noche; al elegir tus fechas, el desglose ya lo tiene en cuenta y ese total es el que pagas.",
   "imagen_fondo": "https://yyfuhytmoiehqmnrekkq.supabase.co/storage/v1/object/public/imagenes/web/zonas-comunes/03.webp",
   "cta_texto": "Reservar ahora",
   "cta_href": "/reservar"

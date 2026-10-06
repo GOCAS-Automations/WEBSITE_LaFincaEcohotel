@@ -403,8 +403,19 @@ const RESPALDO_PLANES: SeccionPlanes = {
   descripcion:
     "El precio lo pone el plan, no la cabaña: eliges el nivel de servicio que quieres y lo disfrutas en la cabaña que prefieras.",
   /* Condición que el cliente pidió dejar visible en todas partes donde se
-     publique un precio (§3 de DATOS_CLIENTE.md). */
-  nota: "Tarifas referenciales de temporada baja. Pueden variar en festivos y alta demanda. IVA incluido.",
+     publique un precio (§3 de DATOS_CLIENTE.md): IVA incluido y que festivos
+     y fechas especiales cambian el precio.
+
+     Hasta el 2026-10-05 decía «Tarifas referenciales de temporada baja.
+     Pueden variar en festivos y alta demanda», y en `/reservar` salía justo
+     debajo de un «Pagar $X» exacto: parecía que el precio todavía podía
+     cambiar. Desde que el motor cobra noche por noche (festivos y tarifas
+     diferenciales incluidos), el total del desglose ES el que se paga. El
+     texto nuevo es cierto en las dos partes donde sale: junto a los precios
+     base de la portada y de las cabañas, y debajo del desglose de
+     `/reservar`. En la base se actualiza con
+     `scripts/actualizar-nota-tarifas.mjs`. */
+  nota: "Precios por noche, IVA incluido. Un festivo o una tarifa especial puede cambiar el valor de una noche; al elegir tus fechas, el desglose ya lo tiene en cuenta y ese total es el que pagas.",
   imagen_fondo: FOTO.fondoBosque,
   cta_texto: "Reservar ahora",
   cta_href: "/reservar",
