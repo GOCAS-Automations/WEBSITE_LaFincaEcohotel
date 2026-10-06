@@ -269,8 +269,11 @@ export async function PaginaInicio() {
         </div>
 
         <div className="contenedor relative z-10 flex flex-col items-center gap-6 pt-28 pb-16 text-center sm:gap-7 sm:pt-32 sm:pb-20">
-          <p className="rounded-full bg-white/12 px-4 py-1.5 font-titulo text-xs font-semibold tracking-[0.22em] text-brote-100 uppercase ring-1 ring-white/25 backdrop-blur-md">
-            {hero.antetitulo}
+          {/* Guion que no parte: «CALI-BUENAVENTURA» se cortaba en el guion a
+              320 px; ahí también se aprieta el interletrado para que quepa en
+              una línea dentro de la píldora. */}
+          <p className="rounded-full bg-white/12 px-4 py-1.5 font-titulo text-xs font-semibold tracking-[0.22em] text-brote-100 uppercase ring-1 ring-white/25 backdrop-blur-md max-[359px]:px-3 max-[359px]:tracking-[0.12em]">
+            {hero.antetitulo.replaceAll("-", "\u2011")}
           </p>
 
           <h1 className="max-w-4xl text-[2.1rem] leading-[1.08] font-extrabold text-white sm:text-5xl lg:text-6xl">

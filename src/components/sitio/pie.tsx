@@ -87,7 +87,7 @@ export async function Pie() {
         */}
         <div className="grid gap-10 sm:grid-cols-2 sm:gap-x-12 lg:grid-cols-[minmax(0,24rem)_auto_auto] lg:items-start lg:justify-between lg:gap-x-16">
           {/* Marca y contacto */}
-          <div className="flex flex-col gap-5">
+          <div className="flex flex-col gap-5 sm:col-span-2 lg:col-span-1">
             {/*
               Sin `aria-label`: el nombre accesible SUSTITUYE al texto visible,
               y el que llevaba («La Finca Eco Hotel — ir al inicio») no coincidía
@@ -128,10 +128,10 @@ export async function Pie() {
                 <span>Restaurante: {contacto.horario_restaurante}</span>
               </li>
               {contacto.correo ? (
-                <li className="flex gap-3">
+                <li className="flex items-center gap-3">
                   <span
                     aria-hidden="true"
-                    className="mt-0.5 w-4.5 shrink-0 text-center font-titulo text-sm font-bold text-brote-200"
+                    className="w-4.5 shrink-0 text-center font-titulo text-sm font-bold text-brote-200"
                   >
                     @
                   </span>
@@ -143,8 +143,11 @@ export async function Pie() {
                   </a>
                 </li>
               ) : null}
-              <li className="flex gap-3">
-                <IconoWhatsapp className="mt-0.5 size-4.5 shrink-0 text-brote-200" />
+              {/* `items-center` en las dos filas con enlace: el enlace mide 44 px
+                  (zona táctil) y con el icono arriba quedaba unos 10 px por
+                  encima del texto. */}
+              <li className="flex items-center gap-3">
+                <IconoWhatsapp className="size-4.5 shrink-0 text-brote-200" />
                 <a
                   href={enlaceWhatsapp(
                     contacto.mensaje_whatsapp,
@@ -152,7 +155,7 @@ export async function Pie() {
                   )}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex min-h-11 items-center underline-offset-4 transition-colors duration-200 hover:text-white hover:underline"
+                  className="inline-flex min-h-11 items-center whitespace-nowrap underline-offset-4 transition-colors duration-200 hover:text-white hover:underline"
                 >
                   {contacto.whatsapp_visible}
                 </a>
@@ -238,8 +241,13 @@ export async function Pie() {
           </p>
           {/* Obligación legal: el RNT debe estar visible en el sitio. */}
           <p className="font-titulo tracking-wide">
-            {SITIO.responsable.nombre} · NIT {SITIO.responsable.nit} · RNT{" "}
-            {contacto.rnt}
+            <span className="whitespace-nowrap">{SITIO.responsable.nombre}</span>
+            {" · "}
+            <span className="whitespace-nowrap">
+              NIT {SITIO.responsable.nit}
+            </span>
+            {" · "}
+            <span className="whitespace-nowrap">RNT {contacto.rnt}</span>
           </p>
         </div>
       </div>

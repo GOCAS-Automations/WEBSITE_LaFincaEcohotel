@@ -63,6 +63,10 @@ export function CapsulaNav({ children }: { children: ReactNode }) {
       <div
         className={[
           "pointer-events-auto mx-auto flex w-full max-w-[76rem] items-center justify-between gap-3",
+          /* Por debajo de 360 px (iPhone SE de primera generación, Android
+             pequeños) la cápsula aprieta: sin esto el botón del menú quedaba
+             cortado fuera de la pantalla a 320 px. Ver también `encabezado.tsx`. */
+          "max-[359px]:gap-2 max-[359px]:px-2",
           "rounded-full ring-1 backdrop-blur-xl backdrop-saturate-150",
           "transition-[padding,background-color,box-shadow,border-color] duration-300 ease-out",
           compacta

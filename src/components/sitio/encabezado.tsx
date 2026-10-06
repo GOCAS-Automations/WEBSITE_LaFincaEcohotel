@@ -57,7 +57,7 @@ export function Encabezado() {
       */}
       <Link
         href="/"
-        className="group flex min-h-11 shrink-0 items-center gap-2.5 rounded-full pl-1"
+        className="group flex min-h-11 shrink-0 items-center gap-2.5 rounded-full pl-1 max-[359px]:gap-2 max-[359px]:pl-0"
       >
         <Foto
           src="/marca/icono.png"
@@ -74,23 +74,26 @@ export function Encabezado() {
              que llevarlo a negro y voltearlo da exactamente la silueta blanca.
              Cuando llegue el vectorial (Santiago), este es el único punto que
              hay que tocar. */
-          className="size-9 shrink-0 object-contain brightness-0 invert transition-transform duration-300 ease-out group-hover:scale-105 sm:size-10"
+          className="size-9 shrink-0 object-contain brightness-0 invert transition-transform duration-300 ease-out group-hover:scale-105 max-[359px]:size-8 sm:size-10"
         />
         {/*
           El wordmark se ve SIEMPRE, también a 390 px. Estaba oculto por debajo
           de 380 px para ganar sitio, y eso dejaba al enlace del logo sin nombre
           accesible en el móvil más estrecho (la imagen es decorativa). Cabe:
           isotipo, firma, «Reservar» y el menú suman menos que el ancho de la
-          cápsula.
+          cápsula… desde unos 360 px. Por debajo (320 px) no cabían: el botón
+          del menú quedaba cortado fuera de la pantalla. Ahí se aprieta el
+          interletrado de la firma y el relleno de «Reservar» (`max-[359px]:`)
+          en vez de esconder nada.
         */}
         <span className="flex flex-col leading-none">
-          <span className="font-titulo text-[0.95rem] font-bold tracking-[0.26em] text-brote-100 uppercase sm:text-[1.02rem]">
+          <span className="font-titulo text-[0.95rem] font-bold tracking-[0.26em] text-brote-100 uppercase max-[359px]:text-[0.85rem] max-[359px]:tracking-[0.16em] sm:text-[1.02rem]">
             La Finca
           </span>
           {/* Sin transparencia: a 0,55 rem y al 75 % se quedaba en 3,5:1 sobre
               la cápsula (lo cazó Lighthouse en la ficha de una cabaña). En
               sólido pasa AA sin dejar de ser el trazo fino del manual. */}
-          <span className="mt-1 font-titulo text-[0.55rem] font-medium tracking-[0.34em] text-brote-200 uppercase">
+          <span className="mt-1 font-titulo text-[0.55rem] font-medium tracking-[0.34em] text-brote-200 uppercase max-[359px]:tracking-[0.22em]">
             Eco · Hotel
           </span>
         </span>
@@ -99,7 +102,10 @@ export function Encabezado() {
       <NavEscritorio enlaces={NAVEGACION} />
 
       <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
-        <Link href="/reservar" className={clasesBoton("marca", "nav")}>
+        <Link
+          href="/reservar"
+          className={clasesBoton("marca", "nav", "max-[359px]:px-3.5")}
+        >
           Reservar
         </Link>
         <MenuMovil

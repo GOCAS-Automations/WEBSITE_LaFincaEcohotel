@@ -31,7 +31,11 @@ export async function PaginaLegal({ clave }: { clave: ClaveLegal }) {
   return (
     <>
       <div className="border-b border-crema-200/70 bg-white">
+        {/* La cabecera va en la MISMA columna de 68ch que el cuerpo: en el
+            contenedor ancho, la ruta, el título y la entrada arrancaban hasta
+            230 px a la izquierda del texto a 1920. */}
         <div className="contenedor bajo-nav pb-10 sm:pb-14">
+          <div className="mx-auto max-w-[68ch]">
           <nav aria-label="Ruta de navegación" className="mb-4">
             <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-crema-600">
               <li className="flex items-center gap-2">
@@ -57,10 +61,14 @@ export async function PaginaLegal({ clave }: { clave: ClaveLegal }) {
           </p>
           <p className="mt-4 text-sm text-crema-600">
             Última actualización:{" "}
-            <time dateTime={documento.actualizado}>
+            <time
+              dateTime={documento.actualizado}
+              className="whitespace-nowrap"
+            >
               {formatearFecha(documento.actualizado)}
             </time>
           </p>
+          </div>
         </div>
       </div>
 

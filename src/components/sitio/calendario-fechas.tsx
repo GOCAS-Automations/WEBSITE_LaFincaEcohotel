@@ -720,6 +720,9 @@ export function CalendarioFechas({
             }
             className={[
               "fixed inset-x-3 bottom-3 z-50 rounded-[var(--radius-generoso)] bg-white p-4 shadow-[var(--shadow-elevada)] ring-1 ring-crema-200",
+              /* A 320 px los días se quedaban en 36 px de ancho: se gana el
+                 objetivo de 40 recortando el margen y el relleno de la hoja. */
+              "max-[359px]:inset-x-2 max-[359px]:bottom-2 max-[359px]:p-3",
               "sm:absolute sm:inset-x-auto sm:left-0 sm:w-[20.5rem]",
               /* En el módulo de la portada, desde `lg`, el panel se abre en dos
                  columnas (ver DOS COLUMNAS más abajo): necesita más ancho. */

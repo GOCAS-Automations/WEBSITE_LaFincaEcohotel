@@ -507,7 +507,13 @@ function MosaicoEditorial({
           key={`${imagen.url}-${posicion}`}
           className="min-w-0"
           style={{
-            flexGrow: relacion,
+            /* Por 100: el reparto sigue siendo proporcional a la relación
+               (alturas iguales en la fila), pero la suma de factores nunca
+               queda por debajo de 1. Con `relacion` a secas, una foto
+               vertical (0,75) sola en su línea —pasa en el teléfono, donde la
+               fila se parte— solo recibía el 75 % del espacio libre y quedaba
+               más estrecha que las demás, con el borde derecho dentado. */
+            flexGrow: relacion * 100,
             flexShrink: 1,
             flexBasis: `calc(${relacion} * var(--alto-fila))`,
           }}
@@ -516,7 +522,10 @@ function MosaicoEditorial({
             type="button"
             ref={(elemento) => registrar(posicion, elemento)}
             onClick={() => alAbrir(desplazamiento + posicion)}
-            className={`${CLASES_MINIATURA} h-full`}
+            /* `h-full` solo desde `md`, donde la fila no se parte. En el
+               teléfono manda el ancho (`w-full`) y el alto sale de la
+               proporción. */
+            className={`${CLASES_MINIATURA} md:h-full`}
             style={{ aspectRatio: relacion }}
             aria-label={`Ampliar: ${imagen.alt}`}
           >

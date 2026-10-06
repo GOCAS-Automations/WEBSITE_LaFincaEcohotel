@@ -151,7 +151,10 @@ export async function PaginaExperiencias() {
             {adicionales.map((adicional, indice) => (
               <Revelar key={adicional.id} como="li" retraso={indice * 80}>
                 <article className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 rounded-[var(--radius-generoso)] bg-crema-50 px-5 py-4 ring-1 ring-crema-200/70 sm:px-7 sm:py-5">
-                  <div className="min-w-0 flex-1">
+                  {/* `basis-56`: con menos de 14 rem para el texto, el precio
+                      baja a su propia línea en vez de dejarlo en tres palabras
+                      por renglón (pasaba a 320 px). */}
+                  <div className="min-w-0 flex-1 basis-56">
                     <h3 className="font-titulo text-lg font-bold text-petroleo-900">
                       {adicional.nombre}
                     </h3>

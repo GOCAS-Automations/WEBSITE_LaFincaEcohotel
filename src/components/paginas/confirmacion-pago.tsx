@@ -130,7 +130,14 @@ export async function PaginaConfirmacion({ referencia, abandono }: Props) {
      dice aprobado pero el webhook aún no ha pasado— es «pendiente». */
 
   return (
-    <Seccion fondo="crema" espacio="amplio">
+    /* `bajo-nav` y no `espacio="amplio"`: la página abre con texto y, en el
+       teléfono, los 80 px de arriba de `amplio` dejaban la tarjeta a 2 px de
+       la cápsula del menú. */
+    <Seccion
+      fondo="crema"
+      espacio="ninguno"
+      className="bajo-nav pb-20 sm:pb-28 lg:pb-32"
+    >
       <div className="mx-auto flex max-w-2xl flex-col gap-7">
         {!vista.encontrada ? (
           <Tarjeta
