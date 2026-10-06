@@ -27,6 +27,7 @@ import { POST } from "../../app/api/reservar/route";
 import { mensajeNochesOcupadasParaHuesped } from "../admin/disponibilidad";
 import { CalendarioSinRespuesta } from "../reserva/calendario-sin-respuesta";
 import { choquesDelCalendarioParaEscribir } from "../reserva/ocupacion-externa";
+import { liberarReservasVencidas } from "../reserva/liberar-vencidas";
 import { crearClienteAdmin } from "../supabase/admin";
 import { hoyEnBogota, sumarDias } from "../utils/formato";
 import { cotizarEnServidor } from "./cotizar-en-servidor";
@@ -235,6 +236,53 @@ describe("/api/reservar con personas que no son 1 ni 2", () => {
       error: "Elige si el Día de Calma es para una o para dos personas.",
     });
     expect(cotizarEnServidor).not.toHaveBeenCalled();
+  });
+});
+
+describe("/api/reservar cuando el anticipo no es el que vio el huésped", () => {
+  function conAnticipo(anticipoEsperado: unknown, ip: string): Request {
+    return new Request("http://localhost:3000/api/reservar", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-forwarded-for": ip },
+      body: JSON.stringify({
+        tipo: "hospedaje",
+        entrada: ENTRADA,
+        salida: SALIDA,
+        cabana: "cabana-03",
+        personas: 2,
+        porcentajeAnticipo: 50,
+        anticipoEsperado,
+        extras: [],
+        nombre: "Huésped Nuevo",
+        correo: "nuevo@example.com",
+        telefono: "+57 300 000 0000",
+        autorizaDatos: true,
+      }),
+    });
+  }
+
+  it("409 con el monto nuevo, y no se aparta ni se crea nada", async () => {
+    const escrituras: string[] = [];
+    const base = clienteFalso({ reservas: [], bloqueos: [], alojamientos: { nombre: "Cabaña 03" } });
+    (base as unknown as { rpc: (nombre: string) => unknown }).rpc = (nombre: string) => {
+      escrituras.push(nombre);
+      return Promise.resolve({ data: null, error: null });
+    };
+    vi.mocked(crearClienteAdmin).mockReturnValue(base);
+    vi.mocked(liberarReservasVencidas).mockClear();
+
+    /* El navegador enseñó 350.000; el servidor calcula 400.000. */
+    const respuesta = await POST(conAnticipo(350_000, "203.0.113.30"));
+    const cuerpo = await respuesta.json();
+
+    expect(respuesta.status).toBe(409);
+    expect(cuerpo.anticipoNuevo).toBe(400_000);
+    expect(cuerpo.totalNuevo).toBe(800_000);
+    expect(cuerpo.error).toContain("350.000");
+    expect(cuerpo.error).toContain("400.000");
+    expect(cuerpo).not.toHaveProperty("checkout");
+    expect(escrituras).toEqual([]);
+    expect(liberarReservasVencidas).not.toHaveBeenCalled();
   });
 });
 

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { frenar } from "@/lib/api/limite-peticiones";
 import { boldConfigurado, pagosActivos } from "@/lib/pagos/bold";
+import { leerAnticipoEsperado } from "@/lib/pagos/anticipo-mostrado";
 import { crearReservaYCobro } from "@/lib/pagos/crear-reserva";
 import type { SolicitudDeReserva } from "@/lib/pagos/cotizar-en-servidor";
 import { origenParaBold } from "@/lib/pagos/origen";
@@ -279,7 +280,22 @@ export async function POST(peticion: Request) {
       /* Siempre https: Bold rechaza con BTN-001 cualquier URL de retorno que no
          lo sea, y en local el origen real es `http://localhost:3000`. */
       origen: origenParaBold(peticion),
+      /* El anticipo que el huésped vio: si el servidor calcula otro, no se
+         crea nada y se le pide que confirme el nuevo. */
+      anticipoEsperado: leerAnticipoEsperado(datos.anticipoEsperado),
     });
+
+    if (!resultado.ok && resultado.codigo === "monto") {
+      return NextResponse.json(
+        {
+          error: resultado.motivo,
+          anticipoNuevo: resultado.montoNuevo.anticipo,
+          totalNuevo: resultado.montoNuevo.total,
+          saldoNuevo: resultado.montoNuevo.saldo,
+        },
+        { status: 409, headers: { "cache-control": "no-store" } },
+      );
+    }
 
     if (!resultado.ok) {
       const estado =

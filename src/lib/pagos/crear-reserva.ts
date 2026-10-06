@@ -53,6 +53,7 @@ import {
   construirReferencia,
   type ConfiguracionCheckoutBold,
 } from "./bold";
+import { anticipoCambio, mensajeAnticipoCambio } from "./anticipo-mostrado";
 import {
   cotizarEnServidor,
   type CotizacionAutoritativa,
@@ -93,6 +94,12 @@ export type PeticionDePago = {
   huesped: DatosHuesped;
   /** Dirección canónica del sitio, sin barra final. */
   origen: string;
+  /**
+   * El anticipo que el huésped VIO antes de pulsar «Pagar». Si no coincide con
+   * el que calcula el servidor, no se crea nada y se le enseña el nuevo para
+   * que lo confirme. `null` (un navegador viejo) = no se compara.
+   */
+  anticipoEsperado?: number | null;
 };
 
 export type ReservaConCobro = {
@@ -116,7 +123,17 @@ export type ResultadoPago =
    * `codigo` separa lo que el huésped puede arreglar (`datos`: 400) de lo que
    * no (`ocupado`: 409; `servidor`: 500). El Route Handler lo traduce a HTTP.
    */
-  | { ok: false; motivo: string; codigo: "datos" | "ocupado" | "servidor" };
+  | { ok: false; motivo: string; codigo: "datos" | "ocupado" | "servidor" }
+  /**
+   * El anticipo calculado aquí no es el que vio el huésped: no se creó nada.
+   * El Route Handler responde 409 con el monto nuevo para que lo confirme.
+   */
+  | {
+      ok: false;
+      motivo: string;
+      codigo: "monto";
+      montoNuevo: { anticipo: number; total: number; saldo: number };
+    };
 
 function fallo(
   motivo: string,
@@ -155,6 +172,21 @@ export async function crearReservaYCobro(
     return fallo(
       `El pago en línea mínimo es de $${MONTO_MINIMO_BOLD.toLocaleString("es-CO")} COP y este anticipo sería menor. Súbelo con el deslizante o escríbenos por WhatsApp.`,
     );
+  }
+
+  /* EL MONTO QUE VIO EL HUÉSPED. Si el anticipo recalculado no es el que se
+     le enseñó, no se aparta nada ni se abre la pasarela: se le devuelve el
+     nuevo para que lo confirme. Va antes de cualquier escritura. */
+  if (anticipoCambio(peticion.anticipoEsperado ?? null, pago.anticipo)) {
+    console.info(
+      `[pagos] el anticipo cambió: el navegador mostró ${peticion.anticipoEsperado}, el servidor calcula ${pago.anticipo}.`,
+    );
+    return {
+      ok: false,
+      codigo: "monto",
+      motivo: mensajeAnticipoCambio(peticion.anticipoEsperado ?? 0, pago.anticipo),
+      montoNuevo: { anticipo: pago.anticipo, total: pago.total, saldo: pago.saldo },
+    };
   }
 
   /* ---------------------------------------------------------------------

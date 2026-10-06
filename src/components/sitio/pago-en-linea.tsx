@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { IconoWhatsapp } from "./iconos";
 import { clasesBoton } from "@/components/ui/boton";
+import { anticipoCambio } from "@/lib/pagos/anticipo-mostrado";
 import { formatearCOP } from "@/lib/utils/formato";
 
 /**
@@ -316,7 +317,19 @@ type EstadoPago =
   | { fase: "listo" }
   | { fase: "creando" }
   | { fase: "abriendo" }
-  | { fase: "error"; mensaje: string };
+  | { fase: "error"; mensaje: string }
+  /**
+   * El servidor calcula otro anticipo que el que se enseñó: NO se va a la
+   * pasarela sin que el huésped vea el monto nuevo y lo confirme. `checkout`
+   * llega solo si la reserva ya quedó creada (un servidor que no comparó); si
+   * no, confirmar vuelve a pedirla con el monto nuevo.
+   */
+  | {
+      fase: "confirmar";
+      mensaje: string;
+      anticipoNuevo: number;
+      checkout: Record<string, unknown> | null;
+    };
 
 export function BotonPagar({
   disponible,
@@ -341,7 +354,8 @@ export function BotonPagar({
 }) {
   const [estado, setEstado] = useState<EstadoPago>({ fase: "listo" });
 
-  const ocupado = estado.fase === "creando" || estado.fase === "abriendo";
+  const ocupado =
+    estado.fase === "creando" || estado.fase === "abriendo" || estado.fase === "confirmar";
   const faltanDatos = !huespedCompleto(huesped);
   const puedePagar =
     disponible && solicitud !== null && autoriza && !faltanDatos && !ocupado;
@@ -357,7 +371,13 @@ export function BotonPagar({
           ? "Completa tu nombre, correo y celular para pagar en línea."
           : null;
 
-  async function pagar() {
+  /**
+   * `anticipoMostrado` es el anticipo que el huésped tiene delante: el de la
+   * pantalla o, tras confirmar un cambio, el nuevo. Viaja al servidor como
+   * `anticipoEsperado` y, si el servidor calcula otro, no se paga sin
+   * preguntar.
+   */
+  async function pagar(anticipoMostrado: number = anticipo) {
     if (!solicitud) return;
     setEstado({ fase: "creando" });
 
@@ -367,6 +387,7 @@ export function BotonPagar({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           ...solicitud,
+          anticipoEsperado: anticipoMostrado,
           nombre: huesped.nombre,
           correo: huesped.correo,
           telefono: huesped.telefono,
@@ -377,6 +398,19 @@ export function BotonPagar({
       });
 
       const datos: unknown = await respuesta.json().catch(() => null);
+      const cuerpo =
+        typeof datos === "object" && datos !== null ? (datos as Record<string, unknown>) : {};
+
+      /* El servidor calculó otro anticipo y no creó nada: se enseña el nuevo. */
+      if (respuesta.status === 409 && typeof cuerpo.anticipoNuevo === "number") {
+        setEstado({
+          fase: "confirmar",
+          mensaje: String(cuerpo.error ?? ""),
+          anticipoNuevo: cuerpo.anticipoNuevo,
+          checkout: null,
+        });
+        return;
+      }
 
       if (!respuesta.ok) {
         const mensaje =
@@ -401,16 +435,54 @@ export function BotonPagar({
         return;
       }
 
-      setEstado({ fase: "abriendo" });
-      await cargarBold();
-
-      if (!window.BoldCheckout) {
-        throw new Error("el script de Bold cargó sin el constructor");
+      /* Segunda red: si el servidor devolvió otro anticipo que el que se
+         enseñó (uno que no comparó), tampoco se va a la pasarela sin
+         preguntar. La reserva ya está apartada: confirmar abre ESTE cobro. */
+      const anticipoDelServidor = typeof cuerpo.anticipo === "number" ? cuerpo.anticipo : null;
+      if (anticipoDelServidor !== null && anticipoCambio(anticipoMostrado, anticipoDelServidor)) {
+        setEstado({
+          fase: "confirmar",
+          mensaje: `El anticipo cambió mientras elegías: veías ${formatearCOP(anticipoMostrado)} y ahora es ${formatearCOP(anticipoDelServidor)}. ¿Quieres pagar ${formatearCOP(anticipoDelServidor)}?`,
+          anticipoNuevo: anticipoDelServidor,
+          checkout,
+        });
+        return;
       }
 
-      /* `open()` lleva el navegador a la pasarela de Bold: desde aquí ya no
-         vuelve a correr nada de esta página hasta el retorno. */
-      new window.BoldCheckout(checkout).open();
+      await abrirPasarela(checkout);
+    } catch (error) {
+      console.error("[pago] no se pudo abrir el checkout:", error);
+      setEstado({
+        fase: "error",
+        mensaje:
+          "No pudimos abrir la pasarela de pagos. Revisa tu conexión e inténtalo otra vez, o escríbenos por WhatsApp.",
+      });
+    }
+  }
+
+  /** Lleva el navegador a la pasarela de Bold con un cobro ya firmado. */
+  async function abrirPasarela(checkout: Record<string, unknown>) {
+    setEstado({ fase: "abriendo" });
+    await cargarBold();
+
+    if (!window.BoldCheckout) {
+      throw new Error("el script de Bold cargó sin el constructor");
+    }
+
+    /* `open()` lleva el navegador a la pasarela de Bold: desde aquí ya no
+       vuelve a correr nada de esta página hasta el retorno. */
+    new window.BoldCheckout(checkout).open();
+  }
+
+  /** «Sí, pagar el monto nuevo». */
+  async function confirmarMontoNuevo() {
+    if (estado.fase !== "confirmar") return;
+    if (!estado.checkout) {
+      await pagar(estado.anticipoNuevo);
+      return;
+    }
+    try {
+      await abrirPasarela(estado.checkout);
     } catch (error) {
       console.error("[pago] no se pudo abrir el checkout:", error);
       setEstado({
@@ -441,7 +513,7 @@ export function BotonPagar({
     <>
       <button
         type="button"
-        onClick={pagar}
+        onClick={() => pagar()}
         disabled={!puedePagar}
         aria-describedby={impedimento ? "impedimento-pago" : undefined}
         className={clasesBoton(
@@ -466,6 +538,33 @@ export function BotonPagar({
         >
           {impedimento}
         </p>
+      ) : null}
+
+      {estado.fase === "confirmar" ? (
+        <div
+          role="alert"
+          className="flex flex-col gap-3 rounded-[var(--radius-tarjeta)] bg-dorado-50 px-4 py-4 ring-1 ring-dorado-200"
+        >
+          <p id="monto-nuevo" className="text-sm leading-relaxed text-dorado-800">
+            {estado.mensaje}
+          </p>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <button
+              type="button"
+              onClick={confirmarMontoNuevo}
+              className={clasesBoton("primario", "grande", "w-full sm:w-auto")}
+            >
+              {`Sí, pagar ${formatearCOP(estado.anticipoNuevo)}`}
+            </button>
+            <button
+              type="button"
+              onClick={() => setEstado({ fase: "listo" })}
+              className={clasesBoton("secundario", "grande", "w-full sm:w-auto")}
+            >
+              No, volver a revisar
+            </button>
+          </div>
+        </div>
       ) : null}
 
       {estado.fase === "error" ? (
