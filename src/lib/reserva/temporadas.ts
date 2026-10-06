@@ -35,9 +35,9 @@
  * Módulo puro: sin red, sin reloj del sistema y con enteros COP.
  */
 
-import { fechaCorta } from "../admin/fechas";
 import type { FechaISO } from "../utils/formato";
 import { esFechaISO, sumarDias } from "./noches";
+import { formatearFecha, formatearRango } from "../utils/formato";
 
 /* ===========================================================================
  * Tipos
@@ -426,58 +426,32 @@ export function estadoDeTemporada(
   return "activa";
 }
 
-/** «1 dic 2026 – 8 ene 2027»: primera y última noche, las dos incluidas. */
+/** «01/12/2026 al 08/01/2027»: primera y última noche, las dos incluidas. */
 export function rangoLegible(temporada: {
   desde: FechaISO;
   hasta: FechaISO;
 }): string {
   const ultima = ultimaNoche(temporada);
-  if (ultima === temporada.desde) return fechaCorta(temporada.desde);
-  return `${fechaCorta(temporada.desde)} – ${fechaCorta(ultima)}`;
-}
-
-const MESES_LARGOS = [
-  "enero",
-  "febrero",
-  "marzo",
-  "abril",
-  "mayo",
-  "junio",
-  "julio",
-  "agosto",
-  "septiembre",
-  "octubre",
-  "noviembre",
-  "diciembre",
-];
-
-function diaYMes(fecha: FechaISO): string {
-  const [, mes, dia] = fecha.split("-").map(Number);
-  return `${dia} de ${MESES_LARGOS[mes - 1]}`;
+  if (ultima === temporada.desde) return formatearFecha(temporada.desde);
+  return formatearRango(temporada.desde, ultima);
 }
 
 /**
- * «del 1 de diciembre al 8 de enero», para el huésped.
- *
- * Sin año: lo que se enseña en la ficha son temporadas activas o próximas. Si
- * la temporada empieza dentro de más de un año, el año sí hace falta y se pone.
+ * «del 01/12/2026 al 08/01/2027», para el huésped: primera y última noche de
+ * la temporada, las dos incluidas. Siempre `dd/mm/aaaa`, con el año.
  */
-export function periodoEnPalabras(
-  temporada: { desde: FechaISO; hasta: FechaISO },
-  hoy: FechaISO,
-): string {
+export function periodoEnPalabras(temporada: {
+  desde: FechaISO;
+  hasta: FechaISO;
+}): string {
   const ultima = ultimaNoche(temporada);
-  const lejos = temporada.desde > sumarDias(hoy, 330);
-  const anio = (fecha: FechaISO) => (lejos ? ` de ${fecha.slice(0, 4)}` : "");
-  if (ultima === temporada.desde) {
-    return `el ${diaYMes(temporada.desde)}${anio(temporada.desde)}`;
-  }
-  return `del ${diaYMes(temporada.desde)}${anio(temporada.desde)} al ${diaYMes(ultima)}${anio(ultima)}`;
+  if (ultima === temporada.desde) return `el ${formatearFecha(temporada.desde)}`;
+  return `del ${formatearRango(temporada.desde, ultima)}`;
 }
 
 /**
- * La línea de la ficha pública de una cabaña: «Del 1 de diciembre al 8 de
- * enero aplican tarifas de temporada; al reservar ves el precio exacto de cada
+ * La línea de la ficha pública de una cabaña: «Del 01/12/2026 al 08/01/2027
+ * aplican tarifas de temporada; al reservar ves el precio exacto de cada
  * noche». `null` si no hay temporadas activas ni próximas.
  */
 export function avisoDeTemporadas(
@@ -493,7 +467,7 @@ export function avisoDeTemporadas(
 
   const periodos = [...vigentes.values()]
     .sort((a, b) => (a.desde < b.desde ? -1 : a.desde > b.desde ? 1 : 0))
-    .map((temporada) => periodoEnPalabras(temporada, hoy));
+    .map((temporada) => periodoEnPalabras(temporada));
 
   const unidos =
     periodos.length === 1

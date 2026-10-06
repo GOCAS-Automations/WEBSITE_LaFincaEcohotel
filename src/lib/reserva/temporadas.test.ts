@@ -484,7 +484,7 @@ describe("fechas: «Primera noche» y «Última noche», las dos incluidas", () 
     expect(noches).toEqual({ desde: "2026-12-01", hasta: "2027-01-09" });
     expect(leerNoches("(2026-11-30,2027-01-08]")).toEqual(noches);
     expect(leerNoches("basura")).toBeNull();
-    expect(rangoLegible(noches!)).toBe("1 dic 2026 – 8 ene 2027");
+    expect(rangoLegible(noches!)).toBe("01/12/2026 al 08/01/2027");
   });
 
   it("activa, próxima o pasada según el hoy del hotel", () => {
@@ -514,7 +514,7 @@ describe("textos", () => {
 
   it("la línea de la ficha de la cabaña", () => {
     expect(avisoDeTemporadas([FIN_DE_ANO, FIN_DE_ANO], "2026-10-05")).toBe(
-      "Del 1 de diciembre al 8 de enero aplican tarifas de temporada; al reservar ves el precio exacto de cada noche.",
+      "Del 01/12/2026 al 08/01/2027 aplican tarifas de temporada; al reservar ves el precio exacto de cada noche.",
     );
     expect(avisoDeTemporadas([FIN_DE_ANO], "2027-01-09")).toBeNull();
     expect(avisoDeTemporadas([], "2026-10-05")).toBeNull();

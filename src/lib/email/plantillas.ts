@@ -40,7 +40,7 @@
  * Todo el texto va en **español claro**, también el aviso interno: lo lee el
  * equipo del hotel, que no es técnico.
  */
-import { formatearCOP, formatearFecha, formatearFechaCorta } from "../utils/formato";
+import { formatearCOP, formatearFecha, formatearFechaConDia } from "../utils/formato";
 import { SITIO } from "../sitio";
 
 /* ===========================================================================
@@ -393,9 +393,9 @@ function envoltorio({
  * Piezas compartidas: el detalle de la reserva y el del pago
  * ------------------------------------------------------------------------- */
 
-/** Título legible de una noche: «vie 16 oct» (+ el festivo, si lo hay). */
+/** Título legible de una noche: «vie 16/10/2026» (+ el festivo, si lo hay). */
 function etiquetaNoche(noche: NocheCorreo): string {
-  const base = formatearFechaCorta(noche.fecha);
+  const base = formatearFechaConDia(noche.fecha);
   return noche.festivo ? `${base} · ${noche.festivo}` : base;
 }
 
@@ -403,7 +403,7 @@ function etiquetaNoche(noche: NocheCorreo): string {
 function etiquetaExperiencia(extra: ExperienciaCorreo): string {
   const cantidad = extra.cantidad > 1 ? ` ×${extra.cantidad}` : "";
   const cuando = extra.noche
-    ? ` — noche del ${formatearFechaCorta(extra.noche)}`
+    ? ` — noche del ${formatearFechaConDia(extra.noche)}`
     : "";
   return `${extra.nombre}${cantidad}${cuando}`;
 }
@@ -420,11 +420,11 @@ function tablaDetalle(reserva: DatosCorreo): string {
   filas.push(fila("Código de reserva", `<span style="font-family:'SFMono-Regular',Consolas,monospace;letter-spacing:0.5px;">${escaparHtml(reserva.codigo)}</span>`));
 
   if (esDia) {
-    filas.push(fila("Día de Calma", formatearFecha(reserva.entrada)));
+    filas.push(fila("Día de Calma", formatearFechaConDia(reserva.entrada)));
     filas.push(fila("Horario", `${HORARIO_DIA.desde} a ${HORARIO_DIA.hasta}`));
   } else {
-    filas.push(fila("Llegada", formatearFecha(reserva.entrada)));
-    filas.push(fila("Salida", formatearFecha(reserva.salida)));
+    filas.push(fila("Llegada", formatearFechaConDia(reserva.entrada)));
+    filas.push(fila("Salida", formatearFechaConDia(reserva.salida)));
     filas.push(
       fila("Cabaña", escaparHtml(reserva.alojamiento ?? "Por asignar")),
     );
@@ -486,11 +486,11 @@ function detalleEnTexto(reserva: DatosCorreo): string[] {
 
   lineas.push(`Código de reserva: ${reserva.codigo}`);
   if (esDia) {
-    lineas.push(`Día de Calma: ${formatearFecha(reserva.entrada)}`);
+    lineas.push(`Día de Calma: ${formatearFechaConDia(reserva.entrada)}`);
     lineas.push(`Horario: ${HORARIO_DIA.desde} a ${HORARIO_DIA.hasta}`);
   } else {
-    lineas.push(`Llegada: ${formatearFecha(reserva.entrada)}`);
-    lineas.push(`Salida: ${formatearFecha(reserva.salida)}`);
+    lineas.push(`Llegada: ${formatearFechaConDia(reserva.entrada)}`);
+    lineas.push(`Salida: ${formatearFechaConDia(reserva.salida)}`);
     lineas.push(`Cabaña: ${reserva.alojamiento ?? "Por asignar"}`);
   }
   lineas.push(`Personas: ${etiquetaPersonas(reserva.numPersonas)}`);
@@ -736,7 +736,7 @@ export function renderReservaConfirmada({
       `<strong style="font-size:15px;">Código ${escaparHtml(reserva.codigo)}</strong><br />${
         esDia
           ? `${formatearFecha(reserva.entrada)} · ${HORARIO_DIA.desde} a ${HORARIO_DIA.hasta}`
-          : `${formatearFechaCorta(reserva.entrada)} → ${formatearFechaCorta(reserva.salida)} · ${etiquetaNoches(nochesDe(reserva))} · ${escaparHtml(reserva.alojamiento ?? "Por asignar")}`
+          : `${formatearFecha(reserva.entrada)} → ${formatearFecha(reserva.salida)} · ${etiquetaNoches(nochesDe(reserva))} · ${escaparHtml(reserva.alojamiento ?? "Por asignar")}`
       }`,
     )}
     ${subtitulo(esDia ? "Tu Día de Calma" : "Tu estadía")}
@@ -815,8 +815,8 @@ export function renderReservaConfirmada({
     texto,
     html: envoltorio({
       preencabezado: esDia
-        ? `${formatearFechaCorta(reserva.entrada)}, de ${HORARIO_DIA.desde} a ${HORARIO_DIA.hasta}. Todo lo que necesitas saber.`
-        : `${formatearFechaCorta(reserva.entrada)} → ${formatearFechaCorta(reserva.salida)}. Cómo llegar, horarios y qué llevar.`,
+        ? `${formatearFecha(reserva.entrada)}, de ${HORARIO_DIA.desde} a ${HORARIO_DIA.hasta}. Todo lo que necesitas saber.`
+        : `${formatearFecha(reserva.entrada)} → ${formatearFecha(reserva.salida)}. Cómo llegar, horarios y qué llevar.`,
       titulo: esDia ? "Tu Día de Calma está confirmado" : "Tu reserva está confirmada",
       cuerpo,
       contacto,
@@ -917,7 +917,7 @@ export function renderAvisoAdministracion({
       `<strong>${escaparHtml(reserva.codigo)}</strong> · ${
         esDia
           ? `Día de Calma del ${formatearFecha(reserva.entrada)}, de ${HORARIO_DIA.desde} a ${HORARIO_DIA.hasta}`
-          : `${escaparHtml(reserva.alojamiento ?? "sin cabaña")}, del ${formatearFechaCorta(reserva.entrada)} al ${formatearFechaCorta(reserva.salida)} (${etiquetaNoches(nochesDe(reserva))})`
+          : `${escaparHtml(reserva.alojamiento ?? "sin cabaña")}, del ${formatearFecha(reserva.entrada)} al ${formatearFecha(reserva.salida)} (${etiquetaNoches(nochesDe(reserva))})`
       }`,
     )}
     ${boton(enlaceFicha, "Abrir la ficha en el panel")}
@@ -949,7 +949,7 @@ export function renderAvisoAdministracion({
     `${reserva.codigo} — ${
       esDia
         ? `Día de Calma del ${formatearFecha(reserva.entrada)} (${HORARIO_DIA.desde} a ${HORARIO_DIA.hasta})`
-        : `${reserva.alojamiento ?? "sin cabaña"}, del ${formatearFechaCorta(reserva.entrada)} al ${formatearFechaCorta(reserva.salida)} (${etiquetaNoches(nochesDe(reserva))})`
+        : `${reserva.alojamiento ?? "sin cabaña"}, del ${formatearFecha(reserva.entrada)} al ${formatearFecha(reserva.salida)} (${etiquetaNoches(nochesDe(reserva))})`
     }`,
     "",
     `Ficha en el panel: ${enlaceFicha}`,
@@ -1002,8 +1002,8 @@ export function renderAvisoAdministracion({
     html: envoltorio({
       preencabezado: `${reserva.huespedNombre} · ${formatearCOP(reserva.total)} · ${
         esDia
-          ? formatearFechaCorta(reserva.entrada)
-          : `${formatearFechaCorta(reserva.entrada)} → ${formatearFechaCorta(reserva.salida)}`
+          ? formatearFecha(reserva.entrada)
+          : `${formatearFecha(reserva.entrada)} → ${formatearFecha(reserva.salida)}`
       }`,
       titulo,
       cuerpo,

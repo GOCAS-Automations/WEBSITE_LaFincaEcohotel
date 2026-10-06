@@ -18,7 +18,11 @@ import {
 } from "@/lib/pagos/bold";
 import { reconciliarPago } from "@/lib/pagos/reconciliar";
 import { crearClienteAdmin } from "@/lib/supabase/admin";
-import { formatearCOP, formatearEstadia, formatearFecha } from "@/lib/utils/formato";
+import {
+  formatearCOP,
+  formatearEstadia,
+  formatearFechaConDia,
+} from "@/lib/utils/formato";
 import { enlaceWhatsapp } from "@/lib/whatsapp";
 import { LLEGADA } from "@/lib/email/plantillas";
 
@@ -612,7 +616,7 @@ function Resumen({ vista }: { vista: Vista }) {
   ];
 
   if (vista.tipo === "dia" && vista.entrada) {
-    filas.push({ etiqueta: "Día", valor: formatearFecha(vista.entrada) });
+    filas.push({ etiqueta: "Día", valor: formatearFechaConDia(vista.entrada) });
     if (vista.plan) filas.push({ etiqueta: "Plan", valor: vista.plan });
   } else if (vista.entrada && vista.salida) {
     filas.push({

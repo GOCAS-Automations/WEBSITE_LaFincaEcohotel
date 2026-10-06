@@ -101,35 +101,124 @@ export function contarNoches(entrada: FechaISO, salida: FechaISO): number {
   return Math.round(ms / 86_400_000);
 }
 
-const formateadorFechaLarga = new Intl.DateTimeFormat("es-CO", {
-  timeZone: "UTC",
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-});
+/* ---------------------------------------------------------------------------
+ * Fechas PARA PERSONAS: siempre `dd/mm/aaaa` (regla de Cesar, 2026-10-05)
+ *
+ * Toda fecha que lee alguien —el sitio, el panel, los correos, el WhatsApp,
+ * la descripción de los eventos de Google, los mensajes de error— pasa por
+ * {@link formatearFecha} (`05/10/2026`) o {@link formatearFechaConDia}
+ * (`lun 05/10/2026`). Nunca el formato de EE. UU. ni el del navegador.
+ *
+ * Solo llevan nombre de mes las cabeceras de calendario («octubre 2026») y el
+ * selector de mes. Lo que es para máquinas (base de datos, URL, JSON-LD,
+ * sitemap, `datetime` de `<time>`) sigue en ISO `AAAA-MM-DD`.
+ *
+ * SIN DESFASE DE UN DÍA: una fecha plana `AAAA-MM-DD` se corta como texto, sin
+ * pasar por `Date`, así que da igual la zona del servidor o del navegador (en
+ * Colombia, `new Date("2026-10-05")` es el 4 a las 7 de la noche). Un instante
+ * (`Date` o marca con hora) se lleva al día de Bogotá con `aFechaISO()`.
+ * ------------------------------------------------------------------------- */
 
-const formateadorFechaCorta = new Intl.DateTimeFormat("es-CO", {
-  timeZone: "UTC",
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-});
+const FECHA_PLANA = /^\d{4}-\d{2}-\d{2}$/;
 
-/** `"2026-03-12"` → `"12 de marzo de 2026"`. */
+/** Días de la semana abreviados, empezando en lunes (1 = lunes de `diaSemanaISO`). */
+export const DIAS_SEMANA_CORTOS = [
+  "lun",
+  "mar",
+  "mié",
+  "jue",
+  "vie",
+  "sáb",
+  "dom",
+] as const;
+
+/** La fecha plana `AAAA-MM-DD` de lo que llegue, o `null` si no se entiende. */
+function fechaPlanaDe(fecha: FechaISO | Date): FechaISO | null {
+  if (fecha instanceof Date) {
+    return Number.isNaN(fecha.getTime()) ? null : aFechaISO(fecha);
+  }
+  if (FECHA_PLANA.test(fecha)) return fecha;
+  /* Una marca con hora («2026-10-05T23:30:00-05:00»): su día en Bogotá. */
+  const instante = new Date(fecha);
+  return Number.isNaN(instante.getTime()) ? null : aFechaISO(instante);
+}
+
+/**
+ * `"2026-10-05"` → `"05/10/2026"`. Con ceros, siempre.
+ * Un texto que no es fecha se devuelve tal cual (mejor eso que «NaN/NaN»).
+ */
 export function formatearFecha(fecha: FechaISO | Date): string {
-  return formateadorFechaLarga.format(aFecha(fecha));
+  const plana = fechaPlanaDe(fecha);
+  if (!plana) return typeof fecha === "string" ? fecha : "";
+  const [anio, mes, dia] = plana.split("-");
+  return `${dia}/${mes}/${anio}`;
 }
 
-/** `"2026-03-12"` → `"12 mar 2026"`. */
-export function formatearFechaCorta(fecha: FechaISO | Date): string {
-  return formateadorFechaCorta.format(aFecha(fecha));
+/** `"2026-12-15"` → `"mar 15/12/2026"`. */
+export function formatearFechaConDia(fecha: FechaISO | Date): string {
+  const plana = fechaPlanaDe(fecha);
+  if (!plana) return typeof fecha === "string" ? fecha : "";
+  return `${DIAS_SEMANA_CORTOS[diaSemanaISO(plana) - 1]} ${formatearFecha(plana)}`;
 }
 
-/** `"12 de marzo — 14 de marzo de 2026 · 2 noches"`. */
+/** `"13/10/2026 al 16/10/2026"`, para listados donde el día de la semana sobra. */
+export function formatearRango(inicio: FechaISO, fin: FechaISO): string {
+  return `${formatearFecha(inicio)} al ${formatearFecha(fin)}`;
+}
+
+/** `"mar 13/10/2026 al vie 16/10/2026"` (la salida es el día en que se va). */
+export function formatearRangoConDias(inicio: FechaISO, fin: FechaISO): string {
+  return `${formatearFechaConDia(inicio)} al ${formatearFechaConDia(fin)}`;
+}
+
+/** Hora y minutos de Bogotá, de 00 a 23 (el día lo pone `formatearFecha`). */
+const formateadorHora = new Intl.DateTimeFormat("en-GB", {
+  timeZone: ZONA_HORARIA,
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
+/**
+ * Fecha y hora de un instante, SIEMPRE en hora de Colombia:
+ * `"05/10/2026, 14:35"`. Nunca la del dispositivo: un dato que se lea
+ * distinto según dónde esté quien mira no es un dato. `null` → `"—"`.
+ */
+export function formatearFechaHora(instante: string | Date | null | undefined): string {
+  if (!instante) return "—";
+  const momento = instante instanceof Date ? instante : new Date(instante);
+  if (Number.isNaN(momento.getTime())) return String(instante);
+  const partes = Object.fromEntries(
+    formateadorHora.formatToParts(momento).map((parte) => [parte.type, parte.value]),
+  );
+  /* Algunos motores escriben la medianoche como «24»: es «00». */
+  const hora = partes.hour === "24" ? "00" : partes.hour;
+  return `${formatearFecha(momento)}, ${hora}:${partes.minute}`;
+}
+
+/**
+ * Lo que escribe una persona, `dd/mm/aaaa`, a fecha plana `AAAA-MM-DD`.
+ * Acepta `5/10/2026`, `05-10-2026`, `05.10.2026` y `05102026`; rechaza el 31/02 y
+ * compañía, y los años de dos cifras (no se adivina el siglo). `null` si no
+ * es una fecha.
+ */
+export function leerFechaNumerica(texto: string): FechaISO | null {
+  const coincidencia =
+    /^\s*(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})\s*$/.exec(texto) ??
+    /^\s*(\d{2})(\d{2})(\d{4})\s*$/.exec(texto);
+  if (!coincidencia) return null;
+  const [dia, mes, anio] = coincidencia.slice(1).map(Number);
+  if (mes < 1 || mes > 12 || dia < 1 || dia > 31) return null;
+  const prueba = new Date(Date.UTC(anio, mes - 1, dia));
+  if (prueba.getUTCMonth() !== mes - 1 || prueba.getUTCDate() !== dia) return null;
+  return `${String(anio).padStart(4, "0")}-${String(mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
+}
+
+/** `"15/12/2026 — 18/12/2026 · 3 noches"`. */
 export function formatearEstadia(entrada: FechaISO, salida: FechaISO): string {
   const noches = contarNoches(entrada, salida);
   const etiqueta = noches === 1 ? "1 noche" : `${noches} noches`;
-  return `${formatearFechaCorta(entrada)} — ${formatearFechaCorta(salida)} · ${etiqueta}`;
+  return `${formatearFecha(entrada)} — ${formatearFecha(salida)} · ${etiqueta}`;
 }
 
 /**

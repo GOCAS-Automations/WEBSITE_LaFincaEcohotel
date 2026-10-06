@@ -57,7 +57,7 @@ import {
 import {
   formatearCOP,
   formatearFecha,
-  formatearFechaCorta,
+  formatearFechaConDia,
 } from "@/lib/utils/formato";
 import { LEGAL_ACTUALIZADO } from "@/lib/sitio";
 import { enlaceWhatsapp, mensajeDiaDeCalma, mensajeReserva } from "@/lib/whatsapp";
@@ -602,8 +602,8 @@ export function SelectorReserva({
     if (!resultado.valido) {
       const fechas =
         soloUnDia || !salida
-          ? formatearFechaCorta(entrada)
-          : `${formatearFechaCorta(entrada)} → ${formatearFechaCorta(salida)}`;
+          ? formatearFecha(entrada)
+          : `${formatearFecha(entrada)} → ${formatearFecha(salida)}`;
       setAvisoFechas(
         soloUnDia
           ? `El ${fechas} ya no tiene cupo para el ${planDia?.nombre ?? "Día de Calma"}. Elige otro día: los que están llenos salen tachados.`
@@ -834,7 +834,7 @@ export function SelectorReserva({
           adultos,
           desglose: desglose
             ? desglose.lineas.map((linea) => ({
-                fecha: formatearFecha(linea.fecha),
+                fecha: formatearFechaConDia(linea.fecha),
                 plan: linea.plan,
                 precio: linea.precio,
                 festivo: linea.festivo,
@@ -845,7 +845,7 @@ export function SelectorReserva({
             nombre: extra.nombre,
             cantidad: extra.cantidad,
             importe: extra.cantidad * extra.precioUnitario,
-            noche: extra.noche ? formatearFechaCorta(extra.noche) : null,
+            noche: extra.noche ? formatearFechaConDia(extra.noche) : null,
           })),
           total: pago?.total ?? desglose?.total ?? null,
           anticipo: pago
@@ -1129,8 +1129,8 @@ export function SelectorReserva({
               {entrada
                 ? `Elige primero tu cabaña y comprobamos que tus fechas (${
                     salida
-                      ? `${formatearFechaCorta(entrada)} → ${formatearFechaCorta(salida)}`
-                      : formatearFechaCorta(entrada)
+                      ? `${formatearFecha(entrada)} → ${formatearFecha(salida)}`
+                      : formatearFecha(entrada)
                   }) estén libres en ella.`
                 : "Elige primero tu cabaña para ver sus fechas libres."}
             </p>
@@ -1585,7 +1585,7 @@ export function SelectorReserva({
                       id={`noche-${noche.fecha}`}
                       className="mb-3 font-titulo text-sm font-bold text-petroleo-900"
                     >
-                      Noche del {formatearFechaCorta(noche.fecha)}
+                      Noche del {formatearFechaConDia(noche.fecha)}
                       <span className="ml-2 font-normal text-crema-600">
                         {noche.festivo ?? etiquetaTipoNoche(noche.tipo)}
                       </span>
@@ -1743,7 +1743,7 @@ export function SelectorReserva({
                 <Fila etiqueta="Plan" valor={planDia?.nombre ?? "Día de Calma"} />
                 <Fila
                   etiqueta="Fecha"
-                  valor={entrada ? formatearFechaCorta(entrada) : "Sin definir"}
+                  valor={entrada ? formatearFechaConDia(entrada) : "Sin definir"}
                 />
                 <Fila
                   etiqueta="Horario"
@@ -1790,17 +1790,17 @@ export function SelectorReserva({
                   etiqueta="Huéspedes"
                   valor={adultos === 1 ? "1 adulto" : "2 adultos"}
                 />
-                {/* Las fechas en formato corto ("12 mar 2026"): el resumen se lee,
+                {/* Las fechas en dd/mm/aaaa con el día de la semana ("mar 15/12/2026"): el resumen se lee,
                     no se descifra. */}
                 <Fila
                   etiqueta="Llegada"
-                  valor={entrada ? formatearFechaCorta(entrada) : "Sin definir"}
+                  valor={entrada ? formatearFechaConDia(entrada) : "Sin definir"}
                 />
                 <Fila
                   etiqueta="Salida"
                   valor={
                     salida && rango.valido
-                      ? formatearFechaCorta(salida)
+                      ? formatearFechaConDia(salida)
                       : "Sin definir"
                   }
                 />
@@ -1839,7 +1839,7 @@ export function SelectorReserva({
                         className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 text-sm"
                       >
                         <span className="min-w-0 text-crema-700">
-                          {formatearFechaCorta(linea.fecha)}
+                          {formatearFechaConDia(linea.fecha)}
                           <span className="ml-1.5 text-xs text-crema-600">
                             {linea.festivo ?? linea.plan}
                           </span>
@@ -1990,7 +1990,7 @@ function BloqueExtras({
           <li key={grupo.noche ?? "estadia"}>
             <p className="text-xs font-semibold text-crema-600">
               {grupo.noche
-                ? `Noche del ${formatearFechaCorta(grupo.noche)}`
+                ? `Noche del ${formatearFechaConDia(grupo.noche)}`
                 : etiquetaSinNoche}
             </p>
             <ul className="flex flex-col gap-1">
@@ -2093,7 +2093,7 @@ function NotaDiaDeCalma({
         className="shrink-0 self-start rounded-full border border-petroleo-300 bg-white px-4 py-2 font-titulo text-sm font-semibold text-petroleo-800 transition-colors duration-200 hover:border-petroleo-500 hover:bg-petroleo-50 sm:self-auto"
       >
         {fecha
-          ? `Verlo para el ${formatearFechaCorta(fecha)}`
+          ? `Verlo para el ${formatearFecha(fecha)}`
           : "Ver el plan de un día"}
       </button>
     </div>

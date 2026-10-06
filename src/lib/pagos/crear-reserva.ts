@@ -64,7 +64,7 @@ import {
   describirChoques,
   mensajeNochesOcupadasParaHuesped,
 } from "../admin/disponibilidad";
-import { aRangoFechas, formatearEstadia } from "../utils/formato";
+import { aRangoFechas, formatearEstadia, formatearFecha } from "../utils/formato";
 import { LEGAL_ACTUALIZADO } from "../sitio";
 import { calcularVencimiento } from "../reserva/holds";
 import { liberarReservasVencidas } from "../reserva/liberar-vencidas";
@@ -438,7 +438,7 @@ function descripcionDeLaVenta(
   codigo: string,
 ): string {
   if (cotizacion.tipo === "dia") {
-    return `${codigo} · ${cotizacion.planNombre} · ${cotizacion.entrada}`;
+    return `${codigo} · ${cotizacion.planNombre} · ${formatearFecha(cotizacion.entrada)}`;
   }
   const cabana = cotizacion.alojamientoNombre ?? "La Finca";
   return `${codigo} · ${cabana} · ${formatearEstadia(cotizacion.entrada, cotizacion.salida)}`;

@@ -11,7 +11,11 @@ import {
   type EventoNuevo,
 } from "@/lib/google/calendario";
 import { obtenerReserva } from "@/lib/admin/datos";
-import { formatearCOP } from "@/lib/utils/formato";
+import {
+  contarNoches,
+  formatearCOP,
+  formatearFechaConDia,
+} from "@/lib/utils/formato";
 import { invalidarCacheCalendario } from "./ocupacion-externa";
 import type { ReservaAdmin } from "@/lib/admin/tipos";
 
@@ -79,8 +83,17 @@ export function tituloDeReserva(reserva: ReservaAdmin): string {
 
 /** Cuerpo del evento: lo justo para atender una llamada sin abrir el panel. */
 export function descripcionDeReserva(reserva: ReservaAdmin): string {
+  /* Las fechas, en `dd/mm/aaaa`. Google pinta un evento de todo el día
+     hasta la víspera del día de salida (su fin es exclusivo): escrita aquí, la
+     salida no se confunde con la última noche. */
+  const noches = contarNoches(reserva.entrada, reserva.salida);
+  const fechas =
+    reserva.tipo === "dia"
+      ? `Día: ${formatearFechaConDia(reserva.entrada)}`
+      : `Llegada: ${formatearFechaConDia(reserva.entrada)} · Salida: ${formatearFechaConDia(reserva.salida)} (${noches} ${noches === 1 ? "noche" : "noches"})`;
   const lineas = [
     `Reserva ${reserva.codigo}`,
+    fechas,
     `Teléfono: ${reserva.huesped_telefono || "—"}`,
     `Total: ${formatearCOP(reserva.total)}`,
   ];

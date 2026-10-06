@@ -10,7 +10,12 @@
  * El número por defecto es el de `SITIO.contacto`; los componentes que ya
  * leyeron `getContacto()` deben pasar el número editado desde el panel.
  */
-import { formatearCOP, formatearFecha, type FechaISO } from "./utils/formato";
+import {
+  formatearCOP,
+  formatearFecha,
+  formatearFechaConDia,
+  type FechaISO,
+} from "./utils/formato";
 import { SITIO } from "./sitio";
 
 /** Deja solo dígitos: `"+57 316 047 6671"` → `"573160476671"`. */
@@ -55,7 +60,7 @@ export function enlaceWhatsapp(
  * el hotel va a conservar de todos modos.
  */
 export function lineaAutorizacionDatos(version: string): string {
-  return `Autorizo el tratamiento de mis datos personales conforme a la Política de tratamiento de datos de La Finca Eco Hotel (versión del ${version}), que leí antes de enviar esta solicitud.`;
+  return `Autorizo el tratamiento de mis datos personales conforme a la Política de tratamiento de datos de La Finca Eco Hotel (versión del ${formatearFecha(version)}), que leí antes de enviar esta solicitud.`;
 }
 
 /** Mensaje del botón flotante: el mismo que usa el sitio actual. */
@@ -97,7 +102,7 @@ export type ExtraDelMensaje = {
   cantidad: number;
   /** Lo que suma esa línea, entero COP. */
   importe: number;
-  /** Noche ya formateada («18 sep 2026»); `null` = para toda la estadía. */
+  /** Noche ya formateada («vie 18/09/2026»); `null` = para toda la estadía. */
   noche?: string | null;
 };
 
@@ -187,9 +192,9 @@ export function mensajeReserva({
   }
 
   if (entrada && salida) {
-    partes.push(`Fechas: del ${formatearFecha(entrada)} al ${formatearFecha(salida)}.`);
+    partes.push(`Fechas: del ${formatearFechaConDia(entrada)} al ${formatearFechaConDia(salida)}.`);
   } else if (entrada) {
-    partes.push(`Fecha de llegada: ${formatearFecha(entrada)}.`);
+    partes.push(`Fecha de llegada: ${formatearFechaConDia(entrada)}.`);
   }
 
   const cabecera = partes.join(" ");
@@ -283,7 +288,7 @@ export function mensajeDiaDeCalma({
 }: SolicitudDiaDeCalma): string {
   const partes: string[] = [
     "¡Hola! Vengo del sitio web de La Finca Eco Hotel y quiero reservar un Día de Calma (sin hospedaje).",
-    `Fecha: ${formatearFecha(fecha)}.`,
+    `Fecha: ${formatearFechaConDia(fecha)}.`,
     personas === 1 ? "Vengo 1 persona." : `Venimos ${personas} personas.`,
   ];
   if (horario) partes.push(`Horario: ${horario}.`);

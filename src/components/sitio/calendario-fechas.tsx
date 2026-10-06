@@ -25,7 +25,7 @@ import {
   type TipoNoche,
 } from "@/lib/reserva/noches";
 import { nombreDelFestivo } from "@/lib/festivos-colombia";
-import { formatearFechaCorta } from "@/lib/utils/formato";
+import { formatearFecha, formatearFechaConDia } from "@/lib/utils/formato";
 import {
   limitesDelCalendario,
   mesEnPalabras,
@@ -102,10 +102,10 @@ import { useLadoDelPanel } from "./usar-lado-panel";
  *   `RePág`/`AvPág` cambian de mes. Es el patrón que espera quien navega con
  *   teclado, y evita que el tabulador tenga que pasar por 42 celdas.
  * · Cada día anuncia su fecha completa, si es festivo y qué tipo de noche es
- *   (`aria-label`: «sábado 19 de septiembre — noche de fin de semana o
+ *   (`aria-label`: «sábado 19/09/2026 — noche de fin de semana o
  *   festivo»), que es justo lo que decide el precio.
  * · Un día apagado NO lleva `disabled`, lleva `aria-disabled` y su motivo en
- *   la etiqueta («lunes 12 de octubre — ocupado: esa noche ya está
+ *   la etiqueta («lunes 12/10/2026 — ocupado: esa noche ya está
  *   reservada»). Un `<button disabled>` no recibe foco: con las flechas el
  *   foco caía en una casilla ocupada y se perdía fuera de la rejilla, y el
  *   lector de pantalla nunca llegaba a decir POR QUÉ no se puede elegir.
@@ -215,18 +215,13 @@ const DIAS_LARGOS = [
   "domingo",
 ];
 
-const formateadorMes = new Intl.DateTimeFormat("es-CO", {
-  timeZone: "UTC",
-  month: "long",
-  year: "numeric",
-});
-
-const formateadorDiaLargo = new Intl.DateTimeFormat("es-CO", {
-  timeZone: "UTC",
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-});
+/**
+ * Lo que oye el lector de pantalla en cada día: «sábado 19/09/2026». La fecha
+ * va en `dd/mm/aaaa` como en el resto del sitio; el día de la semana, entero.
+ */
+function diaEnPalabras(dia: string): string {
+  return `${DIAS_LARGOS[diaSemana(dia) - 1]} ${formatearFecha(dia)}`;
+}
 
 /* ===========================================================================
  * El componente
@@ -569,11 +564,11 @@ export function CalendarioFechas({
 
   const resumen =
     diaUnico && entrada
-      ? `${formatearFechaCorta(entrada)} · solo ese día`
+      ? `${formatearFecha(entrada)} · solo ese día`
       : entrada && salida
-        ? `${formatearFechaCorta(entrada)} → ${formatearFechaCorta(salida)}`
+        ? `${formatearFecha(entrada)} → ${formatearFecha(salida)}`
         : entrada
-          ? `${formatearFechaCorta(entrada)} → elige la salida`
+          ? `${formatearFecha(entrada)} → elige la salida`
           : diaUnico
             ? "Elige el día"
             : "Elige tus fechas";
@@ -611,7 +606,7 @@ export function CalendarioFechas({
       ? tope !== null && tope <= entrada
         ? "Esa llegada ya no está libre. Borra las fechas y elige otra."
         : tope !== null
-          ? `Ahora elige el día de salida. Como tarde, el ${formatearFechaCorta(tope)}: esa noche ya no está libre.`
+          ? `Ahora elige el día de salida. Como tarde, el ${formatearFechaConDia(tope)}: esa noche ya no está libre.`
           : "Ahora elige el día de salida. Cuentan las noches, no los días: si sales el sábado, el sábado no se cobra."
       : primera > hoy
         ? `Elige el día de llegada, ${TEXTO_ANTELACION}: a cada noche le ponemos su tarifa. Para llegar hoy mismo, escríbenos por WhatsApp.`
@@ -658,7 +653,7 @@ export function CalendarioFechas({
         {validacion && !validacion.valido
           ? validacion.motivo
           : entrada && salida
-            ? `Del ${formatearFechaCorta(entrada)} al ${formatearFechaCorta(salida)}. ${resumenNoches ?? ""}`
+            ? `Del ${formatearFechaConDia(entrada)} al ${formatearFechaConDia(salida)}. ${resumenNoches ?? ""}`
             : ""}
       </p>
 
@@ -770,7 +765,7 @@ export function CalendarioFechas({
               className="flex min-h-11 items-center gap-1.5 rounded-full px-3 font-titulo text-sm font-bold text-petroleo-900 transition-colors duration-200 hover:bg-crema-100"
             >
               <span className="first-letter:uppercase">
-                {formateadorMes.format(aUTC(mes))}
+                {mesEnPalabras(mes.slice(0, 7))}
               </span>
               <Flecha
                 className={`size-3.5 text-petroleo-600 transition-transform duration-200 ${eligiendoMes ? "-rotate-90" : "rotate-90"}`}
@@ -1068,7 +1063,7 @@ function Celda({
   const preferido = preferencia !== null && tipo === preferencia;
 
   const etiqueta = [
-    formateadorDiaLargo.format(aUTC(dia)),
+    diaEnPalabras(dia),
     festivo ? `(${festivo})` : null,
     estado.activable
       ? tipo === "entre_semana"
