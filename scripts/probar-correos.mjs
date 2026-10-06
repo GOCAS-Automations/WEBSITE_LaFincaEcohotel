@@ -1,9 +1,14 @@
 /**
- * Renderiza los tres correos transaccionales a archivos HTML para revisarlos,
- * y los envía de verdad si hay clave de Resend.
+ * Renderiza los tres correos transaccionales a archivos HTML para revisarlos.
+ * Solo los envía de verdad si se le pide con `--enviar` Y un destinatario
+ * escrito a mano: nunca toma el correo del hotel por su cuenta.
  *
- *   npm run correos:probar
- *   npm run correos:probar -- --enviar a@ejemplo.com
+ *   npm run correos:probar                              → solo genera archivos
+ *   npm run correos:probar -- --enviar a@ejemplo.com    → además los envía
+ *
+ * (Hasta el 2026-10-05 enviaba sin `--enviar` en cuanto había clave de Resend,
+ * y caía en el Gmail del hotel por `EMAIL_NOTIFY_TO`: así llegaron seis correos
+ * «[PRUEBA]» al hotel. Por eso ahora el envío exige las dos cosas.)
  *
  * ---------------------------------------------------------------------------
  * POR QUÉ HACE FALTA ESTO
@@ -314,8 +319,24 @@ console.log(`  Índice: ${rutaIndice}\n`);
 
 const indiceEnviar = process.argv.indexOf("--enviar");
 const destinoManual =
-  indiceEnviar !== -1 ? process.argv[indiceEnviar + 1] : null;
+  indiceEnviar !== -1 ? process.argv[indiceEnviar + 1]?.trim() : null;
 const clave = process.env.RESEND_API_KEY?.trim();
+
+if (indiceEnviar === -1) {
+  console.log(
+    "Solo se generaron los archivos; no se envió nada. Para enviarlos a un correo\n" +
+      "de prueba:  npm run correos:probar -- --enviar tu@correo.com\n",
+  );
+  process.exit(0);
+}
+
+if (!destinoManual || !destinoManual.includes("@")) {
+  console.log(
+    "Falta el destinatario después de --enviar. Escríbelo a mano (nunca se usa\n" +
+      "el correo del hotel por defecto):  npm run correos:probar -- --enviar tu@correo.com\n",
+  );
+  process.exit(0);
+}
 
 if (!clave) {
   console.log(
@@ -326,15 +347,7 @@ if (!clave) {
   process.exit(0);
 }
 
-const destino = destinoManual || process.env.EMAIL_NOTIFY_TO?.split(",")[0]?.trim();
-
-if (!destino) {
-  console.log(
-    "Hay clave de Resend, pero no hay a quién enviar. Pásale un destinatario:\n" +
-      "  npm run correos:probar -- --enviar tu@correo.com\n",
-  );
-  process.exit(0);
-}
+const destino = destinoManual;
 
 console.log(`Enviando los ${CASOS.length} correos de prueba a ${destino}…\n`);
 
