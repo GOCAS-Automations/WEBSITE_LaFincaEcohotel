@@ -106,6 +106,7 @@ El orden es **primero la cabaña, luego las fechas**. En `/reservar`, el paso 1 
 - [ ] **Pago rechazado**: repite con la tarjeta de rechazo. La reserva queda pendiente y no se confirma.
 - [ ] **Abandono**: inicia un pago y cierra la pestaña sin pagar. A los 30 minutos la fecha vuelve a estar libre.
 - [ ] **Botón del panel**: en una reserva pendiente con pago, pulsa «Verificar pago con Bold» y comprueba que responde con el estado real.
+- [ ] **El monto cambió mientras pagaba**: deja `/reservar` abierto con una estadía de 2027 lista para pagar; en otra pestaña, en el panel, crea una tarifa diferencial de prueba para esa cabaña y esas fechas con otro precio. Vuelve y pulsa pagar: en vez de ir a Bold, debe mostrar el monto nuevo y preguntar «Sí, pagar $…» / «No, volver a revisar». Borra la tarifa de prueba.
 
 Las reservas que creaste aquí son reservas de verdad —la base de datos es la misma—, así que entran en la limpieza de la sección 7 igual que las demás.
 
