@@ -4049,3 +4049,95 @@ Google»** en las filas de Google; **«Ver la ficha →»** en la ventana.
   Resumen).
 - «Todas las fechas» filtra el origen después de traer las 300 últimas: con más de 300 reservas, el
   filtro de origen podría quedarse corto (hoy la base tiene 0).
+
+### 2026-10-06 — Cinco reseñas siempre, experiencias centradas, 404 nueva y ronda responsive
+
+#### 1. Reseñas de Google: repertorio acumulado (commit 6b8482a)
+
+**Por qué había cuatro.** Google devolvió 5 y la quinta (Liliana Aranzazu, 5★) es del 07/04/2025: el
+filtro de 12 meses la dejaba fuera, y la ventana solo se relajaba con menos de 3. Places API (New) no
+tiene parámetro para ordenar reseñas (solo `languageCode`, `regionCode`, `sessionToken`; revisado en la
+documentación el 06/10/2026) y la clásica con `reviews_sort=newest` sigue en `REQUEST_DENIED`.
+
+**Ahora** cada refresco suma lo que llega a un **repertorio** en `cache_externo`, clave nueva
+`resenas_google:repertorio` (`{ resenas: [...] }`, cada una con `vistaEn`). Sin migración: la tabla es
+genérica.
+- Sin duplicados: mismo `id` de Google (`name`), mismo perfil del autor (una reseña por cuenta y lugar:
+  si la edita, la versión nueva reemplaza a la vieja) o mismo autor + fecha (las guardadas antes no
+  tenían `id`). Se guardan todas las estrellas; el filtro es de la selección.
+- Tope de 50 (las más recientes) y **sale a los 30 días sin que Google la devuelva**
+  (`DIAS_VIGENCIA_REPERTORIO`): es el plazo de caché que el proyecto ya tomaba como permitido. Ojo: la
+  política de Places dice literalmente que no se cachea nada salvo el `place_id`; los 30 días son la
+  lectura que ya hacía el proyecto, no una garantía. Si se quiere un repertorio más largo, es esa
+  constante y es decisión de Cesar.
+- Selección (`seleccionarResenas()`): solo 4★+; primero las del último año (mejor puntuación y, a igual,
+  más reciente); si no llegan a 5, se completa con las mejores 4★+ más antiguas. Nunca menos de 4★.
+- `tiempoRelativo` se recalcula al publicar desde la fecha (`describirAntiguedad()`, «Hace 2 meses»):
+  una reseña del repertorio traería el texto del día en que llegó.
+- La primera vez, el repertorio se siembra con lo publicado. Mismo número de llamadas: **una al día**.
+- `/api/salud` devuelve `resenas_en_repertorio` y `resenas_del_ultimo_ano` en vez de
+  `resenas_ventana_meses`.
+
+**Refresco manual** (una llamada, 06/10/2026 06:01 UTC): Google devolvió 5 → repertorio de 5 →
+**5 publicadas** (4 del último año + la de 04/2025). **Hasta que se despliegue**, el cron de producción
+(código viejo, 12:00 UTC) volverá a dejar 4 en `resenas_google`; no toca el repertorio.
+
+#### 2. `/experiencias` centrada
+
+Dos experiencias en `grid lg:grid-cols-3` ocupaban las columnas 1 y 2. Nace **`REJILLA`** en
+`ui/seccion.tsx` (`lista` flex + `justify-center`; `tercio`, `mitad`, `cuarto`): la última fila queda
+centrada con 2, 4 o 5 tarjetas. La usan experiencias (página y portada), «A pedido», cabañas y planes de
+la portada, planes y «Otras cabañas» de la ficha.
+
+#### 3. 404 y error
+
+Sin la foto (zonas comunes en un cuadrado con `object-contain`). Neblina de marca, «404» grande al 10 %
+en la tipografía de títulos, titular y mensaje del panel, y una lista agrupada estilo iOS
+(`sitio/caminos-de-salida.tsx`): botón del panel (por defecto Inicio), Cabañas, Reservar, WhatsApp.
+`error.tsx` igual, con «Reintentar» como botón principal y sin el 404. **El campo «imagen» de la 404 en
+el panel queda sin uso** (no se tocó `src/app/admin/`: lo puede quitar quien trabaje en el panel). La
+imagen sigue referenciada en la fila `no_encontrado`, así que no se borró del bucket.
+
+#### 4. Ronda responsive
+
+Auditoría con Playwright contra `next start` en localhost: 20 rutas (portada, `/reservar` y su flujo
+hasta antes de pagar, `/alojamientos` y las 5 fichas, experiencias, conócenos, galería, FAQ, contacto,
+4 legales, `/reservar/confirmacion` sin referencia, 404) × 320/375/390/430/768/1024/1280/1440/1920.
+Antes y después: **cero desbordes horizontales**, cero botones pegados al borde, cero imágenes
+deformadas.
+
+| Página · ancho | Problema | Corrección |
+|---|---|---|
+| Todas · 320 | Botón del menú cortado fuera de la pantalla | `max-[359px]:` en cápsula, firma y «Reservar» |
+| Ficha Cabaña 02 · ≥1024 | Único plan pegado a la izquierda | `REJILLA` |
+| Fichas · 768 | Tercera «otra cabaña» sola a la izquierda | `REJILLA` |
+| Portada planes · 1024 | 4 columnas de 200 px | 2 + 2 hasta `xl` (`REJILLA.cuarto`) |
+| `/reservar` pasos y `/alojamientos` comodidades · 1024 | 2 columnas en media columna (149 px) | 1 columna entre `lg` y `xl` (y el `col-span-2` del último paso vuelve a 1 ahí) |
+| `/alojamientos` · 1024–1440 | Rama decorativa cruzaba «Ver la cabaña» | Solo desde `2xl` |
+| Tarjeta de cabaña | «desde $» tapaba el sello de la foto | Precio a la izquierda, foto anclada arriba a la derecha |
+| Galería · 320–430 | Fotos verticales más estrechas, borde dentado | `flexGrow` × 100 (un factor < 1 solo reparte esa fracción del espacio libre) |
+| Calendario · 320 | Días de 36 px | Hoja y relleno más finos: 39 px |
+| Portada · 320 | «CALI-/BUENAVENTURA» partido | Guion que no parte + interletrado menor |
+| `/experiencias` · 320 | Segunda mascota a 3 palabras por línea | `basis-56`: el precio baja de línea |
+| Pie | Iconos de correo y WhatsApp 10 px arriba; a 768 «Legal» sola en otra fila; NIT/teléfono partidos | `items-center`; la marca ocupa el ancho en tableta; `whitespace-nowrap` |
+| Legales · ≥768 | Cabecera desalineada del cuerpo (hasta 230 px) | Misma columna de 68ch |
+| Confirmación · ≤430 | Tarjeta a 2 px de la cápsula del menú | `bajo-nav` |
+
+**Espaciado entre secciones:** medido 128 / 160 / 192 px (móvil / tableta / escritorio) entre secciones
+normales: coherente, no se tocó `ESPACIOS`. Los huecos mayores (cierre de página, `#planes`) incluyen la
+onda dibujada (88–110 px, alto fijo) y a la vista se sostienen.
+
+**Sin corregir, a propósito:** el resumen fijo de `/reservar` a 1024 mide unos 1.100 px; con `sticky`
+se suelta al final del formulario y el botón de pagar queda a la vista justo cuando se necesita. Un
+`max-h` con scroll interno escondería ese botón. El aviso de «pagas la mitad» sale tres veces (resumen,
+paso 5 y caja de pago): es redacción del flujo, no responsive; queda para Cesar.
+
+#### Verificación
+
+`tsc` limpio · `npm test` **740 en verde** (43 archivos; 25 nuevos de reseñas) · `next build` sin
+errores en un worktree fuera de OneDrive, en 6899d68 · eslint limpio en lo tocado. Capturas antes y
+después revisadas a mano (encabezado 320, experiencias 320/768/1024, 404 390/1920, Cabaña 02 1024,
+Cabaña 01 768, planes 1024, `/reservar` 1024, galería 390, legales 1920, confirmación 390, reseñas 1440).
+Servidores locales cerrados. En la última pasada los avatares de Google fallaban en Chromium con
+`ERR_BLOCKED_BY_ORB` (Google limitó al equipo tras cientos de cargas); con `curl` responden 200 y en la
+primera pasada cargaban: no es del código.
