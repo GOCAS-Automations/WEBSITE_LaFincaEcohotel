@@ -25,6 +25,7 @@
     "imagenes:variantes": "node scripts/generar-variantes.mjs",
     "marca:iconos": "node scripts/generar-iconos.mjs",
     "db:probar": "node scripts/verificar-dia-de-calma.mjs",
+    "db:probar-integridad": "node scripts/verificar-integridad-reservas.mjs",
     "db:probar-holds": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --conditions=react-server scripts/verificar-holds.mjs",
     "calendario:probar": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --conditions=react-server scripts/probar-calendario.mjs",
     "calendario:verificar": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --conditions=react-server scripts/verificar-calendarios.mjs",

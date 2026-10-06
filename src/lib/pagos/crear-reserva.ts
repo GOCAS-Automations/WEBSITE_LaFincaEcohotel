@@ -58,7 +58,7 @@ import {
   type CotizacionAutoritativa,
   type SolicitudDeReserva,
 } from "./cotizar-en-servidor";
-import { REINTENTOS_CODIGO, siguienteCodigo } from "../admin/codigo-reserva";
+import { insertarReservaConCodigo } from "../admin/codigo-reserva";
 import {
   buscarChoques,
   describirChoques,
@@ -253,34 +253,16 @@ export async function crearReservaYCobro(
     autorizacion_datos_canal: "web" as const,
   };
 
-  /* El código por reintento, igual que el panel: el índice único de
-     `reservas.codigo` es quien decide, no un `select` previo. */
-  let reservaId: string | null = null;
-  let codigo = "";
-  let ultimoError: { code?: string; message: string } | null = null;
-
-  for (let intento = 0; intento < REINTENTOS_CODIGO; intento += 1) {
-    const candidato = await siguienteCodigo(supabase, intento);
-    const { data, error } = await supabase
-      .from("reservas")
-      .insert({ ...fila, codigo: candidato })
-      .select("id")
-      .single();
-
-    if (!error) {
-      reservaId = String(data.id);
-      codigo = candidato;
-      break;
-    }
-
-    ultimoError = error;
-    /* 23505 = código repetido: se reintenta con el siguiente número.
-       23P01 = las fechas se acaban de ocupar: reintentar no ayuda.
-       LF010 = cupo del Día de Calma lleno: tampoco. */
-    if (error.code !== "23505") break;
-  }
+  /* El código lo pone la base (contador por año, migración 019), igual que
+     en el panel: aquí se inserta sin él y se lee el que devuelve. */
+  const insertada = await insertarReservaConCodigo(supabase, fila);
+  const reservaId = insertada.ok ? insertada.id : null;
+  const codigo = insertada.ok ? insertada.codigo : "";
+  const ultimoError = insertada.ok ? null : insertada.error;
 
   if (!reservaId) {
+    /* 23P01 = las fechas se acaban de ocupar. LF010 = cupo del Día de Calma
+       lleno. Reintentar no ayuda en ninguno de los dos. */
     const codigoError = ultimoError?.code ?? "";
     if (codigoError === "23P01") {
       return fallo(

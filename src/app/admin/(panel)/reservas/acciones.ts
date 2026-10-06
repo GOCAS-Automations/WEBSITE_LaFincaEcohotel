@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 
 import { requireAdmin } from "@/lib/admin/auth";
-import { REINTENTOS_CODIGO, siguienteCodigo } from "@/lib/admin/codigo-reserva";
+import { insertarReservaConCodigo } from "@/lib/admin/codigo-reserva";
 import {
   buscarChoques,
   describirChoquesEnCabana,
@@ -69,7 +69,6 @@ import {
   textoRequerido,
   traducirErrorPostgres,
   uuidRequerido,
-  VIOLACION_UNICA,
 } from "@/lib/admin/validacion";
 import type { EstadoReserva } from "@/lib/tipos/basedatos";
 
@@ -722,42 +721,18 @@ export async function guardarReservaAction(
       );
     }
 
-    /* El código se genera por reintento y NO por "leer el último y sumar uno":
-       entre la lectura y la escritura cabe otra reserva. El índice único de
-       `reservas.codigo` es quien decide, y aquí se reacciona a su 23505. */
-    let nuevaId: string | null = null;
-    let codigoUsado = "";
-    let ultimoError: { code?: string; message: string } | null = null;
-
-    for (let intento = 0; intento < REINTENTOS_CODIGO; intento += 1) {
-      const codigo = await siguienteCodigo(supabase, intento);
-      const { data, error } = await supabase
-        .from("reservas")
-        .insert({ ...datos, codigo })
-        .select("id")
-        .single();
-
-      if (!error) {
-        nuevaId = String(data.id);
-        codigoUsado = codigo;
-        break;
-      }
-
-      ultimoError = error;
-      if (error.code !== VIOLACION_UNICA) break;
-      // 23505 con otro origen (no el código) tampoco se resuelve reintentando,
-      // pero el bucle se corta solo a los seis intentos.
+    /* El código lo pone la base: un contador por año que se sube en una sola
+       sentencia (migración 019). Nunca se cuentan filas, así que borrar
+       reservas no hace que se repita ninguno. */
+    const insertada = await insertarReservaConCodigo(supabase, datos);
+    if (!insertada.ok) {
+      throw traducirErrorPostgres(insertada.error, {
+        unico:
+          "No se pudo asignar un código de reserva libre. Intenta guardar de nuevo.",
+      });
     }
-
-    if (!nuevaId) {
-      throw traducirErrorPostgres(
-        ultimoError ?? { message: "No se pudo crear la reserva." },
-        {
-          unico:
-            "No se pudo asignar un código de reserva libre. Intenta guardar de nuevo.",
-        },
-      );
-    }
+    const nuevaId = insertada.id;
+    const codigoUsado = insertada.codigo;
 
     await guardarExtrasDeReserva(supabase, nuevaId, extras);
 
