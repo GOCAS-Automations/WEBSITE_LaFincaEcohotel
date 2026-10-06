@@ -3838,8 +3838,8 @@ integridad de reservas); no se tocaron sus archivos.
    código del error), `(publico)/error.tsx` (cabecera, pie, WhatsApp) y `global-error.tsx` (estilos
    en línea). 404 propia del panel: `admin/(panel)/not-found.tsx` + ruta comodín
    `admin/(panel)/[...ruta]` → `/admin/reservas/no-es-uuid` y `/admin/xyz` ya no caen en la 404
-   pública (las fichas ya llamaban a `notFound()`). `/admin/prueba-de-error` falla a propósito para
-   que la guía de pruebas pueda revisar la página.
+   pública (las fichas ya llamaban a `notFound()`). La ruta de prueba `/admin/prueba-de-error` ya
+   se quitó (Cesar terminó de probar).
 3. **Errores de Postgres en inglés.** `traducirErrorPostgres()` suma `22P02` (uuid inválido) y
    registra el detalle técnico; `mensajeDeErrorDeBase()` da siempre un texto en español para las
    acciones que responden con `redirect(?error=…)` (borrar, pausar, ordenar en cabañas, planes,
