@@ -3759,3 +3759,61 @@ renderizar, correrlo sin `RESEND_API_KEY` en el entorno.
   última noche fue la del mes anterior) sigue abierto.
 - Las API públicas responden «Escribe las fechas en formato AAAA-MM-DD.» a un parámetro mal formado:
   es el formato de la URL, no una fecha para leer; se dejó así.
+
+### 2026-10-05 (noche) — Seguridad: una cuenta sin rol ya no entra al panel ni lee la base
+
+**El hallazgo.** Con el registro público de Supabase Auth abierto (`disable_signup: false`) y la clave
+anónima en el JavaScript del sitio, cualquiera podía crearse una cuenta y: entrar al panel (a una
+cuenta sin rol se la trataba como «equipo») y leer y escribir reservas, pagos y bloqueos por la API
+REST (las políticas eran `to authenticated using (true)`). Reproducido con una cuenta temporal sin
+rol: insertó, leyó y borró un bloqueo. No hubo intrusos: las únicas cuentas eran las 2 reales, las dos
+con rol. Cesar apaga el registro público en Supabase, pero el código y la base ya no dependen de eso.
+
+- **Panel:** el rol se lee **solo** de `app_metadata.rol` (lo escribe únicamente la clave de servicio;
+  `user_metadata` lo edita el propio usuario y no se mira nunca). Se quitó `ROL_POR_DEFECTO`:
+  `rolDeMetadatos()` devuelve `null` sin rol válido. El middleware, `requireAdmin()` y el login
+  tratan una sesión sin rol como sin sesión: la cierran (cookies vaciadas en la misma respuesta) y
+  llevan a `/admin/login?motivo=sin-acceso` con «Esta cuenta no tiene acceso al panel…». Las rutas
+  de `/admin/api` usan `leerSesionDelPanel()` y responden 403. Usuarios muestra una cuenta sin rol
+  como «Sin acceso al panel» y deja asignarle uno.
+- **Base — migración `018_solo_roles_validos.sql`** (aplicada a la base real tras ensayarla en una
+  transacción deshecha): función `es_admin()` (`stable`, `security invoker`, `search_path` vacío)
+  que mira `app_metadata.rol` del JWT. Escritura de las 11 tablas del panel (alojamientos, planes,
+  tarifas, extras, contenido, imagenes, temporadas, reservas, reserva_extras, bloqueos, pagos) y la
+  lectura extra del panel dentro de las políticas públicas pasan de `true`/`auth.role()` a
+  `es_admin()`. Storage: subir/reemplazar/borrar en `imagenes` y `videos` exige `es_admin()`. La
+  lectura pública no cambia. `authenticated` pierde TRUNCATE/TRIGGER/REFERENCES. Cómo deshacerla:
+  al final del propio archivo, comentado.
+- ⚠️ **Regla para las próximas migraciones:** una tabla o un bucket nuevo que escriba el panel lleva
+  `using ((select public.es_admin())) with check ((select public.es_admin()))`, nunca `true` ni
+  `auth.role() = 'authenticated'`. Y una función `security definer` que el panel llame con su
+  sesión tiene que comprobar `es_admin()` dentro, porque se salta RLS.
+- **`/api/salud`** falla cerrado: en producción sin `CRON_SECRET` responde 503 y lo deja en el
+  registro; en local y previews sigue abierto (`src/lib/api/secreto-cron.ts`).
+- **Correos:** los registros de Vercel ya no llevan destinatario ni asunto (el del aviso interno
+  tiene el nombre del huésped): solo tipo de correo, código de la reserva y si salió.
+
+**Pruebas en la base real**, con dos cuentas temporales creadas por la Admin API (una sin rol —con
+`user_metadata.rol = propietario` para probar que se ignora— y una `equipo`), borradas al terminar:
+antes de la 018 la cuenta sin rol leía `reservas` (HTTP 200; `anon` recibe 401) e insertaba y
+borraba bloqueos; después no ve un bloqueo existente (0 filas; `equipo` lo ve), no inserta en
+`bloqueos` ni `temporadas` (42501), no actualiza ni borra lo de otro (0 filas), no sube a `imagenes`
+ni a `videos` y no borra una imagen ajena. `equipo` lee todo, crea/edita/borra un bloqueo y sube y
+borra una imagen (también por `/admin/api/galeria/subir`). `guardar_temporada()` ensayada: funciona
+con las dos cuentas reales y la `equipo`, rechazada sin rol. Contra `localhost` (`next start`): la
+cuenta sin rol va a `/admin/login?motivo=sin-acceso` desde `/admin`, `/admin/reservas`,
+`/admin/usuarios` y `/admin/api/…`, sin bucle en el login; por el formulario real (Chrome headless)
+se queda en el login con el aviso y sin cookie; `equipo` entra al panel. Sin restos: 0 bloqueos y 0
+archivos de prueba. Quedan las 2 cuentas reales.
+
+**Verificación.** `tsc` limpio · `npm test` 623 en verde (25 nuevas: `auth.test.ts`,
+`middleware.test.ts`, `secreto-cron.test.ts`) · `next build` sin errores en un worktree fuera de
+OneDrive (borrado al terminar).
+
+#### Pendiente
+
+- Cesar: desactivar el registro público en Supabase (Authentication → Sign In / Providers → «Allow
+  new users to sign up»). Ya no es lo único que protege, pero sobra tenerlo abierto.
+- `siguiente_codigo_reserva()` (migración 019) es `security definer` y la puede ejecutar cualquier
+  `authenticated`: una cuenta sin rol podría gastar números de código de reserva (no lee ni escribe
+  datos). Añadirle `if not public.es_admin() then raise …` o quitarle el `grant` a `authenticated`.

@@ -202,6 +202,38 @@ describe("/api/reservar con el calendario de Google caído", () => {
   });
 });
 
+describe("/api/reservar con personas que no son 1 ni 2", () => {
+  it.each([
+    ["un texto", "dos"],
+    ["vacío", ""],
+    ["tres", 3],
+  ])("un Día de Calma con %s: 400 y no se cotiza nada", async (_caso, personas) => {
+    vi.mocked(cotizarEnServidor).mockClear();
+    const respuesta = await POST(
+      new Request("http://localhost:3000/api/reservar", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-forwarded-for": "203.0.113.20" },
+        body: JSON.stringify({
+          tipo: "dia",
+          entrada: ENTRADA,
+          personas,
+          porcentajeAnticipo: 100,
+          extras: [],
+          nombre: "Huésped Nuevo",
+          correo: "nuevo@example.com",
+          telefono: "+57 300 000 0000",
+          autorizaDatos: true,
+        }),
+      }),
+    );
+    expect(respuesta.status).toBe(400);
+    expect(await respuesta.json()).toEqual({
+      error: "Elige si el Día de Calma es para una o para dos personas.",
+    });
+    expect(cotizarEnServidor).not.toHaveBeenCalled();
+  });
+});
+
 describe("mensajeNochesOcupadasParaHuesped", () => {
   it("sin cabaña conocida, no inventa una", () => {
     expect(mensajeNochesOcupadasParaHuesped(null)).toBe(

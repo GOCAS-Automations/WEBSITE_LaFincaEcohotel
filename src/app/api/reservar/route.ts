@@ -6,6 +6,7 @@ import { crearReservaYCobro } from "@/lib/pagos/crear-reserva";
 import type { SolicitudDeReserva } from "@/lib/pagos/cotizar-en-servidor";
 import { origenParaBold } from "@/lib/pagos/origen";
 import { validarAntelacion } from "@/lib/reserva/noches";
+import { motivoPersonasInvalidas, personasValidas } from "@/lib/reserva/personas";
 import { crearClienteAdmin } from "@/lib/supabase/admin";
 import { hoyEnBogota } from "@/lib/utils/formato";
 
@@ -232,6 +233,19 @@ export async function POST(peticion: Request) {
 
   const tipo = datos.tipo === "dia" ? "dia" : "hospedaje";
 
+  /*
+    PERSONAS: UN ENTERO DE 1 A 2, O 400.
+
+    Antes viajaba `Number(datos.personas)`: con un texto salía `NaN`, que
+    llegaba a la base como NULL y saltaba el cupo del Día de Calma. No se
+    adivina ni se acota: lo que no sea 1 o 2 se rechaza aquí, antes de leer la
+    base (y la base lo rechaza también, migración 020).
+  */
+  const personas = personasValidas(datos.personas);
+  if (personas === null) {
+    return error(motivoPersonasInvalidas(tipo), 400);
+  }
+
   const extrasCrudos = Array.isArray(datos.extras) ? datos.extras : [];
 
   const solicitud: SolicitudDeReserva = {
@@ -240,7 +254,7 @@ export async function POST(peticion: Request) {
     salida: tipo === "dia" ? null : texto(datos.salida, 10),
     cabanaSlug: tipo === "dia" ? null : texto(datos.cabana, 80),
     planFinDeSemana: texto(datos.planFinDeSemana, 120) || null,
-    personas: Number(datos.personas),
+    personas,
     porcentajeAnticipo: Number(datos.porcentajeAnticipo),
     extras: extrasCrudos.slice(0, 60).map((linea) => {
       const item = (typeof linea === "object" && linea !== null ? linea : {}) as Record<

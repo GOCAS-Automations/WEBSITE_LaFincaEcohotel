@@ -204,6 +204,93 @@ async function codigoAtomico(cliente, ctx) {
   comprobar("el rol anónimo no puede pedir códigos", permiso[0].anon === false);
 }
 
+
+async function diaDeCalma(cliente, ctx) {
+  console.log("\n020 · Una reserva de Día de Calma dice cuántas personas son (1 o 2)");
+  const { rows } = await cliente.query(
+    "select pg_get_constraintdef(oid) as def from pg_constraint where conname = 'reservas_dia_maximo_dos_personas'",
+  );
+  if (!rows[0] || !rows[0].def.includes("IS NOT NULL")) {
+    console.log("  (sin aplicar: se salta)");
+    return;
+  }
+  const dia = (personas, fecha = "2031-05-10") =>
+    fila({ tipo: "dia", plan_id: ctx.planDia, estancia: `[${fecha},${fecha.slice(0, 8)}${String(Number(fecha.slice(8)) + 1).padStart(2, "0")})`, num_personas: personas, estado: "confirmada" });
+
+  const sinPersonas = await esperarError(cliente, () => insertarReserva(cliente, dia(null)));
+  comprobar(
+    "sin número de personas se rechaza (antes un NULL saltaba el cupo)",
+    sinPersonas?.code === "23514",
+    sinPersonas ? `${sinPersonas.code}: ${sinPersonas.message}` : "se aceptó",
+  );
+  comprobar(
+    "y el mensaje está en español",
+    /cuántas personas/.test(sinPersonas?.message ?? ""),
+    sinPersonas?.message,
+  );
+  const tres = await esperarError(cliente, () => insertarReserva(cliente, dia(3)));
+  comprobar("tres personas se rechazan", tres?.code === "23514", tres?.code ?? "se aceptó");
+  const cero = await esperarError(cliente, () => insertarReserva(cliente, dia(0)));
+  comprobar("cero personas se rechazan", cero?.code === "23514", cero?.code ?? "se aceptó");
+
+  /* El cupo de siempre sigue: 5 reservas de 2 llenan el día; la sexta no entra. */
+  for (let i = 0; i < 5; i += 1) await insertarReserva(cliente, dia(2, "2031-05-11"));
+  const sexta = await esperarError(cliente, () => insertarReserva(cliente, dia(1, "2031-05-11")));
+  comprobar("con el día lleno (10), una más se rechaza con LF010", sexta?.code === "LF010", sexta?.code ?? "se aceptó");
+
+  const hospedaje = await esperarError(cliente, () =>
+    insertarReserva(cliente, fila({ alojamiento_id: ctx.cabana, estancia: "[2031-05-12,2031-05-13)", num_personas: null })),
+  );
+  comprobar(
+    "las reservas de hospedaje no cambian (la regla es solo del Día de Calma)",
+    hospedaje === null,
+    hospedaje?.message,
+  );
+}
+
+async function concurrenciaDia(ctx) {
+  console.log("\n020 · Dos reservas de Día de Calma a la vez no pasan del cupo");
+  const [uno, dos, limpieza] = [nuevoCliente(), nuevoCliente(), nuevoCliente()];
+  await Promise.all([uno.connect(), dos.connect(), limpieza.connect()]);
+  const FECHA = "[2031-06-14,2031-06-15)";
+  const prefijo = "PRUEBA-DIA-";
+  const dia = (n, personas) =>
+    fila({ codigo: `${prefijo}${n}-${Date.now()}`, tipo: "dia", plan_id: ctx.planDia, estancia: FECHA, num_personas: personas, estado: "confirmada" });
+  try {
+    /* 8 personas ya apuntadas (confirmado, para que las dos conexiones lo vean). */
+    for (let i = 0; i < 4; i += 1) await insertarReserva(limpieza, dia(`base${i}`, 2));
+
+    await uno.query("begin");
+    await dos.query("begin");
+    await insertarReserva(uno, dia("a", 2)); // 8 + 2 = 10: cabe
+    let segundaTermino = false;
+    const segunda = insertarReserva(dos, dia("b", 2)).then(
+      () => { segundaTermino = true; return null; },
+      (error) => { segundaTermino = true; return error; },
+    );
+    await new Promise((listo) => setTimeout(listo, 500));
+    comprobar("la segunda espera a que la primera termine (candado del día)", segundaTermino === false);
+    await uno.query("commit");
+    const error = await segunda;
+    await dos.query(error ? "rollback" : "commit");
+    comprobar(
+      "la segunda se rechaza con LF010: el día no pasa de 10",
+      error?.code === "LF010",
+      error ? error.code : "ENTRARON LAS DOS (12 personas)",
+    );
+    const { rows } = await limpieza.query(
+      "select coalesce(sum(num_personas), 0)::int as n from reservas where codigo like $1",
+      [`${prefijo}%`],
+    );
+    comprobar("quedan exactamente 10 personas ese día", rows[0].n === 10, `hay ${rows[0].n}`);
+  } finally {
+    await uno.query("rollback").catch(() => {});
+    await dos.query("rollback").catch(() => {});
+    await limpieza.query("delete from reservas where codigo like $1", [`${prefijo}%`]);
+    await Promise.all([uno.end(), dos.end(), limpieza.end()]);
+  }
+}
+
 /* ===========================================================================
  * Concurrencia: dos conexiones de verdad
  * ======================================================================== */
@@ -286,6 +373,7 @@ async function principal() {
     }
 
     await codigoAtomico(cliente, ctx);
+    await diaDeCalma(cliente, ctx);
   } finally {
     await cliente.query("rollback");
     await cliente.end();
@@ -293,6 +381,7 @@ async function principal() {
 
   if (conConcurrencia) {
     await concurrenciaCodigos(ctx);
+    await concurrenciaDia(ctx);
   }
 
   console.log(

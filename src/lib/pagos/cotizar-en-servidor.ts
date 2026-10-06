@@ -63,6 +63,7 @@ import {
   MENSAJE_SIN_CALENDARIO_HUESPED,
 } from "../reserva/calendario-sin-respuesta";
 import { personasDiaDeCalmaParaEscribir } from "../reserva/ocupacion-externa";
+import { motivoPersonasInvalidas, personasValidas } from "../reserva/personas";
 import { temporadasDeTarifa, type Temporada } from "../reserva/temporadas";
 import { leerTemporadas } from "../reserva/temporadas-db";
 import {
@@ -218,6 +219,12 @@ export async function cotizarEnServidor(
   }
 
   const esDia = solicitud.tipo === "dia";
+
+  /* Lo repite `/api/reservar`, pero esta es la función que decide el cobro: un
+     `personas` que no sea 1 o 2 no se adivina. */
+  if (personasValidas(solicitud.personas) === null) {
+    return no(motivoPersonasInvalidas(solicitud.tipo));
+  }
 
   /* --- El catálogo, recién leído --------------------------------------- */
 
@@ -514,8 +521,8 @@ async function cotizarHospedaje(
 
   /* Una o dos personas: las cinco cabañas son para dos y el hotel no recibe
      menores (§5 de `docs/DATOS_CLIENTE.md`). El dato cambia el precio del plan
-     Entre Semana, así que se acota aquí y no se confía en el navegador. */
-  const personas = Math.min(2, Math.max(1, Math.round(solicitud.personas)));
+     Entre Semana; `cotizarEnServidor` ya rechazó lo que no sea 1 o 2. */
+  const personas = personasValidas(solicitud.personas) ?? 2;
 
   const cotizacion = cotizar({
     noches: listaNoches,
@@ -592,10 +599,11 @@ async function cotizarDia(
     };
   }
 
-  const personas = Math.min(
-    MAX_PERSONAS_POR_RESERVA_DIA,
-    Math.max(1, Math.round(solicitud.personas)),
-  );
+  /* Ya validado arriba (1 o 2): aquí no se acota nada a ciegas. */
+  const personas = personasValidas(solicitud.personas);
+  if (personas === null || personas > MAX_PERSONAS_POR_RESERVA_DIA) {
+    return { ok: false, motivo: motivoPersonasInvalidas("dia") };
+  }
 
   /*
     EL CUPO SE CUENTA AQUÍ OTRA VEZ, CON LA MISMA REGLA QUE EL SITIO.
