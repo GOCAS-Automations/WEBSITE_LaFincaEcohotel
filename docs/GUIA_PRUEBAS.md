@@ -102,11 +102,11 @@ El orden es **primero la cabaña, luego las fechas**. En `/reservar`, el paso 1 
 - [x] Abre `https://pruebas.lafincaecohotel.com/reservar`. **El botón de pagar aparece.** (Si no aparece, avísame: falta `PAGOS_ACTIVOS=1` en la vista previa.)
 - [x] Abre `https://lafincaecohotel.com/reservar` en otra pestaña: ahí el cierre tiene que seguir siendo **por WhatsApp**, sin botón de pagar. Es la comprobación de que el sitio real no está cobrando con una pasarela de pruebas.
 - [x] **Pago aprobado**: completa una reserva y paga con la tarjeta aprobada. Al volver, la página de confirmación muestra la reserva **confirmada** con su código.
-- [ ] En el panel (`pruebas.lafincaecohotel.com/admin`), esa reserva aparece confirmada con el monto pagado y el saldo pendiente.
-- [ ] **Pago rechazado**: repite con la tarjeta de rechazo. La reserva queda pendiente y no se confirma.
-- [ ] **Abandono**: inicia un pago y cierra la pestaña sin pagar. A los 30 minutos la fecha vuelve a estar libre.
-- [ ] **Botón del panel**: en una reserva pendiente con pago, pulsa «Verificar pago con Bold» y comprueba que responde con el estado real.
-- [ ] **El monto cambió mientras pagaba**: deja `/reservar` abierto con una estadía de 2027 lista para pagar; en otra pestaña, en el panel, crea una tarifa diferencial de prueba para esa cabaña y esas fechas con otro precio. Vuelve y pulsa pagar: en vez de ir a Bold, debe mostrar el monto nuevo y preguntar «Sí, pagar $…» / «No, volver a revisar». Borra la tarifa de prueba.
+- [x] En el panel (`pruebas.lafincaecohotel.com/admin`), esa reserva aparece confirmada con el monto pagado y el saldo pendiente.
+- [x] **Pago rechazado**: repite con la tarjeta de rechazo. La reserva queda pendiente y no se confirma.
+- [x] **Abandono**: inicia un pago y cierra la pestaña sin pagar. A los 30 minutos la fecha vuelve a estar libre.
+- [x] **Botón del panel**: en una reserva pendiente con pago, pulsa «Verificar pago con Bold» y comprueba que responde con el estado real.
+- [x] **El monto cambió mientras pagaba**: deja `/reservar` abierto con una estadía de 2027 lista para pagar; en otra pestaña, en el panel, crea una tarifa diferencial de prueba para esa cabaña y esas fechas con otro precio. Vuelve y pulsa pagar: en vez de ir a Bold, debe mostrar el monto nuevo y preguntar «Sí, pagar $…» / «No, volver a revisar». Borra la tarifa de prueba.
 
 Las reservas que creaste aquí son reservas de verdad —la base de datos es la misma—, así que entran en la limpieza de la sección 7 igual que las demás.
 
@@ -114,10 +114,10 @@ Las reservas que creaste aquí son reservas de verdad —la base de datos es la 
 
 Tras el pago aprobado, revisa `fincavillarrealcali@gmail.com`:
 
-- [ ] Llega el **aviso interno** con los datos del huésped y el enlace a la ficha del panel.
-- [ ] Llega la **confirmación al huésped** (usa tu correo como huésped para verla): código, cabaña, fechas, desglose, total, anticipo, saldo, cómo llegar y horarios: entrega 3:00 p. m., **llegada hasta las 7:00 p. m.**, **salida 12:00 m.**
-- [ ] Caen en **bandeja de entrada**, no en spam. El logo se ve. Al responder, la respuesta llega al Gmail del hotel.
-- [ ] Ábrelos en el celular: se leen bien.
+- [x] Llega el **aviso interno** con los datos del huésped y el enlace a la ficha del panel.
+- [x] Llega la **confirmación al huésped** (usa tu correo como huésped para verla): código, cabaña, fechas, desglose, total, anticipo, saldo, cómo llegar y horarios: entrega 3:00 p. m., **llegada hasta las 7:00 p. m.**, **salida 12:00 m.**
+- [x] Caen en **bandeja de entrada**, no en spam. El logo se ve. Al responder, la respuesta llega al Gmail del hotel.
+- [x] Ábrelos en el celular: se leen bien.
 
 ## 5 · Panel de administración
 
@@ -133,7 +133,7 @@ Entra en `lafincaecohotel.com/admin` con la cuenta propietaria.
 - [x] **Planes**: edita el «qué incluye» de un plan.
 - [x] **Legales**: edita un párrafo y verifícalo en la página pública.
 - [x] **Usuarios**: crea una cuenta de equipo, entra con ella y comprueba que **no** ve la sección Usuarios. Bórrala.
-- [ ] **Entrar con usuario**: en `/admin/login` escribe tu **usuario** (no el correo) y tu contraseña, y entra. Prueba también: con el correo dice «Entra con tu usuario, no con tu correo…»; con un usuario que no existe o con una contraseña mala, el mismo «El usuario o la contraseña no son correctos». En Usuarios, crea una cuenta con usuario y sin correo, entra con ella y bórrala.
+- [x] **Entrar con usuario**: en `/admin/login` escribe tu **usuario** (no el correo) y tu contraseña, y entra. Prueba también: con el correo dice «Entra con tu usuario, no con tu correo…»; con un usuario que no existe o con una contraseña mala, el mismo «El usuario o la contraseña no son correctos». En Usuarios, crea una cuenta con usuario y sin correo, entra con ella y bórrala.
 - [x] Sube una **foto nueva** desde el panel y comprueba que aparece en el sitio.
 
 ### Reservas: el calendario del mes (nuevo el 2026-10-05)
