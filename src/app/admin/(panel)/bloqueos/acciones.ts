@@ -12,6 +12,7 @@ import {
   ejecutarAccion,
   fechaRequerida,
   textoOpcional,
+  mensajeDeErrorDeBase,
   traducirErrorPostgres,
   uuidRequerido,
 } from "@/lib/admin/validacion";
@@ -49,7 +50,11 @@ export async function crearBloqueoAction(
       );
     }
 
-    const choques = await buscarChoques(supabase, alojamientoId, inicio, fin);
+    /* Tolerante con Google: un bloqueo solo quita noches de la venta, así que
+       una caída del calendario del hotel no tiene por qué impedirlo. */
+    const choques = await buscarChoques(supabase, alojamientoId, inicio, fin, undefined, {
+      calendario: "tolerante",
+    });
     if (choques.length > 0) {
       throw new ErrorDeValidacion(describirChoques(choques));
     }
@@ -81,7 +86,7 @@ export async function eliminarBloqueoAction(formData: FormData) {
   const { error } = await supabase.from("bloqueos").delete().eq("id", id);
 
   if (error) {
-    redirect(`${RUTA}?error=${encodeURIComponent(error.message)}`);
+    redirect(`${RUTA}?error=${encodeURIComponent(mensajeDeErrorDeBase(error))}`);
   }
 
   refrescarPanel(RUTA, "/admin/reservas");

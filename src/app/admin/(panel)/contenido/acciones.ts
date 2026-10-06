@@ -20,6 +20,7 @@ import {
   mapaEmbebido,
   textoOpcional,
   textoRequerido,
+  traducirErrorPostgres,
   urlImagenOpcional,
 } from "@/lib/admin/validacion";
 import { CLAVES_LEGALES, CLAVE_CMS_LEGAL } from "@/lib/legal";
@@ -53,7 +54,7 @@ async function guardarContenido(
     .from("contenido")
     .upsert({ clave, valor: fusionado }, { onConflict: "clave" });
 
-  if (error) throw new Error(error.message);
+  if (error) throw traducirErrorPostgres(error);
 
   /* Higiene de Storage: cualquier dirección que estuviera en la fila ANTES y
      ya no esté DESPUÉS queda potencialmente huérfana. No hace falta filtrar

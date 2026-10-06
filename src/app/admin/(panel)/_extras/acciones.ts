@@ -16,6 +16,7 @@ import {
   precioRequerido,
   textoOpcional,
   textoRequerido,
+  mensajeDeErrorDeBase,
   traducirErrorPostgres,
   urlImagenOpcional,
 } from "@/lib/admin/validacion";
@@ -103,7 +104,7 @@ export async function alternarActivoExtraAction(formData: FormData) {
   const { error } = await supabase.from("extras").update({ activo }).eq("id", id);
 
   if (error) {
-    redirect(`${ruta}?error=${encodeURIComponent(error.message)}`);
+    redirect(`${ruta}?error=${encodeURIComponent(mensajeDeErrorDeBase(error))}`);
   }
 
   refrescarPanel(ruta);
@@ -131,7 +132,7 @@ export async function eliminarExtraAction(formData: FormData) {
     .eq("extra_id", id);
 
   if (errorConteo) {
-    redirect(`${ruta}?error=${encodeURIComponent(errorConteo.message)}`);
+    redirect(`${ruta}?error=${encodeURIComponent(mensajeDeErrorDeBase(errorConteo))}`);
   }
 
   if ((count ?? 0) > 0) {
@@ -146,10 +147,9 @@ export async function eliminarExtraAction(formData: FormData) {
 
   const { error } = await supabase.from("extras").delete().eq("id", id);
   if (error) {
-    const mensaje =
-      error.code === "23503"
-        ? "No se puede borrar: está incluida en alguna reserva."
-        : error.message;
+    const mensaje = mensajeDeErrorDeBase(error, {
+      foranea: "No se puede borrar: está incluida en alguna reserva.",
+    });
     redirect(`${ruta}?error=${encodeURIComponent(mensaje)}`);
   }
 

@@ -545,6 +545,14 @@ export async function ejecutarAccion(
     /* El cupo del Día de Calma lo decide un trigger de la base, y su mensaje
        ya está en español: se muestra tal cual venga por donde venga. */
     if (esErrorDeCupo(error)) return estadoError(error.message);
+    /* Un error de la base que llegó sin pasar por `traducirErrorPostgres()`
+       (un `throw error` directo): se traduce aquí si es de los conocidos. */
+    if (esErrorDeBase(error)) {
+      const traducido = traducirErrorPostgres(error);
+      if (traducido instanceof ErrorDeValidacion) {
+        return estadoError(traducido.message);
+      }
+    }
     console.error("[panel] error inesperado en una acción:", error);
     return estadoError(
       "Ocurrió un problema al guardar. Vuelve a intentarlo; si sigue pasando, avísale al desarrollador.",
@@ -598,44 +606,120 @@ export const VIOLACION_CHECK = "23514";
 export const CUPO_DIA_LLENO = "LF010";
 
 /**
+ * Texto que no sirve para el tipo de la columna. En el panel es casi siempre
+ * un `uuid` mal formado: un enlace recortado o un formulario manipulado.
+ */
+export const TEXTO_NO_VALIDO = "22P02";
+
+/** Lo mínimo de un error de PostgREST / Postgres. */
+export type ErrorDeBase = {
+  code?: string;
+  message: string;
+  details?: string | null;
+  hint?: string | null;
+};
+
+export type ContextoErrores = {
+  unico?: string;
+  foranea?: string;
+  exclusion?: string;
+  check?: string;
+  /** Para un `uuid` (u otro dato) con forma imposible. */
+  formato?: string;
+};
+
+/** Lo que se dice cuando el error no es ninguno de los conocidos. */
+export const MENSAJE_ERROR_GENERICO =
+  "No se pudo completar el cambio. Vuelve a intentarlo; si sigue pasando, avísale al desarrollador.";
+
+/**
  * Traduce al español los errores de Postgres que el usuario del panel puede
- * llegar a provocar. Los que no reconocemos suben como error genérico.
+ * llegar a provocar. Los que no reconocemos suben como error genérico, que
+ * `ejecutarAccion()` registra y convierte en «vuelve a intentarlo».
+ *
+ * El mensaje original —en inglés, con nombres de tablas y restricciones— NUNCA
+ * llega a la pantalla: va al registro del servidor, que es donde le sirve a
+ * quien tenga que investigarlo.
  */
 export function traducirErrorPostgres(
-  error: { code?: string; message: string; details?: string | null },
-  contexto: {
-    unico?: string;
-    foranea?: string;
-    exclusion?: string;
-    check?: string;
-  } = {},
+  error: ErrorDeBase,
+  contexto: ContextoErrores = {},
 ): Error {
-  if (error.code === CUPO_DIA_LLENO) {
-    return new ErrorDeValidacion(error.message);
+  const mensaje = mensajeConocido(error, contexto);
+  if (mensaje === null) return new Error(error.message);
+  console.warn("[panel] error de la base traducido para la pantalla:", {
+    code: error.code,
+    message: error.message,
+    details: error.details ?? null,
+    hint: error.hint ?? null,
+  });
+  return new ErrorDeValidacion(mensaje);
+}
+
+/**
+ * La versión para las acciones que responden con `redirect(…?error=…)` en vez
+ * de devolver un estado: siempre un texto en español, nunca el de Postgres.
+ * El detalle técnico se registra.
+ */
+export function mensajeDeErrorDeBase(
+  error: ErrorDeBase,
+  contexto: ContextoErrores & { generico?: string } = {},
+): string {
+  const traducido = traducirErrorPostgres(error, contexto);
+  if (traducido instanceof ErrorDeValidacion) return traducido.message;
+  console.error("[panel] error de la base sin traducir:", {
+    code: error.code,
+    message: error.message,
+    details: error.details ?? null,
+    hint: error.hint ?? null,
+  });
+  return contexto.generico ?? MENSAJE_ERROR_GENERICO;
+}
+
+function mensajeConocido(
+  error: ErrorDeBase,
+  contexto: ContextoErrores,
+): string | null {
+  switch (error.code) {
+    case CUPO_DIA_LLENO:
+      return error.message;
+    case VIOLACION_UNICA:
+      return (
+        contexto.unico ??
+        "Ya existe otro registro con ese mismo valor. Cámbialo por uno distinto."
+      );
+    case VIOLACION_LLAVE_FORANEA:
+      return (
+        contexto.foranea ??
+        "No se puede hacer: hay reservas u otros registros asociados."
+      );
+    case VIOLACION_EXCLUSION:
+      return (
+        contexto.exclusion ??
+        "Esas fechas se cruzan con otra reserva activa de la misma cabaña."
+      );
+    case VIOLACION_CHECK:
+      return (
+        contexto.check ??
+        "Alguno de los datos no encaja con el resto: revisa lo que escribiste y vuelve a intentarlo."
+      );
+    case TEXTO_NO_VALIDO:
+      return (
+        contexto.formato ??
+        "No se encontró lo que intentabas cambiar: el enlace o el formulario llegó incompleto. Recarga la página y vuelve a intentarlo."
+      );
+    default:
+      return null;
   }
-  if (error.code === VIOLACION_UNICA) {
-    return new ErrorDeValidacion(
-      contexto.unico ??
-        "Ya existe otro registro con ese mismo valor. Cámbialo por uno distinto.",
-    );
-  }
-  if (error.code === VIOLACION_LLAVE_FORANEA) {
-    return new ErrorDeValidacion(
-      contexto.foranea ??
-        "No se puede hacer: hay reservas u otros registros asociados.",
-    );
-  }
-  if (error.code === VIOLACION_EXCLUSION) {
-    return new ErrorDeValidacion(
-      contexto.exclusion ??
-        "Esas fechas se cruzan con otra reserva activa de la misma cabaña.",
-    );
-  }
-  if (error.code === VIOLACION_CHECK) {
-    return new ErrorDeValidacion(
-      contexto.check ??
-        "Alguno de los datos no encaja con el resto: revisa lo que escribiste y vuelve a intentarlo.",
-    );
-  }
-  return new Error(error.message);
+}
+
+/** ¿Tiene forma de error de la base (código SQLSTATE y mensaje)? */
+function esErrorDeBase(error: unknown): error is ErrorDeBase & { code: string } {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    !(error instanceof ErrorDeValidacion) &&
+    typeof (error as { code?: unknown }).code === "string" &&
+    typeof (error as { message?: unknown }).message === "string"
+  );
 }

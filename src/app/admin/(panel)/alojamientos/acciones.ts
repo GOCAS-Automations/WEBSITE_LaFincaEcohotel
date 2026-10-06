@@ -18,6 +18,7 @@ import {
   listaTexto,
   textoOpcional,
   textoRequerido,
+  mensajeDeErrorDeBase,
   traducirErrorPostgres,
 } from "@/lib/admin/validacion";
 
@@ -112,7 +113,7 @@ export async function guardarAlojamientoAction(
       .from("imagenes")
       .delete()
       .eq("alojamiento_id", alojamientoId);
-    if (errorBorrado) throw new Error(errorBorrado.message);
+    if (errorBorrado) throw traducirErrorPostgres(errorBorrado);
 
     if (galeria.length > 0) {
       const { error: errorInsercion } = await supabase.from("imagenes").insert(
@@ -123,7 +124,7 @@ export async function guardarAlojamientoAction(
           orden: indice,
         })),
       );
-      if (errorInsercion) throw new Error(errorInsercion.message);
+      if (errorInsercion) throw traducirErrorPostgres(errorInsercion);
     }
 
     // --- Tarifas base: una por plan ----------------------------------------
@@ -181,7 +182,7 @@ async function guardarTarifas(
     .from("planes")
     .select("id, nombre, dias_aplica, tipo")
     .in("id", planes);
-  if (errorPlanes) throw new Error(errorPlanes.message);
+  if (errorPlanes) throw traducirErrorPostgres(errorPlanes);
 
   const porId = new Map(
     (filasPlan ?? []).map((fila) => [String(fila.id), fila]),
@@ -203,7 +204,7 @@ async function guardarTarifas(
         .eq("alojamiento_id", alojamientoId)
         .eq("plan_id", planId)
         .is("vigencia", null);
-      if (error) throw new Error(error.message);
+      if (error) throw traducirErrorPostgres(error);
       continue;
     }
 
@@ -244,7 +245,7 @@ async function guardarTarifas(
         .from("tarifas")
         .update(datos)
         .eq("id", existente.id);
-      if (error) throw new Error(error.message);
+      if (error) throw traducirErrorPostgres(error);
     } else {
       const { error } = await supabase.from("tarifas").insert({
         alojamiento_id: alojamientoId,
@@ -252,7 +253,7 @@ async function guardarTarifas(
         vigencia: null,
         ...datos,
       });
-      if (error) throw new Error(error.message);
+      if (error) throw traducirErrorPostgres(error);
     }
   }
 }
@@ -279,7 +280,10 @@ export async function guardarOrdenAlojamientosAction(formData: FormData) {
     if (error) {
       redirect(
         `${RUTA_LISTA}?error=${encodeURIComponent(
-          `No se pudo guardar el orden: ${error.message}`,
+          mensajeDeErrorDeBase(error, {
+            generico:
+              "No se pudo guardar el orden. Vuelve a intentarlo; si sigue pasando, avísale al desarrollador.",
+          }),
         )}`,
       );
     }
@@ -303,7 +307,7 @@ export async function alternarActivoAlojamientoAction(formData: FormData) {
     .eq("id", id);
 
   if (error) {
-    redirect(`${RUTA_LISTA}?error=${encodeURIComponent(error.message)}`);
+    redirect(`${RUTA_LISTA}?error=${encodeURIComponent(mensajeDeErrorDeBase(error))}`);
   }
 
   refrescar(id);
@@ -334,7 +338,7 @@ export async function eliminarAlojamientoAction(formData: FormData) {
     .eq("alojamiento_id", id);
 
   if (errorConteo) {
-    redirect(`${RUTA_LISTA}?error=${encodeURIComponent(errorConteo.message)}`);
+    redirect(`${RUTA_LISTA}?error=${encodeURIComponent(mensajeDeErrorDeBase(errorConteo))}`);
   }
 
   if ((count ?? 0) > 0) {
@@ -352,10 +356,9 @@ export async function eliminarAlojamientoAction(formData: FormData) {
   const { error } = await supabase.from("alojamientos").delete().eq("id", id);
 
   if (error) {
-    const mensaje =
-      error.code === "23503"
-        ? "No se puede borrar: hay reservas asociadas a esta cabaña."
-        : error.message;
+    const mensaje = mensajeDeErrorDeBase(error, {
+      foranea: "No se puede borrar: hay reservas asociadas a esta cabaña.",
+    });
     redirect(`${RUTA_LISTA}?error=${encodeURIComponent(mensaje)}`);
   }
 

@@ -1,14 +1,19 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   ErrorDeValidacion,
+  MENSAJE_ERROR_GENERICO,
+  TEXTO_NO_VALIDO,
   VIOLACION_EXCLUSION,
   VIOLACION_LLAVE_FORANEA,
   VIOLACION_UNICA,
+  ejecutarAccion,
   enteroOpcional,
   enteroRequerido,
+  mensajeDeErrorDeBase,
   precioOpcional,
   precioRequerido,
+  traducirErrorPostgres,
 } from "./validacion";
 
 function formulario(campos: Record<string, string>): FormData {
@@ -118,10 +123,75 @@ describe("enteroRequerido — también los importes de la reserva manual", () =>
   });
 });
 
-describe("códigos de Postgres", () => {
-  it("se conservan los de siempre", () => {
-    expect(VIOLACION_UNICA).toBe("23505");
-    expect(VIOLACION_LLAVE_FORANEA).toBe("23503");
-    expect(VIOLACION_EXCLUSION).toBe("23P01");
+describe("errores de la base, en español", () => {
+  beforeEach(() => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const crudo = (code: string, message = "raw english message") => ({
+    code,
+    message,
+    details: "Key (slug)=(cabana-01) already exists.",
+  });
+
+  it("traduce unicidad, llave foránea, exclusión y uuid inválido", () => {
+    expect(mensajeDeErrorDeBase(crudo(VIOLACION_UNICA))).toBe(
+      "Ya existe otro registro con ese mismo valor. Cámbialo por uno distinto.",
+    );
+    expect(mensajeDeErrorDeBase(crudo(VIOLACION_LLAVE_FORANEA))).toBe(
+      "No se puede hacer: hay reservas u otros registros asociados.",
+    );
+    expect(mensajeDeErrorDeBase(crudo(VIOLACION_EXCLUSION))).toBe(
+      "Esas fechas se cruzan con otra reserva activa de la misma cabaña.",
+    );
+    expect(
+      mensajeDeErrorDeBase(
+        crudo(TEXTO_NO_VALIDO, 'invalid input syntax for type uuid: "no-es-uuid"'),
+      ),
+    ).toMatch(/^No se encontró lo que intentabas cambiar/);
+  });
+
+  it("el contexto de cada pantalla manda sobre el texto general", () => {
+    expect(
+      mensajeDeErrorDeBase(crudo(VIOLACION_LLAVE_FORANEA), {
+        foranea: "No se puede borrar: hay reservas asociadas a esta cabaña.",
+      }),
+    ).toBe("No se puede borrar: hay reservas asociadas a esta cabaña.");
+  });
+
+  it("lo desconocido nunca enseña el mensaje en inglés, pero lo registra", () => {
+    const registro = vi.spyOn(console, "error").mockImplementation(() => {});
+    const mensaje = mensajeDeErrorDeBase(crudo("XX000", "connection reset by peer"));
+    expect(mensaje).toBe(MENSAJE_ERROR_GENERICO);
+    expect(mensaje).not.toMatch(/connection/);
+    expect(JSON.stringify(registro.mock.calls)).toMatch(/connection reset by peer/);
+  });
+
+  it("traducirErrorPostgres registra el detalle técnico de lo que traduce", () => {
+    const registro = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const error = traducirErrorPostgres(crudo(VIOLACION_UNICA));
+    expect(error).toBeInstanceOf(ErrorDeValidacion);
+    expect(JSON.stringify(registro.mock.calls)).toMatch(/already exists/);
+  });
+
+  it("ejecutarAccion traduce un error de la base lanzado tal cual", async () => {
+    const estado = await ejecutarAccion(async () => {
+      throw crudo(VIOLACION_LLAVE_FORANEA, "update or delete violates foreign key");
+    });
+    expect(estado).toMatchObject({
+      mensaje: "No se puede hacer: hay reservas u otros registros asociados.",
+    });
+    expect(JSON.stringify(estado)).not.toMatch(/violates/);
+  });
+
+  it("ejecutarAccion no deja pasar un error desconocido en inglés", async () => {
+    const estado = await ejecutarAccion(async () => {
+      throw new Error("relation \"tarifas\" does not exist");
+    });
+    expect(JSON.stringify(estado)).not.toMatch(/relation/);
   });
 });

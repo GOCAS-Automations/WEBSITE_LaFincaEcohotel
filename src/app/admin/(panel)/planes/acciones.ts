@@ -16,6 +16,7 @@ import {
   precioOpcional,
   textoOpcional,
   textoRequerido,
+  mensajeDeErrorDeBase,
   traducirErrorPostgres,
 } from "@/lib/admin/validacion";
 
@@ -94,7 +95,7 @@ export async function guardarPlanAction(
           .from("tarifas")
           .delete({ count: "exact" })
           .eq("plan_id", id);
-        if (errorTarifas) throw new Error(errorTarifas.message);
+        if (errorTarifas) throw traducirErrorPostgres(errorTarifas);
         if ((count ?? 0) > 0) {
           aviso =
             " Como ahora es un plan de día, se quitaron los precios que tenía por cabaña: se cobra el precio del plan.";
@@ -147,7 +148,10 @@ export async function guardarOrdenPlanesAction(formData: FormData) {
     if (error) {
       redirect(
         `${RUTA_LISTA}?error=${encodeURIComponent(
-          `No se pudo guardar el orden: ${error.message}`,
+          mensajeDeErrorDeBase(error, {
+            generico:
+              "No se pudo guardar el orden. Vuelve a intentarlo; si sigue pasando, avísale al desarrollador.",
+          }),
         )}`,
       );
     }
@@ -168,7 +172,7 @@ export async function alternarActivoPlanAction(formData: FormData) {
   const { error } = await supabase.from("planes").update({ activo }).eq("id", id);
 
   if (error) {
-    redirect(`${RUTA_LISTA}?error=${encodeURIComponent(error.message)}`);
+    redirect(`${RUTA_LISTA}?error=${encodeURIComponent(mensajeDeErrorDeBase(error))}`);
   }
 
   refrescar(id);
@@ -214,13 +218,13 @@ export async function eliminarPlanAction(formData: FormData) {
   ]);
 
   if (conteoReservas.error) {
-    redirect(`${RUTA_LISTA}?error=${encodeURIComponent(conteoReservas.error.message)}`);
+    redirect(`${RUTA_LISTA}?error=${encodeURIComponent(mensajeDeErrorDeBase(conteoReservas.error))}`);
   }
   if (conteoTarifas.error) {
-    redirect(`${RUTA_LISTA}?error=${encodeURIComponent(conteoTarifas.error.message)}`);
+    redirect(`${RUTA_LISTA}?error=${encodeURIComponent(mensajeDeErrorDeBase(conteoTarifas.error))}`);
   }
   if (conteoTemporadas.error) {
-    redirect(`${RUTA_LISTA}?error=${encodeURIComponent(conteoTemporadas.error.message)}`);
+    redirect(`${RUTA_LISTA}?error=${encodeURIComponent(mensajeDeErrorDeBase(conteoTemporadas.error))}`);
   }
 
   const reservas = conteoReservas.count ?? 0;
@@ -259,7 +263,11 @@ export async function eliminarPlanAction(formData: FormData) {
   const { error } = await supabase.from("planes").delete().eq("id", id);
 
   if (error) {
-    redirect(`${RUTA_LISTA}?error=${encodeURIComponent(error.message)}`);
+    const mensaje = mensajeDeErrorDeBase(error, {
+      foranea:
+        "No se puede borrar: este plan todavía tiene reservas o precios asociados. Páusalo en vez de borrarlo.",
+    });
+    redirect(`${RUTA_LISTA}?error=${encodeURIComponent(mensaje)}`);
   }
 
   refrescar();
