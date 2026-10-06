@@ -48,9 +48,10 @@ import {
   MENSAJE_SIN_CALENDARIO_PANEL,
 } from "@/lib/reserva/calendario-sin-respuesta";
 import {
-  borrarEventoDeReserva,
+  borrarEventoPorReferencia,
   sincronizarReservaEnCalendario,
 } from "@/lib/reserva/sincronizar-calendario";
+import { eliminarReserva } from "@/lib/admin/eliminar-reserva";
 import {
   calcularAnticipo,
   normalizarPorcentajeAnticipo,
@@ -963,12 +964,16 @@ export async function cambiarEstadoReservaAction(formData: FormData) {
   if (error) {
     /* El mensaje del cupo del Día de Calma ya viene escrito en español desde
        la base (trigger `validar_cupo_dia_de_calma`): se muestra tal cual. */
+    if (error.code !== "23P01" && error.code !== CUPO_DIA_LLENO) {
+      console.error("[panel] no se pudo cambiar el estado:", error.code, error.message);
+    }
+    /* Nunca el texto crudo de Postgres en pantalla. */
     const mensaje =
       error.code === "23P01"
-        ? "Esas fechas se cruzan con otra reserva activa de la misma cabaña."
+        ? "Esas fechas se cruzan con otra reserva activa o un bloqueo de la misma cabaña."
         : error.code === CUPO_DIA_LLENO
           ? `No se pudo cambiar el estado. ${error.message}`
-          : error.message;
+          : "No se pudo cambiar el estado de la reserva. Vuelve a intentarlo en un momento.";
     redirect(`${RUTA_LISTA}/${id}?error=${encodeURIComponent(mensaje)}`);
   }
 
@@ -1077,33 +1082,30 @@ export async function verificarPagoAction(formData: FormData) {
  * Borra la reserva definitivamente.
  *
  * Se ofrece además de "cancelar" para poder limpiar registros de prueba, pero
- * el camino recomendado sigue siendo cancelar: conserva el historial.
+ * el camino recomendado sigue siendo cancelar: conserva el historial. Una
+ * reserva con un pago aprobado NO se borra (se perdería el registro del
+ * dinero); primero la base y después Google; errores en español. Todo eso vive
+ * en `eliminarReserva()`.
  */
 export async function eliminarReservaAction(formData: FormData) {
   const { supabase } = await requireAdmin();
   const id = String(formData.get("id") ?? "").trim();
-
-  /* Antes del `delete`: después ya no habría de dónde sacar el id del evento. */
-  const avisoCalendario = await borrarEventoDeReserva(supabase, id);
-
-  const { error: errorExtras } = await supabase
-    .from("reserva_extras")
-    .delete()
-    .eq("reserva_id", id);
-  if (errorExtras) {
-    redirect(`${RUTA_LISTA}/${id}?error=${encodeURIComponent(errorExtras.message)}`);
+  if (!esUuid(id)) {
+    redirect(`${RUTA_LISTA}?error=${encodeURIComponent("No se encontró la reserva.")}`);
   }
 
-  const { error } = await supabase.from("reservas").delete().eq("id", id);
+  const resultado = await eliminarReserva(supabase, id, borrarEventoPorReferencia);
 
-  if (error) {
-    redirect(`${RUTA_LISTA}/${id}?error=${encodeURIComponent(error.message)}`);
+  if (!resultado.ok) {
+    redirect(`${RUTA_LISTA}/${id}?error=${encodeURIComponent(resultado.mensaje)}`);
   }
 
   refrescar();
   redirect(
     `${RUTA_LISTA}?ok=${encodeURIComponent(
-      `Reserva eliminada.${avisoCalendario ? `\n${avisoCalendario}` : ""}`,
+      `Reserva${resultado.codigo ? ` ${resultado.codigo}` : ""} eliminada.${
+        resultado.aviso ? `\n${resultado.aviso}` : ""
+      }`,
     )}`,
   );
 }

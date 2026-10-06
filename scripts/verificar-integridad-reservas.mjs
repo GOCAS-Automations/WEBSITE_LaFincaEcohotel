@@ -96,12 +96,17 @@ async function existe(cliente, consulta) {
  * lo que de verdad puede hacer el panel con sus políticas RLS.
  */
 async function comoEquipo(cliente, fn) {
+  return comoCuenta(cliente, "equipo", fn);
+}
+
+/** Igual, con el rol que se diga; `null` = una cuenta con sesión y SIN rol. */
+async function comoCuenta(cliente, rol, fn) {
   await cliente.query("savepoint como_equipo");
   try {
     await cliente.query("set local role authenticated");
     await cliente.query(
       "select set_config('request.jwt.claims', $1, true)",
-      [JSON.stringify({ role: "authenticated", sub: "00000000-0000-0000-0000-000000000000", app_metadata: { rol: "equipo" } })],
+      [JSON.stringify({ role: "authenticated", sub: "00000000-0000-0000-0000-000000000000", app_metadata: rol ? { rol } : {} })],
     );
     const resultado = await fn();
     await cliente.query("reset role");
@@ -199,9 +204,45 @@ async function codigoAtomico(cliente, ctx) {
   );
 
   const { rows: permiso } = await cliente.query(
-    "select has_function_privilege('anon', 'siguiente_codigo_reserva()', 'execute') as anon",
+    `select has_function_privilege('anon', 'siguiente_codigo_reserva()', 'execute') as anon,
+            has_function_privilege('authenticated', 'siguiente_codigo_reserva()', 'execute') as autenticado`,
   );
   comprobar("el rol anónimo no puede pedir códigos", permiso[0].anon === false);
+
+  /* Migración 022: ni una cuenta con sesión puede pedir códigos sueltos. */
+  const migracion022 = permiso[0].autenticado === false;
+  if (!migracion022) {
+    console.log("  (022 sin aplicar: una cuenta con sesión todavía puede pedir códigos)");
+    return;
+  }
+  const sinRol = await esperarError(cliente, () =>
+    comoCuenta(cliente, null, () => cliente.query("select siguiente_codigo_reserva()")),
+  );
+  comprobar(
+    "una cuenta con sesión y sin rol no puede pedir códigos (gastaría números)",
+    sinRol?.code === "42501",
+    sinRol ? sinRol.code : "pudo",
+  );
+  const delEquipo = await esperarError(cliente, () =>
+    comoEquipo(cliente, () => cliente.query("select siguiente_codigo_reserva()")),
+  );
+  comprobar(
+    "tampoco el panel la llama suelta: el código lo pone el trigger",
+    delEquipo?.code === "42501",
+    delEquipo ? delEquipo.code : "pudo",
+  );
+  const { rows: antes } = await cliente.query("select ultimo from reservas_contador where anio = $1", [anio]);
+  const insertSinRol = await esperarError(cliente, () =>
+    comoCuenta(cliente, null, () =>
+      insertarReserva(cliente, fila({ alojamiento_id: ctx.cabana, estancia: "[2031-01-12,2031-01-13)" })),
+    ),
+  );
+  const { rows: despues } = await cliente.query("select ultimo from reservas_contador where anio = $1", [anio]);
+  comprobar(
+    "una cuenta sin rol no puede insertar reservas, y el intento no gasta número",
+    insertSinRol !== null && antes[0]?.ultimo === despues[0]?.ultimo,
+    insertSinRol ? `${antes[0]?.ultimo} → ${despues[0]?.ultimo}` : "pudo insertar",
+  );
 }
 
 
@@ -291,6 +332,38 @@ async function concurrenciaDia(ctx) {
   }
 }
 
+
+async function reservaPagada(cliente, ctx) {
+  console.log("\n021 · Una reserva con un pago aprobado no se puede borrar");
+  if (!(await existe(cliente, "select 1 from pg_trigger where tgname = 'reservas_no_borrar_pagadas'"))) {
+    console.log("  (sin aplicar: se salta)");
+    return;
+  }
+  const pagada = await insertarReserva(cliente, fila({ alojamiento_id: ctx.cabana, estancia: "[2031-07-01,2031-07-03)", estado: "confirmada" }));
+  await cliente.query(
+    "insert into pagos (reserva_id, referencia, monto, estado) values ($1, $2, 50000, 'APPROVED')",
+    [pagada.id, `PRUEBA-PAGO-${Date.now()}`],
+  );
+  const error = await esperarError(cliente, () => cliente.query("delete from reservas where id = $1", [pagada.id]));
+  comprobar("borrarla falla con LF020", error?.code === "LF020", error ? error.code : "se borró");
+  comprobar("y el mensaje está en español", /pago aprobado/.test(error?.message ?? ""), error?.message);
+  const { rows: siguen } = await cliente.query("select count(*)::int as n from pagos where reserva_id = $1", [pagada.id]);
+  comprobar("el pago sigue ahí", siguen[0].n === 1);
+
+  const sinDinero = await insertarReserva(cliente, fila({ alojamiento_id: ctx.cabana, estancia: "[2031-07-05,2031-07-06)" }));
+  await cliente.query(
+    "insert into pagos (reserva_id, referencia, monto, estado) values ($1, $2, 50000, 'DECLINED')",
+    [sinDinero.id, `PRUEBA-PAGO-R-${Date.now()}`],
+  );
+  const sinError = await esperarError(cliente, () => cliente.query("delete from reservas where id = $1", [sinDinero.id]));
+  const { rows: rechazados } = await cliente.query("select count(*)::int as n from pagos where reserva_id = $1", [sinDinero.id]);
+  comprobar(
+    "una reserva con solo un intento rechazado sí se borra (y el intento se va con ella)",
+    sinError === null && rechazados[0].n === 0,
+    sinError?.message,
+  );
+}
+
 /* ===========================================================================
  * Concurrencia: dos conexiones de verdad
  * ======================================================================== */
@@ -374,6 +447,7 @@ async function principal() {
 
     await codigoAtomico(cliente, ctx);
     await diaDeCalma(cliente, ctx);
+    await reservaPagada(cliente, ctx);
   } finally {
     await cliente.query("rollback");
     await cliente.end();

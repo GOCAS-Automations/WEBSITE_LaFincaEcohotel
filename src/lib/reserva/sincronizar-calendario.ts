@@ -224,32 +224,24 @@ export async function sincronizarReservaEnCalendario(
 }
 
 /**
- * Borra el evento de una reserva que se va a eliminar de la base.
+ * Borra del calendario del hotel el evento de una reserva que YA se eliminó de
+ * la base.
  *
- * Se llama ANTES del `delete`, porque después ya no hay de dónde sacar la
- * referencia.
+ * Va DESPUÉS del `delete` (ver `src/lib/admin/eliminar-reserva.ts`): quien llama
+ * lee la referencia antes de borrar y la pasa aquí. Al revés —primero Google—,
+ * un fallo de la base dejaba una reserva viva sin evento, y el equipo vendía
+ * esas noches por WhatsApp mirando el calendario.
  */
-export async function borrarEventoDeReserva(
-  supabase: SupabaseClient,
-  reservaId: string,
+export async function borrarEventoPorReferencia(
+  referencia: string,
 ): Promise<string | null> {
   const calendarioId = calendarioDeEscritura();
-  if (!calendarioId || !calendarioConfigurado()) return null;
-
-  const { data } = await supabase
-    .from("reservas")
-    .select("referencia_externa")
-    .eq("id", reservaId)
-    .maybeSingle();
-
-  const referencia =
-    typeof data?.referencia_externa === "string" ? data.referencia_externa : null;
-  if (!referencia) return null;
+  if (!calendarioId || !calendarioConfigurado() || !referencia) return null;
 
   const borrado = await eliminarEvento(calendarioId, referencia);
   if (!borrado.ok) {
     console.error("[calendario] al borrar el evento:", borrado.mensaje);
-    return `La reserva se eliminó, pero su evento sigue en el calendario del hotel: ${borrado.mensaje}`;
+    return `La reserva se eliminó, pero su evento sigue en el calendario del hotel: bórralo a mano en Google. (${borrado.mensaje})`;
   }
   invalidarCacheCalendario();
   return null;
