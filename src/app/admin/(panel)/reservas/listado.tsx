@@ -24,8 +24,8 @@ import type { ResumenPagoReserva } from "@/lib/admin/pagos";
 import {
   ETIQUETA_CORTA_TIPO_RESERVA,
   ETIQUETA_ESTADO,
-  ETIQUETA_ORIGEN,
   TONO_ESTADO,
+  origenEnLinea,
   type ReservaAdmin,
 } from "@/lib/admin/tipos";
 import { cuentaAtras, vencePronto } from "@/lib/reserva/holds";
@@ -356,7 +356,7 @@ function FilaReserva({
             {/* Un Día de Calma es un solo día: «04/10/2026», no «04/10 al 05/10». */}
             {esDia ? formatearFecha(reserva.entrada) : formatearRango(reserva.entrada, reserva.salida)}
             <span className="mx-1.5">·</span>
-            {reserva.origen === "web" ? "Sitio web" : `Panel (${ETIQUETA_ORIGEN[reserva.origen].toLowerCase()})`}
+            {origenEnLinea(reserva.origen)}
           </p>
         </div>
         <div className="text-right">
@@ -425,7 +425,10 @@ function FilaEventoDelHotel({
           {esDia ? formatearFecha(entrada) : formatearRango(entrada, salida)}
         </p>
       </div>
-      <p className="text-right text-[0.75rem] text-crema-500">Se cambia en Google</p>
+      {/* En el celular sobra: la línea de ayuda de arriba ya lo dice. */}
+      <p className="hidden text-right text-[0.75rem] text-crema-500 sm:block">
+        Se cambia en Google
+      </p>
     </div>
   );
 }

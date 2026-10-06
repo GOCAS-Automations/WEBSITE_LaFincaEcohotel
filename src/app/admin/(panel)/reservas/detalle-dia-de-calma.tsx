@@ -299,9 +299,7 @@ function Participante({ participante }: { participante: ParticipanteDiaDeCalma }
       <p className="mt-0.5 text-[0.75rem] text-crema-600">
         {participante.codigo}
         <span className="mx-1.5">·</span>
-        {participante.origen === "sitio"
-          ? "Sitio web"
-          : `Panel (${participante.comoLlego.toLowerCase()})`}
+        {participante.deDonde}
       </p>
       <p className="mt-1.5 flex flex-col gap-0.5 text-[0.8125rem] sm:flex-row sm:flex-wrap sm:gap-x-4">
         {participante.telefono ? (

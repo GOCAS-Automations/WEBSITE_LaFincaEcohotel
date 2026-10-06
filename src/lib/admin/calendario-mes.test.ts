@@ -401,7 +401,7 @@ describe("detalleDiaDeCalma (quién viene al Día de Calma un día)", () => {
       href: "/admin/reservas/ana",
       cuenta: true,
     });
-    expect(detalle.participantes[0]).toMatchObject({ origen: "panel", comoLlego: "Por WhatsApp" });
+    expect(detalle.participantes[0]).toMatchObject({ origen: "panel", deDonde: "Panel (por WhatsApp)" });
     expect(detalle.participantes[2]).toMatchObject({ fuente: "calendario", personas: 2, cuenta: true });
     expect(detalle).toMatchObject({ personas: 5, cupo: 10, libres: 5 });
   });

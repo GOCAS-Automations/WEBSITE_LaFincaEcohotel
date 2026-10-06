@@ -45,6 +45,7 @@ import {
 import {
   ETIQUETA_ESTADO,
   ETIQUETA_ORIGEN,
+  origenEnLinea,
   type BloqueoAdmin,
   type OpcionAlojamiento,
   type ReservaAdmin,
@@ -168,8 +169,8 @@ export type ParticipanteDiaDeCalma =
       estado: EstadoReserva;
       /** «Sitio web» o «Panel». */
       origen: "sitio" | "panel";
-      /** Cómo llegó, con las palabras de la ficha: «Por WhatsApp»… */
-      comoLlego: string;
+      /** De dónde salió, en una línea: «Sitio web» o «Panel (por WhatsApp)». */
+      deDonde: string;
       href: string;
       /** ¿Suma al cupo del día? Es lo mismo que cuenta la casilla «4/10». */
       cuenta: boolean;
@@ -254,7 +255,7 @@ export function detalleDiaDeCalma({
         codigo: reserva.codigo,
         estado: reserva.estado,
         origen: reserva.origen === "web" ? ("sitio" as const) : ("panel" as const),
-        comoLlego: ETIQUETA_ORIGEN[reserva.origen] ?? reserva.origen,
+        deDonde: origenEnLinea(reserva.origen),
         href: `/admin/reservas/${reserva.id}`,
         cuenta: porQueNoCuenta === null,
         porQueNoCuenta,

@@ -105,6 +105,17 @@ export const ETIQUETA_ORIGEN: Record<OrigenReserva, string> = {
 };
 
 /**
+ * «Sitio web» o «Panel (por WhatsApp)»: de dónde salió una reserva, en una
+ * línea de listado. Solo baja la primera letra («por WhatsApp», no «por
+ * whatsapp»).
+ */
+export function origenEnLinea(origen: OrigenReserva): string {
+  if (origen === "web") return "Sitio web";
+  const como = ETIQUETA_ORIGEN[origen] ?? origen;
+  return `Panel (${como.charAt(0).toLowerCase()}${como.slice(1)})`;
+}
+
+/**
  * Cómo se lee en pantalla el canal de la autorización de datos.
  *
  * Las claves son los valores del `check` de la migración 012. Se indexa por
