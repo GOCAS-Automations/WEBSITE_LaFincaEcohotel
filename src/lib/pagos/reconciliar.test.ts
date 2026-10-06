@@ -33,6 +33,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../email", () => ({
   avisarPagoAprobado: vi.fn(async () => ({ huesped: null, administracion: null })),
+  avisarPagoSinNoches: vi.fn(async () => ({ huesped: null, administracion: null })),
+}));
+
+/* La comprobación de noches libres antes de revivir una reserva: reservas,
+   bloqueos y el calendario de Google. Aquí se decide qué devuelve. */
+vi.mock("../admin/disponibilidad", () => ({
+  buscarChoques: vi.fn(async () => []),
+  describirChoques: vi.fn(() => "Esas fechas ya están ocupadas en esa cabaña:\n• «Cristian Arcila cabaña 3» en el calendario del hotel"),
+}));
+vi.mock("../reserva/ocupacion-externa", () => ({
+  personasDiaDeCalmaParaEscribir: vi.fn(async () => ({})),
 }));
 
 vi.mock("../reserva/sincronizar-calendario", () => ({
@@ -50,7 +61,10 @@ vi.mock("./bold", async (importarOriginal) => {
   };
 });
 
-import { avisarPagoAprobado } from "../email";
+import { buscarChoques } from "../admin/disponibilidad";
+import { avisarPagoAprobado, avisarPagoSinNoches } from "../email";
+import { CalendarioSinRespuesta } from "../reserva/calendario-sin-respuesta";
+import { MARCA_REVISION_MANUAL } from "./aplicar-estado";
 import { consultarEstadoPago, type ConsultaEstado } from "./bold";
 import { aplicarEstadoDePago } from "./aplicar-estado";
 import { reconciliarPago, reconciliarPagosPendientes } from "./reconciliar";
@@ -231,6 +245,10 @@ function escenario(
     estado: opciones.estadoReserva ?? "pendiente",
     notas: opciones.notas ?? null,
     expira_at: opciones.expira ?? new Date().toISOString(),
+    tipo: "hospedaje",
+    alojamiento_id: "cabana-3",
+    estancia: "[2026-12-15,2026-12-18)",
+    num_personas: 2,
   });
   return base;
 }
@@ -257,6 +275,9 @@ const comoSupabase = (base: BaseFalsa) => base as any;
 
 beforeEach(() => {
   vi.mocked(avisarPagoAprobado).mockClear();
+  vi.mocked(avisarPagoSinNoches).mockClear();
+  vi.mocked(buscarChoques).mockReset();
+  vi.mocked(buscarChoques).mockResolvedValue([]);
   vi.mocked(consultarEstadoPago).mockReset();
 });
 
@@ -518,6 +539,110 @@ describe("reconciliarPago · idempotencia", () => {
 /* ===========================================================================
  * 5. El caso que pide una persona
  * ======================================================================== */
+
+/**
+ * UN PAGO TARDÍO YA NO REVIVE UNA RESERVA A CIEGAS.
+ *
+ * El hold vence, el barrido cancela, y el pago entra después. Antes la reserva
+ * volvía sin mirar bloqueos, completadas ni el calendario de Google del hotel
+ * (donde hoy viven todas las reservas reales). Ahora se comprueba antes; si las
+ * noches ya son de otro, no se confirma: queda marcada para revisión manual y
+ * sale un aviso interno.
+ */
+describe("reconciliarPago · pago tardío sobre noches ya tomadas", () => {
+  const CHOQUE = {
+    tipo: "calendario" as const,
+    descripcion: "«Cristian Arcila cabaña 3» en el calendario del hotel",
+    inicio: "2026-12-15",
+    fin: "2026-12-18",
+    quien: "Cristian Arcila cabaña 3",
+  };
+
+  it("no la confirma: la marca para revisión manual y avisa «devolver o reubicar»", async () => {
+    const base = escenario({ estadoReserva: "cancelada", notas: "Alergia al maní." });
+    vi.mocked(buscarChoques).mockResolvedValue([CHOQUE]);
+    vi.mocked(consultarEstadoPago).mockResolvedValue(respuestaBold("APPROVED"));
+
+    const resultado = await reconciliarPago(REFERENCIA, { supabase: comoSupabase(base) });
+
+    expect(buscarChoques).toHaveBeenCalledWith(
+      expect.anything(),
+      "cabana-3",
+      "2026-12-15",
+      "2026-12-18",
+      ID_RESERVA,
+    );
+    expect(resultado.aplicado?.clave).toBe("fechas_ocupadas");
+    expect(resultado.confirmada).toBe(false);
+    expect(base.reservas[0].estado).toBe("cancelada");
+    /* El dinero no se suma a ciegas: la nota dice cuánto entró. */
+    expect(base.reservas[0].monto_pagado).toBe(0);
+    const notas = String(base.reservas[0].notas);
+    expect(notas).toContain("Alergia al maní.");
+    expect(notas).toContain(MARCA_REVISION_MANUAL);
+    expect(notas).toContain(REFERENCIA);
+    /* El pago sigue aprobado: es un hecho contable. */
+    expect(base.pagos[0].estado).toBe("APPROVED");
+
+    expect(avisarPagoAprobado).not.toHaveBeenCalled();
+    expect(avisarPagoSinNoches).toHaveBeenCalledTimes(1);
+    const alerta = String(vi.mocked(avisarPagoSinNoches).mock.calls[0][3]);
+    expect(alerta).toContain("pago recibido pero las noches ya no están libres: devolver o reubicar".replace(/^p/, "P"));
+    /* El mensaje para el panel no lleva el nombre del otro huésped. */
+    expect(resultado.mensaje).not.toContain("Cristian");
+    expect(resultado.mensaje).toContain("revisión manual");
+  });
+
+  it("verificar el pago otra vez no vuelve a escribir ni a avisar", async () => {
+    const base = escenario({ estadoReserva: "cancelada" });
+    vi.mocked(buscarChoques).mockResolvedValue([CHOQUE]);
+    vi.mocked(consultarEstadoPago).mockResolvedValue(respuestaBold("APPROVED"));
+
+    await reconciliarPago(REFERENCIA, { supabase: comoSupabase(base) });
+    const escriturasTrasLaPrimera = base.escrituras.reservas;
+    const segunda = await reconciliarPago(REFERENCIA, { supabase: comoSupabase(base) });
+
+    expect(segunda.aplicado?.clave).toBe("fechas_ocupadas");
+    expect(base.escrituras.reservas).toBe(escriturasTrasLaPrimera);
+    expect(avisarPagoSinNoches).toHaveBeenCalledTimes(1);
+  });
+
+  it("si el calendario del hotel no responde, no la revive y se reintenta", async () => {
+    const base = escenario({ estadoReserva: "cancelada" });
+    vi.mocked(buscarChoques).mockRejectedValue(new CalendarioSinRespuesta("timeout"));
+    vi.mocked(consultarEstadoPago).mockResolvedValue(respuestaBold("APPROVED"));
+    const errores = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    const resultado = await reconciliarPago(REFERENCIA, { supabase: comoSupabase(base) });
+
+    expect(resultado.aplicado?.clave).toBe("error_reserva");
+    expect(resultado.aplicado?.reintentable).toBe(true);
+    expect(base.reservas[0].estado).toBe("cancelada");
+    expect(avisarPagoAprobado).not.toHaveBeenCalled();
+    errores.mockRestore();
+  });
+
+  it("si las noches siguen libres, vuelve como siempre", async () => {
+    const base = escenario({ estadoReserva: "cancelada" });
+    vi.mocked(consultarEstadoPago).mockResolvedValue(respuestaBold("APPROVED"));
+
+    const resultado = await reconciliarPago(REFERENCIA, { supabase: comoSupabase(base) });
+
+    expect(buscarChoques).toHaveBeenCalledOnce();
+    expect(resultado.aplicado?.clave).toBe("confirmada");
+    expect(base.reservas[0].estado).toBe("confirmada");
+  });
+
+  it("un pago a tiempo (el hold sigue vivo) no necesita comprobar nada", async () => {
+    const base = escenario({ expira: new Date(Date.now() + 20 * 60_000).toISOString() });
+    vi.mocked(consultarEstadoPago).mockResolvedValue(respuestaBold("APPROVED"));
+
+    const resultado = await reconciliarPago(REFERENCIA, { supabase: comoSupabase(base) });
+
+    expect(buscarChoques).not.toHaveBeenCalled();
+    expect(resultado.aplicado?.clave).toBe("confirmada");
+  });
+});
 
 describe("reconciliarPago · fechas ya ocupadas", () => {
   it("no se calla: el pago entró pero la reserva no se puede confirmar", async () => {

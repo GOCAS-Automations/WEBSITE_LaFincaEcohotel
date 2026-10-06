@@ -248,3 +248,37 @@ export async function avisarPagoAprobado(
     return SIN_AVISOS;
   }
 }
+
+/**
+ * Aviso INTERNO de un pago que no se pudo convertir en reserva confirmada.
+ *
+ * Pasa cuando un pago llega tarde —el hold ya había vencido— y entretanto esas
+ * noches se ocuparon (otra reserva, un bloqueo, un evento del calendario del
+ * hotel) o el Día de Calma se llenó. La reserva NO se confirma: queda marcada
+ * para revisión manual y aquí sale el correo a la administración con `alerta`,
+ * que lo dice arriba del todo y cambia el asunto a «⚠ Revisar a mano».
+ *
+ * Al huésped NO se le manda nada automático: lo que hay que decirle (devolver
+ * el dinero u ofrecerle otra cabaña u otras fechas) lo decide una persona.
+ *
+ * Nunca lanza.
+ */
+export async function avisarPagoSinNoches(
+  supabase: SupabaseClient,
+  reservaId: string,
+  pago: PagoCorreo,
+  alerta: string,
+): Promise<ResumenAvisos> {
+  try {
+    const datos = await datosDeReserva(supabase, reservaId, { pago });
+    if (!datos) return SIN_AVISOS;
+    const administracion = await enviarAvisoAdministracion({ ...datos, alerta });
+    return { huesped: null, administracion };
+  } catch (error) {
+    console.error(
+      "[correos] fallo al avisar del pago sin noches libres:",
+      error instanceof Error ? error.message : error,
+    );
+    return SIN_AVISOS;
+  }
+}

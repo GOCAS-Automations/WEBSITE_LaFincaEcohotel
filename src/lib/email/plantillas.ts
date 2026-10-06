@@ -132,6 +132,12 @@ export type DatosCorreo = {
   expiraAt?: string | null;
   /** Pago aprobado, cuando el correo lo dispara el webhook. */
   pago?: PagoCorreo | null;
+  /**
+   * Solo aviso interno: algo que una persona tiene que resolver YA (p. ej. un
+   * pago que entró cuando las noches ya no estaban libres). Va arriba del todo,
+   * destacado, y cambia el asunto.
+   */
+  alerta?: string | null;
 };
 
 /** Los datos de contacto del hotel que se pintan en el pie y en el cuerpo. */
@@ -912,7 +918,17 @@ export function renderAvisoAdministracion({
       : []),
   ];
 
+  const alerta = reserva.alerta?.trim() ?? "";
+
   const cuerpo = `
+    ${
+      alerta
+        ? bloque(
+            `<strong style="color:${COLOR.alerta};">⚠ Hay que resolverlo a mano</strong><br />${escaparHtml(alerta).replace(/\n/g, "<br />")}`,
+            COLOR.alertaFondo,
+          )
+        : ""
+    }
     ${parrafo(
       `<strong>${escaparHtml(reserva.codigo)}</strong> · ${
         esDia
@@ -946,6 +962,7 @@ export function renderAvisoAdministracion({
   `;
 
   const texto = [
+    ...(alerta ? ["⚠ HAY QUE RESOLVERLO A MANO", alerta, ""] : []),
     `${reserva.codigo} — ${
       esDia
         ? `Día de Calma del ${formatearFecha(reserva.entrada)} (${HORARIO_DIA.desde} a ${HORARIO_DIA.hasta})`
@@ -991,8 +1008,9 @@ export function renderAvisoAdministracion({
     `Se envía a las direcciones configuradas en EMAIL_NOTIFY_TO. RNT ${contacto.rnt}.`,
   ].join("\n");
 
-  const titulo =
-    estado === "confirmada"
+  const titulo = alerta
+    ? `⚠ Revisar a mano · ${reserva.codigo}`
+    : estado === "confirmada"
       ? `Reserva confirmada · ${reserva.codigo}`
       : `Nueva ${esDia ? "solicitud de Día de Calma" : "solicitud de reserva"} · ${reserva.codigo}`;
 

@@ -24,6 +24,7 @@
  */
 export {
   avisarPagoAprobado,
+  avisarPagoSinNoches,
   avisarReservaConfirmada,
   avisarSolicitudCreada,
   datosDeReserva,

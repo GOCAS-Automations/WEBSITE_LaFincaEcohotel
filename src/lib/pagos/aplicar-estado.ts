@@ -70,7 +70,10 @@ import {
   pagadoTrasCobro,
   type AccionDePago,
 } from "./transiciones";
-import { avisarPagoAprobado } from "../email";
+import { avisarPagoAprobado, avisarPagoSinNoches } from "../email";
+import { CalendarioSinRespuesta } from "../reserva/calendario-sin-respuesta";
+import { ocupaCalendario } from "../reserva/holds";
+import { nochesSiguenLibres } from "../reserva/revivir";
 import { sincronizarReservaEnCalendario } from "../reserva/sincronizar-calendario";
 import { formatearCOP } from "../utils/formato";
 
@@ -176,6 +179,14 @@ const SOLAPAMIENTO = "23P01";
  */
 const MOTIVO_RECUPERADA =
   "Pago verificado con Bold: la reserva se reactivó aunque su solicitud había caducado.";
+
+/**
+ * La marca que queda en `notas` cuando un pago llega y las noches YA NO están
+ * libres. Es lo que busca el equipo, y lo que impide marcar (y avisar) dos
+ * veces la misma reserva cuando se vuelve a verificar el pago.
+ */
+export const MARCA_REVISION_MANUAL =
+  "⚠ REVISIÓN MANUAL: pago recibido pero las noches ya no están libres: devolver o reubicar.";
 
 /* ===========================================================================
  * La función
@@ -542,12 +553,61 @@ async function confirmarLaReserva(
   );
 
   /*
-    ⚠ UNA RESERVA QUE EL BARRIDO YA HABÍA CANCELADO **VUELVE**.
+    ⚠ UNA RESERVA QUE YA NO APARTABA SUS NOCHES NO VUELVE A CIEGAS.
 
-    Es el caso que originó todo esto (`LF-2026-0001`). Se deja constancia en
-    `notas` —anexada, nunca sobrescrita: ahí está lo que escribió el huésped— y
-    la reserva pasa a `confirmada`. Si el pago entró, la reserva existe.
+    Es el caso que originó todo esto (`LF-2026-0001`): el barrido la canceló
+    —o su hold venció— y el pago entró después. Antes volvía sin mirar nada más
+    que la restricción de exclusión, que no ve bloqueos, completadas, el
+    calendario de Google del hotel ni los «plan día». Ahora se comprueba con
+    las mismas reglas que una reserva nueva (`nochesSiguenLibres`):
+      · libres → vuelve, con constancia en `notas` (anexada, nunca
+        sobrescrita: ahí está lo que escribió el huésped);
+      · ocupadas → NO se confirma: queda marcada para revisión manual y sale
+        un aviso interno («pago recibido pero las noches ya no están libres:
+        devolver o reubicar»);
+      · no se pudo comprobar (Google o la base sin respuesta) → no se toca y se
+        reintenta en la próxima verificación.
   */
+  const yaApartaba =
+    reserva !== null &&
+    ocupaCalendario({ estado: reserva.estado ?? "", expira_at: reserva.expira_at });
+
+  if (reserva && !yaApartaba) {
+    try {
+      const comprobacion = await nochesSiguenLibres(supabase, {
+        id: p.reservaId,
+        tipo: reserva.tipo,
+        alojamientoId: reserva.alojamiento_id,
+        estancia: reserva.estancia,
+        numPersonas: reserva.num_personas,
+      });
+      if (!comprobacion.libres) {
+        return await marcarParaRevision(supabase, p, reserva, comprobacion.detalle);
+      }
+    } catch (error) {
+      console.error(
+        `${p.marca}: no se pudo comprobar si las noches siguen libres:`,
+        error instanceof CalendarioSinRespuesta
+          ? `calendario de Google: ${error.detalle}`
+          : error instanceof Error
+            ? error.message
+            : error,
+      );
+      return {
+        ...p.base,
+        clave: "error_reserva",
+        cambio: !p.condicional,
+        codigo: reserva.codigo,
+        total,
+        pagado: reserva.monto_pagado,
+        saldo,
+        mensaje:
+          "El pago está aprobado en Bold, pero no se pudo comprobar si las noches de la reserva siguen libres (el calendario del hotel o la base no respondieron). No se cambió la reserva: vuelve a verificar el pago en unos minutos.",
+        reintentable: true,
+      };
+    }
+  }
+
   const resucita = reserva?.estado === "cancelada";
   const notas = resucita
     ? anexarNota(reserva?.notas ?? null, MOTIVO_RECUPERADA)
@@ -589,6 +649,17 @@ async function confirmarLaReserva(
       `${p.marca}: el pago entró pero no se pudo confirmar la reserva:`,
       errorReserva.message,
     );
+
+    /* Las noches se ocuparon entre la comprobación y la escritura: el mismo
+       camino que si la comprobación lo hubiera visto. */
+    if (ocupadas && reserva) {
+      return await marcarParaRevision(
+        supabase,
+        p,
+        reserva,
+        "otra reserva activa o un bloqueo de la misma cabaña ya tiene esas noches",
+      );
+    }
 
     return {
       ...p.base,
@@ -764,6 +835,92 @@ export async function repararReservaSinConfirmar(
   });
 }
 
+/**
+ * Pago aprobado y noches ya ocupadas: la reserva NO se confirma.
+ *
+ * Queda `cancelada` (no aparta nada: las noches son de otro), con la marca
+ * {@link MARCA_REVISION_MANUAL} en `notas` y el detalle de qué las ocupa, y
+ * sale un aviso interno a la administración que lo dice en el asunto. El dinero
+ * NO se suma a `monto_pagado`: la nota dice cuánto entró y por qué referencia, y
+ * así, si el equipo libera las noches y vuelve a verificar el pago, el abono se
+ * suma una sola vez.
+ *
+ * Si ya estaba marcada (se verificó el pago otra vez), no escribe ni avisa de
+ * nuevo. Nunca lanza.
+ */
+async function marcarParaRevision(
+  supabase: SupabaseClient,
+  p: ParametrosConfirmacion,
+  reserva: FilaReserva,
+  detalle: string,
+): Promise<ResultadoAplicacion> {
+  const total = reserva.total;
+  const yaMarcada = (reserva.notas ?? "").includes(MARCA_REVISION_MANUAL);
+  const etiqueta = reserva.codigo ? ` ${reserva.codigo}` : "";
+
+  const resultado: ResultadoAplicacion = {
+    ...p.base,
+    clave: "fechas_ocupadas",
+    cambio: !p.condicional || !yaMarcada,
+    codigo: reserva.codigo,
+    total,
+    pagado: reserva.monto_pagado,
+    saldo: Math.max(0, total - reserva.monto_pagado),
+    /* Sin nombres de otros huéspedes: el detalle va a la nota y al aviso
+       interno, no a este mensaje. */
+    mensaje: `El pago de ${formatearCOP(p.cobrado)} SÍ está aprobado en Bold, pero las noches de la reserva${etiqueta} ya no están libres: hay que devolver el dinero o reubicar al huésped. La reserva no se confirmó: quedó marcada para revisión manual y hay que resolverla a mano.`,
+    reintentable: false,
+  };
+
+  console.error(`${p.marca}: ⚠ pago aprobado pero las noches ya no están libres (${detalle}).`);
+
+  if (yaMarcada) return resultado;
+
+  const nota = `${MARCA_REVISION_MANUAL} Pago de ${formatearCOP(p.cobrado)} aprobado en Bold (referencia ${p.referencia}). Qué ocupa esas noches: ${detalle}`;
+  const { error } = await supabase
+    .from("reservas")
+    .update({
+      estado: "cancelada",
+      expira_at: null,
+      notas: anexarNota(reserva.notas, nota),
+    })
+    .eq("id", p.reservaId);
+
+  if (error) {
+    console.error(`${p.marca}: no se pudo marcar la reserva para revisión:`, error.message);
+    /* Sigue siendo «fechas ocupadas» —eso no cambia—, pero sin la marca hay
+       que volver a intentarlo para que quede escrita y salga el aviso. */
+    return {
+      ...resultado,
+      mensaje: `${resultado.mensaje} (No se pudo dejar la marca en la ficha: vuelve a verificar el pago.)`,
+      reintentable: true,
+    };
+  }
+
+  await p.lanzar(async () => {
+    try {
+      await avisarPagoSinNoches(
+        supabase,
+        p.reservaId,
+        {
+          monto: p.cobrado,
+          saldo: Math.max(0, total - p.cobrado),
+          metodo: p.metodo,
+          transaccionId: p.transaccionId,
+        },
+        `Pago recibido pero las noches ya no están libres: devolver o reubicar. La reserva no se confirmó.\nQué ocupa esas noches: ${detalle}`,
+      );
+    } catch (error) {
+      console.error(
+        `${p.marca}: fallo inesperado al avisar del pago sin noches:`,
+        error instanceof Error ? error.message : error,
+      );
+    }
+  });
+
+  return resultado;
+}
+
 /* ===========================================================================
  * Piezas
  * ======================================================================== */
@@ -774,6 +931,11 @@ type FilaReserva = {
   monto_pagado: number;
   estado: string | null;
   notas: string | null;
+  expira_at: string | null;
+  tipo: string | null;
+  alojamiento_id: string | null;
+  estancia: unknown;
+  num_personas: number;
 };
 
 /** Lo poco que de la reserva hace falta aquí. Nunca lanza. */
@@ -783,7 +945,9 @@ async function leerReserva(
 ): Promise<FilaReserva | null> {
   const { data } = await supabase
     .from("reservas")
-    .select("codigo, total, monto_pagado, estado, notas")
+    .select(
+      "codigo, total, monto_pagado, estado, notas, expira_at, tipo, alojamiento_id, estancia, num_personas",
+    )
     .eq("id", reservaId)
     .maybeSingle();
 
@@ -795,6 +959,11 @@ async function leerReserva(
     monto_pagado: Number(data.monto_pagado ?? 0),
     estado: typeof data.estado === "string" ? data.estado : null,
     notas: typeof data.notas === "string" ? data.notas : null,
+    expira_at: typeof data.expira_at === "string" ? data.expira_at : null,
+    tipo: typeof data.tipo === "string" ? data.tipo : null,
+    alojamiento_id: data.alojamiento_id ? String(data.alojamiento_id) : null,
+    estancia: data.estancia ?? null,
+    num_personas: Number(data.num_personas ?? 0),
   };
 }
 
