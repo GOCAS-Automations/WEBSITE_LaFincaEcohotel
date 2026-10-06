@@ -12,8 +12,10 @@ import {
 } from "@/lib/google/calendario";
 import {
   franjasQueChocan,
-  ocupacionDesdeVariosCalendarios,
+  lecturaDeVariosCalendarios,
+  personasDeDiaDeCalmaPorFecha,
   sumarDias,
+  type DiaDeCalmaExterno,
   type LoteDeCalendario,
   type OcupacionExterna,
 } from "./calendario-externo";
@@ -88,6 +90,12 @@ export type LecturaCalendario = {
   mensaje: string;
   /** Franjas ocupadas según Google. Vacío si no hay conexión. */
   ocupacion: OcupacionExterna[];
+  /**
+   * Días de Calma apuntados en un calendario general («Cristian Arcila plan
+   * día»): no ocupan cabaña y gastan cupo del Día de Calma (regla 2b de
+   * `calendario-externo.ts`). Vacío si no hay conexión.
+   */
+  diasDeCalma: DiaDeCalmaExterno[];
   /** Cuántos eventos vinieron (antes de descartar los nuestros y los cancelados). */
   eventos: number;
   /** Momento de la consulta que hay en caché, en ISO; `null` si no hubo. */
@@ -154,6 +162,7 @@ function sinConfigurar(
     estado: "sin_configurar",
     mensaje,
     ocupacion: [],
+    diasDeCalma: [],
     eventos: 0,
     consultado: null,
     avisos,
@@ -167,6 +176,7 @@ function mensajeConectado(
   leidos: number,
   total: number,
   franjas: number,
+  diasDeCalma = 0,
 ): string {
   const cabecera =
     total === 1
@@ -174,12 +184,22 @@ function mensajeConectado(
       : leidos === total
         ? `Conectado con los ${total} calendarios del hotel`
         : `Conectado con ${leidos} de los ${total} calendarios del hotel`;
+  /* Un «plan día» no ocupa cabaña: se cuenta aparte para que nadie lo busque
+     entre las cabañas ocupadas. */
+  const deDia =
+    diasDeCalma === 0
+      ? ""
+      : diasDeCalma === 1
+        ? "1 evento es de Día de Calma (no ocupa cabaña, cuenta en el cupo del día)"
+        : `${diasDeCalma} eventos son de Día de Calma (no ocupan cabaña, cuentan en el cupo del día)`;
   const cola =
-    franjas === 0
+    franjas === 0 && diasDeCalma === 0
       ? ". No hay eventos en este periodo."
-      : `: ${franjas} ${
-          franjas === 1 ? "evento ocupa fechas" : "eventos ocupan fechas"
-        }.`;
+      : franjas === 0
+        ? `: ${deDia}.`
+        : `: ${franjas} ${
+            franjas === 1 ? "evento ocupa fechas" : "eventos ocupan fechas"
+          }${deDia ? `; ${deDia}` : ""}.`;
   return cabecera + cola;
 }
 
@@ -244,6 +264,7 @@ async function consultar(
       estado: "error",
       mensaje: fallos[0] ?? "No se pudo leer el calendario del hotel.",
       ocupacion: [],
+      diasDeCalma: [],
       eventos: 0,
       consultado: new Date().toISOString(),
       avisos,
@@ -252,11 +273,17 @@ async function consultar(
     };
   }
 
-  const ocupacion = ocupacionDesdeVariosCalendarios(lotes);
+  const { ocupacion, diasDeCalma } = lecturaDeVariosCalendarios(lotes);
   return {
     estado: "conectado",
-    mensaje: mensajeConectado(lotes.length, config.calendarios.length, ocupacion.length),
+    mensaje: mensajeConectado(
+      lotes.length,
+      config.calendarios.length,
+      ocupacion.length,
+      diasDeCalma.length,
+    ),
     ocupacion,
+    diasDeCalma,
     eventos,
     consultado: new Date().toISOString(),
     avisos,
@@ -315,6 +342,21 @@ export async function choquesDelCalendario(
   const lectura = await ocupacionDelCalendario(entrada, salida);
   if (lectura.estado !== "conectado") return [];
   return franjasQueChocan(lectura.ocupacion, nombreCabana, entrada, salida);
+}
+
+/**
+ * Personas que el calendario del hotel ya gasta del cupo del Día de Calma en
+ * `[desde, hasta)`, fecha por fecha (2 por cada «plan día», regla 2b de
+ * `calendario-externo.ts`). Sale de la misma caché de cinco minutos y nunca
+ * lanza: sin conexión con Google devuelve `{}` y el cupo cuenta solo la base.
+ */
+export async function personasDiaDeCalmaDelCalendario(
+  desde: string,
+  hasta: string,
+): Promise<Record<string, number>> {
+  const lectura = await ocupacionDelCalendario(desde, hasta);
+  if (lectura.estado !== "conectado") return {};
+  return personasDeDiaDeCalmaPorFecha(lectura.diasDeCalma, desde, hasta);
 }
 
 /**

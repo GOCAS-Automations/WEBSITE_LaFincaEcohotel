@@ -6,7 +6,7 @@ import {
   sinCabanaEnTitulo,
 } from "./calendario-mes";
 import type { BloqueoAdmin, OpcionAlojamiento, ReservaAdmin } from "./tipos";
-import type { OcupacionExterna } from "../reserva/calendario-externo";
+import type { DiaDeCalmaExterno, OcupacionExterna } from "../reserva/calendario-externo";
 
 const AHORA = new Date("2026-10-05T15:00:00Z");
 const MES = { anio: 2026, mes: 10 };
@@ -67,6 +67,7 @@ function armar({
   reservas = [] as ReservaAdmin[],
   bloqueos = [] as BloqueoAdmin[],
   franjas = [] as OcupacionExterna[],
+  diasDeCalma = [] as DiaDeCalmaExterno[],
 } = {}) {
   return armarCalendarioMes({
     mes: MES,
@@ -76,6 +77,7 @@ function armar({
     bloqueos,
     franjas,
     personasDeDia: new Map([["2026-10-10", 6]]),
+    diasDeCalma,
     ahora: AHORA,
   });
 }
@@ -118,7 +120,7 @@ describe("armarCalendarioMes", () => {
   it("un evento sin cabaña se pinta en todas, marcado, y uno con cabaña manda sobre él", () => {
     const sinCabana = franja({
       eventoId: "e2",
-      titulo: "Cristian plan día",
+      titulo: "Familia Gómez",
       cabana: null,
       motivo: "sin_cabana",
       inicio: "2026-10-04",
@@ -128,7 +130,7 @@ describe("armarCalendarioMes", () => {
     const { filas } = armar({ franjas: [conCabana, sinCabana] });
     expect(filas.find((fila) => fila.id === "c1")!.barras[0]).toMatchObject({
       sinCabana: true,
-      etiqueta: "Cristian plan día",
+      etiqueta: "Familia Gómez",
     });
     expect(filas.find((fila) => fila.id === "c3")!.barras[0]).toMatchObject({
       sinCabana: false,
@@ -174,6 +176,24 @@ describe("armarCalendarioMes", () => {
 
   it("el Día de Calma lleva sus personas por fecha", () => {
     expect(armar().personasDeDia).toEqual({ "2026-10-10": 6 });
+  });
+
+  it("un «plan día» del calendario del hotel cuenta 2 en la fila del Día de Calma y no ocupa ninguna cabaña", () => {
+    const plan: DiaDeCalmaExterno = {
+      eventoId: "cristian",
+      titulo: "Cristian Arcila plan día",
+      inicio: "2026-10-04",
+      fin: "2026-10-05",
+      personas: 2,
+    };
+    const otro: DiaDeCalmaExterno = { ...plan, eventoId: "marta", titulo: "Pasadía Marta", inicio: "2026-10-10", fin: "2026-10-11" };
+    const calendario = armar({ diasDeCalma: [plan, otro] });
+    expect(calendario.personasDeDia).toEqual({ "2026-10-04": 2, "2026-10-10": 8 });
+    expect(calendario.diaDeCalmaDelHotel).toEqual({
+      "2026-10-04": ["Cristian Arcila plan día"],
+      "2026-10-10": ["Pasadía Marta"],
+    });
+    expect(calendario.filas.every((fila) => fila.barras.length === 0)).toBe(true);
   });
 });
 

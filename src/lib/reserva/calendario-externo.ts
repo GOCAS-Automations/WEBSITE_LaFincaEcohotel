@@ -27,6 +27,17 @@
  *   2. Si no se reconoce ninguna cabaña, el evento bloquea LAS CINCO. Es la
  *      decisión conservadora a propósito: preferimos decirle «no hay sitio» a
  *      quien sí cabía antes que vender dos veces la misma noche.
+ *   2b. EXCEPTO EL DÍA DE CALMA (2026-10-05). Si el evento no nombra cabaña y
+ *      su título dice «plan día», «plan de día», «día de calma» o «pasadía»
+ *      (sin mirar mayúsculas ni tildes, ver {@link esTituloDeDiaDeCalma}), es
+ *      un Día de Calma: **no ocupa ninguna cabaña** —el plan de día no lleva
+ *      hospedaje (`docs/DATOS_CLIENTE.md`)— y **gasta cupo del Día de Calma**
+ *      ese día, {@link PERSONAS_POR_EVENTO_DIA_DE_CALMA} personas: el plan es
+ *      para una o dos y el evento no dice cuántas, así que se cuenta lo más.
+ *      Caso real: «Cristian Arcila plan día» (04/10/2026, calendario general)
+ *      dejó el domingo sin ninguna cabaña libre en el sitio.
+ *      Si nombra una cabaña («Cabaña 3 plan día») o viene del subcalendario de
+ *      una cabaña, sigue ocupando esa cabaña: ahí el hotel dijo cuál.
  *   3. Los eventos cancelados se ignoran.
  *   4. Los eventos que creó el propio sitio se ignoran: ya están en la tabla
  *      `reservas` y contarlos dos veces haría que una reserva chocara consigo
@@ -102,6 +113,36 @@ export type OcupacionExterna = {
   motivo: "cabana_reconocida" | "sin_cabana" | "calendario_de_cabana";
 };
 
+/**
+ * Personas que gasta del cupo del Día de Calma un evento de Google que es un
+ * Día de Calma. El plan es para 1 o 2 adultos y el evento no dice cuántos:
+ * se cuentan 2, que es lo conservador (regla 2b).
+ */
+export const PERSONAS_POR_EVENTO_DIA_DE_CALMA = 2;
+
+/**
+ * Un Día de Calma apuntado en el calendario del hotel (regla 2b): no ocupa
+ * cabaña, gasta cupo. Va en una lista APARTE de las franjas de ocupación a
+ * propósito: así ningún código que lea `cabana === null` como «ocupa todas»
+ * puede contarlo como ocupación por descuido.
+ */
+export type DiaDeCalmaExterno = {
+  eventoId: string;
+  titulo: string;
+  /** Día de la visita, `AAAA-MM-DD`. */
+  inicio: string;
+  /** Exclusivo: un evento de un día es `[4, 5)`. */
+  fin: string;
+  /** Lo que gasta del cupo cada día: {@link PERSONAS_POR_EVENTO_DIA_DE_CALMA}. */
+  personas: number;
+};
+
+/** Lo que sale de leer los eventos: ocupación de cabañas y Días de Calma. */
+export type LecturaDeEventos = {
+  ocupacion: OcupacionExterna[];
+  diasDeCalma: DiaDeCalmaExterno[];
+};
+
 /* ---------------------------------------------------------------------------
  * Aritmética de fechas (texto, nunca `Date` con husos)
  * ------------------------------------------------------------------------- */
@@ -142,6 +183,25 @@ function normalizar(texto: string): string {
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
     .toLowerCase();
+}
+
+/**
+ * Las señales de un Día de Calma en el título, ya sin tildes y en minúsculas:
+ * «plan día», «plan de día», «plan-día», «día de calma» y «pasadía». Con `\b`
+ * a los lados, para que «plan diario» o «pasadías» no cuenten.
+ */
+const SENALES_DIA_DE_CALMA =
+  /\bplan[\s-]+(?:de[\s-]+)?dia\b|\bdia[\s-]+de[\s-]+calma\b|\bpasadia\b/;
+
+/**
+ * ¿El título de un evento dice que es un Día de Calma? (regla 2b)
+ *
+ * Solo mira el título. Que el evento nombre o no una cabaña lo decide quien
+ * llama: un «Cabaña 3 plan día» sigue ocupando la 3.
+ */
+export function esTituloDeDiaDeCalma(titulo: string | null | undefined): boolean {
+  if (!titulo) return false;
+  return SENALES_DIA_DE_CALMA.test(normalizar(titulo));
 }
 
 /**
@@ -210,15 +270,20 @@ export function esEventoPropio(evento: EventoCalendario): boolean {
 }
 
 /**
- * Convierte los eventos del calendario del hotel en franjas de ocupación.
+ * Lee los eventos de UN calendario: franjas de ocupación y Días de Calma.
  *
- * Descarta lo cancelado, lo propio y lo que no tiene fechas legibles. El
- * resultado sale ordenado por fecha, que es como se lee en el panel.
+ * Descarta lo cancelado, lo propio y lo que no tiene fechas legibles. Con
+ * `cabanaDelCalendario` (subcalendario de una cabaña) todo ocupa esa cabaña y
+ * el título no se mira (regla 5). Sin ella, un evento sin cabaña reconocible
+ * cuyo título dice «plan día» o parecido es un Día de Calma (regla 2b) y va a
+ * `diasDeCalma`, no a `ocupacion`. Las dos listas salen ordenadas por fecha.
  */
-export function ocupacionDesdeEventos(
+export function leerEventos(
   eventos: EventoCalendario[],
-): OcupacionExterna[] {
-  const franjas: OcupacionExterna[] = [];
+  cabanaDelCalendario: number | null = null,
+): LecturaDeEventos {
+  const ocupacion: OcupacionExterna[] = [];
+  const diasDeCalma: DiaDeCalmaExterno[] = [];
 
   for (const evento of eventos) {
     if (evento.estado === "cancelled") continue;
@@ -227,10 +292,35 @@ export function ocupacionDesdeEventos(
     const rango = rangoDelEvento(evento);
     if (!rango) continue;
 
+    const titulo = evento.titulo.trim() || "Evento sin título";
+
+    if (cabanaDelCalendario !== null) {
+      ocupacion.push({
+        eventoId: evento.id,
+        titulo,
+        inicio: rango.inicio,
+        fin: rango.fin,
+        cabana: cabanaDelCalendario,
+        motivo: "calendario_de_cabana",
+      });
+      continue;
+    }
+
     const cabana = numeroDeCabana(evento.titulo);
-    franjas.push({
+    if (cabana === null && esTituloDeDiaDeCalma(evento.titulo)) {
+      diasDeCalma.push({
+        eventoId: evento.id,
+        titulo,
+        inicio: rango.inicio,
+        fin: rango.fin,
+        personas: PERSONAS_POR_EVENTO_DIA_DE_CALMA,
+      });
+      continue;
+    }
+
+    ocupacion.push({
       eventoId: evento.id,
-      titulo: evento.titulo.trim() || "Evento sin título",
+      titulo,
       inicio: rango.inicio,
       fin: rango.fin,
       cabana,
@@ -238,12 +328,23 @@ export function ocupacionDesdeEventos(
     });
   }
 
-  ordenarFranjas(franjas);
-  return franjas;
+  ordenarFranjas(ocupacion);
+  ordenarFranjas(diasDeCalma);
+  return { ocupacion, diasDeCalma };
+}
+
+/**
+ * Las franjas de ocupación de los eventos de un calendario general.
+ * Los Días de Calma no salen: no ocupan cabaña (ver {@link leerEventos}).
+ */
+export function ocupacionDesdeEventos(
+  eventos: EventoCalendario[],
+): OcupacionExterna[] {
+  return leerEventos(eventos).ocupacion;
 }
 
 /** Orden de lectura del panel: por fecha y, a igualdad, por título. */
-function ordenarFranjas(franjas: OcupacionExterna[]): void {
+function ordenarFranjas(franjas: { inicio: string; titulo: string }[]): void {
   franjas.sort((a, b) =>
     a.inicio === b.inicio ? a.titulo.localeCompare(b.titulo) : a.inicio < b.inicio ? -1 : 1,
   );
@@ -284,31 +385,49 @@ export type LoteDeCalendario = {
 export function ocupacionDesdeVariosCalendarios(
   lotes: LoteDeCalendario[],
 ): OcupacionExterna[] {
+  return lecturaDeVariosCalendarios(lotes).ocupacion;
+}
+
+/**
+ * Lo mismo que {@link ocupacionDesdeVariosCalendarios}, con los Días de Calma
+ * aparte (regla 2b). También se unen: un «plan día» copiado en dos calendarios
+ * generales gasta el cupo una sola vez.
+ */
+export function lecturaDeVariosCalendarios(
+  lotes: LoteDeCalendario[],
+): LecturaDeEventos {
   const franjas: OcupacionExterna[] = [];
+  const diasDeCalma: DiaDeCalmaExterno[] = [];
   const vistas = new Set<string>();
 
   for (const lote of lotes) {
-    for (const franja of ocupacionDesdeEventos(lote.eventos)) {
-      const ajustada: OcupacionExterna =
-        lote.cabana === null
-          ? franja
-          : { ...franja, cabana: lote.cabana, motivo: "calendario_de_cabana" };
+    const lectura = leerEventos(lote.eventos, lote.cabana);
 
+    for (const franja of lectura.ocupacion) {
       const clave = [
-        ajustada.cabana ?? "todas",
-        ajustada.inicio,
-        ajustada.fin,
-        ajustada.titulo.toLowerCase(),
+        franja.cabana ?? "todas",
+        franja.inicio,
+        franja.fin,
+        franja.titulo.toLowerCase(),
       ].join("|");
       if (vistas.has(clave)) continue;
 
       vistas.add(clave);
-      franjas.push(ajustada);
+      franjas.push(franja);
+    }
+
+    for (const dia of lectura.diasDeCalma) {
+      const clave = ["dia", dia.inicio, dia.fin, dia.titulo.toLowerCase()].join("|");
+      if (vistas.has(clave)) continue;
+
+      vistas.add(clave);
+      diasDeCalma.push(dia);
     }
   }
 
   ordenarFranjas(franjas);
-  return franjas;
+  ordenarFranjas(diasDeCalma);
+  return { ocupacion: franjas, diasDeCalma };
 }
 
 /* ---------------------------------------------------------------------------
@@ -374,4 +493,64 @@ export function diasDeLaFranja(franja: OcupacionExterna): string[] {
     if (dias.length > 400) break; // red de seguridad ante un rango absurdo
   }
   return dias;
+}
+
+/* ---------------------------------------------------------------------------
+ * El cupo del Día de Calma que gasta el calendario del hotel (regla 2b)
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Los Días de Calma del calendario del hotel, fecha por fecha, dentro de
+ * `[desde, hasta)` (sin límites si no se pasan). Para nombrarlos en el panel.
+ */
+export function diasDeCalmaPorFecha(
+  diasDeCalma: DiaDeCalmaExterno[],
+  desde?: string,
+  hasta?: string,
+): Record<string, DiaDeCalmaExterno[]> {
+  const porFecha: Record<string, DiaDeCalmaExterno[]> = {};
+  for (const evento of diasDeCalma) {
+    let vueltas = 0;
+    for (let dia = evento.inicio; dia < evento.fin; dia = sumarDias(dia, 1)) {
+      if (++vueltas > 400) break; // red de seguridad ante un rango absurdo
+      if (desde && dia < desde) continue;
+      if (hasta && dia >= hasta) break;
+      (porFecha[dia] ??= []).push(evento);
+    }
+  }
+  return porFecha;
+}
+
+/**
+ * Personas que el calendario del hotel ya gasta del cupo del Día de Calma,
+ * por fecha: {@link PERSONAS_POR_EVENTO_DIA_DE_CALMA} por cada «plan día».
+ * Solo salen las fechas con alguien. Se SUMA a las reservas de día de la base
+ * con {@link sumarPorFecha}.
+ */
+export function personasDeDiaDeCalmaPorFecha(
+  diasDeCalma: DiaDeCalmaExterno[],
+  desde?: string,
+  hasta?: string,
+): Record<string, number> {
+  const personas: Record<string, number> = {};
+  for (const [dia, eventos] of Object.entries(
+    diasDeCalmaPorFecha(diasDeCalma, desde, hasta),
+  )) {
+    personas[dia] = eventos.reduce((suma, evento) => suma + evento.personas, 0);
+  }
+  return personas;
+}
+
+/** Suma, fecha por fecha, varios conteos de personas. */
+export function sumarPorFecha(
+  ...conteos: (Record<string, number> | Map<string, number>)[]
+): Record<string, number> {
+  const total: Record<string, number> = {};
+  for (const conteo of conteos) {
+    const entradas = conteo instanceof Map ? [...conteo.entries()] : Object.entries(conteo);
+    for (const [dia, cantidad] of entradas) {
+      total[dia] = (total[dia] ?? 0) + cantidad;
+    }
+  }
+  return total;
 }

@@ -53,6 +53,10 @@ import {
 import { nombreDelFestivo } from "../festivos-colombia";
 import {
   cabanasAfectadas,
+  diasDeCalmaPorFecha,
+  personasDeDiaDeCalmaPorFecha,
+  sumarPorFecha,
+  type DiaDeCalmaExterno,
   type OcupacionExterna,
 } from "../reserva/calendario-externo";
 import { ocupaCalendario } from "../reserva/holds";
@@ -112,8 +116,14 @@ export type FilaCabana = {
 export type CalendarioDelMes = {
   dias: DiaDelCalendario[];
   filas: FilaCabana[];
-  /** Personas del Día de Calma por fecha (solo las fechas con alguien). */
+  /**
+   * Personas del Día de Calma por fecha (solo las fechas con alguien). Incluye
+   * los «plan día» del calendario del hotel, 2 cada uno (regla 2b de
+   * `calendario-externo.ts`).
+   */
   personasDeDia: Record<string, number>;
+  /** Títulos de los «plan día» del calendario del hotel, por fecha. */
+  diaDeCalmaDelHotel: Record<string, string[]>;
 };
 
 type Ocupante =
@@ -184,6 +194,7 @@ export function armarCalendarioMes({
   bloqueos,
   franjas,
   personasDeDia,
+  diasDeCalma = [],
   ahora,
 }: {
   mes: AnioMes;
@@ -195,6 +206,11 @@ export function armarCalendarioMes({
   /** Franjas del calendario de Google (vacío si no está conectado). */
   franjas: OcupacionExterna[];
   personasDeDia: Map<string, number> | Record<string, number>;
+  /**
+   * «Plan día» del calendario general del hotel: no ocupan cabaña (no salen
+   * en ninguna fila) y suman a la fila del Día de Calma.
+   */
+  diasDeCalma?: DiaDeCalmaExterno[];
   /** Un solo instante para todo el mes: el hold vence igual en cada casilla. */
   ahora: Date;
 }): CalendarioDelMes {
@@ -301,16 +317,25 @@ export function armarCalendarioMes({
     return { id: cabana.id, nombre: cabana.nombre, activo: cabana.activo, barras };
   });
 
+  const primerDia = fechas[0];
+  const finDelMes = sumarDiasISO(fechas[fechas.length - 1], 1);
   const personas: Record<string, number> = {};
-  const entradas =
-    personasDeDia instanceof Map
-      ? [...personasDeDia.entries()]
-      : Object.entries(personasDeDia);
+  const entradas = Object.entries(
+    sumarPorFecha(
+      personasDeDia,
+      personasDeDiaDeCalmaPorFecha(diasDeCalma, primerDia, finDelMes),
+    ),
+  );
   for (const [dia, cantidad] of entradas) {
     if (posicion.has(dia) && cantidad > 0) personas[dia] = cantidad;
   }
+  const diaDeCalmaDelHotel = Object.fromEntries(
+    Object.entries(diasDeCalmaPorFecha(diasDeCalma, primerDia, finDelMes)).map(
+      ([dia, eventos]) => [dia, eventos.map((evento) => evento.titulo)],
+    ),
+  );
 
-  return { dias, filas, personasDeDia: personas };
+  return { dias, filas, personasDeDia: personas, diaDeCalmaDelHotel };
 }
 
 

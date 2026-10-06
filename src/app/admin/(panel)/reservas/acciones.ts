@@ -37,7 +37,11 @@ import {
 import { reconciliarPago } from "@/lib/pagos/reconciliar";
 import { ocupaCalendario } from "@/lib/reserva/holds";
 import { liberarReservasVencidas } from "@/lib/reserva/liberar-vencidas";
-import { invalidarCacheCalendario } from "@/lib/reserva/ocupacion-externa";
+import { diasDeCalmaPorFecha } from "@/lib/reserva/calendario-externo";
+import {
+  invalidarCacheCalendario,
+  ocupacionDelCalendario,
+} from "@/lib/reserva/ocupacion-externa";
 import {
   borrarEventoDeReserva,
   sincronizarReservaEnCalendario,
@@ -196,6 +200,24 @@ async function personasDeDiaEn(
       ),
     )
     .reduce((suma, fila) => suma + Number(fila.num_personas ?? 0), 0);
+}
+
+/**
+ * Los «plan día» del calendario general del hotel en esa fecha: no ocupan
+ * cabaña y gastan 2 cupos cada uno (regla 2b de `calendario-externo.ts`).
+ * Sin conexión con Google, ninguno. Los títulos van en el aviso del panel.
+ */
+async function diaDeCalmaDelHotelEn(
+  fecha: string,
+): Promise<{ personas: number; titulos: string[] }> {
+  const siguiente = sumarDiasISO(fecha, 1);
+  const lectura = await ocupacionDelCalendario(fecha, siguiente);
+  if (lectura.estado !== "conectado") return { personas: 0, titulos: [] };
+  const eventos = diasDeCalmaPorFecha(lectura.diasDeCalma, fecha, siguiente)[fecha] ?? [];
+  return {
+    personas: eventos.reduce((suma, evento) => suma + evento.personas, 0),
+    titulos: eventos.map((evento) => evento.titulo),
+  };
 }
 
 /**
@@ -426,10 +448,20 @@ export async function guardarReservaAction(
     /* El cupo del día, avisado antes de intentarlo. Si dos personas guardan a
        la vez, el trigger de la base sigue siendo quien decide. */
     if (esDia && ["pendiente", "confirmada"].includes(estado)) {
-      const ocupadas = await personasDeDiaEn(supabase, entrada, id || undefined);
+      const [deLaBase, delHotel] = await Promise.all([
+        personasDeDiaEn(supabase, entrada, id || undefined),
+        diaDeCalmaDelHotelEn(entrada),
+      ]);
+      const ocupadas = deLaBase + delHotel.personas;
       if (ocupadas + numPersonas > CUPO_DIA_DE_CALMA) {
+        const deGoogle =
+          delHotel.personas > 0
+            ? ` (${delHotel.personas} de ${delHotel.titulos
+                .map((titulo) => `«${titulo}»`)
+                .join(", ")}, apuntado en el calendario del hotel: cada «plan día» cuenta 2)`
+            : "";
         throw new ErrorDeValidacion(
-          `El Día de Calma admite ${CUPO_DIA_DE_CALMA} personas por día y para esa fecha ya hay ${ocupadas}. Quedan ${Math.max(
+          `El Día de Calma admite ${CUPO_DIA_DE_CALMA} personas por día y para esa fecha ya hay ${ocupadas}${deGoogle}. Quedan ${Math.max(
             CUPO_DIA_DE_CALMA - ocupadas,
             0,
           )} cupos.`,

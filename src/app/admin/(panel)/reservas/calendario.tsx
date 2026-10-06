@@ -26,7 +26,10 @@ import type {
   OpcionAlojamiento,
   ReservaAdmin,
 } from "@/lib/admin/tipos";
-import type { OcupacionExterna } from "@/lib/reserva/calendario-externo";
+import type {
+  DiaDeCalmaExterno,
+  OcupacionExterna,
+} from "@/lib/reserva/calendario-externo";
 import { CUPO_DIA_DE_CALMA } from "@/lib/reserva/dia-de-calma";
 import { limitesDelPanel } from "@/lib/utils/selector-mes";
 
@@ -73,6 +76,7 @@ export function CalendarioMes({
   bloqueos,
   personasDeDia,
   ocupacionGoogle = [],
+  diasDeCalmaGoogle = [],
   consulta = "",
 }: {
   mes: AnioMes;
@@ -83,6 +87,8 @@ export function CalendarioMes({
   personasDeDia: Map<string, number>;
   /** Franjas del Google Calendar del hotel. Vacío si no está conectado. */
   ocupacionGoogle?: OcupacionExterna[];
+  /** «Plan día» del calendario general del hotel: cuentan en la fila del Día de Calma. */
+  diasDeCalmaGoogle?: DiaDeCalmaExterno[];
   /** El resto de la dirección (filtro del listado), para no perderlo al cambiar de mes. */
   consulta?: string;
 }) {
@@ -95,6 +101,7 @@ export function CalendarioMes({
     bloqueos,
     franjas: ocupacionGoogle,
     personasDeDia,
+    diasDeCalma: diasDeCalmaGoogle,
     ahora: new Date(),
   });
   const indiceHoy = calendario.dias.findIndex((dia) => dia.esHoy);
@@ -151,7 +158,7 @@ function Cuadricula({
   calendario: CalendarioDelMes;
   titulo: string;
 }) {
-  const { dias, filas, personasDeDia } = calendario;
+  const { dias, filas, personasDeDia, diaDeCalmaDelHotel } = calendario;
   const columnas = `repeat(${dias.length}, minmax(var(--ancho-dia), 1fr))`;
 
   return (
@@ -239,6 +246,13 @@ function Cuadricula({
         >
           {dias.map((dia, indice) => {
             const personas = personasDeDia[dia.iso] ?? 0;
+            /* Los «plan día» del calendario del hotel cuentan aquí (2 cada
+               uno) y no en ninguna cabaña: la casilla lleva borde punteado,
+               como todo lo que viene de Google, y los nombra en el detalle. */
+            const delHotel = diaDeCalmaDelHotel[dia.iso] ?? [];
+            const detalleHotel = delHotel.length
+              ? `. Incluye ${delHotel.map((titulo) => `«${titulo}»`).join(", ")} del calendario del hotel (cada «plan día» cuenta 2 y no ocupa cabaña)`
+              : "";
             return (
               <div
                 key={dia.iso}
@@ -247,13 +261,14 @@ function Cuadricula({
               >
                 {personas > 0 ? (
                   <span
-                    title={`${fechaConDia(dia.iso)}: ${personas} de ${CUPO_DIA_DE_CALMA} cupos del Día de Calma${personas >= CUPO_DIA_DE_CALMA ? " (completo)" : ""}`}
-                    className={`flex h-8 flex-1 items-center justify-center rounded-[8px] text-[0.6875rem] font-bold tabular-nums ${tonoCupo(personas)}`}
+                    title={`${fechaConDia(dia.iso)}: ${personas} de ${CUPO_DIA_DE_CALMA} cupos del Día de Calma${personas >= CUPO_DIA_DE_CALMA ? " (completo)" : ""}${detalleHotel}`}
+                    className={`flex h-8 flex-1 items-center justify-center rounded-[8px] text-[0.6875rem] font-bold tabular-nums ${tonoCupo(personas)} ${delHotel.length ? "border border-dashed border-crema-900/45" : ""}`}
                   >
                     {personas}/{CUPO_DIA_DE_CALMA}
                     <span className="sr-only">
                       {" "}
                       personas en el Día de Calma el {fechaConDia(dia.iso)}
+                      {detalleHotel}
                     </span>
                   </span>
                 ) : null}
@@ -425,6 +440,15 @@ function Leyenda() {
           4/10
         </span>
         Día de Calma (personas del día)
+      </li>
+      <li className="flex items-center gap-1.5">
+        <span
+          aria-hidden="true"
+          className={`flex h-3.5 w-7 items-center justify-center rounded-[4px] border border-dashed border-crema-900/45 text-[0.5625rem] font-bold ${tonoCupo(2)}`}
+        >
+          2/10
+        </span>
+        «Plan día» del calendario del hotel: cuenta 2 en el Día de Calma, no ocupa cabaña
       </li>
     </ul>
   );

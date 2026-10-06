@@ -4,12 +4,19 @@ import {
   ORIGEN_PROPIO,
   cabanasAfectadas,
   diaEnBogota,
+  diasDeCalmaPorFecha,
   diasDeLaFranja,
+  esTituloDeDiaDeCalma,
   franjasQueChocan,
+  lecturaDeVariosCalendarios,
+  leerEventos,
   numeroDeCabana,
   ocupacionDesdeEventos,
   ocupacionDesdeVariosCalendarios,
+  PERSONAS_POR_EVENTO_DIA_DE_CALMA,
+  personasDeDiaDeCalmaPorFecha,
   rangoDelEvento,
+  sumarPorFecha,
   type EventoCalendario,
 } from "./calendario-externo";
 
@@ -415,5 +422,145 @@ describe("ocupacionDesdeVariosCalendarios", () => {
 
   it("sin calendarios no hay ocupación", () => {
     expect(ocupacionDesdeVariosCalendarios([])).toEqual([]);
+  });
+});
+
+/* ---------------------------------------------------------------------------
+ * Regla 2b: el Día de Calma del calendario general no ocupa cabaña
+ * ------------------------------------------------------------------------- */
+
+describe("esTituloDeDiaDeCalma", () => {
+  it("reconoce las formas en que el hotel apunta un Día de Calma", () => {
+    for (const titulo of [
+      "Cristian Arcila plan día",
+      "CRISTIAN ARCILA PLAN DIA",
+      "Plan de día — Marta",
+      "plan-dia Marta",
+      "Día de Calma: Juan y Ana",
+      "dia de calma",
+      "Pasadía Laura",
+      "pasadia",
+    ]) {
+      expect(esTituloDeDiaDeCalma(titulo), titulo).toBe(true);
+    }
+  });
+
+  it("no confunde palabras parecidas", () => {
+    for (const titulo of [
+      "Ana Pérez",
+      "Plan diario de limpieza",
+      "Plan noche romántica",
+      "Pasadías de diciembre",
+      "Día de la madre",
+      "",
+    ]) {
+      expect(esTituloDeDiaDeCalma(titulo), titulo).toBe(false);
+    }
+  });
+});
+
+describe("leerEventos con un Día de Calma (regla 2b)", () => {
+  /* El caso real del 04/10/2026, en el calendario general «Reservas Finca
+     Villarreal»: bloqueó las cinco cabañas. */
+  const planDia = evento({
+    id: "cristian",
+    titulo: "Cristian Arcila plan día",
+    inicioFecha: "2026-10-04",
+    finFecha: "2026-10-05",
+  });
+
+  it("sin cabaña y con «plan día»: no bloquea ninguna cabaña", () => {
+    const lectura = leerEventos([planDia]);
+    expect(lectura.ocupacion).toEqual([]);
+    expect(ocupacionDesdeEventos([planDia])).toEqual([]);
+    const cabanas = [
+      { id: "c1", nombre: "Cabaña 01" },
+      { id: "c3", nombre: "Cabaña 03" },
+    ];
+    expect(
+      franjasQueChocan(lectura.ocupacion, "Cabaña 03", "2026-10-04", "2026-10-05"),
+    ).toEqual([]);
+    expect(lectura.ocupacion.flatMap((f) => cabanasAfectadas(f, cabanas))).toEqual([]);
+  });
+
+  it("gasta 2 cupos del Día de Calma ese día", () => {
+    const { diasDeCalma } = leerEventos([planDia]);
+    expect(PERSONAS_POR_EVENTO_DIA_DE_CALMA).toBe(2);
+    expect(diasDeCalma).toEqual([
+      {
+        eventoId: "cristian",
+        titulo: "Cristian Arcila plan día",
+        inicio: "2026-10-04",
+        fin: "2026-10-05",
+        personas: 2,
+      },
+    ]);
+    expect(personasDeDiaDeCalmaPorFecha(diasDeCalma)).toEqual({ "2026-10-04": 2 });
+    /* Dos «plan día» el mismo día: 4 cupos. */
+    const otro = evento({
+      id: "marta",
+      titulo: "Pasadía Marta",
+      inicioHora: "2026-10-04T09:00:00-05:00",
+      finHora: "2026-10-04T17:00:00-05:00",
+    });
+    const ambos = leerEventos([planDia, otro]).diasDeCalma;
+    expect(personasDeDiaDeCalmaPorFecha(ambos)).toEqual({ "2026-10-04": 4 });
+    expect(diasDeCalmaPorFecha(ambos)["2026-10-04"].map((d) => d.eventoId)).toEqual([
+      "cristian",
+      "marta",
+    ]);
+  });
+
+  it("se suma a las reservas de día de la base", () => {
+    const { diasDeCalma } = leerEventos([planDia]);
+    expect(
+      sumarPorFecha(
+        new Map([["2026-10-04", 3], ["2026-10-05", 1]]),
+        personasDeDiaDeCalmaPorFecha(diasDeCalma, "2026-10-01", "2026-11-01"),
+      ),
+    ).toEqual({ "2026-10-04": 5, "2026-10-05": 1 });
+    /* Fuera de la ventana pedida, no cuenta. */
+    expect(personasDeDiaDeCalmaPorFecha(diasDeCalma, "2026-10-05", "2026-10-31")).toEqual({});
+  });
+
+  it("si nombra una cabaña y dice «plan día», sigue ocupando esa cabaña", () => {
+    const lectura = leerEventos([
+      evento({ titulo: "Cabaña 3 plan día Sofía", inicioFecha: "2026-10-04", finFecha: "2026-10-05" }),
+    ]);
+    expect(lectura.diasDeCalma).toEqual([]);
+    expect(lectura.ocupacion).toHaveLength(1);
+    expect(lectura.ocupacion[0].cabana).toBe(3);
+    expect(lectura.ocupacion[0].motivo).toBe("cabana_reconocida");
+  });
+
+  it("en el subcalendario de una cabaña, un «plan día» ocupa esa cabaña", () => {
+    const lectura = lecturaDeVariosCalendarios([
+      { cabana: 2, eventos: [evento({ titulo: "Plan día Juan", inicioFecha: "2026-10-04", finFecha: "2026-10-05" })] },
+    ]);
+    expect(lectura.diasDeCalma).toEqual([]);
+    expect(lectura.ocupacion[0].cabana).toBe(2);
+    expect(lectura.ocupacion[0].motivo).toBe("calendario_de_cabana");
+  });
+
+  it("sin cabaña y sin señal de Día de Calma: sigue bloqueando las cinco", () => {
+    const lectura = leerEventos([
+      evento({ titulo: "Familia Restrepo", inicioFecha: "2026-10-04", finFecha: "2026-10-06" }),
+    ]);
+    expect(lectura.diasDeCalma).toEqual([]);
+    expect(lectura.ocupacion[0].cabana).toBeNull();
+    expect(lectura.ocupacion[0].motivo).toBe("sin_cabana");
+  });
+
+  it("el mismo «plan día» en dos calendarios generales gasta el cupo una vez", () => {
+    const lectura = lecturaDeVariosCalendarios([
+      { cabana: null, eventos: [planDia] },
+      { cabana: null, eventos: [{ ...planDia, id: "copia" }] },
+    ]);
+    expect(lectura.diasDeCalma).toHaveLength(1);
+    expect(ocupacionDesdeVariosCalendarios([{ cabana: null, eventos: [planDia] }])).toEqual([]);
+  });
+
+  it("ignora un «plan día» cancelado", () => {
+    expect(leerEventos([{ ...planDia, estado: "cancelled" }]).diasDeCalma).toEqual([]);
   });
 });

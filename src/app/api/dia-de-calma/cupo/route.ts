@@ -4,6 +4,7 @@ import { frenar } from "@/lib/api/limite-peticiones";
 import { CUPO_DIA_DE_CALMA, cupoDelDia } from "@/lib/reserva/dia-de-calma";
 import { ocupaCalendario } from "@/lib/reserva/holds";
 import { esFechaISO, sumarDias } from "@/lib/reserva/noches";
+import { personasDiaDeCalmaDelCalendario } from "@/lib/reserva/ocupacion-externa";
 import { crearClienteAdmin } from "@/lib/supabase/admin";
 
 /**
@@ -83,7 +84,11 @@ export async function GET(peticion: Request) {
         ),
       )
       .reduce((suma, fila) => suma + Number(fila.num_personas ?? 0), 0);
-    const cupo = cupoDelDia(fecha, usado);
+    /* Más los «plan día» del calendario general del hotel: 2 cada uno, sin
+       ocupar cabaña (regla 2b de `calendario-externo.ts`). Sin Google, 0. */
+    const delHotel =
+      (await personasDiaDeCalmaDelCalendario(fecha, sumarDias(fecha, 1)))[fecha] ?? 0;
+    const cupo = cupoDelDia(fecha, usado + delHotel);
 
     return NextResponse.json(
       {

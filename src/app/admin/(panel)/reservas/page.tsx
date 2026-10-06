@@ -145,6 +145,7 @@ export default async function PaginaReservas({
         bloqueos={bloqueosDelMes}
         personasDeDia={cupoDelMes}
         ocupacionGoogle={calendarioHotel.ocupacion}
+        diasDeCalmaGoogle={calendarioHotel.diasDeCalma}
         consulta={estadoFiltro === "todas" ? "" : `estado=${estadoFiltro}`}
       />
 

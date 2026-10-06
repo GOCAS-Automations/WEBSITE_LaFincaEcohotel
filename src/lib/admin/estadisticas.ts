@@ -41,6 +41,7 @@ import type { BloqueoAdmin, OpcionAlojamiento, ReservaAdmin } from "./tipos";
 import { sinCabanaEnTitulo } from "./calendario-mes";
 import {
   cabanasAfectadas,
+  type DiaDeCalmaExterno,
   type OcupacionExterna,
 } from "../reserva/calendario-externo";
 import { ocupaCalendario } from "../reserva/holds";
@@ -92,11 +93,18 @@ export function etiquetaFuente(fuente: FuenteEstadia): string {
 export function estadiasDelHotel({
   reservas,
   franjas,
+  diasDeCalma = [],
   alojamientos,
   ahora,
 }: {
   reservas: ReservaAdmin[];
   franjas: OcupacionExterna[];
+  /**
+   * «Plan día» del calendario general del hotel (regla 2b de
+   * `calendario-externo.ts`): entran como Día de Calma de 2 personas, sin
+   * cabaña y sin contar como «evento sin cabaña».
+   */
+  diasDeCalma?: DiaDeCalmaExterno[];
   alojamientos: OpcionAlojamiento[];
   ahora: Date;
 }): Estadia[] {
@@ -149,6 +157,23 @@ export function estadiasDelHotel({
       href: null,
       estado: null,
       sinCabana: cabana === null,
+    });
+  }
+
+  for (const dia of diasDeCalma) {
+    estadias.push({
+      clave: `google-dia:${dia.eventoId}|${dia.inicio}`,
+      fuente: "calendario",
+      nombre: dia.titulo,
+      cabana: "Día de Calma",
+      alojamientoId: null,
+      entrada: dia.inicio,
+      salida: dia.fin,
+      esDia: true,
+      personas: dia.personas,
+      href: null,
+      estado: null,
+      sinCabana: false,
     });
   }
 
@@ -211,6 +236,7 @@ export function resumirHotel({
   reservas,
   bloqueos,
   franjas,
+  diasDeCalma = [],
   tiposOfrecidos = {},
   ahora,
 }: {
@@ -223,11 +249,13 @@ export function resumirHotel({
   bloqueos: BloqueoAdmin[];
   /** Franjas de Google (ya sin las del propio sitio). */
   franjas: OcupacionExterna[];
+  /** «Plan día» del calendario general del hotel: Día de Calma de 2 personas. */
+  diasDeCalma?: DiaDeCalmaExterno[];
   /** Tipos de noche que vende cada cabaña (`null` o ausente = todos). */
   tiposOfrecidos?: Record<string, readonly TipoNoche[] | null>;
   ahora: Date;
 }): ResumenDelHotel {
-  const estadias = estadiasDelHotel({ reservas, franjas, alojamientos, ahora });
+  const estadias = estadiasDelHotel({ reservas, franjas, diasDeCalma, alojamientos, ahora });
   const reservasPorId = new Map(reservas.map((reserva) => [`reserva:${reserva.id}`, reserva]));
 
   /* --- Hoy y los próximos 7 días --------------------------------------- */

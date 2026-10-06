@@ -6,6 +6,10 @@ import {
   personasDeDiaSinLaPropia,
 } from "@/lib/admin/ocupacion-panel";
 import { ESTADOS_QUE_OCUPAN } from "@/lib/admin/tipos";
+import {
+  personasDeDiaDeCalmaPorFecha,
+  sumarPorFecha,
+} from "@/lib/reserva/calendario-externo";
 import { MAXIMO_DIAS_DISPONIBILIDAD } from "@/lib/reserva/elegibilidad-calendario";
 import { ocupacionDelCalendario } from "@/lib/reserva/ocupacion-externa";
 import { crearClienteServidor } from "@/lib/supabase/server";
@@ -95,9 +99,10 @@ export async function GET(peticion: Request) {
         .eq("tipo", "dia")
         .in("estado", ["pendiente", "confirmada"])
         .overlaps("estancia", rango),
-      alojamientoId
-        ? ocupacionDelCalendario(desde, hasta)
-        : Promise.resolve(null),
+      /* Siempre: también el Día de Calma lo necesita, porque los «plan día»
+         del calendario general gastan cupo (regla 2b de
+         `calendario-externo.ts`). Nunca lanza y sale de la caché. */
+      ocupacionDelCalendario(desde, hasta),
     ]);
 
     for (const respuesta of [cabana, reservas, bloqueos, deDia]) {
@@ -130,7 +135,7 @@ export async function GET(peticion: Request) {
             const r = aRango(fila);
             return r ? [{ inicio: r.inicio, fin: r.fin }] : [];
           }),
-          franjas: calendario?.estado === "conectado" ? calendario.ocupacion : [],
+          franjas: calendario.estado === "conectado" ? calendario.ocupacion : [],
           desde,
           hasta,
           excluirReservaId: excluir || null,
@@ -138,7 +143,7 @@ export async function GET(peticion: Request) {
         })
       : [];
 
-    const dia = personasDeDiaSinLaPropia({
+    const deLaBase = personasDeDiaSinLaPropia({
       reservas: (deDia.data ?? []).flatMap((fila) => {
         const r = aRango(fila);
         return r
@@ -159,6 +164,12 @@ export async function GET(peticion: Request) {
       excluirReservaId: excluir || null,
       ahora,
     });
+    const dia = sumarPorFecha(
+      deLaBase,
+      calendario.estado === "conectado"
+        ? personasDeDiaDeCalmaPorFecha(calendario.diasDeCalma, desde, hasta)
+        : {},
+    );
 
     return NextResponse.json(
       {
@@ -166,7 +177,7 @@ export async function GET(peticion: Request) {
         hasta,
         noches,
         dia,
-        calendario: calendario ? calendario.estado : "no_aplica",
+        calendario: alojamientoId ? calendario.estado : "no_aplica",
       },
       { headers: SIN_CACHE },
     );

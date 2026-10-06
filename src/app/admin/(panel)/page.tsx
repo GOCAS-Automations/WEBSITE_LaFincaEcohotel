@@ -116,6 +116,7 @@ export default async function PaginaResumen({
     reservas,
     bloqueos: bloqueosDelMes,
     franjas: calendario.estado === "conectado" ? calendario.ocupacion : [],
+    diasDeCalma: calendario.estado === "conectado" ? calendario.diasDeCalma : [],
     tiposOfrecidos,
     ahora: new Date(),
   });

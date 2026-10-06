@@ -112,6 +112,8 @@ function AgendaDelMes({
   const cabanas = cabanasEnDia(calendario, indice);
   const ocupadas = cabanas.filter((cabana) => cabana.noche !== null).length;
   const personas = calendario.personasDeDia[dia.iso] ?? 0;
+  /* «Plan día» del calendario del hotel: cuentan en el cupo, no en cabañas. */
+  const delHotel = calendario.diaDeCalmaDelHotel[dia.iso] ?? [];
 
   /* Cuántas cabañas tiene ocupadas cada día, para la tira. */
   const ocupadasPorDia = dias.map(
@@ -265,10 +267,18 @@ function AgendaDelMes({
             Día de Calma
           </span>
           {personas > 0 ? (
-            <span
-              className={`rounded-full px-2.5 py-1 text-[0.75rem] font-bold tabular-nums ${tonoCupo(personas)}`}
-            >
-              {personas} de {CUPO_DIA_DE_CALMA} cupos
+            <span className="flex min-w-0 flex-col items-start gap-1">
+              <span
+                className={`rounded-full px-2.5 py-1 text-[0.75rem] font-bold tabular-nums ${tonoCupo(personas)}`}
+              >
+                {personas} de {CUPO_DIA_DE_CALMA} cupos
+              </span>
+              {delHotel.length > 0 ? (
+                <span className="text-[0.75rem] leading-snug text-crema-700">
+                  Incluye {delHotel.map((titulo) => `«${titulo}»`).join(", ")}, del
+                  calendario del hotel: cada «plan día» cuenta 2 y no ocupa cabaña.
+                </span>
+              ) : null}
             </span>
           ) : (
             <span className="text-[0.8125rem] text-crema-600">

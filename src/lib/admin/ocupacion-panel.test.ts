@@ -104,7 +104,7 @@ describe("nochesOcupadasDeCabana", () => {
     const sinCabana: OcupacionExterna = {
       ...EVENTO_CABANA_3,
       eventoId: "g2",
-      titulo: "Cristian plan día",
+      titulo: "Familia Gómez",
       cabana: null,
       motivo: "sin_cabana",
       inicio: "2026-10-04",

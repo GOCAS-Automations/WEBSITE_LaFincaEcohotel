@@ -4,6 +4,7 @@ import { estadiasDelHotel, porcentaje, resumirHotel } from "./estadisticas";
 import type { BloqueoAdmin, OpcionAlojamiento, ReservaAdmin } from "./tipos";
 import {
   ORIGEN_PROPIO,
+  lecturaDeVariosCalendarios,
   ocupacionDesdeVariosCalendarios,
   type EventoCalendario,
 } from "../reserva/calendario-externo";
@@ -159,7 +160,7 @@ describe("resumirHotel", () => {
       evento({ id: "hoy", titulo: "Juan Pérez cabaña 1" }),
       evento({ id: "sale", titulo: "Marta cabaña 2", inicioFecha: "2026-10-03", finFecha: "2026-10-05" }),
       evento({ id: "semana", titulo: "Luis cabaña 3", inicioFecha: "2026-10-10", finFecha: "2026-10-11" }),
-      evento({ id: "nada", titulo: "Visita plan día", inicioFecha: "2026-10-09", finFecha: "2026-10-10" }),
+      evento({ id: "nada", titulo: "Visita familia Gómez", inicioFecha: "2026-10-09", finFecha: "2026-10-10" }),
     ],
   });
   const reservas = [
@@ -230,5 +231,33 @@ describe("resumirHotel", () => {
   it("porcentaje no divide por cero", () => {
     expect(porcentaje(0, 0)).toBe(0);
     expect(porcentaje(9, 72)).toBe(13);
+  });
+});
+
+describe("un «plan día» del calendario del hotel en el Resumen (regla 2b)", () => {
+  it("cuenta 2 en el Día de Calma de hoy y no como evento sin cabaña", () => {
+    const lectura = lecturaDeVariosCalendarios([
+      {
+        cabana: null,
+        eventos: [
+          evento({ id: "cristian", titulo: "Cristian Arcila plan día", finFecha: "2026-10-06" }),
+        ],
+      },
+    ]);
+    const resumen = resumirHotel({
+      hoy: HOY,
+      mes: MES,
+      alojamientos: CABANAS,
+      reservas: [],
+      bloqueos: [],
+      franjas: lectura.ocupacion,
+      diasDeCalma: lectura.diasDeCalma,
+      ahora: AHORA,
+    });
+    expect(resumen.personasDeDiaHoy).toBe(2);
+    expect(resumen.ocupacion.sinCabana).toBe(0);
+    expect(resumen.ocupacion.ocupadas).toBe(0);
+    expect(resumen.enCasa).toHaveLength(0);
+    expect(resumen.llegadasHoy.map((e) => e.cabana)).toEqual(["Día de Calma"]);
   });
 });

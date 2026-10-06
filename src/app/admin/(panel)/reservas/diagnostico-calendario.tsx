@@ -117,7 +117,7 @@ function explicacion(calendario: CalendarioDiagnosticado): string {
     return "Todavía no se ha comprobado.";
   }
   return calendario.cabana === null
-    ? "Se mira el título de cada evento: si nombra una cabaña, ocupa esa; si no, se marcan las cinco por precaución."
+    ? "Se mira el título de cada evento: si nombra una cabaña, ocupa esa. Si no nombra ninguna y dice «plan día», «día de calma» o «pasadía», es un Día de Calma: no ocupa cabaña y cuenta 2 personas en el cupo de ese día. Si no, se marcan las cinco por precaución."
     : `Todo lo que haya en este calendario ocupa la Cabaña ${calendario.cabana}, diga lo que diga el título.`;
 }
 

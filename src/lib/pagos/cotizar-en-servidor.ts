@@ -58,6 +58,7 @@ import {
   validarRango,
 } from "../reserva/noches";
 import { ocupaCalendario } from "../reserva/holds";
+import { personasDiaDeCalmaDelCalendario } from "../reserva/ocupacion-externa";
 import { temporadasDeTarifa, type Temporada } from "../reserva/temporadas";
 import { leerTemporadas } from "../reserva/temporadas-db";
 import {
@@ -618,7 +619,18 @@ async function cotizarDia(
     )
     .reduce((suma, fila) => suma + Number(fila.num_personas ?? 0), 0);
 
-  const restante = Math.max(0, CUPO_DIA_DE_CALMA - usado);
+  /* Los «plan día» del calendario general del hotel también gastan cupo: 2
+     cada uno (regla 2b de `calendario-externo.ts`). Misma suma que
+     `/api/dia-de-calma/cupo` y `/api/disponibilidad`. Sin Google, 0. */
+  const delHotel =
+    (
+      await personasDiaDeCalmaDelCalendario(
+        solicitud.entrada,
+        sumarDias(solicitud.entrada, 1),
+      )
+    )[solicitud.entrada] ?? 0;
+
+  const restante = Math.max(0, CUPO_DIA_DE_CALMA - usado - delHotel);
 
   const cotizacion = cotizarDiaDeCalma({
     fecha: solicitud.entrada,

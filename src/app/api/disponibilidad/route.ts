@@ -6,6 +6,8 @@ import { ESTADOS_QUE_OCUPAN } from "@/lib/admin/tipos";
 import {
   cabanasAfectadas,
   diasDeLaFranja,
+  personasDeDiaDeCalmaPorFecha,
+  sumarPorFecha,
 } from "@/lib/reserva/calendario-externo";
 import { cupoDelDia } from "@/lib/reserva/dia-de-calma";
 import { MAXIMO_DIAS_DISPONIBILIDAD } from "@/lib/reserva/elegibilidad-calendario";
@@ -227,8 +229,10 @@ export async function GET(peticion: Request) {
     /*
       EL CUPO DEL DÍA DE CALMA, DÍA POR DÍA.
       Misma suma que `/api/dia-de-calma/cupo`: personas de las solicitudes que
-      todavía ocupan (`ocupaCalendario()` descarta los holds vencidos). Solo
-      sale el agregado por fecha, nunca quién viene.
+      todavía ocupan (`ocupaCalendario()` descarta los holds vencidos), más
+      2 por cada «plan día» del calendario general del hotel (regla 2b de
+      `calendario-externo.ts`: esos eventos no ocupan cabaña, gastan cupo).
+      Solo sale el agregado por fecha, nunca quién viene.
     */
     const personasPorDia: Record<string, number> = {};
     for (const fila of reservasDia.data ?? []) {
@@ -256,7 +260,12 @@ export async function GET(peticion: Request) {
       }
     }
     const dia = Object.fromEntries(
-      Object.entries(personasPorDia)
+      Object.entries(
+        sumarPorFecha(
+          personasPorDia,
+          personasDeDiaDeCalmaPorFecha(calendario.diasDeCalma, desde, hasta),
+        ),
+      )
         .sort(([a], [b]) => (a < b ? -1 : 1))
         .map(([fecha, usado]) => [fecha, cupoDelDia(fecha, usado).usado]),
     );
