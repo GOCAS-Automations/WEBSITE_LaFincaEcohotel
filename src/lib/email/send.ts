@@ -206,20 +206,27 @@ async function contexto(reserva: DatosCorreo) {
 async function entregar(
   destinatarios: string[],
   correo: CorreoRenderizado,
-  etiqueta: string,
+  tipo: string,
+  codigo: string,
 ): Promise<ResultadoCorreo> {
+  /*
+    SIN DATOS PERSONALES EN EL REGISTRO. Los registros de Vercel los ve
+    cualquiera con acceso al proyecto y se guardan días. Ahí van el tipo de
+    correo, el código de la reserva y si salió; nunca el destinatario ni el
+    asunto (el del aviso interno lleva el nombre del huésped). Con el código se
+    encuentra la reserva en el panel.
+  */
+  const etiqueta = `${tipo} · reserva ${codigo}`;
   const clave = leerEntorno("RESEND_API_KEY");
 
   if (!clave) {
     /*
-      MODO DORMIDO. Se registra con detalle a propósito: es la única forma de
-      comprobar, antes de que exista la cuenta de Resend, que el correo se
-      habría disparado en el momento correcto y al destinatario correcto.
+      MODO DORMIDO. Queda constancia de que el correo se habría disparado y
+      cuándo. A quién y con qué asunto se comprueba renderizándolo con
+      `scripts/probar-correos.mjs`, no en los registros.
     */
     console.info(
-      `[correos] ${etiqueta}: RESEND_API_KEY no está configurada, no se envía nada.\n` +
-        `          Destinatario previsto: ${destinatarios.join(", ")}\n` +
-        `          Asunto: "${correo.asunto}"`,
+      `[correos] ${etiqueta}: no enviado (RESEND_API_KEY no está configurada).`,
     );
     return {
       enviado: false,
@@ -247,17 +254,20 @@ async function entregar(
     });
 
     if (error) {
-      console.error(`[correos] ${etiqueta}: Resend devolvió error:`, error.message);
+      /* Solo el nombre del error (`validation_error`, `rate_limit_exceeded`…):
+         el mensaje de Resend puede repetir una dirección de correo. El mensaje
+         completo vuelve a quien llamó, que no lo registra. */
+      console.error(`[correos] ${etiqueta}: no enviado, Resend respondió ${error.name}.`);
       return { enviado: false, motivo: "fallo", mensaje: error.message };
     }
 
-    console.info(
-      `[correos] ${etiqueta}: enviado a ${destinatarios.join(", ")} (id ${data?.id ?? "?"}).`,
-    );
+    console.info(`[correos] ${etiqueta}: enviado (id ${data?.id ?? "?"}).`);
     return { enviado: true, id: data?.id ?? null };
   } catch (error) {
     const mensaje = error instanceof Error ? error.message : String(error);
-    console.error(`[correos] ${etiqueta}: fallo al enviar:`, mensaje);
+    console.error(
+      `[correos] ${etiqueta}: no enviado, falló la llamada (${error instanceof Error ? error.name : "error desconocido"}).`,
+    );
     return { enviado: false, motivo: "fallo", mensaje };
   }
 }
@@ -294,6 +304,7 @@ export async function enviarSolicitudRecibida(
     [destino],
     renderSolicitudRecibida(await contexto(reserva)),
     "solicitud recibida",
+    reserva.codigo,
   );
 }
 
@@ -323,6 +334,7 @@ export async function enviarReservaConfirmada(
     [destino],
     renderReservaConfirmada(await contexto(reserva)),
     "reserva confirmada",
+    reserva.codigo,
   );
 }
 
@@ -351,5 +363,6 @@ export async function enviarAvisoAdministracion(
     destinatarios,
     renderAvisoAdministracion(await contexto(reserva)),
     "aviso interno",
+    reserva.codigo,
   );
 }

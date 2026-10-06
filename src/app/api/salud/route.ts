@@ -1,6 +1,7 @@
 import { revalidatePath } from "next/cache";
 
 import { frenar } from "@/lib/api/limite-peticiones";
+import { decidirAccesoCron } from "@/lib/api/secreto-cron";
 import {
   HORAS_RECONCILIACION,
   reconciliarPagosPendientes,
@@ -51,9 +52,10 @@ import { crearClienteAdmin } from "@/lib/supabase/admin";
  *      y está comentado en el sitio de cada una.
  *   2. **`CRON_SECRET`.** Si la variable existe, se exige la cabecera
  *      `Authorization: Bearer <CRON_SECRET>` — la que Vercel Cron manda sola
- *      cuando la variable está definida en el proyecto. Sin la variable el
- *      endpoint queda abierto (para poder probarlo antes de configurarla), y eso
- *      está documentado en `docs/DESPLIEGUE_VERCEL.md` como paso obligatorio.
+ *      cuando la variable está definida en el proyecto. Sin la variable, en
+ *      producción **falla cerrado** (503 y un error claro en el registro); en
+ *      local y en previews queda abierto para poder probarlo. Ver
+ *      `src/lib/api/secreto-cron.ts` y `docs/DESPLIEGUE_VERCEL.md`.
  *   3. **Freno de peticiones**, aunque venga con la cabecera correcta: el latido
  *      legítimo es una vez al día.
  *
@@ -117,13 +119,21 @@ export async function GET(peticion: Request) {
   const frenada = frenar(peticion, "salud", LIMITE);
   if (frenada) return frenada;
 
-  const secreto = process.env.CRON_SECRET;
-  if (secreto) {
-    const cabecera = peticion.headers.get("authorization") ?? "";
-    if (cabecera !== `Bearer ${secreto}`) {
-      /* 401 seco, sin decir si la variable existe ni qué se esperaba. */
-      return json({ ok: false }, 401);
-    }
+  const acceso = decidirAccesoCron({
+    secreto: process.env.CRON_SECRET,
+    entornoVercel: process.env.VERCEL_ENV,
+    cabecera: peticion.headers.get("authorization"),
+  });
+  if (acceso === "falta-secreto") {
+    /* La respuesta no dice qué falta; el registro de Vercel, sí. */
+    console.error(
+      "[salud] CRON_SECRET no está configurada en producción: el latido no corre hasta que se cree en Vercel (ver docs/DESPLIEGUE_VERCEL.md).",
+    );
+    return json({ ok: false }, 503);
+  }
+  if (acceso === "rechazado") {
+    /* 401 seco, sin decir si la variable existe ni qué se esperaba. */
+    return json({ ok: false }, 401);
   }
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

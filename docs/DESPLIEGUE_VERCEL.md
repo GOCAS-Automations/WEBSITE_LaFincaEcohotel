@@ -438,7 +438,9 @@ Cómo se configuró (y cómo se repetiría si hubiera que rotarla):
 2. En Vercel → **Project Settings → Environment Variables**, crear `CRON_SECRET`
    con ese valor, marcada para **Production** (y Preview si se quiere probar
    allí). No hace falta ponerla en `.env.local`: en desarrollo el endpoint
-   funciona sin ella.
+   funciona sin ella. **En producción, sin ella el endpoint falla cerrado**:
+   responde 503 y deja en el registro «CRON_SECRET no está configurada en
+   producción» (desde octubre de 2026; antes quedaba abierto).
 3. Redesplegar. Desde ese momento Vercel añade sola la cabecera
    `Authorization: Bearer <CRON_SECRET>` a las peticiones del cron, y
    `/api/salud` responde **401** a cualquiera que no la traiga.
