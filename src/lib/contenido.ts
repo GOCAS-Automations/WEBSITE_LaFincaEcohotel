@@ -36,6 +36,7 @@ import {
   HERO,
   ZONAS_COMUNES,
 } from "./fotos";
+import { ordenarPorPlan } from "./reserva/cotizacion";
 import { IMAGEN_SOCIAL, SITIO, medio, video } from "./sitio";
 import {
   CLAVE_CMS_LEGAL,
@@ -1432,8 +1433,10 @@ const getTarifasPorAlojamiento = cache(
       agrupadas.set(fila.alojamiento_id, lista);
     }
 
-    for (const lista of agrupadas.values()) {
-      lista.sort((a, b) => a.plan.orden - b.plan.orden);
+    /* El mismo orden que usa el servidor que cobra (`ordenarPorPlan`): si no
+       coincidieran, el huésped vería un plan y se le cobraría otro. */
+    for (const [alojamientoId, lista] of agrupadas) {
+      agrupadas.set(alojamientoId, ordenarPorPlan(lista));
     }
 
     return agrupadas;

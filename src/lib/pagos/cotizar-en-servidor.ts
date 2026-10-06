@@ -43,6 +43,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
   cotizar,
+  ordenarPorPlan,
   type CabanaCotizable,
   type LineaNoche,
 } from "../reserva/cotizacion";
@@ -231,7 +232,7 @@ export async function cotizarEnServidor(
   const [planes, extrasCatalogo] = await Promise.all([
     supabase
       .from("planes")
-      .select("id, nombre, tipo, dias_aplica, precio_base, activo")
+      .select("id, nombre, tipo, dias_aplica, precio_base, orden, activo")
       .eq("activo", true),
     solicitud.extras.length > 0
       ? supabase
@@ -250,13 +251,7 @@ export async function cotizarEnServidor(
     );
   }
 
-  const filasPlanes = (planes.data ?? []) as {
-    id: string;
-    nombre: string;
-    tipo: string | null;
-    dias_aplica: number[] | null;
-    precio_base: number | null;
-  }[];
+  const filasPlanes = (planes.data ?? []) as FilaPlan[];
 
   /* --- Las experiencias y adicionales ---------------------------------- */
 
@@ -373,6 +368,15 @@ export async function cotizarEnServidor(
  * Hospedaje
  * ======================================================================== */
 
+type FilaPlan = {
+  id: string;
+  nombre: string;
+  tipo: string | null;
+  dias_aplica: number[] | null;
+  precio_base: number | null;
+  orden?: number | null;
+};
+
 type DatosBase = {
   alojamientoId: string | null;
   alojamientoNombre: string | null;
@@ -392,13 +396,7 @@ type ResultadoBase =
 async function cotizarHospedaje(
   supabase: SupabaseClient,
   solicitud: SolicitudDeReserva,
-  filasPlanes: {
-    id: string;
-    nombre: string;
-    tipo: string | null;
-    dias_aplica: number[] | null;
-    precio_base: number | null;
-  }[],
+  filasPlanes: FilaPlan[],
 ): Promise<ResultadoBase> {
   const { entrada } = solicitud;
   const salida = solicitud.salida;
@@ -490,13 +488,21 @@ async function cotizarHospedaje(
 
   /* `CabanaCotizable` es exactamente lo que espera `cotizar()`: el mismo tipo
      que usa el navegador, rellenado desde la base. */
+  /* EN EL MISMO ORDEN QUE EL NAVEGADOR (`ordenarPorPlan`): `cotizar()` toma
+     la primera tarifa que sirve para cada tipo de noche, así que con otro orden
+     podría escoger otro plan que el que vio el huésped. */
+  const tarifasOrdenadas = ordenarPorPlan(
+    (tarifas ?? []).flatMap((tarifa) => {
+      const plan = planesPorId.get(String(tarifa.plan_id));
+      return plan ? [{ plan, tarifa }] : [];
+    }),
+  );
+
   const cabana: CabanaCotizable = {
     slug: String(alojamiento.slug),
     nombre: String(alojamiento.nombre),
-    tarifas: (tarifas ?? [])
-      .map((tarifa) => {
-        const plan = planesPorId.get(String(tarifa.plan_id));
-        if (!plan) return null;
+    tarifas: tarifasOrdenadas
+      .map(({ plan, tarifa }) => {
         return {
           plan: {
             nombre: String(plan.nombre),
@@ -581,13 +587,7 @@ async function cotizarHospedaje(
 async function cotizarDia(
   supabase: SupabaseClient,
   solicitud: SolicitudDeReserva,
-  filasPlanes: {
-    id: string;
-    nombre: string;
-    tipo: string | null;
-    dias_aplica: number[] | null;
-    precio_base: number | null;
-  }[],
+  filasPlanes: FilaPlan[],
   ahora: Date,
 ): Promise<ResultadoBase> {
   const plan = filasPlanes.find((fila) => fila.tipo === "dia");

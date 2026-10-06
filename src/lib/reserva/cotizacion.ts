@@ -83,6 +83,27 @@ export type CabanaCotizable = {
   tarifas: TarifaCotizable[];
 };
 
+/**
+ * EL ORDEN EN QUE SE OFRECEN LAS TARIFAS DE UNA CABAÑA.
+ *
+ * Importa más de lo que parece: `cotizar()` toma la PRIMERA tarifa que sirve
+ * para cada tipo de noche (y, sin plan elegido, el primer plan de fin de
+ * semana). Si el navegador y el servidor las ordenaran distinto, el huésped
+ * vería un plan y el servidor cobraría otro. Por eso hay una sola regla, y la
+ * usan los dos: el `orden` del plan (el del panel) y, a igualdad, su nombre.
+ * Antes el servidor no ordenaba nada y usaba el orden en que Postgres
+ * devolviera las filas.
+ */
+export function ordenarPorPlan<T extends { plan: { orden?: number | null; nombre: string } }>(
+  tarifas: readonly T[],
+): T[] {
+  return [...tarifas].sort(
+    (a, b) =>
+      (a.plan.orden ?? 0) - (b.plan.orden ?? 0) ||
+      a.plan.nombre.localeCompare(b.plan.nombre, "es"),
+  );
+}
+
 /* ===========================================================================
  * Categoría de un plan
  * ======================================================================== */
