@@ -3892,3 +3892,72 @@ todos los tamaños) y el correo se cortaba en dos columnas.
 
 - El mensaje de WhatsApp de una solicitud sigue diciendo «Total estimado»: es una solicitud que el
   hotel confirma, así que se dejó.
+
+### 2026-10-05 (noche) — Integridad de reservas: doce fallos de la auditoría, cerrados en la base y en el código
+
+Una auditoría reprodujo fallos que podían vender noches ocupadas, repetir códigos o perder dinero.
+Los doce quedan cerrados, cada uno con su prueba. Migraciones **019 a 024**, aplicadas en la base real
+en orden, cada una ensayada antes en una transacción deshecha
+(`npm run db:probar-integridad -- --ensayar supabase/migrations/0xx_….sql`).
+
+#### Lo que cambió
+
+1. **Google sin respuesta = no se vende** (`ocupacion-externa.ts`, `calendario-sin-respuesta.ts`). Con
+   `GOOGLE_CALENDAR_ID` configurado, antes de escribir se lee Google **sin caché**
+   (`leerCalendarioParaEscribir`) y, si falla cualquiera de los calendarios (o la credencial no carga),
+   `/api/reservar` responde 503 «No pudimos comprobar la disponibilidad en este momento. Intenta en unos
+   minutos o escríbenos por WhatsApp.» y el panel dice que el calendario del hotel no respondió, sin
+   guardar nada. Sin `GOOGLE_CALENDAR_ID`, igual que antes. Excepciones a propósito: retocar una
+   reserva que ya aparta sus noches (`tomaNochesNuevas`) y crear bloqueos usan la caché y no se frenan
+   por Google. Las pantallas siguen con la caché de 5 minutos y sin lanzar. ⚠ En Vercel: si Production
+   tiene `GOOGLE_CALENDAR_ID` pero no `GOOGLE_CALENDAR_CREDENCIALES`, **no se podrá reservar** (es lo
+   correcto: la integración está rota, no apagada).
+2. **Código de reserva** (019): contador por año `reservas_contador` + `siguiente_codigo_reserva()`
+   (`insert … on conflict do update … returning`). El trigger `reservas_codigo_contador` pone el código
+   si falta y, si llega uno (código viejo), sube el contador hasta él. Panel y web no mandan código.
+   **022**: la función queda solo para `service_role` (una cuenta con sesión y sin rol podía gastar
+   números; aviso del agente de seguridad). Comprobado con una cuenta temporal sin rol, ya borrada.
+3. **Evento borrado en Google** (`calendario.ts`, `sincronizar-calendario.ts`): el PATCH lleva
+   `status: "confirmed"` (un evento borrado vuelve a verse; comprobado contra la API real en un
+   calendario temporal de la cuenta de servicio, ya borrado). Los fallos traen `http`: solo 404/410
+   recrean; 429/5xx/timeout avisan y conservan la referencia.
+4. **Cupo del Día de Calma con dos reservas a la vez** (020): `pg_advisory_xact_lock(hashtext('dia:' ||
+   fecha))` en el trigger. Reproducido antes (entraban 12 personas) y cerrado (la segunda espera y
+   recibe LF010), con dos conexiones reales.
+5. **`personas` que no es número** (020 + `reserva/personas.ts`): 400 si no es un entero 1 o 2; en la
+   base, una reserva de día exige `num_personas` no nulo y entre 1 y 2 (no había filas que lo
+   incumplieran).
+6. **Borrar una reserva pagada** (021 + `admin/eliminar-reserva.ts`): con un pago `APPROVED` no se
+   borra (trigger LF020 y comprobación previa en el panel, que ofrece cancelar). Primero la base,
+   después Google. Errores en español, nunca el texto de Postgres.
+7. **Guardado atómico** (023, `reserva/guardar-reserva.ts`): `guardar_reserva(p_id, p_reserva,
+   p_extras)` crea o edita la reserva y reemplaza sus experiencias en una transacción. `security
+   invoker` + comprobación de `service_role` o `es_admin()`. La usan el panel y la web.
+8. **Pago tardío** (`aplicar-estado.ts`, `reserva/revivir.ts`): antes de revivir una reserva que ya no
+   apartaba sus noches se comprueban bloqueos, reservas (también completadas), Google sin caché y el
+   cupo del día. Si están tomadas, no se confirma: queda `cancelada` con «⚠ REVISIÓN MANUAL: pago
+   recibido pero las noches ya no están libres: devolver o reubicar» en `notas` y sale un aviso interno
+   con asunto «⚠ Revisar a mano» (`avisarPagoSinNoches`). El dinero no se suma a `monto_pagado` hasta
+   que se resuelva (la nota dice cuánto y la referencia). Bold no se tocó.
+9. **Orden de las tarifas**: `ordenarPorPlan()` (plan.orden y nombre), el mismo en `contenido.ts` y en
+   `cotizarEnServidor`.
+10. **Anticipo distinto**: el botón manda `anticipoEsperado`; si el servidor calcula otro, 409 con el
+    monto nuevo sin crear nada y el navegador pide «Sí, pagar $…» / «No, volver a revisar».
+11. **Bloqueos y completadas en la base** (024): «completada» entra en `reservas_sin_solapamiento`; dos
+    triggers con candado por cabaña impiden reserva sobre bloqueo y bloqueo sobre reserva que ocupa
+    (23P01 en español). Lo de Google no puede estar en la base. `buscarChoques` filtra por fechas.
+12. **Precio 0**: `ErrorDeConfiguracionDePrecio`; el servidor nunca cobra $0 por una noche ni por un
+    Día de Calma (503 y «ERROR DE CONFIGURACIÓN» en el registro).
+
+#### Verificación
+
+`tsc` limpio · `npm test` **701 en verde** (42 archivos) · `next build` sin errores en un worktree fuera
+de OneDrive (borrado) · eslint limpio en lo tocado · `npm run db:probar-integridad -- --concurrencia`
+**43/43**. Base antes y después: 0 reservas, 0 extras, 0 bloqueos, 0 pagos, 0 eventos de pago;
+`reservas_contador` vacío. Calendario «Reservas Finca Villarreal - Sitio Web»: 0 eventos antes y
+después; no se escribió en ningún calendario del hotel.
+
+#### Pendiente
+
+- La reserva marcada para revisión manual solo se ve en sus notas y en el correo interno: no hay un
+  filtro «para revisar» en el listado del panel.
