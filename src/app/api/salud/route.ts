@@ -317,10 +317,12 @@ export async function GET(peticion: Request) {
            los textos ni los nombres de quienes reseñaron: solo el conteo. */
         resenas_refrescadas: resenas.refrescado,
         resenas_guardadas: resenas.resenas,
-        /* Diagnóstico del criterio: cuántas devolvió Google y qué ventana de
-           meses se aplicó (null = sin filtro de fecha). */
+        /* Diagnóstico del criterio: cuántas devolvió Google hoy, cuántas hay
+           en el repertorio acumulado y, de las publicadas, cuántas son del
+           último año (el resto completa hasta cinco con las más antiguas). */
         resenas_devueltas: resenas.devueltas ?? null,
-        resenas_ventana_meses: resenas.ventanaMeses ?? null,
+        resenas_en_repertorio: resenas.enRepertorio ?? null,
+        resenas_del_ultimo_ano: resenas.delUltimoAno ?? null,
         hora: new Date().toISOString(),
       },
       200,

@@ -37,13 +37,23 @@ import { guardarCache, leerCache, tomarTurno } from "./cache-externo";
  * ---------------------------------------------------------------------------
  * · Devuelve como máximo **5 reseñas**, las que su algoritmo considera más
  *   relevantes. No hay paginación ni forma de pedir más: un "ver todas" solo
- *   puede ser un enlace a Google Maps. La API clásica con `reviews_sort=newest`
- *   está deshabilitada en esta cuenta (`REQUEST_DENIED`). Por tanto NO se puede
- *   elegir "las 5 mejores del último año" entre todas las del hotel: solo se
- *   filtra y ordena lo que Google entrega (ver `seleccionarResenas()`).
+ *   puede ser un enlace a Google Maps. Place Details (New) **no tiene ningún
+ *   parámetro para ordenar** las reseñas (solo `languageCode`, `regionCode` y
+ *   `sessionToken`; revisado en la documentación el 2026-10-06), y la API
+ *   clásica con `reviews_sort=newest` está deshabilitada en esta cuenta
+ *   (`REQUEST_DENIED`).
+ *
+ *   Consecuencia: si una de esas cinco tiene menos de 4★, el sitio se quedaba
+ *   con cuatro. Por eso cada refresco **acumula** lo que llega en un REPERTORIO
+ *   propio (`resenas_google:repertorio`, ver `actualizarRepertorio()`), y las
+ *   cinco publicadas se eligen de ahí (`seleccionarResenas()`), no solo de la
+ *   respuesta del día. Mismo número de llamadas: una al día.
  * · Los términos exigen mostrar la **atribución al autor** y dejar claro que
  *   las reseñas vienen de Google. Eso lo resuelve el componente.
- * · Se permite cachear los datos hasta 30 días.
+ * · Se permite cachear los datos hasta 30 días. Por eso una reseña del
+ *   repertorio que Google deja de devolver se borra a los 30 días de la última
+ *   vez que vino (`DIAS_VIGENCIA_REPERTORIO`): si su autor la borró o la editó,
+ *   el sitio no la sigue mostrando indefinidamente.
  *
  * ---------------------------------------------------------------------------
  * DE DÓNDE SALEN LAS LLAMADAS, Y CUÁNTAS SON
@@ -128,20 +138,32 @@ const ESPERA_MS = {
   "arranque-en-frio": 4000,
 } as const;
 
-/** Solo se publican reseñas de 4 o 5 estrellas. */
+/** Solo se publican reseñas de 4 o 5 estrellas. Nunca menos. */
 const CALIFICACION_MINIMA = 4;
 
-/** Tope duro por si Google algún día devolviera más de cinco. */
+/** Cuántas reseñas se publican. La meta es que siempre sean estas cinco. */
 const MAXIMO_RESENAS = 5;
 
-/** Ventana normal: reseñas publicadas en los últimos 12 meses. */
+/** «Del último año»: reseñas publicadas en los últimos 12 meses. */
 const VENTANA_MESES = 12;
 
-/** Ventana relajada cuando la normal deja menos de `MINIMO_RESENAS`. */
-const VENTANA_RELAJADA_MESES = 24;
+/** Clave de la fila de `cache_externo` donde se acumulan las reseñas vistas. */
+export const CLAVE_REPERTORIO = `${CLAVE_CACHE_RESENAS}:repertorio`;
 
-/** Por debajo de esto la sección se vería casi vacía: se relaja el criterio. */
-const MINIMO_RESENAS = 3;
+/**
+ * Tope del repertorio: las 50 más recientes. Con unas 50 calificaciones en la
+ * ficha y cinco por consulta, es holgado; está para que la fila no crezca sin
+ * límite si algún día Google empieza a rotar mucho.
+ */
+const TOPE_REPERTORIO = 50;
+
+/**
+ * Días que una reseña sigue en el repertorio desde la ÚLTIMA vez que Google la
+ * devolvió. Es el plazo de caché que se toma como permitido (ver arriba): una
+ * reseña que su autor borró o cambió deja de mostrarse, como mucho, a los 30
+ * días. Mientras Google la siga devolviendo, se renueva cada día.
+ */
+const DIAS_VIGENCIA_REPERTORIO = 30;
 
 /* ===========================================================================
  * Tipos propios
@@ -152,6 +174,12 @@ const MINIMO_RESENAS = 3;
  * ======================================================================== */
 
 export type ResenaGoogle = {
+  /**
+   * Identificador de Google (`places/…/reviews/…`), si vino. Sirve para no
+   * guardar dos veces la misma reseña en el repertorio. Las guardadas antes de
+   * que existiera el repertorio no lo tienen.
+   */
+  id?: string;
   autor: string;
   /** URL de la foto de perfil, o `null` si el autor no tiene o no es de Google. */
   foto: string | null;
@@ -160,10 +188,20 @@ export type ResenaGoogle = {
   /** Entero de 1 a 5. */
   calificacion: number;
   texto: string;
-  /** Ya localizado por Google al pedir `languageCode=es`: "Hace 3 meses". */
+  /**
+   * «Hace 3 meses». Al publicar se recalcula desde `publicadaEn`
+   * (`describirAntiguedad()`), porque una reseña del repertorio puede haber
+   * llegado hace semanas y el texto de Google de ese día ya estaría viejo.
+   */
   tiempoRelativo: string;
   /** Fecha ISO 8601 en UTC, útil para `<time dateTime>` y para ordenar. */
   publicadaEn: string;
+};
+
+/** Una reseña del repertorio: la reseña y la última vez que Google la devolvió. */
+export type EntradaRepertorio = ResenaGoogle & {
+  /** ISO 8601 en UTC. */
+  vistaEn: string;
 };
 
 export type ResumenGoogle = {
@@ -182,12 +220,14 @@ export type ResumenGoogle = {
  * diagnosticar, sin volver a llamar a Google, por qué hoy hay N y no cinco.
  */
 export type SeleccionResenas = {
-  /** Cuántas devolvió Google (antes de cualquier filtro). */
+  /** Cuántas devolvió Google en el último refresco (antes de cualquier filtro). */
   devueltas: number;
-  /** Cuántas pasaron el filtro de 4★+ y de la ventana aplicada. */
+  /** Cuántas reseñas había en el repertorio al elegir (de todas las estrellas). */
+  enRepertorio: number;
+  /** Cuántas se publicaron (4★ o más; máximo cinco). */
   aprobadas: number;
-  /** Ventana aplicada en meses (12, 24) o `null` si se usó "sin filtro de fecha". */
-  ventanaMeses: number | null;
+  /** De las publicadas, cuántas son de los últimos 12 meses. */
+  delUltimoAno: number;
 };
 
 /* ===========================================================================
@@ -275,7 +315,10 @@ function normalizarResena(crudo: unknown): ResenaGoogle | null {
   const publicadaEn = textoValido(crudo.publishTime);
   if (!publicadaEn || Number.isNaN(Date.parse(publicadaEn))) return null;
 
+  const id = textoValido(crudo.name);
+
   return {
+    ...(id ? { id } : {}),
     autor,
     foto: fotoValida(atribucion?.photoUri),
     perfil: enlaceValido(atribucion?.uri),
@@ -289,14 +332,26 @@ function normalizarResena(crudo: unknown): ResenaGoogle | null {
   };
 }
 
-
 /* ===========================================================================
- * Normalización de la respuesta de Google
+ * Reglas de negocio (puras, exportadas solo para probarlas)
  * ---------------------------------------------------------------------------
- * Separada del `fetch` a propósito: es la parte con reglas de negocio —qué
- * reseñas se publican y en qué orden— y es la única que merece pruebas. Se
- * exporta solo para poder probarla.
+ * Separadas del `fetch` y de la base a propósito: aquí se decide qué reseñas
+ * se guardan en el repertorio, cuáles se publican y en qué orden. Es la única
+ * parte que merece pruebas, y sin red ni base se prueba en milisegundos.
  * ======================================================================== */
+
+/** Lo que interesa de una respuesta de Google, ya validado, antes de elegir. */
+export type FichaGoogle = {
+  promedio: number;
+  total: number;
+  mapsUrl: string;
+  /** Todas las reseñas válidas que vinieron, de cualquier puntuación. */
+  resenas: ResenaGoogle[];
+  /** Cuántas venían en la respuesta, antes de validarlas. */
+  devueltas: number;
+};
+
+const MS_DIA = 86_400_000;
 
 /** Resta `meses` a una fecha, en UTC. Pura, para poder probar la ventana. */
 function restarMeses(fecha: Date, meses: number): Date {
@@ -306,68 +361,148 @@ function restarMeses(fecha: Date, meses: number): Date {
 }
 
 /**
- * El criterio de selección: «las mejores del último año».
+ * «Hace 3 meses», calculado desde la fecha de publicación con el mismo estilo
+ * que usa Google en español («Hace un mes», «Hace 2 semanas», «Hace un año»).
  *
- * LÍMITE DE LA API: Places API (New) entrega como máximo 5 reseñas, elegidas por
- * Google. Aquí no se elige entre todas las del hotel: solo se filtra y ordena lo
- * que llegó, así que si alguna es vieja se publican menos de cinco.
+ * Existe por el repertorio: una reseña que llegó hace tres semanas traería el
+ * texto relativo de aquel día, y publicarlo tal cual diría «Hace 2 meses» de
+ * algo que ya tiene casi tres.
+ */
+export function describirAntiguedad(
+  publicadaEn: string,
+  ahora: Date = new Date(),
+): string {
+  const fecha = new Date(publicadaEn);
+
+  let meses =
+    (ahora.getUTCFullYear() - fecha.getUTCFullYear()) * 12 +
+    (ahora.getUTCMonth() - fecha.getUTCMonth());
+  if (ahora.getUTCDate() < fecha.getUTCDate()) meses -= 1;
+
+  if (meses >= 12) {
+    const anos = Math.floor(meses / 12);
+    return anos === 1 ? "Hace un año" : `Hace ${anos} años`;
+  }
+  if (meses >= 1) return meses === 1 ? "Hace un mes" : `Hace ${meses} meses`;
+
+  const dias = Math.max(
+    0,
+    Math.floor((ahora.getTime() - fecha.getTime()) / MS_DIA),
+  );
+  if (dias >= 7) {
+    const semanas = Math.floor(dias / 7);
+    return semanas === 1 ? "Hace una semana" : `Hace ${semanas} semanas`;
+  }
+  if (dias >= 1) return dias === 1 ? "Hace un día" : `Hace ${dias} días`;
+  return "Hoy";
+}
+
+/**
+ * ¿Son la misma reseña? Se compara, en este orden:
  *
- *   1. Solo 4★ o más.
- *   2. Publicadas en los últimos 12 meses.
- *   3. Si quedan menos de 3, la ventana sube a 24 meses.
- *   4. Si aun así quedan menos de 3, las mejores disponibles sin filtro de fecha.
- *   5. Orden: puntuación descendente; a igual puntuación, la más reciente primero.
- *   6. Cinco como máximo.
+ *   1. El `id` de Google, si las dos lo tienen.
+ *   2. El perfil del autor: Google admite UNA reseña por cuenta y lugar, así
+ *      que el mismo perfil es la misma reseña, aunque su autor la haya editado
+ *      (texto, estrellas o fecha nuevos).
+ *   3. Autor y fecha de publicación, para las guardadas antes de que existiera
+ *      el repertorio, que no tienen `id`.
+ */
+function mismaResena(a: ResenaGoogle, b: ResenaGoogle): boolean {
+  if (a.id && b.id && a.id === b.id) return true;
+  if (a.perfil && b.perfil && a.perfil === b.perfil) return true;
+  return (
+    a.autor.trim().toLocaleLowerCase("es") ===
+      b.autor.trim().toLocaleLowerCase("es") &&
+    Date.parse(a.publicadaEn) === Date.parse(b.publicadaEn)
+  );
+}
+
+/**
+ * Suma al repertorio las reseñas que acaban de llegar de Google.
+ *
+ *   · Sin duplicados (ver `mismaResena()`): si una ya estaba, se queda la
+ *     versión que acaba de llegar —es la que Google muestra hoy— y se le
+ *     renueva `vistaEn`.
+ *   · Se guardan TODAS, también las de menos de 4★: así, si alguien baja su
+ *     reseña de 5 a 2 estrellas, la versión nueva reemplaza a la vieja en vez
+ *     de quedar la de 5 publicada. El filtro de estrellas es de la selección.
+ *   · Una reseña que Google no devuelve hace más de `DIAS_VIGENCIA_REPERTORIO`
+ *     días sale del repertorio.
+ *   · Tope de `TOPE_REPERTORIO`, las más recientes.
+ */
+export function actualizarRepertorio(
+  previo: EntradaRepertorio[],
+  llegadas: ResenaGoogle[],
+  ahora: Date = new Date(),
+): EntradaRepertorio[] {
+  const vistaEn = ahora.toISOString();
+  let lista = [...previo];
+
+  for (const resena of llegadas) {
+    const anteriores = lista.filter((entrada) => mismaResena(entrada, resena));
+    lista = lista.filter((entrada) => !mismaResena(entrada, resena));
+    const id = resena.id ?? anteriores.find((entrada) => entrada.id)?.id;
+    lista.push({ ...resena, ...(id ? { id } : {}), vistaEn });
+  }
+
+  const vigenteDesde = ahora.getTime() - DIAS_VIGENCIA_REPERTORIO * MS_DIA;
+
+  return lista
+    .filter((entrada) => Date.parse(entrada.vistaEn) >= vigenteDesde)
+    .sort((a, b) => Date.parse(b.publicadaEn) - Date.parse(a.publicadaEn))
+    .slice(0, TOPE_REPERTORIO);
+}
+
+/**
+ * El criterio de selección, sobre el repertorio entero (no solo sobre las cinco
+ * del día):
+ *
+ *   1. Solo 4★ o más. Nunca menos, aunque eso deje menos de cinco.
+ *   2. Primero las de los últimos 12 meses: las mejores y, a igual puntuación,
+ *      las más recientes.
+ *   3. Si no llegan a cinco, se completa con las mejores de 4★ o más más
+ *      antiguas, con el mismo orden.
+ *   4. Cinco como máximo, y en ese orden: las del último año delante.
  */
 export function seleccionarResenas(
   candidatas: ResenaGoogle[],
   ahora: Date = new Date(),
-): { resenas: ResenaGoogle[]; ventanaMeses: number | null } {
+): { resenas: ResenaGoogle[]; delUltimoAno: number } {
+  const desde = restarMeses(ahora, VENTANA_MESES).getTime();
+
+  const mejorPrimero = (a: ResenaGoogle, b: ResenaGoogle) =>
+    b.calificacion - a.calificacion ||
+    Date.parse(b.publicadaEn) - Date.parse(a.publicadaEn);
+
   const buenas = candidatas.filter(
     (resena) => resena.calificacion >= CALIFICACION_MINIMA,
   );
 
-  const mejores = (lista: ResenaGoogle[]) =>
-    [...lista]
-      .sort(
-        (a, b) =>
-          b.calificacion - a.calificacion ||
-          Date.parse(b.publicadaEn) - Date.parse(a.publicadaEn),
-      )
-      .slice(0, MAXIMO_RESENAS);
+  const recientes = buenas
+    .filter((resena) => Date.parse(resena.publicadaEn) >= desde)
+    .sort(mejorPrimero)
+    .slice(0, MAXIMO_RESENAS);
 
-  for (const meses of [VENTANA_MESES, VENTANA_RELAJADA_MESES]) {
-    const desde = restarMeses(ahora, meses).getTime();
-    const enVentana = buenas.filter(
-      (resena) => Date.parse(resena.publicadaEn) >= desde,
-    );
-    if (enVentana.length >= MINIMO_RESENAS) {
-      return { resenas: mejores(enVentana), ventanaMeses: meses };
-    }
-  }
+  const antiguas = buenas
+    .filter((resena) => Date.parse(resena.publicadaEn) < desde)
+    .sort(mejorPrimero)
+    .slice(0, MAXIMO_RESENAS - recientes.length);
 
-  return { resenas: mejores(buenas), ventanaMeses: null };
+  return {
+    resenas: [...recientes, ...antiguas],
+    delUltimoAno: recientes.length,
+  };
 }
 
 /**
- * Convierte la respuesta cruda de Places API en el resumen que usa el sitio, o
- * `null` si no hay nada publicable.
+ * Valida la respuesta cruda de Places API. `null` si no trae `rating` o
+ * `userRatingCount`: sin ellos, las estrellas de la portada y el
+ * `aggregateRating` del JSON-LD saldrían de la nada.
  *
- * Reglas, en este orden:
- *   1. Sin `rating` o sin `userRatingCount` no hay resumen: las estrellas de la
- *      portada y el `aggregateRating` del JSON-LD saldrían de la nada.
- *   2. Cada reseña pasa por `normalizarResena()`; a las que les falta algo
- *      imprescindible se caen.
- *   3. Selección con `seleccionarResenas()`: 4★+, últimos 12 meses (24 y luego
- *      sin límite si quedan menos de 3), por puntuación y luego por fecha,
- *      cinco como máximo.
- *   4. Si no queda ninguna, `null`: mejor los testimonios del CMS que una
- *      sección vacía con un promedio huérfano.
+ * Cada reseña pasa por `normalizarResena()`; a las que les falta algo
+ * imprescindible se caen. Aquí todavía NO se filtra por estrellas.
  */
-export function normalizarRespuestaGoogle(
-  datos: unknown,
-  ahora: Date = new Date(),
-): ResumenGoogle | null {
+export function leerRespuestaGoogle(datos: unknown): FichaGoogle | null {
   if (!esObjeto(datos)) {
     console.error("[resenas-google] La respuesta no es un objeto JSON.");
     return null;
@@ -385,12 +520,42 @@ export function normalizarRespuestaGoogle(
 
   const crudas = Array.isArray(datos.reviews) ? datos.reviews : [];
 
-  const { resenas, ventanaMeses } = seleccionarResenas(
-    crudas
+  return {
+    promedio,
+    total: Math.round(total),
+    mapsUrl: enlaceValido(datos.googleMapsUri) ?? MAPS_URL_RESPALDO,
+    resenas: crudas
       .map(normalizarResena)
       .filter((resena): resena is ResenaGoogle => resena !== null),
-    ahora,
-  );
+    devueltas: crudas.length,
+  };
+}
+
+/** La reseña tal como se publica: sin `vistaEn` y con la antigüedad de hoy. */
+function paraPublicar(resena: ResenaGoogle, ahora: Date): ResenaGoogle {
+  return {
+    ...(resena.id ? { id: resena.id } : {}),
+    autor: resena.autor,
+    foto: resena.foto,
+    perfil: resena.perfil,
+    calificacion: resena.calificacion,
+    texto: resena.texto,
+    tiempoRelativo: describirAntiguedad(resena.publicadaEn, ahora),
+    publicadaEn: resena.publicadaEn,
+  };
+}
+
+/**
+ * El resumen que se publica: el promedio y el total de la ficha de hoy, y las
+ * reseñas elegidas del repertorio. `null` si no queda ninguna de 4★ o más:
+ * mejor los testimonios del CMS que una sección vacía con un promedio huérfano.
+ */
+export function armarResumen(
+  ficha: FichaGoogle,
+  repertorio: ResenaGoogle[],
+  ahora: Date = new Date(),
+): ResumenGoogle | null {
+  const { resenas, delUltimoAno } = seleccionarResenas(repertorio, ahora);
 
   if (resenas.length === 0) {
     console.error(
@@ -400,17 +565,36 @@ export function normalizarRespuestaGoogle(
   }
 
   return {
-    promedio,
-    total: Math.round(total),
-    mapsUrl: enlaceValido(datos.googleMapsUri) ?? MAPS_URL_RESPALDO,
-    resenas,
+    promedio: ficha.promedio,
+    total: ficha.total,
+    mapsUrl: ficha.mapsUrl,
+    resenas: resenas.map((resena) => paraPublicar(resena, ahora)),
     seleccion: {
-      devueltas: crudas.length,
+      devueltas: ficha.devueltas,
+      enRepertorio: repertorio.length,
       aprobadas: resenas.length,
-      ventanaMeses,
+      delUltimoAno,
     },
   };
 }
+
+/**
+ * Una respuesta de Google convertida en resumen SIN repertorio previo: lo que
+ * se publicaría si solo existiera lo que llegó hoy. Es lo que hace el primer
+ * refresco de una base vacía, y es cómoda para probar la validación.
+ */
+export function normalizarRespuestaGoogle(
+  datos: unknown,
+  ahora: Date = new Date(),
+): ResumenGoogle | null {
+  const ficha = leerRespuestaGoogle(datos);
+  if (!ficha) return null;
+  return armarResumen(ficha, actualizarRepertorio([], ficha.resenas, ahora), ahora);
+}
+
+/* ===========================================================================
+ * Revalidación de lo que sale de la base
+ * ======================================================================== */
 
 /**
  * Revalida lo que salió de la columna `jsonb`.
@@ -439,16 +623,19 @@ export function normalizarResumenGuardado(valor: unknown): ResumenGoogle | null 
 
   if (resenas.length === 0) return null;
 
+  /* El diagnóstico solo se conserva si está completo. Las filas de antes del
+     repertorio traen otra forma (`ventanaMeses`) y simplemente lo pierden. */
   const sel = esObjeto(valor.seleccion) ? valor.seleccion : null;
   const devueltas = numeroValido(sel?.devueltas);
+  const enRepertorio = numeroValido(sel?.enRepertorio);
   const aprobadas = numeroValido(sel?.aprobadas);
+  const delUltimoAno = numeroValido(sel?.delUltimoAno);
   const seleccion: SeleccionResenas | undefined =
-    devueltas !== null && aprobadas !== null
-      ? {
-          devueltas,
-          aprobadas,
-          ventanaMeses: numeroValido(sel?.ventanaMeses),
-        }
+    devueltas !== null &&
+    enRepertorio !== null &&
+    aprobadas !== null &&
+    delUltimoAno !== null
+      ? { devueltas, enRepertorio, aprobadas, delUltimoAno }
       : undefined;
 
   return {
@@ -476,7 +663,10 @@ function normalizarResenaGuardada(crudo: unknown): ResenaGoogle | null {
   if (!autor || !texto || calificacion === null || !publicadaEn) return null;
   if (Number.isNaN(Date.parse(publicadaEn))) return null;
 
+  const id = textoValido(crudo.id);
+
   return {
+    ...(id ? { id } : {}),
     autor,
     foto: fotoValida(crudo.foto),
     perfil: enlaceValido(crudo.perfil),
@@ -489,13 +679,32 @@ function normalizarResenaGuardada(crudo: unknown): ResenaGoogle | null {
   };
 }
 
+/**
+ * Revalida el repertorio guardado (`{ resenas: EntradaRepertorio[] }`).
+ * `null` si la fila no tiene esa forma; las entradas dañadas se descartan una a
+ * una sin tirar las demás.
+ */
+export function normalizarRepertorioGuardado(
+  valor: unknown,
+): EntradaRepertorio[] | null {
+  if (!esObjeto(valor) || !Array.isArray(valor.resenas)) return null;
+
+  return valor.resenas.flatMap((crudo): EntradaRepertorio[] => {
+    const resena = normalizarResenaGuardada(crudo);
+    const vistaEn = esObjeto(crudo) ? textoValido(crudo.vistaEn) : null;
+    if (!resena || !vistaEn || Number.isNaN(Date.parse(vistaEn))) return [];
+    return [{ ...resena, vistaEn }];
+  });
+}
+
 /* ===========================================================================
  * La llamada a Google (la que se paga)
  * ======================================================================== */
 
 /**
  * Pide la ficha a Places API. **Este es el único punto del proyecto que gasta
- * cuota de Google.**
+ * cuota de Google.** Devuelve el JSON crudo; validarlo es cosa de
+ * `leerRespuestaGoogle()`.
  *
  * NUNCA lanza: devuelve `null` y deja un `console.error` con el motivo real
  * (falta la clave, la API no está habilitada, la cuota se agotó, el JSON vino
@@ -506,7 +715,7 @@ function normalizarResenaGuardada(crudo: unknown): ResenaGoogle | null {
  */
 async function consultarPlacesApi(
   motivo: "cron-diario" | "arranque-en-frio",
-): Promise<ResumenGoogle | null> {
+): Promise<unknown> {
   const clave = process.env.GOOGLE_PLACES_API_KEY;
 
   if (!clave) {
@@ -528,8 +737,6 @@ async function consultarPlacesApi(
   */
   console.info(`[resenas-google] llamada a Places API (motivo: ${motivo}).`);
 
-  let datos: unknown;
-
   try {
     const respuesta = await fetch(ENDPOINT, {
       headers: {
@@ -550,13 +757,75 @@ async function consultarPlacesApi(
       return null;
     }
 
-    datos = await respuesta.json();
+    return await respuesta.json();
   } catch (error) {
     console.error("[resenas-google] No se pudo consultar Places API:", error);
     return null;
   }
+}
 
-  return normalizarRespuestaGoogle(datos);
+/* ===========================================================================
+ * El repertorio en la base
+ * ======================================================================== */
+
+/**
+ * Lee el repertorio. Si todavía no existe —el primer refresco tras estrenar el
+ * repertorio— se siembra con las reseñas que ya están publicadas: son reseñas
+ * que Google devolvió y que ya pasaron el filtro, y se conservan con la fecha
+ * del último refresco como `vistaEn`.
+ *
+ * Si la lectura FALLA (no que falte la fila), `leerCache()` también devuelve
+ * `null` y se siembra igual. Es una degradación acotada: el repertorio se
+ * rehace con lo publicado más lo que llegue hoy, y vuelve a crecer solo.
+ */
+async function leerRepertorio(): Promise<EntradaRepertorio[]> {
+  const fila = await leerCache(CLAVE_REPERTORIO);
+  const guardado = normalizarRepertorioGuardado(fila?.valor);
+  if (guardado) return guardado;
+
+  const filaResumen = await leerCache(CLAVE_CACHE_RESENAS);
+  const resumen = normalizarResumenGuardado(filaResumen?.valor);
+  if (!filaResumen || !resumen) return [];
+
+  const vistaEn = Number.isNaN(Date.parse(filaResumen.actualizadoEn))
+    ? new Date().toISOString()
+    : new Date(filaResumen.actualizadoEn).toISOString();
+
+  return resumen.resenas.map((resena) => ({ ...resena, vistaEn }));
+}
+
+/**
+ * Una consulta a Google de punta a punta: pedir, validar, sumar al repertorio
+ * (y guardarlo) y elegir las cinco. Devuelve el resumen para que quien llama lo
+ * guarde, o `null` si Google falló o no hay nada publicable.
+ *
+ * Si Google falla no se toca NADA, tampoco el repertorio.
+ */
+async function consultarYElegir(
+  motivo: "cron-diario" | "arranque-en-frio",
+): Promise<ResumenGoogle | null> {
+  const datos = await consultarPlacesApi(motivo);
+  if (datos === null) return null;
+
+  const ficha = leerRespuestaGoogle(datos);
+  if (!ficha) return null;
+
+  const ahora = new Date();
+  const repertorio = actualizarRepertorio(
+    await leerRepertorio(),
+    ficha.resenas,
+    ahora,
+  );
+
+  /* Si no se pudo guardar, la selección de hoy sigue siendo buena: se publica
+     igual y mañana el refresco vuelve a sumar lo que llegue. */
+  if (!(await guardarCache(CLAVE_REPERTORIO, { resenas: repertorio }))) {
+    console.error(
+      "[resenas-google] No se pudo guardar el repertorio; se publica la selección de hoy igualmente.",
+    );
+  }
+
+  return armarResumen(ficha, repertorio, ahora);
 }
 
 /* ===========================================================================
@@ -567,8 +836,8 @@ async function consultarPlacesApi(
  * El resumen que pinta la portada. **Lee de la base, no de Google.**
  *
  * Camino normal (prácticamente todas las visitas): una lectura de
- * `cache_externo`, que además va por la Data Cache de Next, así que la mayoría
- * de las visitas no tocan ni la base.
+ * `cache_externo`. Ver en `cache-externo.ts` por qué esa lectura no pasa por la
+ * Data Cache de Next.
  *
  * Arranque en frío (la fila no existe: base nueva, fila borrada a mano, build
  * desde cero): se pide el turno y **solo quien lo gana** llama a Google, una vez,
@@ -598,7 +867,7 @@ export const getResenasGoogle = cache(
       return null;
     }
 
-    const resumen = await consultarPlacesApi("arranque-en-frio");
+    const resumen = await consultarYElegir("arranque-en-frio");
     if (!resumen) return null;
 
     await guardarCache(CLAVE_CACHE_RESENAS, resumen);
@@ -611,20 +880,23 @@ export const getResenasGoogle = cache(
  * ======================================================================== */
 
 export type RefrescoResenas = {
-  /** `true` solo si Google respondió bien Y se guardó. */
+  /** `true` solo si Google respondió bien Y se guardó el resumen. */
   refrescado: boolean;
-  /** Cuántas reseñas quedaron guardadas. `0` si no se refrescó. */
+  /** Cuántas reseñas quedaron publicadas. `0` si no se refrescó. */
   resenas: number;
-  /** Cuántas devolvió Google (máximo 5). Ausente si no se refrescó. */
+  /** Cuántas devolvió Google hoy (máximo 5). Ausente si no se refrescó. */
   devueltas?: number;
-  /** Ventana aplicada en meses; `null` = sin filtro de fecha. */
-  ventanaMeses?: number | null;
+  /** Cuántas hay en el repertorio, de todas las estrellas. */
+  enRepertorio?: number;
+  /** De las publicadas, cuántas son de los últimos 12 meses. */
+  delUltimoAno?: number;
 };
 
 /**
  * El refresco diario. Lo llama el cron de `/api/salud`, y es la única llamada a
  * Google que el proyecto hace de forma rutinaria: **una al día, unas 30 al mes**,
- * contra las 1.000 gratuitas.
+ * contra las 1.000 gratuitas. El repertorio no cambia esa cuenta: se alimenta
+ * de la misma llamada.
  *
  * DEGRADACIÓN: si Google falla —cuota, red, clave revocada, respuesta rara— no se
  * borra ni se toca nada. La fila anterior sigue en su sitio con su
@@ -635,7 +907,7 @@ export type RefrescoResenas = {
  * NUNCA lanza.
  */
 export async function refrescarResenasGoogle(): Promise<RefrescoResenas> {
-  const resumen = await consultarPlacesApi("cron-diario");
+  const resumen = await consultarYElegir("cron-diario");
   if (!resumen) return { refrescado: false, resenas: 0 };
 
   const guardado = await guardarCache(CLAVE_CACHE_RESENAS, resumen);
@@ -644,14 +916,16 @@ export async function refrescarResenasGoogle(): Promise<RefrescoResenas> {
   const { seleccion } = resumen;
   console.info(
     `[resenas-google] selección: Google devolvió ${seleccion?.devueltas ?? "?"}, ` +
-      `pasaron el filtro ${seleccion?.aprobadas ?? resumen.resenas.length}, ` +
-      `ventana ${seleccion?.ventanaMeses ?? "sin límite"} meses.`,
+      `repertorio de ${seleccion?.enRepertorio ?? "?"}, ` +
+      `publicadas ${resumen.resenas.length} ` +
+      `(${seleccion?.delUltimoAno ?? "?"} del último año).`,
   );
 
   return {
     refrescado: true,
     resenas: resumen.resenas.length,
     devueltas: seleccion?.devueltas,
-    ventanaMeses: seleccion?.ventanaMeses,
+    enRepertorio: seleccion?.enRepertorio,
+    delUltimoAno: seleccion?.delUltimoAno,
   };
 }
