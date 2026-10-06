@@ -22,7 +22,12 @@ import { TarjetaCabana } from "@/components/sitio/tarjeta-cabana";
 import { TarjetaPlan } from "@/components/sitio/tarjeta-plan";
 import { Boton } from "@/components/ui/boton";
 import { Revelar } from "@/components/ui/revelar";
-import { EncabezadoSeccion, RITMO, Seccion } from "@/components/ui/seccion";
+import {
+  EncabezadoSeccion,
+  REJILLA,
+  RITMO,
+  Seccion,
+} from "@/components/ui/seccion";
 import {
   getAlojamientos,
   getContacto,
@@ -506,13 +511,13 @@ export async function PaginaInicio() {
               arriba, que es como se ve un catálogo y no un inventario a medio
               llenar. Los `li` se estiran solos al alto de su línea.
             */}
-            <ul className={`${RITMO.trasTitulo} flex flex-wrap justify-center gap-6`}>
+            <ul className={`${RITMO.trasTitulo} ${REJILLA.lista}`}>
               {alojamientos.map((alojamiento, indice) => (
                 <Revelar
                   key={alojamiento.id}
                   como="li"
                   retraso={(indice % 3) * 90}
-                  className="w-full sm:w-[calc(50%-0.75rem)] lg:w-[calc(33.333%-1rem)]"
+                  className={REJILLA.tercio}
                 >
                   {/* Sin `priority`: están por debajo del primer visor y
                       competirían con la foto del hero por el ancho de banda
@@ -675,18 +680,19 @@ export async function PaginaInicio() {
 
             La foto va arriba con proporción fija (4/3) y el cuerpo crece con
             `flex-1`, así que las tres tarjetas empiezan y acaban a la misma
-            altura aunque una descripción tenga una línea más. Y va con
+            altura aunque una descripción tenga una línea más (`REJILLA`, que además
+            centra la última fila si las experiencias no son múltiplo de tres). Y va con
             `CLASE_FOTO_CON_FLAG`: el recorte se ancla arriba a la derecha,
             donde vive el sello de marca, y el radio grande se lleva a la
             esquina superior IZQUIERDA para no morderlo.
           */}
-          <ul className={`mx-auto ${RITMO.trasTitulo} grid max-w-5xl items-stretch gap-6 sm:grid-cols-2 lg:grid-cols-3`}>
+          <ul className={`mx-auto ${RITMO.trasTitulo} ${REJILLA.lista} max-w-5xl`}>
             {experiencias.map((experiencia, indice) => (
               <Revelar
                 key={experiencia.id}
                 como="li"
-                retraso={indice * 90}
-                className="h-full"
+                retraso={(indice % 3) * 90}
+                className={REJILLA.tercio}
               >
                 <article className="flex h-full flex-col overflow-hidden rounded-[var(--radius-generoso)] rounded-tl-[3.5rem] bg-white ring-1 ring-crema-200/70 transition-shadow duration-300 hover:shadow-[var(--shadow-tarjeta)]">
                   {experiencia.imagen_url ? (

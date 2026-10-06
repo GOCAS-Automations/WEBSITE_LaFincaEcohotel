@@ -138,6 +138,32 @@ export const RITMO = {
   nota: "mt-8",
 } as const;
 
+/**
+ * LA REJILLA DE TARJETAS QUE SIEMPRE QUEDA CENTRADA.
+ *
+ * Un `grid` de tres columnas con dos, cuatro o cinco tarjetas deja la última
+ * fila pegada a la izquierda y un hueco a la derecha: se lee como un
+ * inventario a medio llenar. Cesar lo vio en `/experiencias`. Con flex,
+ * `justify-center` y anchos calculados, la fila incompleta queda centrada bajo
+ * las de arriba, tenga las tarjetas que tenga; y los `li` se estiran solos al
+ * alto de su línea, así que las tarjetas de una misma fila miden lo mismo.
+ *
+ *   · `lista`  — el `ul`. El hueco (`gap-6` = 1,5 rem) es el que restan los
+ *                anchos de abajo: si se cambia uno, se cambian los dos.
+ *   · `tercio` — una tarjeta: una columna en el teléfono, dos desde `sm`, tres
+ *                desde `lg`.
+ *   · `mitad`  — una tarjeta: una columna en el teléfono, dos desde `sm`.
+ *   · `cuarto` — una tarjeta: una, dos desde `sm` y cuatro desde `xl`. Cuatro
+ *                columnas a 1024 px dejaban tarjetas de 200 px con tres
+ *                palabras por línea; entre `lg` y `xl` van dos y dos.
+ */
+export const REJILLA = {
+  lista: "flex flex-wrap justify-center gap-6",
+  tercio: "w-full sm:w-[calc(50%-0.75rem)] lg:w-[calc(33.333%-1rem)]",
+  mitad: "w-full sm:w-[calc(50%-0.75rem)]",
+  cuarto: "w-full sm:w-[calc(50%-0.75rem)] xl:w-[calc(25%-1.125rem)]",
+} as const;
+
 type PropsEncabezado = {
   antetitulo?: string;
   titulo: string;

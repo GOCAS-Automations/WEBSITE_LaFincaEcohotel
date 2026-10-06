@@ -6,7 +6,12 @@ import { HeroPagina } from "@/components/sitio/hero-pagina";
 import { IconoWhatsapp } from "@/components/sitio/iconos";
 import { Boton } from "@/components/ui/boton";
 import { Revelar } from "@/components/ui/revelar";
-import { EncabezadoSeccion, RITMO, Seccion } from "@/components/ui/seccion";
+import {
+  EncabezadoSeccion,
+  REJILLA,
+  RITMO,
+  Seccion,
+} from "@/components/ui/seccion";
 import {
   getContacto,
   getContenidoExperiencias,
@@ -55,19 +60,18 @@ export async function PaginaExperiencias() {
           {contenido.intro}
         </p>
 
-        {/* TRES COLUMNAS DESDE `lg`: el fondue pasó de «adicional» a
-            experiencia el 2026-09-15 (es una celebración para dos con precio
-            por estadía, no un extra operativo como la segunda mascota), así
-            que aquí hay tres tarjetas y no dos. Con `sm:grid-cols-2` a secas,
-            la tercera quedaba sola en una fila. */}
+        {/* HASTA TRES POR FILA, Y LA ÚLTIMA FILA CENTRADA. Las experiencias
+            salen del panel (`extras`): hoy son unas, mañana pueden ser dos,
+            cuatro o cinco. Un `grid` de tres columnas dejaba las que sobran
+            pegadas a la izquierda; `REJILLA` las centra con cualquier número. */}
         {experiencias.length > 0 ? (
-          <ul className={`relative z-10 mx-auto ${RITMO.trasTitulo} grid max-w-5xl items-stretch gap-6 sm:grid-cols-2 lg:grid-cols-3`}>
+          <ul className={`relative z-10 mx-auto ${RITMO.trasTitulo} ${REJILLA.lista} max-w-5xl`}>
             {experiencias.map((experiencia, indice) => (
               <Revelar
                 key={experiencia.id}
                 como="li"
-                retraso={indice * 90}
-                className="h-full"
+                retraso={(indice % 3) * 90}
+                className={REJILLA.tercio}
               >
                 {/* La curva grande va arriba a la IZQUIERDA: el fondue se
                     publica con una foto del catálogo del hotel y todas llevan
@@ -175,13 +179,13 @@ export async function PaginaExperiencias() {
             descripcion={contenido.adicionales_descripcion}
           />
 
-          <ul className={`mx-auto ${RITMO.trasTitulo} grid max-w-5xl gap-6 sm:grid-cols-2`}>
+          <ul className={`mx-auto ${RITMO.trasTitulo} ${REJILLA.lista} max-w-5xl`}>
             {contenido.adicionales.map((adicional, indice) => (
               <Revelar
                 key={adicional.nombre}
                 como="li"
-                retraso={indice * 90}
-                className="h-full"
+                retraso={(indice % 2) * 90}
+                className={REJILLA.mitad}
               >
                 <article className="flex h-full flex-col overflow-hidden rounded-[var(--radius-generoso)] rounded-tl-[3.5rem] bg-crema-50 ring-1 ring-crema-200/70">
                   <div className="relative aspect-3/4 bg-crema-200">
