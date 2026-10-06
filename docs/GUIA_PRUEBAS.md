@@ -93,15 +93,15 @@ El orden es **primero la cabaña, luego las fechas**. En `/reservar`, el paso 1 
 - [x] **Día de Calma**: en el paso 1 elige **Día de Calma**. El calendario pasa a pedir **un solo día** (sin salida) y tacha los días sin cupo. Aparece el plan de día, $250.000, máximo 2 adultos y los cupos que quedan.
 - [x] **No se reserva para hoy**: abre el calendario y comprueba que **el día de hoy sale tachado** y no se puede pulsar (igual que los días que ya pasaron). El primer día elegible es **mañana**. Pruébalo también en el **Día de Calma** y en el calendario de la **portada**.
 - [x] Intenta reservar una fecha ya ocupada (por ejemplo, entrando con `?cabana=…&entrada=…&salida=…` de unas noches ocupadas): debe avisar en español, sin errores técnicos.
-- [ ] **El aviso de noches ocupadas no dice quién las tiene** (nuevo el 2026-10-05): si al pagar las noches se acaban de ocupar, el mensaje es «Esas noches ya no están disponibles en la Cabaña 03. Elige otras fechas o escríbenos por WhatsApp.», **sin** el nombre de otro huésped, ni el código de su reserva, ni el título del evento del calendario de Google. (En el panel, el mensaje sí sigue diciendo quién es.)
+- [x] **El aviso de noches ocupadas no dice quién las tiene** (nuevo el 2026-10-05): si al pagar las noches se acaban de ocupar, el mensaje es «Esas noches ya no están disponibles en la Cabaña 03. Elige otras fechas o escríbenos por WhatsApp.», **sin** el nombre de otro huésped, ni el código de su reserva, ni el título del evento del calendario de Google. (En el panel, el mensaje sí sigue diciendo quién es.)
 
 ## 3 · Pagos — **esta sección va en `pruebas.lafincaecohotel.com`**
 
 > Toda esta sección, incluido el panel, se hace entrando por `https://pruebas.lafincaecohotel.com`. En el sitio real el botón de pagar no aparece, y es a propósito: en Production los pagos siguen apagados hasta el lanzamiento.
 
-- [ ] Abre `https://pruebas.lafincaecohotel.com/reservar`. **El botón de pagar aparece.** (Si no aparece, avísame: falta `PAGOS_ACTIVOS=1` en la vista previa.)
-- [ ] Abre `https://lafincaecohotel.com/reservar` en otra pestaña: ahí el cierre tiene que seguir siendo **por WhatsApp**, sin botón de pagar. Es la comprobación de que el sitio real no está cobrando con una pasarela de pruebas.
-- [ ] **Pago aprobado**: completa una reserva y paga con la tarjeta aprobada. Al volver, la página de confirmación muestra la reserva **confirmada** con su código.
+- [x] Abre `https://pruebas.lafincaecohotel.com/reservar`. **El botón de pagar aparece.** (Si no aparece, avísame: falta `PAGOS_ACTIVOS=1` en la vista previa.)
+- [x] Abre `https://lafincaecohotel.com/reservar` en otra pestaña: ahí el cierre tiene que seguir siendo **por WhatsApp**, sin botón de pagar. Es la comprobación de que el sitio real no está cobrando con una pasarela de pruebas.
+- [x] **Pago aprobado**: completa una reserva y paga con la tarjeta aprobada. Al volver, la página de confirmación muestra la reserva **confirmada** con su código.
 - [ ] En el panel (`pruebas.lafincaecohotel.com/admin`), esa reserva aparece confirmada con el monto pagado y el saldo pendiente.
 - [ ] **Pago rechazado**: repite con la tarjeta de rechazo. La reserva queda pendiente y no se confirma.
 - [ ] **Abandono**: inicia un pago y cierra la pestaña sin pagar. A los 30 minutos la fecha vuelve a estar libre.
@@ -133,6 +133,7 @@ Entra en `lafincaecohotel.com/admin` con la cuenta propietaria.
 - [x] **Planes**: edita el «qué incluye» de un plan.
 - [x] **Legales**: edita un párrafo y verifícalo en la página pública.
 - [x] **Usuarios**: crea una cuenta de equipo, entra con ella y comprueba que **no** ve la sección Usuarios. Bórrala.
+- [ ] **Entrar con usuario**: en `/admin/login` escribe tu **usuario** (no el correo) y tu contraseña, y entra. Prueba también: con el correo dice «Entra con tu usuario, no con tu correo…»; con un usuario que no existe o con una contraseña mala, el mismo «El usuario o la contraseña no son correctos». En Usuarios, crea una cuenta con usuario y sin correo, entra con ella y bórrala.
 - [x] Sube una **foto nueva** desde el panel y comprueba que aparece en el sitio.
 
 ### Reservas: el calendario del mes (nuevo el 2026-10-05)

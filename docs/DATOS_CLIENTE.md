@@ -276,7 +276,19 @@ nuestro propio sitio se ignoran.
 | **Nicolás** | Anfitrión en la finca |
 | Caroline | Administradora del bot de WhatsApp (mismo número del hotel) |
 
-### Cuentas del panel (2026-09-16)
+### Cuentas del panel — se entra con usuario (2026-10-06)
+
+Desde el 06/10/2026 se entra con **usuario** y contraseña, no con el correo. Son cuatro cuentas.
+Las contraseñas están solo en `CREDENCIALES_PANEL.local.md`, que git ignora:
+
+| Usuario | Rol | Correo de la cuenta |
+|---|---|---|
+| `admin` | Propietario | fincavillarrealcali@gmail.com (el del hotel; contraseña de siempre) |
+| `j-mejia` | Propietario | j-mejia@usuarios.lafincaecohotel.com (interno, nadie lo lee) |
+| `a-ospina` | Propietario | a-ospina@usuarios.lafincaecohotel.com (interno, nadie lo lee) |
+| `pruebas-gocas` | Equipo | panel@lafincaecohotel.com (pruebas de GOCAS hasta la entrega) |
+
+### Cuentas del panel (2026-09-16; histórico, antes se entraba con el correo)
 
 El panel tiene **dos roles** y una pantalla propia para administrarlos, `/admin/usuarios`, que solo
 ve el propietario:

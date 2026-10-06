@@ -4150,3 +4150,10 @@ del panel, seed (regenerado con `npm run seed:contenido`) y `docs/CMS_CLAVES.md`
 escribir; idempotente; titular, mensaje y botón intactos). La foto era `web/zonas-comunes/03.webp` y **no se
 borró del bucket**: sigue en uso en las claves `galeria`, `lugar` y `home.planes`, y en `src/lib/fotos.ts`
 (`ZONAS_COMUNES[3]`, `fondoBosque`). `npm run imagenes:limpiar` en simulacro: 0 huérfanos.
+
+### 2026-10-06 — El panel se entra con usuario, no con correo
+
+- **Diseño:** el usuario vive en `app_metadata.usuario`, que solo escribe la clave de servicio. Formato `^[a-z0-9][a-z0-9-]{1,29}$`, en minúsculas y único. El login (`src/lib/admin/login.ts`) lo traduce al correo con `public.correo_de_usuario_panel` y luego llama a `signInWithPassword`. Esa función es de la **migración 025**: `security definer`, `search_path` vacío y EXECUTE solo para `service_role`. Por REST, `anon` y `authenticated` reciben 42501. Se eligió la función y no una tabla propia porque así hay una sola fuente de verdad. Si hay usuarios duplicados devuelve NULL (falla cerrado); la unicidad la comprueba la aplicación.
+- **Sin enumeración:** un usuario inexistente y una contraseña mala reciben el mismo mensaje. Con un usuario inexistente se hace un intento señuelo, y todo fallo tarda al menos 1 s (más 0–200 ms de azar). Medido en localhost: entre 1,1 y 1,2 s en los dos casos. Si se escribe un correo, el mensaje orienta («Entra con tu usuario…») sin consultar nada. Los límites no cambian: 10 intentos cada 5 min por usuario normalizado y 30 cada 15 min por IP.
+- **Cuentas:** `admin` (correo real del hotel, contraseña de siempre comprobada), `j-mejia` y `a-ospina` (propietarios nuevos con correo interno `@usuarios.lafincaecohotel.com`, creados con `auth.admin.createUser`) y `pruebas-gocas` (equipo). Las contraseñas están en `CREDENCIALES_PANEL.local.md`, cubierto por la regla `*.local.md` de `.gitignore`.
+- **Panel:** Usuarios crea cuentas con usuario, rol y un correo opcional, y deja poner o cambiar el usuario. Mi cuenta y la cabecera muestran el usuario. `requireAdmin()`, el middleware y RLS no cambian.
