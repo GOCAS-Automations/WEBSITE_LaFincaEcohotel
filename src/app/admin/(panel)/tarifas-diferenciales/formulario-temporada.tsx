@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 
 import { guardarTemporadaAction } from "./acciones";
 import { FormularioAccion } from "@/components/admin/formulario-accion";
+import { SelectorFecha } from "@/components/admin/selector-fecha";
 import {
   Campo,
   CLASE_INPUT,
@@ -180,12 +181,12 @@ export function FormularioTemporada({
           obligatorio
           ayuda="La primera noche que se cobra con esta tarifa; se incluye. Por ejemplo, si es el 01/12/2026, quien duerme esa noche la paga con esta tarifa."
         >
-          <Entrada
+          <SelectorFecha
             id="primera_noche"
             name="primera_noche"
-            type="date"
-            value={primera}
-            onChange={(evento) => setPrimera(evento.target.value)}
+            valor={primera}
+            alCambiar={setPrimera}
+            etiqueta="Primera noche de la tarifa diferencial"
             required
           />
         </Campo>
@@ -196,13 +197,16 @@ export function FormularioTemporada({
           obligatorio
           ayuda="La última noche que se cobra con esta tarifa; también se incluye. Es la noche que se duerme, no el día de salida: si es el 08/01/2027, quien sale el 09/01/2027 paga el 08/01 con esta tarifa."
         >
-          <Entrada
+          {/* Es la ÚLTIMA NOCHE (incluida), no un día de salida: puede ser la
+              misma que la primera, por eso el mínimo es la primera y no el
+              día siguiente. */}
+          <SelectorFecha
             id="ultima_noche"
             name="ultima_noche"
-            type="date"
-            value={ultima}
-            min={primera || undefined}
-            onChange={(evento) => setUltima(evento.target.value)}
+            valor={ultima}
+            minima={primera || undefined}
+            alCambiar={setUltima}
+            etiqueta="Última noche de la tarifa diferencial"
             required
           />
         </Campo>

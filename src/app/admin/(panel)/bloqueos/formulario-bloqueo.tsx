@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { crearBloqueoAction } from "./acciones";
 import { FormularioAccion } from "@/components/admin/formulario-accion";
+import { SelectorFecha } from "@/components/admin/selector-fecha";
 import { Campo, Desplegable, Entrada } from "@/components/admin/ui";
 import { hoyISO, nochesEntre, sumarDiasISO } from "@/lib/admin/fechas";
 import type { OpcionAlojamiento } from "@/lib/admin/tipos";
@@ -73,12 +74,12 @@ export function FormularioBloqueo({
         </Campo>
 
         <Campo etiqueta="Primera noche bloqueada" htmlFor="inicio" obligatorio>
-          <Entrada
+          <SelectorFecha
             id="inicio"
             name="inicio"
-            type="date"
-            value={inicio}
-            onChange={(evento) => setInicio(evento.target.value)}
+            valor={inicio}
+            alCambiar={setInicio}
+            etiqueta="Primera noche bloqueada"
             required
           />
         </Campo>
@@ -93,13 +94,13 @@ export function FormularioBloqueo({
               : "Tiene que ser un día posterior a la primera noche."
           }
         >
-          <Entrada
+          <SelectorFecha
             id="fin"
             name="fin"
-            type="date"
-            value={fin}
-            min={inicio ? sumarDiasISO(inicio, 1) : undefined}
-            onChange={(evento) => setFin(evento.target.value)}
+            valor={fin}
+            minima={inicio ? sumarDiasISO(inicio, 1) : undefined}
+            alCambiar={setFin}
+            etiqueta="Vuelve a estar libre el"
             required
           />
         </Campo>

@@ -4,6 +4,7 @@ import { guardarLegalAction } from "./acciones";
 import { seccionesLegales, texto } from "./lectura";
 import { EditorLista } from "@/components/admin/editor-lista";
 import { FormularioAccion } from "@/components/admin/formulario-accion";
+import { SelectorFecha } from "@/components/admin/selector-fecha";
 import { AreaTexto, Campo, Entrada } from "@/components/admin/ui";
 import type { ClaveLegal } from "@/lib/legal";
 
@@ -74,11 +75,11 @@ export function FormularioLegal({
             obligatorio
             ayuda="Es la fecha que se publica bajo el título, en «Última actualización»."
           >
-            <Entrada
+            <SelectorFecha
               id={`${clave}_actualizado`}
               name="actualizado"
-              type="date"
-              defaultValue={texto(valor, "actualizado")}
+              valorInicial={texto(valor, "actualizado")}
+              etiqueta="Fecha de actualización"
               required
             />
           </Campo>
