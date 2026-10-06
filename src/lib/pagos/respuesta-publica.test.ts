@@ -41,6 +41,9 @@ const OTRO_CODIGO = "LF-2026-0042";
 const TITULO_EVENTO = "Cristian Arcila cabaña 3";
 const TITULO_SIN_CABANA = "Cumpleaños de Laura Restrepo";
 
+/** Los filtros de fecha (`overlaps`) que pidió cada consulta. */
+const filtrosDeFecha: unknown[][] = [];
+
 /** Un cliente de Supabase de mentira: cada tabla devuelve sus filas. */
 function clienteFalso(filas: Record<string, unknown>): SupabaseClient {
   const consulta = (tabla: string) => {
@@ -49,6 +52,10 @@ function clienteFalso(filas: Record<string, unknown>): SupabaseClient {
       select: () => cadena,
       eq: () => cadena,
       in: () => cadena,
+      overlaps: (...args: unknown[]) => {
+        filtrosDeFecha.push([tabla, ...args]);
+        return cadena;
+      },
       maybeSingle: () => Promise.resolve(resultado),
       then: (resolver: (valor: unknown) => unknown) =>
         Promise.resolve(resultado).then(resolver),

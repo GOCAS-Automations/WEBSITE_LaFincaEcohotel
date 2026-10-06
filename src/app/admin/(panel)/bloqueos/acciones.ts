@@ -68,7 +68,7 @@ export async function crearBloqueoAction(
     if (error) {
       throw traducirErrorPostgres(error, {
         exclusion:
-          "Esas fechas se cruzan con otro bloqueo de la misma cabaña.",
+          "Esas fechas se cruzan con otro bloqueo o con una reserva de la misma cabaña.",
       });
     }
 

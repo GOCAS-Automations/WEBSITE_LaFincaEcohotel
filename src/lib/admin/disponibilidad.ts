@@ -89,10 +89,12 @@ export async function buscarChoques(
   const estricto = (opciones.calendario ?? "estricto") === "estricto";
   const choques: Choque[] = [];
 
-  /* PostgREST no expresa cómodamente el operador de solape sobre `daterange`,
-     así que se traen las reservas y los bloqueos de ESA cabaña —son pocos por
-     definición— y se comparan en memoria con la misma regla de rango
-     medio-abierto que usa Postgres. */
+  /* Solo las filas que se cruzan con `[entrada, salida)`: el filtro `ov` de
+     PostgREST es el operador `&&` de Postgres sobre `daterange`, con la misma
+     regla de rango medio-abierto. Antes se traían TODAS las reservas y todos
+     los bloqueos de la cabaña, de todos los años, en cada comprobación. La
+     comparación en memoria de abajo se queda como segunda red. */
+  const rango = `[${entrada},${salida})`;
   const [reservas, bloqueos, cabana] = await Promise.all([
     supabase
       .from("reservas")
@@ -101,11 +103,13 @@ export async function buscarChoques(
       /* El `in` solo acota la consulta; quién ocupa de verdad lo decide
          `ocupaCalendario()` más abajo, porque una `pendiente` con el hold
          vencido ya no aparta nada. */
-      .in("estado", ESTADOS_QUE_OCUPAN),
+      .in("estado", ESTADOS_QUE_OCUPAN)
+      .overlaps("estancia", rango),
     supabase
       .from("bloqueos")
       .select("id, rango, motivo")
-      .eq("alojamiento_id", alojamientoId),
+      .eq("alojamiento_id", alojamientoId)
+      .overlaps("rango", rango),
     /* El nombre de la cabaña («Cabaña 03») es lo que empareja con el título de
        los eventos de Google; sin él no se sabe a cuál se refieren. */
     supabase

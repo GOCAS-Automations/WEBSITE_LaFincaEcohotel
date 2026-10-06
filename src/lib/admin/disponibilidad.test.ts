@@ -29,6 +29,9 @@ import {
 } from "../reserva/ocupacion-externa";
 import { CalendarioSinRespuesta } from "../reserva/calendario-sin-respuesta";
 
+/** Los filtros de fecha (`overlaps`) que pidió cada consulta. */
+const filtrosDeFecha: unknown[][] = [];
+
 /** Un cliente de Supabase de mentira: cada tabla devuelve sus filas. */
 function clienteFalso(filas: Record<string, unknown>): SupabaseClient {
   const consulta = (tabla: string) => {
@@ -37,6 +40,10 @@ function clienteFalso(filas: Record<string, unknown>): SupabaseClient {
       select: () => cadena,
       eq: () => cadena,
       in: () => cadena,
+      overlaps: (...args: unknown[]) => {
+        filtrosDeFecha.push([tabla, ...args]);
+        return cadena;
+      },
       maybeSingle: () => Promise.resolve(resultado),
       then: (resolver: (valor: unknown) => unknown) => Promise.resolve(resultado).then(resolver),
     };
@@ -142,6 +149,22 @@ describe("buscarChoques con el calendario de Google", () => {
       "Esas noches ya están ocupadas en la Cabaña 02:",
       "• un bloqueo («Pintura»), del lun 12/10/2026 al mar 13/10/2026",
       "• «Visita» (calendario del hotel), del mar 13/10/2026 al mié 14/10/2026 — el evento no dice qué cabaña, así que ocupa todas",
+    ]);
+  });
+});
+
+describe("buscarChoques filtra por fechas en la base", () => {
+  it("pide solo las reservas y los bloqueos que se cruzan con [entrada, salida)", async () => {
+    filtrosDeFecha.length = 0;
+    await buscarChoques(
+      clienteFalso({ reservas: [], bloqueos: [], alojamientos: { nombre: "Cabaña 03" } }),
+      "c3",
+      "2026-10-16",
+      "2026-10-18",
+    );
+    expect(filtrosDeFecha).toEqual([
+      ["reservas", "estancia", "[2026-10-16,2026-10-18)"],
+      ["bloqueos", "rango", "[2026-10-16,2026-10-18)"],
     ]);
   });
 });

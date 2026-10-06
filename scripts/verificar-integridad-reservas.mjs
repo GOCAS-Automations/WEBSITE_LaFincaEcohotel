@@ -458,6 +458,93 @@ async function guardadoAtomico(cliente, ctx) {
   comprobar("las noches ocupadas siguen saliendo como 23P01", solape?.code === "23P01", solape?.code ?? "se guardó");
 }
 
+
+async function bloqueosYCompletadas(cliente, ctx) {
+  console.log("\n024 · La base impide reservar sobre un bloqueo o sobre una completada");
+  if (!(await existe(cliente, "select 1 from pg_trigger where tgname = 'reservas_no_pisan_bloqueos'"))) {
+    console.log("  (sin aplicar: se salta)");
+    return;
+  }
+  const bloqueo = (rango, alojamiento = ctx.cabana, motivo = "Mantenimiento de prueba") =>
+    cliente.query("insert into bloqueos (alojamiento_id, rango, motivo) values ($1, $2, $3) returning id", [
+      alojamiento,
+      rango,
+      motivo,
+    ]);
+
+  await insertarReserva(cliente, fila({ alojamiento_id: ctx.cabana, estancia: "[2031-11-01,2031-11-04)", estado: "completada" }));
+  const sobreCompletada = await esperarError(cliente, () =>
+    insertarReserva(cliente, fila({ alojamiento_id: ctx.cabana, estancia: "[2031-11-03,2031-11-05)", estado: "confirmada" })),
+  );
+  comprobar("una reserva sobre una estadía completada: 23P01", sobreCompletada?.code === "23P01", sobreCompletada?.code ?? "se guardó");
+
+  await bloqueo("[2031-11-10,2031-11-12)");
+  const sobreBloqueo = await esperarError(cliente, () =>
+    insertarReserva(cliente, fila({ alojamiento_id: ctx.cabana, estancia: "[2031-11-11,2031-11-13)", estado: "pendiente" })),
+  );
+  comprobar("una reserva sobre un bloqueo: 23P01", sobreBloqueo?.code === "23P01", sobreBloqueo?.code ?? "se guardó");
+  comprobar("con el motivo y en español", /bloqueadas.*Mantenimiento de prueba/.test(sobreBloqueo?.message ?? ""), sobreBloqueo?.message);
+
+  const otraCabana = await esperarError(cliente, () =>
+    insertarReserva(cliente, fila({ alojamiento_id: ctx.otraCabana, estancia: "[2031-11-11,2031-11-13)", estado: "confirmada" })),
+  );
+  comprobar("en otra cabaña, esas mismas noches sí se pueden reservar", otraCabana === null, otraCabana?.message);
+
+  const reserva = await insertarReserva(cliente, fila({ alojamiento_id: ctx.cabana, estancia: "[2031-11-20,2031-11-22)", estado: "confirmada" }));
+  const bloqueoSobreReserva = await esperarError(cliente, () => bloqueo("[2031-11-21,2031-11-23)"));
+  comprobar("un bloqueo sobre una reserva confirmada: 23P01", bloqueoSobreReserva?.code === "23P01", bloqueoSobreReserva?.code ?? "se guardó");
+
+  const retoque = await esperarError(cliente, () =>
+    cliente.query("update reservas set notas = 'retoque', monto_pagado = 1 where id = $1", [reserva.id]),
+  );
+  comprobar("retocar notas o abonos de una reserva no comprueba nada", retoque === null, retoque?.message);
+
+  await insertarReserva(cliente, fila({
+    alojamiento_id: ctx.cabana,
+    estancia: "[2031-11-25,2031-11-27)",
+    estado: "pendiente",
+    expira_at: new Date(Date.now() - 60_000).toISOString(),
+  }));
+  const sobreVencida = await esperarError(cliente, () => bloqueo("[2031-11-25,2031-11-26)"));
+  comprobar("una solicitud con el hold vencido no impide bloquear (misma regla que la aplicación)", sobreVencida === null, sobreVencida?.message);
+
+  const delPanel = await esperarError(cliente, () =>
+    comoEquipo(cliente, () => bloqueo("[2031-12-01,2031-12-03)")),
+  );
+  comprobar("el panel (rol equipo) sigue creando bloqueos libres", delPanel === null, delPanel?.message);
+}
+
+async function concurrenciaBloqueo(ctx) {
+  console.log("\n024 · Un bloqueo y una reserva a la vez en la misma cabaña: entra uno");
+  const [uno, dos, limpieza] = [nuevoCliente(), nuevoCliente(), nuevoCliente()];
+  await Promise.all([uno.connect(), dos.connect(), limpieza.connect()]);
+  const RANGO = "[2031-12-10,2031-12-12)";
+  const motivo = `PRUEBA-BLOQUEO-${Date.now()}`;
+  const codigo = `PRUEBA-RES-${Date.now()}`;
+  try {
+    await uno.query("begin");
+    await dos.query("begin");
+    await uno.query("insert into bloqueos (alojamiento_id, rango, motivo) values ($1, $2, $3)", [ctx.cabana, RANGO, motivo]);
+    let termino = false;
+    const reserva = insertarReserva(dos, fila({ codigo, alojamiento_id: ctx.cabana, estancia: RANGO, estado: "confirmada" })).then(
+      () => { termino = true; return null; },
+      (error) => { termino = true; return error; },
+    );
+    await new Promise((listo) => setTimeout(listo, 500));
+    comprobar("la reserva espera al bloqueo (candado de la cabaña)", termino === false);
+    await uno.query("commit");
+    const error = await reserva;
+    await dos.query(error ? "rollback" : "commit");
+    comprobar("y al verlo, se rechaza con 23P01", error?.code === "23P01", error ? error.code : "ENTRARON LOS DOS");
+  } finally {
+    await uno.query("rollback").catch(() => {});
+    await dos.query("rollback").catch(() => {});
+    await limpieza.query("delete from reservas where codigo = $1", [codigo]);
+    await limpieza.query("delete from bloqueos where motivo = $1", [motivo]);
+    await Promise.all([uno.end(), dos.end(), limpieza.end()]);
+  }
+}
+
 /* ===========================================================================
  * Concurrencia: dos conexiones de verdad
  * ======================================================================== */
@@ -545,6 +632,7 @@ async function principal() {
     await diaDeCalma(cliente, ctx);
     await reservaPagada(cliente, ctx);
     await guardadoAtomico(cliente, ctx);
+    await bloqueosYCompletadas(cliente, ctx);
   } finally {
     await cliente.query("rollback");
     await cliente.end();
@@ -553,6 +641,9 @@ async function principal() {
   if (conConcurrencia) {
     await concurrenciaCodigos(ctx);
     await concurrenciaDia(ctx);
+    if (await (async () => { const c = nuevoCliente(); await c.connect(); const si = await existe(c, "select 1 from pg_trigger where tgname = 'reservas_no_pisan_bloqueos'"); await c.end(); return si; })()) {
+      await concurrenciaBloqueo(ctx);
+    }
   }
 
   console.log(
