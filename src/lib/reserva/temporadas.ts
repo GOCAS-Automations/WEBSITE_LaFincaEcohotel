@@ -1,6 +1,12 @@
 /**
  * LAS TEMPORADAS: tarifas para fechas concretas.
  *
+ * En el panel esto se llama «Tarifas diferenciales»; en el código y la base
+ * sigue siendo `temporadas`. Los textos de este módulo que solo ve el equipo
+ * en el panel (los motivos de `fechasDeTemporada` y de
+ * `validarPreciosDeTemporada`) dicen «tarifa diferencial»; los del huésped
+ * (`periodoEnPalabras`, `avisoDeTemporadas`) siguen diciendo «temporada».
+ *
  * ---------------------------------------------------------------------------
  * LAS REGLAS (decididas con Cesar, 2026-10-05)
  * ---------------------------------------------------------------------------
@@ -134,10 +140,10 @@ export function fechasDeTemporada(
   ultimaNocheIncluida: string,
 ): FechasDeTemporada {
   if (!esFechaISO(primeraNoche)) {
-    return { valido: false, motivo: "Escribe la primera noche de la temporada." };
+    return { valido: false, motivo: "Escribe la primera noche de la tarifa diferencial." };
   }
   if (!esFechaISO(ultimaNocheIncluida)) {
-    return { valido: false, motivo: "Escribe la última noche de la temporada." };
+    return { valido: false, motivo: "Escribe la última noche de la tarifa diferencial." };
   }
   if (ultimaNocheIncluida < primeraNoche) {
     return {
@@ -151,7 +157,7 @@ export function fechasDeTemporada(
     return {
       valido: false,
       motivo:
-        "Una temporada puede durar como máximo un año. Revisa el año de las fechas.",
+        "Una tarifa diferencial puede durar como máximo un año. Revisa el año de las fechas.",
     };
   }
   return { valido: true, desde: primeraNoche, hasta };
@@ -364,7 +370,7 @@ export function validarPreciosDeTemporada(
     if (precio === null) {
       return {
         valido: false,
-        motivo: `Al plan «${plan.nombre}» le falta el precio para dos personas. Escríbelo, o borra también el de una persona para que en esas fechas use la base.`,
+        motivo: `Al plan «${plan.nombre}» le falta el precio para dos personas. Escríbelo, o borra también el de una persona para que en esas fechas se cobre el precio base.`,
       };
     }
     if (precio <= 0 || (unaPersona !== null && unaPersona <= 0)) {
@@ -376,13 +382,13 @@ export function validarPreciosDeTemporada(
     if (plan.tieneUnaPersona && unaPersona === null) {
       return {
         valido: false,
-        motivo: `El plan «${plan.nombre}» tiene precio para una persona en su tarifa base, así que la temporada necesita los dos: el de dos personas y el de una. Escribe los dos, o deja los dos vacíos para que en esas fechas use la base.`,
+        motivo: `El plan «${plan.nombre}» tiene precio base para una persona, así que la tarifa diferencial necesita los dos: el de dos personas y el de una. Escribe los dos, o deja los dos vacíos para que en esas fechas se cobre el precio base.`,
       };
     }
     if (!plan.tieneUnaPersona && unaPersona !== null) {
       return {
         valido: false,
-        motivo: `El plan «${plan.nombre}» no tiene precio para una persona en su tarifa base: la temporada tampoco puede llevarlo. Deja vacío ese campo.`,
+        motivo: `El plan «${plan.nombre}» no tiene precio base para una persona: la tarifa diferencial tampoco puede llevarlo. Deja vacío ese campo.`,
       };
     }
 
@@ -397,7 +403,7 @@ export function validarPreciosDeTemporada(
     return {
       valido: false,
       motivo:
-        "Escribe el precio de al menos un plan. Los planes que dejes en blanco usan su precio base en esas fechas.",
+        "Escribe el precio de al menos un plan. Los planes que dejes en blanco se cobran con su precio base en esas fechas.",
     };
   }
 
