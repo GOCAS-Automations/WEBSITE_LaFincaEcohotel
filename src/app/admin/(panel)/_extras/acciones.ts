@@ -13,6 +13,7 @@ import {
   ejecutarAccion,
   enteroRequerido,
   enumRequerido,
+  precioRequerido,
   textoOpcional,
   textoRequerido,
   traducirErrorPostgres,
@@ -48,10 +49,8 @@ export async function guardarExtraAction(
       tipo,
       nombre,
       descripcion: textoOpcional(formData, "descripcion", 4000),
-      precio: enteroRequerido(formData, "precio", "Precio", {
-        min: 0,
-        max: 100_000_000,
-      }),
+      /* Un adicional sí puede ser de cortesía ($0); negativo, nunca. */
+      precio: precioRequerido(formData, "precio", "Precio", { min: 0 }),
       imagen_url: imagen || null,
       activo: casilla(formData, "activo"),
       orden: enteroRequerido(formData, "orden", "Orden", { min: 0, max: 9999 }),

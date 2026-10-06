@@ -12,9 +12,9 @@ import {
   ErrorDeValidacion,
   casilla,
   ejecutarAccion,
-  enteroOpcional,
   enteroRequerido,
   listaGaleria,
+  precioOpcional,
   listaTexto,
   textoOpcional,
   textoRequerido,
@@ -207,11 +207,10 @@ async function guardarTarifas(
       continue;
     }
 
-    const precio = enteroOpcional(
+    const precio = precioOpcional(
       formData,
       `precio_${planId}`,
       `Precio por noche del plan ${etiqueta}`,
-      { min: 0, max: 100_000_000 },
     );
 
     if (precio === null) {
@@ -220,11 +219,10 @@ async function guardarTarifas(
       );
     }
 
-    const precioUnaPersona = enteroOpcional(
+    const precioUnaPersona = precioOpcional(
       formData,
       `precio_1_${planId}`,
       `Precio para 1 persona del plan ${etiqueta}`,
-      { min: 0, max: 100_000_000 },
     );
 
     const datos = {

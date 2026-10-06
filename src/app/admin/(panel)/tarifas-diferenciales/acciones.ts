@@ -13,9 +13,9 @@ import { estadoOk, type EstadoAccion } from "@/lib/admin/tipos";
 import {
   ErrorDeValidacion,
   ejecutarAccion,
-  enteroOpcional,
   esUuid,
   fechaRequerida,
+  precioOpcional,
   textoRequerido,
   traducirErrorPostgres,
 } from "@/lib/admin/validacion";
@@ -98,17 +98,15 @@ export async function guardarTemporadaAction(
     const planesPosibles = planesDelAlcance(planes, alojamientoId);
     const valores = planesPosibles.map((plan) => ({
       planId: plan.planId,
-      precio: enteroOpcional(
+      precio: precioOpcional(
         formData,
         `precio_${plan.planId}`,
         `Precio por noche del plan ${plan.nombre}`,
-        { min: 1, max: 100_000_000 },
       ),
-      precioUnaPersona: enteroOpcional(
+      precioUnaPersona: precioOpcional(
         formData,
         `precio_1_${plan.planId}`,
         `Precio para una persona del plan ${plan.nombre}`,
-        { min: 1, max: 100_000_000 },
       ),
     }));
 

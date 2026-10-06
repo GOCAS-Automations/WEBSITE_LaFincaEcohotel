@@ -29,18 +29,21 @@ import {
   type Temporada,
 } from "@/lib/reserva/temporadas";
 import { formatearCOP } from "@/lib/utils/formato";
+import { leerEnteroEscrito } from "@/lib/utils/importe";
 
 /* En el panel esto se llama «Tarifas diferenciales»; en el código y la base
    sigue siendo `temporadas`. */
 
 const TODAS = "todas";
 
-/** Lo que escribe el equipo, con o sin puntos: «402.500» o «402500». */
+/**
+ * Lo que escribe el equipo, con o sin puntos: «402.500» o «402500». Con
+ * centavos («402.500,50») no vale: la misma regla que al guardar
+ * (`leerEnteroEscrito`), para que la diferencia que se pinta no mienta.
+ */
 function leerPesos(texto: string): number | null {
-  const limpio = texto.replace(/[.\s$,]/g, "");
-  if (!limpio) return null;
-  const valor = Number(limpio);
-  return Number.isInteger(valor) && valor > 0 ? valor : null;
+  const lectura = leerEnteroEscrito(texto);
+  return lectura.ok && lectura.valor > 0 ? lectura.valor : null;
 }
 
 /** «$350.000», o «$350.000 a $380.000» si las cabañas no cuestan lo mismo. */

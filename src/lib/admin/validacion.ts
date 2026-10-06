@@ -11,6 +11,8 @@ import { estadoError, type EstadoAccion } from "./tipos";
 import { esFechaISO } from "./fechas";
 import { LARGO_MINIMO_CONTRASENA } from "./roles";
 import { direccionDeMapa } from "@/lib/mapa-embebido";
+import { leerEnteroEscrito } from "@/lib/utils/importe";
+import { formatearCOP, formatearNumero } from "@/lib/utils/formato";
 
 export class ErrorDeValidacion extends Error {
   constructor(mensaje: string) {
@@ -67,9 +69,13 @@ export function textoOpcional(
 /**
  * Entero obligatorio dentro de un rango.
  *
- * Limpia puntos, espacios y el signo de pesos: el cliente escribe "450.000" o
- * "$450.000" con toda naturalidad y rechazárselo sería pedirle que piense como
- * un programa.
+ * Acepta el separador de miles y el signo de pesos: el cliente escribe
+ * "450.000" o "$450.000" con toda naturalidad y rechazárselo sería pedirle que
+ * piense como un programa. Lo que NO acepta son centavos ni decimales
+ * («552.000,50»): antes se borraban los separadores y eso se guardaba como
+ * 55.200.050. Las reglas exactas, en `leerEnteroEscrito()`.
+ *
+ * Para los precios, `precioRequerido()`, con mensajes de dinero.
  */
 export function enteroRequerido(
   form: FormData,
@@ -77,19 +83,24 @@ export function enteroRequerido(
   etiqueta: string,
   { min = 0, max = 2_000_000_000 }: { min?: number; max?: number } = {},
 ): number {
-  const crudo = String(form.get(campo) ?? "").trim();
-  if (!crudo) {
-    throw new ErrorDeValidacion(`El campo «${etiqueta}» es obligatorio.`);
-  }
-  const valor = Number(crudo.replace(/[.\s$,]/g, ""));
-  if (!Number.isFinite(valor) || !Number.isInteger(valor)) {
+  const lectura = leerEnteroEscrito(String(form.get(campo) ?? ""));
+  if (!lectura.ok) {
+    if (lectura.problema === "vacio") {
+      throw new ErrorDeValidacion(`El campo «${etiqueta}» es obligatorio.`);
+    }
+    if (lectura.problema === "centavos") {
+      throw new ErrorDeValidacion(
+        `Escribe «${etiqueta}» sin centavos ni decimales: solo el número entero, por ejemplo 552.000.`,
+      );
+    }
     throw new ErrorDeValidacion(
-      `El campo «${etiqueta}» debe ser un número entero, sin decimales.`,
+      `No se entiende el número de «${etiqueta}». Escríbelo solo con cifras, por ejemplo 552000 o 552.000.`,
     );
   }
+  const valor = lectura.valor;
   if (valor < min || valor > max) {
     throw new ErrorDeValidacion(
-      `El campo «${etiqueta}» debe estar entre ${min} y ${max}.`,
+      `El campo «${etiqueta}» debe estar entre ${formatearNumero(min)} y ${formatearNumero(max)}.`,
     );
   }
   return valor;
@@ -105,6 +116,62 @@ export function enteroOpcional(
   const crudo = String(form.get(campo) ?? "").trim();
   if (!crudo) return null;
   return enteroRequerido(form, campo, etiqueta, rango);
+}
+
+/**
+ * Precio obligatorio, en pesos enteros.
+ *
+ * Igual que `enteroRequerido()` pero con mensajes de dinero y, por defecto,
+ * **mayor que cero**: una noche a $0 no es una tarifa, es un error de
+ * escritura que el sitio cobraría tal cual. Quien sí admite el cero (un
+ * adicional de cortesía) lo pide con `min: 0`.
+ */
+export function precioRequerido(
+  form: FormData,
+  campo: string,
+  etiqueta: string,
+  { min = 1, max = 100_000_000 }: { min?: number; max?: number } = {},
+): number {
+  const lectura = leerEnteroEscrito(String(form.get(campo) ?? ""));
+  if (!lectura.ok) {
+    if (lectura.problema === "vacio") {
+      throw new ErrorDeValidacion(`El campo «${etiqueta}» es obligatorio.`);
+    }
+    if (lectura.problema === "centavos") {
+      throw new ErrorDeValidacion(
+        `Escribe el precio sin centavos en «${etiqueta}»: por ejemplo, 552.000.`,
+      );
+    }
+    throw new ErrorDeValidacion(
+      `No se entiende el precio de «${etiqueta}». Escríbelo solo con cifras, por ejemplo 552000 o 552.000.`,
+    );
+  }
+  const valor = lectura.valor;
+  if (valor < min) {
+    throw new ErrorDeValidacion(
+      min >= 1
+        ? `El precio de «${etiqueta}» tiene que ser mayor que $0.`
+        : `El precio de «${etiqueta}» no puede ser negativo.`,
+    );
+  }
+  if (valor > max) {
+    throw new ErrorDeValidacion(
+      `El precio de «${etiqueta}» no puede pasar de ${formatearCOP(max)}. Revisa que no le sobre un cero.`,
+    );
+  }
+  return valor;
+}
+
+/** Precio opcional (vacío → null). Mismas reglas que `precioRequerido()`. */
+export function precioOpcional(
+  form: FormData,
+  campo: string,
+  etiqueta: string,
+  rango: { min?: number; max?: number } = {},
+): number | null {
+  const crudo = String(form.get(campo) ?? "").trim();
+  if (!crudo) return null;
+  return precioRequerido(form, campo, etiqueta, rango);
 }
 
 /**

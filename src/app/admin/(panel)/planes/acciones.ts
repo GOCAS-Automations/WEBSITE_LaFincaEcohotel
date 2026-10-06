@@ -9,11 +9,11 @@ import {
   ErrorDeValidacion,
   casilla,
   ejecutarAccion,
-  enteroOpcional,
   enteroRequerido,
   enterosDeCasillas,
   enumRequerido,
   listaTexto,
+  precioOpcional,
   textoOpcional,
   textoRequerido,
   traducirErrorPostgres,
@@ -59,10 +59,7 @@ export async function guardarPlanAction(
     // fantasma compitiendo con el de `tarifas` sería un error caro.
     const horario = esDeDia ? textoOpcional(formData, "horario", 120) : null;
     const precioBase = esDeDia
-      ? enteroOpcional(formData, "precio_base", "Precio del plan", {
-          min: 0,
-          max: 100_000_000,
-        })
+      ? precioOpcional(formData, "precio_base", "Precio del plan")
       : null;
 
     if (esDeDia && precioBase === null) {
