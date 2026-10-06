@@ -58,7 +58,7 @@ import {
   type CotizacionAutoritativa,
   type SolicitudDeReserva,
 } from "./cotizar-en-servidor";
-import { insertarReservaConCodigo } from "../admin/codigo-reserva";
+import { guardarReservaAtomica } from "../reserva/guardar-reserva";
 import {
   buscarChoques,
   describirChoques,
@@ -253,9 +253,16 @@ export async function crearReservaYCobro(
     autorizacion_datos_canal: "web" as const,
   };
 
-  /* El código lo pone la base (contador por año, migración 019), igual que
-     en el panel: aquí se inserta sin él y se lee el que devuelve. */
-  const insertada = await insertarReservaConCodigo(supabase, fila);
+  /* La reserva y sus experiencias, en UNA transacción (`guardar_reserva`,
+     migración 023), igual que en el panel: si no se pueden guardar las
+     experiencias —que ya están sumadas en el total— no queda ninguna reserva
+     cobrando algo que no está escrito. El código lo pone la base (contador
+     por año, migración 019): aquí se guarda sin él y se lee el que devuelve. */
+  const insertada = await guardarReservaAtomica(supabase, {
+    id: null,
+    reserva: fila,
+    extras: cotizacion.extras,
+  });
   const reservaId = insertada.ok ? insertada.id : null;
   const codigo = insertada.ok ? insertada.codigo : "";
   const ultimoError = insertada.ok ? null : insertada.error;
@@ -285,27 +292,6 @@ export async function crearReservaYCobro(
       "No pudimos crear tu reserva ahora mismo. Inténtalo de nuevo o escríbenos por WhatsApp.",
       "servidor",
     );
-  }
-
-  /* Las experiencias, con su precio congelado del catálogo. */
-  if (cotizacion.extras.length > 0) {
-    const { error } = await supabase.from("reserva_extras").insert(
-      cotizacion.extras.map((extra) => ({ ...extra, reserva_id: reservaId })),
-    );
-    if (error) {
-      /* El total de la reserva YA incluye los extras: si no se pudieron
-         guardar, cobrarlos sería cobrar algo que no está escrito. Se suelta. */
-      await soltarReserva(
-        supabase,
-        reservaId,
-        "Reserva anulada: no se pudieron guardar las experiencias elegidas.",
-      );
-      console.error("[pagos] no se pudieron guardar los extras:", error.message);
-      return fallo(
-        "No pudimos guardar las experiencias que elegiste. Inténtalo de nuevo.",
-        "servidor",
-      );
-    }
   }
 
   /* ---------------------------------------------------------------------

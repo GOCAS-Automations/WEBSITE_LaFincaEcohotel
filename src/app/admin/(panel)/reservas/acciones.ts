@@ -3,7 +3,6 @@
 import { redirect } from "next/navigation";
 
 import { requireAdmin } from "@/lib/admin/auth";
-import { insertarReservaConCodigo } from "@/lib/admin/codigo-reserva";
 import {
   buscarChoques,
   describirChoquesEnCabana,
@@ -52,6 +51,11 @@ import {
   sincronizarReservaEnCalendario,
 } from "@/lib/reserva/sincronizar-calendario";
 import { eliminarReserva } from "@/lib/admin/eliminar-reserva";
+import {
+  RESERVA_NO_EXISTE,
+  SIN_PERMISO,
+  guardarReservaAtomica,
+} from "@/lib/reserva/guardar-reserva";
 import {
   calcularAnticipo,
   normalizarPorcentajeAnticipo,
@@ -697,10 +701,14 @@ export async function guardarReservaAction(
          ya no hay con qué comparar. */
       const estadoAnterior = anterior?.estado ?? null;
 
-      const { error } = await supabase.from("reservas").update(datos).eq("id", id);
-      if (error) throw traducirErrorPostgres(error);
-
-      await guardarExtrasDeReserva(supabase, id, extras);
+      /* Reserva y experiencias en UNA transacción (migración 023): si fallan
+         las experiencias, la reserva tampoco cambia. */
+      const editada = await guardarReservaAtomica(supabase, {
+        id,
+        reserva: datos,
+        extras,
+      });
+      if (!editada.ok) throw errorAlGuardar(editada.error);
 
       /* El calendario del hotel va al final y sin poder estropear nada: la
          reserva YA está guardada. Si Google falla, solo se añade un aviso. */
@@ -722,20 +730,19 @@ export async function guardarReservaAction(
       );
     }
 
-    /* El código lo pone la base: un contador por año que se sube en una sola
-       sentencia (migración 019). Nunca se cuentan filas, así que borrar
-       reservas no hace que se repita ninguno. */
-    const insertada = await insertarReservaConCodigo(supabase, datos);
-    if (!insertada.ok) {
-      throw traducirErrorPostgres(insertada.error, {
-        unico:
-          "No se pudo asignar un código de reserva libre. Intenta guardar de nuevo.",
-      });
-    }
+    /* Reserva y experiencias en UNA transacción (migración 023): si fallan
+       las experiencias no queda una reserva a medias que, al reintentar,
+       choque consigo misma. El código lo pone la base: un contador por año
+       que se sube en una sola sentencia (migración 019); nunca se cuentan
+       filas, así que borrar reservas no hace que se repita ninguno. */
+    const insertada = await guardarReservaAtomica(supabase, {
+      id: null,
+      reserva: datos,
+      extras,
+    });
+    if (!insertada.ok) throw errorAlGuardar(insertada.error);
     const nuevaId = insertada.id;
     const codigoUsado = insertada.codigo;
-
-    await guardarExtrasDeReserva(supabase, nuevaId, extras);
 
     const avisoCalendarioNueva = await sincronizarReservaEnCalendario(
       supabase,
@@ -814,30 +821,35 @@ function resumirCorreo(
   }
 }
 
-/** Reescribe los extras de una reserva. */
-async function guardarExtrasDeReserva(
-  supabase: Awaited<ReturnType<typeof requireAdmin>>["supabase"],
-  reservaId: string,
-  extras: LineaExtra[],
-) {
-  const { error: errorBorrado } = await supabase
-    .from("reserva_extras")
-    .delete()
-    .eq("reserva_id", reservaId);
-  if (errorBorrado) throw new Error(errorBorrado.message);
-
-  if (extras.length === 0) return;
-
-  const { error } = await supabase.from("reserva_extras").insert(
-    extras.map((extra) => ({
-      reserva_id: reservaId,
-      extra_id: extra.extra_id,
-      cantidad: extra.cantidad,
-      precio_unitario: extra.precio_unitario,
-      noche: extra.noche,
-    })),
+/**
+ * Traduce al español el error de `guardar_reserva`. Nunca el texto crudo de
+ * Postgres: lo que no se reconoce va al registro del servidor y a la pantalla
+ * sale una frase.
+ */
+function errorAlGuardar(error: { code?: string; message: string }): Error {
+  if (error.code === RESERVA_NO_EXISTE) {
+    return new ErrorDeValidacion(
+      "Esa reserva ya no existe. Vuelve al listado y ábrela de nuevo.",
+    );
+  }
+  if (error.code === SIN_PERMISO) {
+    return new ErrorDeValidacion("Tu cuenta no tiene permiso para guardar reservas.");
+  }
+  if (error.code === "23503") {
+    return new ErrorDeValidacion(
+      "Alguna de las experiencias, la cabaña o el plan ya no existe. Recarga la página y vuelve a elegirlos.",
+    );
+  }
+  const traducido = traducirErrorPostgres(error, {
+    unico: "No se pudo asignar un código de reserva libre. Intenta guardar de nuevo.",
+    exclusion:
+      "Esas fechas se cruzan con otra reserva activa o un bloqueo de la misma cabaña.",
+  });
+  if (traducido instanceof ErrorDeValidacion) return traducido;
+  console.error("[panel] no se pudo guardar la reserva:", error.code, error.message);
+  return new ErrorDeValidacion(
+    "No se pudo guardar la reserva. No quedó nada a medias: vuelve a intentarlo en un momento.",
   );
-  if (error) throw new Error(error.message);
 }
 
 /**

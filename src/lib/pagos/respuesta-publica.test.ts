@@ -184,6 +184,10 @@ describe("/api/reservar con el calendario de Google caído", () => {
       };
       return consulta;
     };
+    (base as unknown as { rpc: (nombre: string) => unknown }).rpc = (nombre: string) => {
+      inserciones.push(`rpc ${nombre}`);
+      return Promise.resolve({ data: null, error: null });
+    };
     vi.mocked(crearClienteAdmin).mockReturnValue(base);
     vi.mocked(choquesDelCalendarioParaEscribir).mockRejectedValue(
       new CalendarioSinRespuesta("Google rechazó la credencial del calendario (401)."),

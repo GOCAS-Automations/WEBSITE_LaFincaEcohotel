@@ -364,6 +364,100 @@ async function reservaPagada(cliente, ctx) {
   );
 }
 
+
+async function guardadoAtomico(cliente, ctx) {
+  console.log("\n023 · Una reserva y sus experiencias se guardan juntas o nada");
+  if (!(await existe(cliente, "select 1 from pg_proc where proname = 'guardar_reserva'"))) {
+    console.log("  (sin aplicar: se salta)");
+    return;
+  }
+  const guardar = (id, reserva, extras) =>
+    cliente
+      .query("select guardar_reserva($1, $2::jsonb, $3::jsonb) as r", [id, JSON.stringify(reserva), JSON.stringify(extras)])
+      .then(({ rows }) => rows[0].r);
+  const contar = async () =>
+    (await cliente.query("select (select count(*) from reservas)::int as r, (select count(*) from reserva_extras)::int as e")).rows[0];
+  const datos = fila({
+    alojamiento_id: ctx.cabana,
+    plan_id: ctx.planHospedaje,
+    estancia: "[2031-09-01,2031-09-03)",
+    estado: "confirmada",
+    huesped_nombre: "Ana Atómica",
+  });
+  const extraBueno = { extra_id: ctx.extra, cantidad: 1, precio_unitario: 50000, noche: "2031-09-01" };
+  const extraMalo = { extra_id: "00000000-0000-0000-0000-000000000001", cantidad: 1, precio_unitario: 1, noche: null };
+
+  const antes = await contar();
+  const malo = await esperarError(cliente, () => comoEquipo(cliente, () => guardar(null, datos, [extraBueno, extraMalo])));
+  const trasMalo = await contar();
+  comprobar(
+    "si fallan las experiencias, la reserva tampoco se crea",
+    malo !== null && trasMalo.r === antes.r && trasMalo.e === antes.e,
+    malo ? `${malo.code}; reservas ${antes.r}→${trasMalo.r}` : "se guardó",
+  );
+
+  /* Y por eso reintentar ya no choca consigo misma. */
+  const creada = await comoEquipo(cliente, () => guardar(null, datos, [extraBueno]));
+  comprobar(
+    "al reintentar, se crea con su código (no choca consigo misma)",
+    /^LF-\d{4}-\d{4,}$/.test(creada.codigo ?? ""),
+    JSON.stringify(creada),
+  );
+  const { rows: extras } = await cliente.query("select count(*)::int as n from reserva_extras where reserva_id = $1", [creada.id]);
+  comprobar("con sus experiencias", extras[0].n === 1);
+
+  const malaEdicion = await esperarError(cliente, () =>
+    comoEquipo(cliente, () => guardar(creada.id, { ...datos, huesped_nombre: "Ana Cambiada" }, [extraMalo])),
+  );
+  const { rows: tras } = await cliente.query(
+    "select huesped_nombre, (select count(*)::int from reserva_extras where reserva_id = $1) as extras from reservas where id = $1",
+    [creada.id],
+  );
+  comprobar(
+    "una edición que falla no deja nada a medias (ni el nombre nuevo ni la reserva sin experiencias)",
+    malaEdicion !== null && tras[0].huesped_nombre === "Ana Atómica" && tras[0].extras === 1,
+    JSON.stringify(tras[0]),
+  );
+
+  await comoEquipo(cliente, () => guardar(creada.id, { notas: "Solo cambia la nota" }, []));
+  const { rows: parcial } = await cliente.query(
+    "select notas, huesped_nombre, total, (select count(*)::int from reserva_extras where reserva_id = $1) as extras from reservas where id = $1",
+    [creada.id],
+  );
+  comprobar(
+    "editar solo la nota no toca el resto (y las experiencias se reemplazan por la lista nueva)",
+    parcial[0].notas === "Solo cambia la nota" && parcial[0].huesped_nombre === "Ana Atómica" && parcial[0].total === 100000 && parcial[0].extras === 0,
+    JSON.stringify(parcial[0]),
+  );
+
+  const noExiste = await esperarError(cliente, () =>
+    comoEquipo(cliente, () => guardar("00000000-0000-0000-0000-000000000002", { notas: "x" }, [])),
+  );
+  comprobar("editar una que no existe: P0002 en español", noExiste?.code === "P0002" && /ya no existe/.test(noExiste.message), noExiste?.message);
+
+  const sinRol = await esperarError(cliente, () =>
+    comoCuenta(cliente, null, () => guardar(null, { ...datos, estancia: "[2031-09-05,2031-09-06)" }, [])),
+  );
+  comprobar("una cuenta con sesión y sin rol no puede guardar (42501)", sinRol?.code === "42501", sinRol?.code ?? "pudo");
+
+  const { rows: permisos } = await cliente.query(
+    "select has_function_privilege('anon', 'guardar_reserva(uuid, jsonb, jsonb)', 'execute') as anon",
+  );
+  comprobar("el rol anónimo no puede ejecutarla", permisos[0].anon === false);
+
+  await cliente.query("savepoint servidor");
+  await cliente.query("set local role service_role");
+  const delServidor = await guardar(null, { ...datos, estancia: "[2031-09-07,2031-09-08)" }, []);
+  await cliente.query("reset role");
+  await cliente.query("release savepoint servidor");
+  comprobar("el servidor (service_role, la web) sí puede", Boolean(delServidor.id), JSON.stringify(delServidor));
+
+  const solape = await esperarError(cliente, () =>
+    comoEquipo(cliente, () => guardar(null, { ...datos, estancia: "[2031-09-02,2031-09-04)" }, [])),
+  );
+  comprobar("las noches ocupadas siguen saliendo como 23P01", solape?.code === "23P01", solape?.code ?? "se guardó");
+}
+
 /* ===========================================================================
  * Concurrencia: dos conexiones de verdad
  * ======================================================================== */
@@ -429,7 +523,9 @@ async function principal() {
   const { rows: planes } = await cliente.query(
     "select id, tipo from planes order by orden nulls last, nombre",
   );
+  const { rows: extras } = await cliente.query("select id from extras order by nombre limit 1");
   const ctx = {
+    extra: extras[0]?.id,
     cabana: cabanas[0]?.id,
     otraCabana: cabanas[1]?.id,
     planHospedaje: planes.find((plan) => plan.tipo !== "dia")?.id,
@@ -448,6 +544,7 @@ async function principal() {
     await codigoAtomico(cliente, ctx);
     await diaDeCalma(cliente, ctx);
     await reservaPagada(cliente, ctx);
+    await guardadoAtomico(cliente, ctx);
   } finally {
     await cliente.query("rollback");
     await cliente.end();
