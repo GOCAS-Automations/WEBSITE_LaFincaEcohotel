@@ -3817,3 +3817,78 @@ OneDrive (borrado al terminar).
 - `siguiente_codigo_reserva()` (migración 019) es `security definer` y la puede ejecutar cualquier
   `authenticated`: una cuenta sin rol podría gastar números de código de reserva (no lee ni escribe
   datos). Añadirle `if not public.es_admin() then raise …` o quitarle el `grant` a `authenticated`.
+
+### 2026-10-05 (noche) — Auditoría del panel: precios con centavos, páginas de error, «Mi cuenta» y la cotización de la reserva manual
+
+Nueve hallazgos de una auditoría, cerrados. En paralelo trabajaban otros dos agentes (seguridad e
+integridad de reservas); no se tocaron sus archivos.
+
+1. **Precios con decimales (alto, dinero).** `enteroRequerido()` borraba puntos y comas y
+   «552.000,50» se guardaba como 55.200.050. Ahora la lectura vive en `src/lib/utils/importe.ts`
+   (`leerEnteroEscrito`): cifras solas o con separador de miles en grupos de tres, siempre el mismo
+   (`552000`, `552.000`, `552,000`, `552 000`); si termina en separador + 1 o 2 cifras se rechaza
+   («Escribe el precio sin centavos en «…»: por ejemplo, 552.000.»); cualquier otra forma
+   (`552.0000`, `1.234,567`) se rechaza como formato. Nuevos `precioRequerido()` /
+   `precioOpcional()` con mensajes de dinero y **mínimo $1** en precios de noche (cabañas, plan de
+   día, tarifas diferenciales); los adicionales admiten $0 (cortesía) pero no negativos. Los
+   importes de la reserva manual (`reservas/acciones.ts`, de otro agente) heredan la regla porque
+   usan `enteroRequerido()`.
+2. **Páginas de error.** `admin/(panel)/error.tsx` (dentro del marco del panel: menú, «Reintentar»
+   que hace `router.refresh()` + `reset()`, «Ir al resumen», pasos «Si sigue sin cargar» y el
+   código del error), `(publico)/error.tsx` (cabecera, pie, WhatsApp) y `global-error.tsx` (estilos
+   en línea). 404 propia del panel: `admin/(panel)/not-found.tsx` + ruta comodín
+   `admin/(panel)/[...ruta]` → `/admin/reservas/no-es-uuid` y `/admin/xyz` ya no caen en la 404
+   pública (las fichas ya llamaban a `notFound()`). `/admin/prueba-de-error` falla a propósito para
+   que la guía de pruebas pueda revisar la página.
+3. **Errores de Postgres en inglés.** `traducirErrorPostgres()` suma `22P02` (uuid inválido) y
+   registra el detalle técnico; `mensajeDeErrorDeBase()` da siempre un texto en español para las
+   acciones que responden con `redirect(?error=…)` (borrar, pausar, ordenar en cabañas, planes,
+   experiencias/adicionales, bloqueos); `ejecutarAccion()` traduce también un error de la base
+   lanzado tal cual. Contenido y cabañas ya no hacen `throw new Error(error.message)`.
+4. **Agenda del celular, día de cambio de huésped.** `lineasDelDia()` (en `calendario-mes.ts`):
+   «Sale por la mañana: Ana» y «Llega hoy: Bruno · sale el lun 12/10/2026 (calendario del hotel)»
+   en líneas separadas, cada una con su nombre y un punto de color.
+5. **El día 1 del mes.** La página de Reservas pide reservas, bloqueos y Google desde la noche
+   anterior al día 1; `FilaCabana.saleElPrimerDia` guarda quién sale esa mañana sin pintarlo en la
+   cuadrícula. Verificado con datos reales: el 01/11/2026 la Cabaña 02 dice «Libre · Sale por la
+   mañana: …».
+6. **«Mi cuenta» → «Cambiar mi contraseña»** (`/admin/cuenta`, cualquier rol, enlace «Mi cuenta» en
+   la cabecera). La actual se comprueba con un cliente aparte sin cookies (`signInWithPassword` y
+   `signOut({ scope: "local" })`, que no toca la sesión de la persona); la nueva se guarda con
+   `auth.updateUser()` de su propia sesión. Mínimo 10 caracteres, máximo 72, repetida igual,
+   distinta de la actual (`src/lib/admin/mi-contrasena.ts`). Usuarios apunta ahí («al entrar, la
+   cambie en «Mi cuenta» (arriba a la derecha)»).
+7. **La nota de las tarifas.** Era `home.planes.nota` (no `reservar.nota`): sale en portada, cabañas
+   y `/reservar`, debajo del «Pagar $X». Texto nuevo: «Precios por noche, IVA incluido. Un festivo o
+   una tarifa especial puede cambiar el valor de una noche; al elegir tus fechas, el desglose ya lo
+   tiene en cuenta y ese total es el que pagas.» Respaldo, seed y **base real** actualizados con
+   `scripts/actualizar-nota-tarifas.mjs` (idempotente; no pisa una nota editada desde el panel). La
+   base tenía el texto anterior sin editar: se cambió (2026-10-05). El resumen de `/reservar` decía
+   «Total estimado»; ahora «Total».
+8. **Cabaña 02: «ocupada» no es «no la vende».** `elegibilidad-calendario.ts`: `Bloqueo.motivoTras`,
+   `EstadoDia.causa` (`ocupada`, `no_ofrecida`, `sin_cupo`, `tras_ocupada`, `tras_no_ofrecida`) y
+   `causaTope`. Con llegada el domingo 25/10/2026, el martes 27 dice «no se puede salir ese día:
+   antes hay una noche entre semana, y la Cabaña 02 no la vende»; la ayuda, «Como tarde, el lun
+   26/10/2026: esa noche la Cabaña 02 no la vende». La leyenda también distingue.
+9. **Valor sugerido de la reserva manual.** `src/lib/admin/cotizacion-panel.ts` llama a `cotizar()`
+   (la del sitio): cada noche con el plan que le toca (un viernes con Entre Semana va con Estándar),
+   tarifas diferenciales y precio de una persona; el plan del desplegable decide solo el de fin de
+   semana. Jueves→sábado con Entre Semana: $830.000, igual que `/reservar`. El desglose va debajo
+   del campo y un **aviso ámbar** con «Usar $…» sale cuando el valor escrito o guardado no coincide
+   con las fechas, el plan y las personas actuales. Nunca se cambia solo.
+
+**Verificación.** `tsc` limpio · `npm test` 669 en verde (nuevos: `importe.test.ts`,
+`validacion.test.ts`, `cotizacion-panel.test.ts`, `mi-contrasena.test.ts` y casos en
+`calendario-mes.test.ts` y `elegibilidad-calendario.test.ts`) · `next build` sin errores en un
+worktree fuera de OneDrive (borrado). Capturas contra `localhost` (`next start`, Chrome headless) a
+1440 y 390 con una cuenta temporal `equipo` creada con la Admin API y borrada al final (quedan las 2
+cuentas reales): error del panel, 404 del panel, agenda el 11/10 y el 01/11, «Mi cuenta» (tres
+intentos: actual mala, repetida distinta, cambio correcto; sesión intacta y la nueva contraseña
+entra), aviso ámbar con estadía mixta, nota de `/reservar`, y el calendario de la 02 en el sitio.
+Tras las capturas: «Mi cuenta» se leía solo como el correo en escritorio (ahora dice «Mi cuenta» en
+todos los tamaños) y el correo se cortaba en dos columnas.
+
+#### Pendiente
+
+- El mensaje de WhatsApp de una solicitud sigue diciendo «Total estimado»: es una solicitud que el
+  hotel confirma, así que se dejó.
