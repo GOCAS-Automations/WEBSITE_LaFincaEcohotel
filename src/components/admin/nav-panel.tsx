@@ -45,7 +45,11 @@ export const NAV_PANEL: ElementoNav[] = [
   { href: "/admin/bloqueos", etiqueta: "Bloqueos", icono: "candado" },
   { href: "/admin/alojamientos", etiqueta: "Cabañas", icono: "cabana" },
   { href: "/admin/planes", etiqueta: "Planes", icono: "capas" },
-  { href: "/admin/temporadas", etiqueta: "Temporadas", icono: "sol" },
+  {
+    href: "/admin/tarifas-diferenciales",
+    etiqueta: "Tarifas diferenciales",
+    icono: "sol",
+  },
   { href: "/admin/experiencias", etiqueta: "Experiencias", icono: "brujula" },
   { href: "/admin/adicionales", etiqueta: "Adicionales", icono: "regalo" },
   { href: "/admin/contenido", etiqueta: "Contenido del sitio", icono: "texto" },

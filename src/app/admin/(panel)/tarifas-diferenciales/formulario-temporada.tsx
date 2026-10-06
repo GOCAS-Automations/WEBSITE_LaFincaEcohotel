@@ -29,6 +29,9 @@ import {
 } from "@/lib/reserva/temporadas";
 import { formatearCOP } from "@/lib/utils/formato";
 
+/* En el panel esto se llama «Tarifas diferenciales»; en el código y la base
+   sigue siendo `temporadas`. */
+
 const TODAS = "todas";
 
 /** Lo que escribe el equipo, con o sin puntos: «402.500» o «402500». */
@@ -58,7 +61,7 @@ export function FormularioTemporada({
   temporada: Temporada | null;
   planes: PlanConBases[];
   cabanas: CabanaDeTemporada[];
-  /** Las demás temporadas, para avisar de cruces mientras se escribe. */
+  /** Las demás tarifas diferenciales, para avisar de cruces mientras se escribe. */
   otras: Temporada[];
 }) {
   const [nombre, setNombre] = useState(temporada?.nombre ?? "");
@@ -140,10 +143,10 @@ export function FormularioTemporada({
   return (
     <FormularioAccion
       accion={guardarTemporadaAction}
-      etiquetaEnviar={temporada ? "Guardar cambios" : "Crear temporada"}
+      etiquetaEnviar={temporada ? "Guardar cambios" : "Crear tarifa diferencial"}
       secundario={
         <Link
-          href="/admin/temporadas"
+          href="/admin/tarifas-diferenciales"
           className="text-[0.875rem] font-semibold text-crema-700 underline-offset-4 hover:underline"
         >
           Cancelar
@@ -154,11 +157,11 @@ export function FormularioTemporada({
 
       <div className="grid gap-5 sm:grid-cols-2">
         <Campo
-          etiqueta="Nombre de la temporada"
+          etiqueta="Nombre de la tarifa diferencial"
           htmlFor="nombre"
           obligatorio
           className="sm:col-span-2"
-          ayuda="Es el nombre que ve el huésped junto al precio de cada noche al reservar."
+          ayuda="El huésped lo ve debajo del precio de cada noche al reservar. Por ejemplo: «Temporada de fin de año» o «Semana Santa»."
         >
           <Entrada
             id="nombre"
@@ -175,7 +178,7 @@ export function FormularioTemporada({
           etiqueta="Primera noche"
           htmlFor="primera_noche"
           obligatorio
-          ayuda="La primera noche que se cobra con la temporada."
+          ayuda="La primera noche que se cobra con esta tarifa; se incluye. Por ejemplo, si es el 1/12/2026, quien duerme esa noche la paga con esta tarifa."
         >
           <Entrada
             id="primera_noche"
@@ -191,7 +194,7 @@ export function FormularioTemporada({
           etiqueta="Última noche"
           htmlFor="ultima_noche"
           obligatorio
-          ayuda="La última noche que se cobra con la temporada. Las dos fechas se incluyen."
+          ayuda="La última noche que se cobra con esta tarifa; también se incluye. Es la noche que se duerme, no el día de salida: si es el 8/1/2027, quien sale el 9/1/2027 paga el 8/1 con esta tarifa."
         >
           <Entrada
             id="ultima_noche"
@@ -218,8 +221,8 @@ export function FormularioTemporada({
                   const noches = nochesDeTemporada(fechas);
                   return `${noches} ${noches === 1 ? "noche" : "noches"}: ${rangoLegible(fechas)}. `;
                 })()}
-                Quien llegue el día de la última noche paga esa noche con la
-                temporada; la noche siguiente ya se cobra con la base.
+                Quien duerme la última noche la paga con esta tarifa; la noche
+                siguiente ya se cobra con el precio base.
               </>
             ) : (
               fechas.motivo
@@ -231,7 +234,7 @@ export function FormularioTemporada({
           etiqueta="¿A qué cabañas aplica?"
           htmlFor="alcance"
           className="sm:col-span-2"
-          ayuda="Si una noche tiene una temporada de una cabaña y otra de todas, en esa cabaña manda la suya."
+          ayuda="Si una misma noche tiene una tarifa para una cabaña y otra para todas, en esa cabaña gana la de la cabaña."
         >
           <Desplegable
             id="alcance"
@@ -259,8 +262,8 @@ export function FormularioTemporada({
               return (
                 <p key={otra.id}>
                   {cabanaOtra
-                    ? `En la ${cabanaOtra}, «${otra.nombre}» (${rangoLegible(otra)}) manda sobre esta en las noches que compartan.`
-                    : `Se cruza con «${otra.nombre}» (todas las cabañas, ${rangoLegible(otra)}): en las noches que compartan, en la ${nombreAlcance} manda esta.`}
+                    ? `En la ${cabanaOtra}, «${otra.nombre}» (${rangoLegible(otra)}) gana sobre esta en las noches que compartan.`
+                    : `Comparte noches con «${otra.nombre}» (todas las cabañas, ${rangoLegible(otra)}): en esas noches, en la ${nombreAlcance} gana esta.`}
                 </p>
               );
             })}
@@ -274,14 +277,14 @@ export function FormularioTemporada({
           >
             {cruces.map((cruce) => (
               <p key={cruce.temporada.id}>
-                Se cruza con «{cruce.temporada.nombre}» ({rangoLegible(cruce.temporada)}) en{" "}
+                Las fechas se cruzan con «{cruce.temporada.nombre}» ({rangoLegible(cruce.temporada)}) en{" "}
                 {cruce.planIds
                   .map((planId) => planes.find((plan) => plan.planId === planId)?.nombre)
                   .filter(Boolean)
                   .join(", ")}
-                . Dos temporadas para {nombreAlcance} no pueden poner precio al
-                mismo plan en las mismas noches: cambia las fechas, o deja ese
-                plan en blanco en una de las dos.
+                . Dos tarifas diferenciales para {nombreAlcance} no pueden
+                poner precio al mismo plan en las mismas noches: cambia las
+                fechas, o deja ese plan en blanco en una de las dos.
               </p>
             ))}
           </div>
@@ -291,13 +294,15 @@ export function FormularioTemporada({
 
         <div className="sm:col-span-2">
           <p className="mb-4 text-[0.8125rem] leading-relaxed text-crema-700">
-            Escribe el precio por noche de cada plan durante la temporada, en
+            Escribe cuánto cuesta la noche de cada plan en esas fechas, en
             pesos y sin centavos (<span className="font-semibold">552000</span>{" "}
             o <span className="font-semibold">552.000</span>).{" "}
-            <strong>Un plan en blanco sigue con su precio base</strong> en esas
-            fechas. La temporada no cambia qué plan le toca a cada noche: de
-            lunes a jueves sigue siendo Entre Semana, y los fines de semana y
-            festivos, Estándar o Premium.
+            <strong>Un plan en blanco se cobra con su precio base</strong> en
+            esas noches. Esta tarifa solo cambia el precio, no el plan: de
+            lunes a jueves sigue siendo Entre Semana, y viernes, sábado,
+            domingo y festivos, Estándar o Premium, según lo que elija el
+            huésped. Por ejemplo, con Estándar en $500.000 (cifra de ejemplo),
+            un sábado de esas fechas se cobra a $500.000.
           </p>
 
           <div className="grid gap-3">
@@ -319,15 +324,15 @@ export function FormularioTemporada({
             <p className="mt-3 text-[0.75rem] leading-relaxed text-crema-600">
               {ocultos.map((plan) => plan.nombre).join(", ")}:{" "}
               {alojamientoId
-                ? `la ${nombreAlcance} no se ofrece con ${ocultos.length === 1 ? "ese plan" : "esos planes"}, así que una temporada no puede ponerle${ocultos.length === 1 ? "" : "s"} precio.`
+                ? `la ${nombreAlcance} no se ofrece con ${ocultos.length === 1 ? "ese plan" : "esos planes"}, así que una tarifa diferencial no puede ponerle${ocultos.length === 1 ? "" : "s"} precio.`
                 : "ninguna cabaña tiene precio base con ese plan."}
             </p>
           ) : null}
 
           <p className="mt-3 text-[0.75rem] leading-relaxed text-crema-600">
-            El Día de Calma no cambia con las temporadas: su precio se edita en
-            «Planes». Las reservas ya hechas tampoco cambian: conservan el
-            precio con que se reservaron.
+            El Día de Calma no cambia con las tarifas diferenciales: su precio
+            se edita en «Planes». Las reservas ya hechas tampoco cambian: se
+            quedan con el precio con que se reservaron.
           </p>
         </div>
       </div>
@@ -385,7 +390,7 @@ function FilaPrecio({
       {tieneUnaPersona ? (
         <p className="mt-2 text-[0.75rem] leading-relaxed text-crema-600">
           Este plan tiene precio para una persona: escribe los dos, o deja los
-          dos en blanco para que use la base.
+          dos en blanco para que se cobre el precio base.
         </p>
       ) : null}
     </div>
@@ -434,7 +439,7 @@ function CampoPrecio({
           inputMode="numeric"
           value={valor}
           onChange={(evento) => alCambiar(evento.target.value)}
-          placeholder="En blanco: usa la base"
+          placeholder="En blanco: precio base"
           aria-describedby={`${id}__base`}
           className={`${CLASE_INPUT} pl-8`}
         />

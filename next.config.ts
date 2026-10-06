@@ -330,6 +330,21 @@ const nextConfig: NextConfig = {
       { de: "/el-lugar", a: "/conocenos" },
 
       /*
+        El panel: la sección «Temporadas» pasó a llamarse «Tarifas
+        diferenciales» (2026-10-05). Quien tenga la dirección vieja en favoritos,
+        en un correo o en el manual llega a la nueva. El comodín `:path*` cubre
+        `/admin/temporadas`, `/admin/temporadas/nueva` y
+        `/admin/temporadas/<id>` (comprobado con path-to-regexp: la subruta es
+        opcional). La redirección corre antes que el middleware, pero la
+        dirección nueva sigue protegida por él: sin sesión, el panel manda al
+        inicio de sesión como siempre.
+      */
+      {
+        de: "/admin/temporadas/:path*",
+        a: "/admin/tarifas-diferenciales/:path*",
+      },
+
+      /*
         WordPress → sitio nuevo.
 
         `/services` → `/experiencias`: en el sitio viejo esa página iba a

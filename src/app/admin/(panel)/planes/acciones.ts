@@ -245,11 +245,16 @@ export async function eliminarPlanAction(formData: FormData) {
     );
   }
 
+  /* En el panel las temporadas se llaman «Tarifas diferenciales». */
   const temporadas = conteoTemporadas.count ?? 0;
   if (temporadas > 0) {
+    const cuantas =
+      temporadas === 1
+        ? "1 tarifa diferencial"
+        : `${temporadas} tarifas diferenciales`;
     redirect(
       `${RUTA_LISTA}?error=${encodeURIComponent(
-        `No se puede borrar: este plan tiene precio en ${temporadas} temporada(s). Pausalo en vez de borrarlo, o primero quítale ese precio en «Temporadas».`,
+        `No se puede borrar: este plan tiene precio en ${cuantas}. Páusalo en vez de borrarlo, o primero quítale ese precio en «Tarifas diferenciales».`,
       )}`,
     );
   }

@@ -326,12 +326,14 @@ export function FormularioAlojamiento({
             <p className="mt-3 rounded-tarjeta bg-dorado-500/[0.08] p-3.5 text-[0.8125rem] leading-relaxed text-crema-800 ring-1 ring-dorado-500/20">
               {temporadas.length === 0 ? (
                 <>
-                  Estos son los precios de todo el año: ninguna temporada los
-                  cambia ahora.{" "}
+                  Estos son los precios de todo el año: ninguna tarifa
+                  diferencial los cambia ahora.{" "}
                 </>
               ) : (
                 <>
-                  <span className="font-semibold">Temporadas que cambian estos precios:</span>{" "}
+                  <span className="font-semibold">
+                    Tarifas diferenciales que cambian estos precios:
+                  </span>{" "}
                   {temporadas.map((temporada, indice) => (
                     <span key={temporada.id}>
                       {indice > 0 ? "; " : ""}«{temporada.nombre}» ({temporada.fechas},{" "}
@@ -342,10 +344,12 @@ export function FormularioAlojamiento({
                 </>
               )}
               <Link
-                href="/admin/temporadas"
+                href="/admin/tarifas-diferenciales"
                 className="font-semibold text-petroleo-700 underline-offset-4 hover:underline"
               >
-                {temporadas.length === 0 ? "Crear una en «Temporadas»" : "Verlas en «Temporadas»"}
+                {temporadas.length === 0
+                  ? "Crear una en «Tarifas diferenciales»"
+                  : "Verlas en «Tarifas diferenciales»"}
               </Link>
             </p>
           ) : null}

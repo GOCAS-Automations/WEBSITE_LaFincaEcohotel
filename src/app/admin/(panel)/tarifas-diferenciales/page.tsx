@@ -32,19 +32,25 @@ import {
 } from "@/lib/reserva/temporadas";
 import { formatearCOP, hoyEnBogota } from "@/lib/utils/formato";
 
-export const metadata: Metadata = { title: "Temporadas" };
+/*
+  En el panel esto se llama «Tarifas diferenciales»; en el código y la base
+  sigue siendo `temporadas` (tabla, tipos, `guardar_temporada`…). El sitio
+  público no usa ese nombre: el huésped solo ve el nombre de cada tarifa bajo
+  el precio de la noche.
+*/
+export const metadata: Metadata = { title: "Tarifas diferenciales" };
 export const dynamic = "force-dynamic";
 
 const GRUPOS: { estado: EstadoTemporada; titulo: string; vacio: string }[] = [
   {
     estado: "activa",
     titulo: "Activas ahora",
-    vacio: "Hoy ninguna temporada cambia los precios.",
+    vacio: "Hoy ninguna tarifa diferencial cambia los precios.",
   },
   {
     estado: "proxima",
     titulo: "Próximas",
-    vacio: "No hay temporadas programadas.",
+    vacio: "No hay tarifas diferenciales programadas.",
   },
   {
     estado: "pasada",
@@ -74,10 +80,12 @@ export default async function PaginaTemporadas({
   return (
     <>
       <EncabezadoPagina
-        titulo="Temporadas"
-        descripcion="Precios distintos para unas fechas concretas —fin de año, Semana Santa, un puente—, para todas las cabañas o para una sola. En esas noches el sitio cobra el precio de la temporada; el resto del año, el precio base de siempre."
+        titulo="Tarifas diferenciales"
+        descripcion="Precios distintos para unas fechas concretas —fin de año, Semana Santa, un puente—, para todas las cabañas o para una sola. En esas noches el sitio cobra el precio de la tarifa diferencial; el resto del año, el precio base de siempre."
         accion={
-          <EnlaceBoton href="/admin/temporadas/nueva">Nueva temporada</EnlaceBoton>
+          <EnlaceBoton href="/admin/tarifas-diferenciales/nueva">
+            Nueva tarifa diferencial
+          </EnlaceBoton>
         }
       />
 
@@ -85,36 +93,85 @@ export default async function PaginaTemporadas({
 
       <div className="mb-6 rounded-tarjeta bg-crema-900/[0.03] p-4 text-[0.8125rem] leading-relaxed text-crema-700 ring-1 ring-crema-900/[0.05]">
         <p className="font-semibold text-crema-900">Cómo se aplican</p>
-        <ul className="mt-1.5 flex list-disc flex-col gap-1 pl-5">
+        <ul className="mt-1.5 flex list-disc flex-col gap-1.5 pl-5">
           <li>
-            La temporada solo cambia <strong>cuánto</strong> cuesta una noche,
-            no qué plan le toca: de lunes a jueves sigue siendo Entre Semana, y
-            los fines de semana y festivos, Estándar o Premium.
+            <strong>Para qué sirven.</strong> Para cobrar distinto en fechas
+            concretas: temporada alta, puentes, eventos. Fuera de esas fechas
+            se cobra el precio base de siempre.
           </li>
           <li>
-            Si en una noche hay una temporada de una cabaña y otra de todas, en
-            esa cabaña manda la suya.
+            <strong>El tipo de noche sigue decidiendo el plan.</strong> De
+            lunes a jueves es Entre Semana; viernes, sábado, domingo y
+            festivos, Estándar o Premium, según lo que elija el huésped. La
+            tarifa diferencial solo cambia el precio de ese plan en esas
+            noches.
           </li>
           <li>
-            Un plan sin precio en la temporada se cobra con su precio base. Una
-            temporada no puede ofrecer un plan que la cabaña no tiene.
+            <strong>
+              «Primera noche» y «Última noche» son noches, y las dos cuentan.
+            </strong>{" "}
+            La última noche es la que se duerme, no el día de salida: si la
+            última noche es el 8/1/2027, quien sale el 9/1/2027 paga el 8/1
+            con esta tarifa.
           </li>
           <li>
-            Las reservas ya hechas nunca cambian de precio, aunque edites o
-            borres la temporada.
+            <strong>Un plan en blanco</strong> se cobra con su precio base en
+            esas noches.
+          </li>
+          <li>
+            <strong>Una para una cabaña y otra para todas:</strong> en esa
+            cabaña gana la de la cabaña.
+          </li>
+          <li>
+            <strong>Las reservas ya hechas no cambian:</strong> se quedan con el
+            precio con que se reservaron, aunque edites o borres la tarifa.
+          </li>
+          <li>
+            Una tarifa diferencial no puede ofrecer un plan que la cabaña no
+            tiene.
           </li>
         </ul>
+
+        <div className="mt-3.5 rounded-tarjeta bg-white p-3.5 ring-1 ring-crema-900/[0.07]">
+          <p className="font-semibold text-crema-900">
+            Ejemplo: fin de año{" "}
+            <span className="font-normal text-crema-600">
+              (las cifras son solo para explicar)
+            </span>
+          </p>
+          <p className="mt-1">
+            Primera noche: <strong>mar 1/12/2026</strong>. Última noche:{" "}
+            <strong>vie 8/1/2027</strong>. Para todas las cabañas. Estándar a{" "}
+            <strong>$500.000</strong>, Premium a <strong>$600.000</strong> y
+            Entre Semana en blanco.
+          </p>
+          <ul className="mt-1.5 flex list-disc flex-col gap-1 pl-5">
+            <li>
+              Un sábado de esas fechas se cobra a $500.000 (Estándar) o a
+              $600.000 (Premium), según lo que elija el huésped.
+            </li>
+            <li>
+              Un martes de esas fechas es Entre Semana: como ese plan quedó en
+              blanco, se cobra con su precio base.
+            </li>
+            <li>
+              Quien llega el vie 8/1/2027 y sale el sáb 9/1/2027 duerme una
+              sola noche, la del 8/1, y la paga con esta tarifa. Quien llega el
+              sáb 9/1/2027 ya paga el precio base.
+            </li>
+          </ul>
+        </div>
       </div>
 
       {temporadas.length === 0 ? (
         <Tarjeta>
           <CuerpoTarjeta>
             <EstadoVacio
-              titulo="Todavía no hay temporadas"
-              descripcion="Con una temporada cambias el precio de unas noches concretas sin tocar el precio base de cada cabaña."
+              titulo="Todavía no hay tarifas diferenciales"
+              descripcion="Con una tarifa diferencial cambias el precio de unas noches concretas sin tocar el precio base de cada cabaña."
               accion={
-                <EnlaceBoton href="/admin/temporadas/nueva">
-                  Crear la primera temporada
+                <EnlaceBoton href="/admin/tarifas-diferenciales/nueva">
+                  Crear la primera tarifa diferencial
                 </EnlaceBoton>
               }
             />
@@ -179,7 +236,7 @@ function FilaTemporada({
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <Link
-            href={`/admin/temporadas/${temporada.id}`}
+            href={`/admin/tarifas-diferenciales/${temporada.id}`}
             className="font-titulo text-[0.9375rem] font-semibold text-crema-900 underline-offset-4 hover:underline"
           >
             {temporada.nombre}
@@ -230,7 +287,7 @@ function FilaTemporada({
 
       <div className="flex shrink-0 items-center gap-1 self-end sm:self-start">
         <Link
-          href={`/admin/temporadas/${temporada.id}`}
+          href={`/admin/tarifas-diferenciales/${temporada.id}`}
           className="rounded-full px-3 py-1.5 text-[0.8125rem] font-semibold text-petroleo-700 transition-colors hover:bg-petroleo-600/10"
         >
           Editar

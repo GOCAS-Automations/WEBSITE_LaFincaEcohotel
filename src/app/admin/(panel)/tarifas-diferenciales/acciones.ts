@@ -28,7 +28,9 @@ import {
   validarPreciosDeTemporada,
 } from "@/lib/reserva/temporadas";
 
-const RUTA_LISTA = "/admin/temporadas";
+/* En el panel esto se llama «Tarifas diferenciales»; en el código y la base
+   sigue siendo `temporadas`. */
+const RUTA_LISTA = "/admin/tarifas-diferenciales";
 
 /** Valor del desplegable de alcance que significa «todas las cabañas». */
 const TODAS = "todas";
@@ -42,10 +44,10 @@ function refrescar(id?: string) {
 }
 
 const MENSAJE_CRUCE =
-  "Esas fechas se cruzan con otra temporada para las mismas cabañas que ya pone precio a uno de estos planes. Cambia las fechas, o quita ese plan de una de las dos.";
+  "Esas fechas se cruzan con otra tarifa diferencial para las mismas cabañas que ya pone precio a uno de estos planes. Cambia las fechas, o deja ese plan en blanco en una de las dos.";
 
 /**
- * Crea o edita una temporada.
+ * Crea o edita una tarifa diferencial (una «temporada» en el código).
  *
  * Todo lo que llega del navegador se vuelve a comprobar aquí, en este orden:
  * fechas («Primera noche» y «Última noche», las dos incluidas), alcance,
@@ -65,7 +67,7 @@ export async function guardarTemporadaAction(
     const idCrudo = String(formData.get("id") ?? "").trim();
     const id = idCrudo && esUuid(idCrudo) ? idCrudo : null;
 
-    const nombre = textoRequerido(formData, "nombre", "Nombre de la temporada", 80);
+    const nombre = textoRequerido(formData, "nombre", "Nombre de la tarifa diferencial", 80);
 
     const fechas = fechasDeTemporada(
       fechaRequerida(formData, "primera_noche", "Primera noche"),
@@ -85,7 +87,7 @@ export async function guardarTemporadaAction(
       const cabana = cabanas.find((item) => item.id === alcanceCrudo);
       if (!cabana) {
         throw new ErrorDeValidacion(
-          "Elige a qué cabañas aplica la temporada: todas, o una en concreto.",
+          "Elige a qué cabañas aplica la tarifa diferencial: todas, o una en concreto.",
         );
       }
       alojamientoId = cabana.id;
@@ -134,7 +136,7 @@ export async function guardarTemporadaAction(
           "esa cabaña")
         : "todas las cabañas";
       throw new ErrorDeValidacion(
-        `Se cruza con «${primero.temporada.nombre}» (${alcance}, ${rangoLegible(primero.temporada)}) en ${primero.planIds.length === 1 ? "el plan" : "los planes"} ${nombresPlanes}. Dos temporadas para las mismas cabañas no pueden poner precio al mismo plan en las mismas noches: cambia las fechas, o quita ese plan de una de las dos.`,
+        `Las fechas se cruzan con «${primero.temporada.nombre}» (${alcance}, ${rangoLegible(primero.temporada)}) en ${primero.planIds.length === 1 ? "el plan" : "los planes"} ${nombresPlanes}. Dos tarifas diferenciales para las mismas cabañas no pueden poner precio al mismo plan en las mismas noches: cambia las fechas, o deja ese plan en blanco en una de las dos.`,
       );
     }
 
@@ -158,7 +160,7 @@ export async function guardarTemporadaAction(
       if (error.code === "22023") throw new ErrorDeValidacion(error.message);
       if (error.code === "P0002") {
         throw new ErrorDeValidacion(
-          "Esa temporada ya no existe: alguien la borró mientras la editabas. Vuelve al listado.",
+          "Esa tarifa diferencial ya no existe: alguien la borró mientras la editabas. Vuelve al listado.",
         );
       }
       throw traducirErrorPostgres(error, {
@@ -179,22 +181,23 @@ export async function guardarTemporadaAction(
 
     redirect(
       `${RUTA_LISTA}?ok=${encodeURIComponent(
-        `Temporada «${nombre}» creada. Desde ya el sitio cobra estos precios en esas fechas.`,
+        `Tarifa diferencial «${nombre}» creada. Desde ya el sitio cobra estos precios en esas fechas.`,
       )}`,
     );
   });
 }
 
 /**
- * Borra una temporada. Sus precios se van con ella (la base los borra en
- * cascada) y esas fechas vuelven a la tarifa base. Las reservas ya hechas no
- * se tocan: su total quedó congelado al reservar.
+ * Borra una tarifa diferencial (una «temporada» en el código). Sus precios se
+ * van con ella (la base los borra en cascada) y esas fechas vuelven a la
+ * tarifa base. Las reservas ya hechas no se tocan: su total quedó congelado
+ * al reservar.
  */
 export async function eliminarTemporadaAction(formData: FormData) {
   const { supabase } = await requireAdmin();
   const id = String(formData.get("id") ?? "").trim();
   if (!esUuid(id)) {
-    redirect(`${RUTA_LISTA}?error=${encodeURIComponent("Esa temporada no existe.")}`);
+    redirect(`${RUTA_LISTA}?error=${encodeURIComponent("Esa tarifa diferencial no existe.")}`);
   }
 
   const { data, error } = await supabase
@@ -206,18 +209,20 @@ export async function eliminarTemporadaAction(formData: FormData) {
   if (error) {
     redirect(
       `${RUTA_LISTA}?error=${encodeURIComponent(
-        "No se pudo borrar la temporada. Vuelve a intentarlo; si sigue pasando, avísale al desarrollador.",
+        "No se pudo borrar la tarifa diferencial. Vuelve a intentarlo; si sigue pasando, avísale al desarrollador.",
       )}`,
     );
   }
 
-  const nombre = data?.[0]?.nombre ? `«${data[0].nombre}»` : "La temporada";
+  const nombre = data?.[0]?.nombre
+    ? `La tarifa diferencial «${data[0].nombre}»`
+    : "La tarifa diferencial";
 
   refrescar();
   revalidarSitioPublico();
   redirect(
     `${RUTA_LISTA}?ok=${encodeURIComponent(
-      `${nombre} se borró. Esas fechas vuelven a cobrarse con la tarifa base; las reservas ya hechas no cambian.`,
+      `${nombre} se borró. Esas fechas vuelven a cobrarse con el precio base; las reservas ya hechas no cambian.`,
     )}`,
   );
 }

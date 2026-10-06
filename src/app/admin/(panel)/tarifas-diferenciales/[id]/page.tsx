@@ -19,7 +19,7 @@ import {
 } from "@/lib/admin/temporadas";
 import { esUuid } from "@/lib/admin/validacion";
 
-export const metadata: Metadata = { title: "Editar temporada" };
+export const metadata: Metadata = { title: "Editar tarifa diferencial" };
 export const dynamic = "force-dynamic";
 
 export default async function PaginaEditarTemporada({
@@ -48,7 +48,7 @@ export default async function PaginaEditarTemporada({
     <>
       <EncabezadoPagina
         titulo={temporada.nombre}
-        descripcion="Las fechas, las cabañas y los precios de esta temporada. Los cambios se aplican en el sitio al guardar; las reservas ya hechas no cambian."
+        descripcion="Las fechas, las cabañas y los precios de esta tarifa diferencial. Los cambios se aplican en el sitio al guardar; las reservas ya hechas no cambian."
       />
 
       <Aviso ok={busqueda.ok} error={busqueda.error} />
@@ -68,11 +68,11 @@ export default async function PaginaEditarTemporada({
         <CuerpoTarjeta className="flex flex-wrap items-center justify-between gap-4">
           <div className="min-w-0 max-w-xl">
             <h2 className="font-titulo text-[1.0625rem] font-semibold text-crema-900">
-              Borrar temporada
+              Borrar tarifa diferencial
             </h2>
             <p className="mt-1 text-[0.8125rem] leading-relaxed text-crema-700">
               Esas fechas vuelven a cobrarse con el precio base. Las reservas ya
-              hechas no cambian: conservan el precio con que se reservaron.
+              hechas no cambian: se quedan con el precio con que se reservaron.
             </p>
           </div>
           <form action={eliminarTemporadaAction}>
@@ -83,7 +83,7 @@ export default async function PaginaEditarTemporada({
               etiquetaEnEspera="Borrando…"
               confirmar={confirmacionBorrado(temporada.nombre)}
             >
-              Borrar temporada
+              Borrar tarifa diferencial
             </BotonEnviar>
           </form>
         </CuerpoTarjeta>

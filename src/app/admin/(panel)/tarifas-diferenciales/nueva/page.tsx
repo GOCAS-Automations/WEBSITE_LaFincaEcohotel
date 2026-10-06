@@ -13,7 +13,7 @@ import {
   planesConBases,
 } from "@/lib/admin/temporadas";
 
-export const metadata: Metadata = { title: "Nueva temporada" };
+export const metadata: Metadata = { title: "Nueva tarifa diferencial" };
 export const dynamic = "force-dynamic";
 
 export default async function PaginaNuevaTemporada() {
@@ -28,8 +28,8 @@ export default async function PaginaNuevaTemporada() {
   return (
     <>
       <EncabezadoPagina
-        titulo="Nueva temporada"
-        descripcion="Unas fechas con precios distintos. Al guardarla, el sitio empieza a cobrar esos precios en esas noches; el resto del año sigue el precio base."
+        titulo="Nueva tarifa diferencial"
+        descripcion="Unas fechas con precios distintos. Al guardarla, el sitio empieza a cobrar esos precios en esas noches; el resto del año sigue el precio base de cada cabaña."
       />
 
       <Tarjeta>
