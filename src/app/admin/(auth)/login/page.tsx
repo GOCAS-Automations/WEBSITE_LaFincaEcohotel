@@ -70,7 +70,7 @@ export default async function PaginaLogin({
             Volver al sitio
           </Link>
           <span className="mx-2 text-crema-400">·</span>
-          ¿Olvidaste la contraseña? Escríbele al desarrollador.
+          ¿Olvidaste tu usuario o tu contraseña? Pídeselos al propietario del hotel.
         </p>
       </div>
     </main>

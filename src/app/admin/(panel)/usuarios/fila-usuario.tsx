@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 
 import {
   cambiarRolAction,
+  cambiarUsuarioAction,
   eliminarUsuarioAction,
   restablecerContrasenaAction,
 } from "./acciones";
@@ -22,11 +23,17 @@ import {
   type RolPanel,
 } from "@/lib/admin/roles";
 import { ESTADO_INICIAL, type UsuarioPanel } from "@/lib/admin/tipos";
+import {
+  AYUDA_USUARIO,
+  LARGO_MAXIMO_USUARIO,
+  PATRON_USUARIO_HTML,
+  normalizarUsuario,
+} from "@/lib/admin/usuario-panel";
 import { formatearFechaHora } from "@/lib/utils/formato";
 
 /**
- * Una cuenta de la lista: su rol, su último acceso y las tres cosas que se le
- * pueden hacer.
+ * Una cuenta de la lista: su usuario, su rol, su último acceso y las cosas que
+ * se le pueden hacer.
  *
  * Cada acción tiene su propio `useActionState`, así que el mensaje aparece
  * **en la fila** que se tocó y no en un banner arriba: con seis cuentas en
@@ -49,6 +56,8 @@ export function FilaUsuario({
      elegir uno antes de guardar. */
   const [rol, setRol] = useState<RolPanel | "">(usuario.rol ?? "");
   const [abrirContrasena, setAbrirContrasena] = useState(false);
+  const [abrirUsuario, setAbrirUsuario] = useState(!usuario.usuario);
+  const [nombre, setNombre] = useState(usuario.usuario ?? "");
 
   const [estadoRol, guardarRol] = useActionState(
     cambiarRolAction,
@@ -58,17 +67,26 @@ export function FilaUsuario({
     restablecerContrasenaAction,
     ESTADO_INICIAL,
   );
+  const [estadoUsuario, guardarUsuario] = useActionState(
+    cambiarUsuarioAction,
+    ESTADO_INICIAL,
+  );
 
   const rolBloqueado = esMiCuenta || ultimoPropietario;
   const idCampoRol = `rol-${usuario.id}`;
   const idCampoClave = `clave-${usuario.id}`;
+  const idCampoUsuario = `usuario-${usuario.id}`;
+  const nombreCambio =
+    normalizarUsuario(nombre) !== "" && normalizarUsuario(nombre) !== usuario.usuario;
 
   return (
     <div className="flex flex-col gap-3">
       {/* --- Identidad --- */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
         <p className="min-w-0 flex-1 break-all text-[0.9375rem] font-semibold text-crema-900">
-          {usuario.correo}
+          {usuario.usuario ?? (
+            <span className="text-red-800">Sin usuario: no puede entrar</span>
+          )}
           {esMiCuenta && (
             /* `whitespace-nowrap`: el correo va con `break-all` para que quepa a
                390 px, y sin esto la aclaración se partía en «(tu cu enta)». */
@@ -81,6 +99,12 @@ export function FilaUsuario({
           {usuario.rol ? ETIQUETA_ROL[usuario.rol] : "Sin acceso al panel"}
         </Pastilla>
       </div>
+
+      <p className="text-[0.8125rem] text-crema-700 [overflow-wrap:anywhere]">
+        {usuario.correoInterno
+          ? "Sin correo de contacto (usa uno interno que nadie lee)"
+          : `Correo de contacto: ${usuario.correo}`}
+      </p>
 
       <p className="text-[0.75rem] text-crema-600">
         {usuario.ultimoAcceso
@@ -135,8 +159,21 @@ export function FilaUsuario({
         </Banner>
       )}
 
-      {/* --- Contraseña y eliminación --- */}
+      {/* --- Usuario, contraseña y eliminación --- */}
       <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={() => setAbrirUsuario((abierto) => !abierto)}
+          aria-expanded={abrirUsuario}
+          className="rounded-full px-3.5 py-1.5 text-[0.8125rem] font-semibold text-petroleo-700 transition-colors hover:bg-petroleo-600/10"
+        >
+          {abrirUsuario
+            ? "Cerrar usuario"
+            : usuario.usuario
+              ? "Cambiar usuario"
+              : "Ponerle usuario"}
+        </button>
+
         <button
           type="button"
           onClick={() => setAbrirContrasena((abierto) => !abierto)}
@@ -153,13 +190,55 @@ export function FilaUsuario({
               tono="peligro"
               tamano="sm"
               etiquetaEnEspera="Eliminando…"
-              confirmar={`¿Eliminar la cuenta de ${usuario.correo}? No podrá volver a entrar al panel.`}
+              confirmar={`¿Eliminar la cuenta ${usuario.usuario ? `«${usuario.usuario}»` : usuario.correo}? No podrá volver a entrar al panel.`}
             >
               Eliminar
             </BotonEnviar>
           </form>
         )}
       </div>
+
+      {abrirUsuario && (
+        <form
+          action={guardarUsuario}
+          className="flex flex-wrap items-end gap-3 rounded-tarjeta bg-crema-900/[0.03] px-3.5 py-3"
+        >
+          <input type="hidden" name="id" value={usuario.id} />
+          <Campo
+            etiqueta={usuario.usuario ? "Usuario nuevo" : "Usuario"}
+            htmlFor={idCampoUsuario}
+            className="w-full sm:w-72"
+            ayuda={AYUDA_USUARIO}
+          >
+            <Entrada
+              id={idCampoUsuario}
+              name="usuario"
+              type="text"
+              autoComplete="off"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              required
+              maxLength={LARGO_MAXIMO_USUARIO}
+              pattern={PATRON_USUARIO_HTML}
+              title="Letras sin tilde, números y guiones; sin espacios. Mínimo 2 caracteres."
+              value={nombre}
+              onChange={(evento) => setNombre(evento.target.value)}
+            />
+          </Campo>
+          {nombreCambio && (
+            <BotonEnviar tamano="sm" etiquetaEnEspera="Guardando…">
+              Guardar usuario
+            </BotonEnviar>
+          )}
+        </form>
+      )}
+
+      {estadoUsuario.estado !== "idle" && (
+        <Banner tono={estadoUsuario.estado === "ok" ? "ok" : "error"}>
+          {estadoUsuario.mensaje}
+        </Banner>
+      )}
 
       {abrirContrasena && (
         <form

@@ -10,13 +10,17 @@ import {
   ErrorDePermiso,
   ErrorDeValidacion,
   contrasenaDeCuenta,
-  correoDeCuenta,
   ejecutarAccion,
+  emailOpcional,
   enumRequerido,
   uuidRequerido,
 } from "@/lib/admin/validacion";
+import { esCorreoInterno, usuarioDeFormulario } from "@/lib/admin/usuario-panel";
+import type { UsuarioPanel } from "@/lib/admin/tipos";
 import {
+  cambiarNombreDeUsuario,
   cambiarRolDeUsuario,
+  comprobarUsuarioLibre,
   contarPropietarios,
   crearUsuarioDelPanel,
   eliminarUsuarioDelPanel,
@@ -30,7 +34,7 @@ import {
  * ---------------------------------------------------------------------------
  * CADA ACCIÓN VUELVE A PREGUNTAR QUIÉN LLAMA
  * ---------------------------------------------------------------------------
- * `requirePropietario()` abre las cuatro. No basta con esconder el enlace de la
+ * `requirePropietario()` abre las cinco. No basta con esconder el enlace de la
  * navegación ni con proteger la página: una Server Action se puede invocar con
  * un POST directo desde fuera del navegador, y la del `equipo` es una sesión
  * legítima que Next acepta. Por eso el permiso se comprueba **dentro** de la
@@ -49,6 +53,12 @@ import {
 
 const RUTA = "/admin/usuarios";
 
+/** Cómo se nombra una cuenta en los mensajes: por su usuario, o por su correo
+    si todavía no tiene uno. */
+function nombreDe(cuenta: UsuarioPanel): string {
+  return cuenta.usuario ? `«${cuenta.usuario}»` : cuenta.correo;
+}
+
 /* ---------------------------------------------------------------------------
  * Crear
  * ------------------------------------------------------------------------- */
@@ -60,19 +70,28 @@ export async function crearUsuarioAction(
   return ejecutarAccion(async () => {
     await requirePropietario();
 
-    const correo = correoDeCuenta(formData, "correo", "Correo");
+    const usuario = usuarioDeFormulario(formData, "usuario");
     const contrasena = contrasenaDeCuenta(
       formData,
       "contrasena",
       "Contraseña temporal",
     );
     const rol = enumRequerido(formData, "rol", "Rol", ROLES_PANEL);
+    const correo = emailOpcional(formData, "correo")?.toLowerCase() ?? null;
 
-    await crearUsuarioDelPanel({ correo, contrasena, rol });
+    if (correo && esCorreoInterno(correo)) {
+      throw new ErrorDeValidacion(
+        "Ese correo es de los internos del panel. Si la persona no tiene correo de contacto, deja el campo vacío.",
+      );
+    }
+
+    comprobarUsuarioLibre(await listarUsuariosDelPanel(), usuario);
+
+    await crearUsuarioDelPanel({ usuario, correo, contrasena, rol });
 
     refrescarPanel(RUTA);
     return estadoOk(
-      `Cuenta creada para ${correo} con el rol ${ETIQUETA_ROL[rol]}. Pásale la contraseña y dile que, al entrar, la cambie en «Mi cuenta» (arriba a la derecha).`,
+      `Cuenta creada: usuario «${usuario}», rol ${ETIQUETA_ROL[rol]}. Pásale el usuario y la contraseña y dile que, al entrar, la cambie en «Mi cuenta» (arriba a la derecha).`,
     );
   });
 }
@@ -107,7 +126,7 @@ export async function cambiarRolAction(
 
     if (objetivo.rol === rol) {
       return estadoOk(
-        `${objetivo.correo} ya tenía el rol ${ETIQUETA_ROL[rol]}: no se cambió nada.`,
+        `${nombreDe(objetivo)} ya tenía el rol ${ETIQUETA_ROL[rol]}: no se cambió nada.`,
       );
     }
 
@@ -123,7 +142,51 @@ export async function cambiarRolAction(
     await cambiarRolDeUsuario(id, rol);
 
     refrescarPanel(RUTA);
-    return estadoOk(`${objetivo.correo} ahora es ${ETIQUETA_ROL[rol]}.`);
+    return estadoOk(`${nombreDe(objetivo)} ahora es ${ETIQUETA_ROL[rol]}.`);
+  });
+}
+
+/* ---------------------------------------------------------------------------
+ * Cambiar el usuario
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Pone o cambia el usuario con que una cuenta entra. Sirve para corregir un
+ * error al crearla o para darle usuario a una cuenta que no lo tiene (y que,
+ * sin él, no puede entrar). El correo no cambia.
+ */
+export async function cambiarUsuarioAction(
+  _estado: EstadoAccion,
+  formData: FormData,
+): Promise<EstadoAccion> {
+  return ejecutarAccion(async () => {
+    const { usuario: sesion } = await requirePropietario();
+
+    const id = uuidRequerido(formData, "id", "Cuenta");
+    const nuevo = usuarioDeFormulario(formData, "usuario");
+
+    const usuarios = await listarUsuariosDelPanel();
+    const objetivo = usuarios.find((fila) => fila.id === id);
+    if (!objetivo) {
+      throw new ErrorDeValidacion(
+        "Esa cuenta ya no existe. Recarga la página para ver la lista al día.",
+      );
+    }
+
+    if (objetivo.usuario === nuevo) {
+      return estadoOk(`Esa cuenta ya tenía el usuario «${nuevo}»: no se cambió nada.`);
+    }
+
+    comprobarUsuarioLibre(usuarios, nuevo, id);
+
+    await cambiarNombreDeUsuario(id, nuevo);
+
+    refrescarPanel(RUTA);
+    return estadoOk(
+      id === sesion.id
+        ? `Tu usuario ahora es «${nuevo}». La próxima vez que entres, usa ese.`
+        : `Listo: esa cuenta ahora entra con el usuario «${nuevo}». Avísale a la persona.`,
+    );
   });
 }
 
@@ -157,7 +220,7 @@ export async function restablecerContrasenaAction(
 
     refrescarPanel(RUTA);
     return estadoOk(
-      `Contraseña cambiada para ${objetivo.correo}. Pásasela y dile que, al entrar, la cambie en «Mi cuenta» (arriba a la derecha); su sesión actual sigue abierta hasta que salga.`,
+      `Contraseña cambiada para ${nombreDe(objetivo)}. Pásasela y dile que, al entrar, la cambie en «Mi cuenta» (arriba a la derecha); su sesión actual sigue abierta hasta que salga.`,
     );
   });
 }
@@ -169,7 +232,7 @@ export async function restablecerContrasenaAction(
 /**
  * Elimina una cuenta y vuelve a la lista con el resultado en la dirección.
  *
- * Es la única de las cuatro que no usa `useActionState`: después de borrar, la
+ * Es la única de las cinco que no usa `useActionState`: después de borrar, la
  * fila que mostraba el resultado ya no existe, así que el mensaje se pinta en
  * la página de destino (`<Aviso>`), igual que en Bloqueos.
  */
@@ -224,7 +287,7 @@ export async function eliminarUsuarioAction(formData: FormData) {
   refrescarPanel(RUTA);
   redirect(
     `${RUTA}?ok=${encodeURIComponent(
-      `Cuenta de ${objetivo.correo} eliminada. Ya no puede entrar al panel.`,
+      `Cuenta ${nombreDe(objetivo)} eliminada. Ya no puede entrar al panel.`,
     )}`,
   );
 }

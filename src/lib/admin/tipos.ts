@@ -353,7 +353,12 @@ export type CarpetaImagenes =
  */
 export type UsuarioPanel = {
   id: string;
+  /** Con lo que se entra (`app_metadata.usuario`). `null`: la cuenta no tiene
+      usuario y no puede entrar hasta que el propietario le ponga uno. */
+  usuario: string | null;
   correo: string;
+  /** El correo es el interno (`…@usuarios.lafincaecohotel.com`): no se lee. */
+  correoInterno: boolean;
   /** `null`: la cuenta existe en Supabase pero no tiene rol, así que no entra
       al panel. Se lista igual para que el propietario la vea y decida. */
   rol: RolPanel | null;

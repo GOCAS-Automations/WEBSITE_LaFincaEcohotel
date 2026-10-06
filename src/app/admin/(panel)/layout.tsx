@@ -5,6 +5,7 @@ import { salirAction } from "./acciones";
 import { BotonEnviar } from "@/components/admin/boton-enviar";
 import { NavPanel } from "@/components/admin/nav-panel";
 import { requireAdmin } from "@/lib/admin/auth";
+import { usuarioDeMetadatos } from "@/lib/admin/usuario-panel";
 
 /**
  * Marco del panel: cabecera con la sesión y navegación (lateral en escritorio,
@@ -18,6 +19,10 @@ export default async function LayoutPanel({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const { usuario, rol } = await requireAdmin();
+  /* La cabecera enseña el usuario con que se entra; el correo solo si la
+     cuenta todavía no tiene uno. */
+  const nombreVisible =
+    usuarioDeMetadatos(usuario.app_metadata) ?? usuario.email ?? "";
 
   return (
     <div className="min-h-screen bg-crema-100">
@@ -49,9 +54,9 @@ export default async function LayoutPanel({
             </Link>
             <span
               className="hidden max-w-[14rem] truncate text-[0.8125rem] text-crema-600 lg:inline"
-              title={usuario.email ?? ""}
+              title={nombreVisible}
             >
-              {usuario.email}
+              {nombreVisible}
             </span>
             {/* «Mi cuenta» (con «Cambiar mi contraseña») para cualquier rol,
                 con esas mismas palabras en el celular y en el computador:

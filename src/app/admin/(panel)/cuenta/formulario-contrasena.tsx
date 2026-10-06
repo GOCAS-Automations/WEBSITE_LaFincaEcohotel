@@ -15,7 +15,7 @@ import { LARGO_MINIMO_CONTRASENA } from "@/lib/admin/roles";
  * celular. Los `autoComplete` son los que entienden los gestores de
  * contraseñas: proponen una nueva y la guardan.
  */
-export function FormularioContrasena({ correo }: { correo: string }) {
+export function FormularioContrasena({ usuario }: { usuario: string }) {
   const [mostrar, setMostrar] = useState(false);
   const tipo = mostrar ? "text" : "password";
 
@@ -30,7 +30,7 @@ export function FormularioContrasena({ correo }: { correo: string }) {
         type="text"
         name="usuario"
         autoComplete="username"
-        value={correo}
+        value={usuario}
         readOnly
         hidden
       />

@@ -43,3 +43,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 public/tarjeta-og.webp
+
+# credenciales locales (usuarios y contraseñas del panel) — NUNCA subir
+*.local.md

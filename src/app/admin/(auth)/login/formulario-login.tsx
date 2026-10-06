@@ -4,6 +4,12 @@ import { entrarAction } from "./acciones";
 import { FormularioAccion } from "@/components/admin/formulario-accion";
 import { Campo, Entrada } from "@/components/admin/ui";
 
+/**
+ * Usuario y contraseña. El usuario va en un campo de texto (no `email`) y sin
+ * corrección ni mayúscula automática: en el celular, «J-mejia» o un autocorrector
+ * que cambie el guion serían un fallo de entrada sin culpa de nadie. El
+ * servidor normaliza igual (sin espacios, minúsculas).
+ */
 export function FormularioLogin({ destino }: { destino: string }) {
   return (
     <FormularioAccion
@@ -14,15 +20,19 @@ export function FormularioLogin({ destino }: { destino: string }) {
     >
       <input type="hidden" name="next" value={destino} />
 
-      <Campo etiqueta="Correo" htmlFor="correo" obligatorio>
+      <Campo etiqueta="Usuario" htmlFor="usuario" obligatorio>
         <Entrada
-          id="correo"
-          name="correo"
-          type="email"
+          id="usuario"
+          name="usuario"
+          type="text"
           autoComplete="username"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           required
           autoFocus
-          placeholder="tucorreo@lafincaecohotel.com"
+          maxLength={60}
+          placeholder="Ej.: j-mejia"
         />
       </Campo>
 

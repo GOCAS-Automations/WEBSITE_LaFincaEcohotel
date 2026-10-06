@@ -12,6 +12,12 @@ import {
   ROLES_PANEL,
   type RolPanel,
 } from "@/lib/admin/roles";
+import {
+  AYUDA_USUARIO,
+  DOMINIO_CORREO_INTERNO,
+  LARGO_MAXIMO_USUARIO,
+  PATRON_USUARIO_HTML,
+} from "@/lib/admin/usuario-panel";
 
 /**
  * Alta de una cuenta del panel.
@@ -35,14 +41,25 @@ export function FormularioNuevoUsuario() {
       etiquetaEnEspera="Creando…"
     >
       <div className="grid gap-4 sm:grid-cols-2">
-        <Campo etiqueta="Correo" htmlFor="correo" obligatorio>
+        <Campo
+          etiqueta="Usuario"
+          htmlFor="usuario"
+          obligatorio
+          ayuda={AYUDA_USUARIO}
+        >
           <Entrada
-            id="correo"
-            name="correo"
-            type="email"
+            id="usuario"
+            name="usuario"
+            type="text"
             autoComplete="off"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
             required
-            placeholder="nombre@correo.com"
+            maxLength={LARGO_MAXIMO_USUARIO}
+            pattern={PATRON_USUARIO_HTML}
+            title="Letras sin tilde, números y guiones; sin espacios. Mínimo 2 caracteres."
+            placeholder="Ej.: j-mejia"
           />
         </Campo>
 
@@ -64,9 +81,22 @@ export function FormularioNuevoUsuario() {
         </Campo>
 
         <Campo
+          etiqueta="Correo de contacto (opcional)"
+          htmlFor="correo"
+          ayuda={`No sirve para entrar. Si lo dejas vacío, la cuenta usa uno interno (…@${DOMINIO_CORREO_INTERNO}) que nadie lee.`}
+        >
+          <Entrada
+            id="correo"
+            name="correo"
+            type="email"
+            autoComplete="off"
+            placeholder="nombre@correo.com"
+          />
+        </Campo>
+
+        <Campo
           etiqueta="Rol"
           htmlFor="rol"
-          className="sm:col-span-2"
           ayuda={DESCRIPCION_ROL[rol]}
         >
           <Desplegable

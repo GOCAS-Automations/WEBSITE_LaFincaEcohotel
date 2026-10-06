@@ -23,12 +23,19 @@ import type { User } from "@supabase/supabase-js";
 import { ErrorDeValidacion } from "./validacion";
 import { rolDeMetadatos, type RolPanel } from "./roles";
 import type { UsuarioPanel } from "./tipos";
+import {
+  correoInternoDe,
+  esCorreoInterno,
+  usuarioDeMetadatos,
+} from "./usuario-panel";
 import { crearClienteAdmin } from "@/lib/supabase/admin";
 
 function aUsuarioPanel(usuario: User): UsuarioPanel {
   return {
     id: usuario.id,
+    usuario: usuarioDeMetadatos(usuario.app_metadata),
     correo: usuario.email ?? "(sin correo)",
+    correoInterno: esCorreoInterno(usuario.email),
     rol: rolDeMetadatos(usuario.app_metadata),
     ultimoAcceso: usuario.last_sign_in_at ?? null,
     creada: usuario.created_at,
@@ -36,7 +43,7 @@ function aUsuarioPanel(usuario: User): UsuarioPanel {
 }
 
 /**
- * Todas las cuentas, las más recientes primero.
+ * Todas las cuentas, ordenadas por usuario.
  *
  * El hotel va a tener un puñado de cuentas, no miles: una sola página de 200 es
  * de sobra y evita una paginación que nadie usaría. Si algún día se pasara de
@@ -52,9 +59,39 @@ export async function listarUsuariosDelPanel(): Promise<UsuarioPanel[]> {
 
   if (error) throw traducirErrorDeAuth(error);
 
-  return data.users
-    .map(aUsuarioPanel)
-    .sort((a, b) => b.creada.localeCompare(a.creada));
+  /* Por usuario, en orden alfabético; las cuentas sin usuario (no pueden
+     entrar) van al final para que se vean y se arreglen. */
+  return data.users.map(aUsuarioPanel).sort(ordenarPorUsuario);
+}
+
+export function ordenarPorUsuario(a: UsuarioPanel, b: UsuarioPanel): number {
+  if (a.usuario && b.usuario) return a.usuario.localeCompare(b.usuario, "es");
+  if (a.usuario) return -1;
+  if (b.usuario) return 1;
+  return a.correo.localeCompare(b.correo, "es");
+}
+
+/**
+ * Lanza si ese usuario ya lo tiene otra cuenta. `excepto` es la cuenta que se
+ * está renombrando (puede «cambiar» a su propio usuario sin error).
+ *
+ * La unicidad la pone la aplicación porque `auth.users` no admite un índice
+ * nuestro; si aun así se colaran dos iguales, la búsqueda del login
+ * (`correo_de_usuario_panel`) falla cerrado y nadie entra por ese usuario.
+ */
+export function comprobarUsuarioLibre(
+  usuarios: Pick<UsuarioPanel, "id" | "usuario">[],
+  usuario: string,
+  excepto?: string,
+): void {
+  const ocupado = usuarios.some(
+    (fila) => fila.usuario === usuario && fila.id !== excepto,
+  );
+  if (ocupado) {
+    throw new ErrorDeValidacion(
+      `Ya hay una cuenta con el usuario «${usuario}». Elige otro, por ejemplo añadiendo la inicial del segundo apellido.`,
+    );
+  }
 }
 
 /** Cuántos propietarios quedan. Manda la última palabra sobre quitar un rol. */
@@ -62,12 +99,22 @@ export function contarPropietarios(usuarios: UsuarioPanel[]): number {
   return usuarios.filter((usuario) => usuario.rol === "propietario").length;
 }
 
+/**
+ * Crea una cuenta con usuario. Sin correo de contacto se usa el interno
+ * (`usuario@usuarios.lafincaecohotel.com`), que existe solo porque Supabase
+ * pide un correo y nunca recibe nada.
+ *
+ * `auth.admin.createUser` —nunca `signUp`— para escribir `app_metadata` (rol y
+ * usuario) en el mismo paso.
+ */
 export async function crearUsuarioDelPanel({
+  usuario,
   correo,
   contrasena,
   rol,
 }: {
-  correo: string;
+  usuario: string;
+  correo: string | null;
   contrasena: string;
   rol: RolPanel;
 }): Promise<UsuarioPanel> {
@@ -81,10 +128,10 @@ export async function crearUsuarioDelPanel({
     persona o por WhatsApp, y la cambia en cuanto entre.
   */
   const { data, error } = await admin.auth.admin.createUser({
-    email: correo,
+    email: correo ?? correoInternoDe(usuario),
     password: contrasena,
     email_confirm: true,
-    app_metadata: { rol },
+    app_metadata: { rol, usuario },
   });
 
   if (error) throw traducirErrorDeAuth(error);
@@ -97,15 +144,37 @@ export async function crearUsuarioDelPanel({
   return aUsuarioPanel(data.user);
 }
 
+/**
+ * Cambia claves de `app_metadata` conservando las demás (cambiar el rol no
+ * puede borrar el usuario ni al revés). Supabase ya mezcla las claves, pero se
+ * manda el objeto completo para no depender de ese detalle.
+ */
+async function actualizarMetadatos(
+  id: string,
+  cambios: Record<string, unknown>,
+): Promise<void> {
+  const admin = crearClienteAdmin();
+  const { data, error: errorLectura } = await admin.auth.admin.getUserById(id);
+  if (errorLectura) throw traducirErrorDeAuth(errorLectura);
+  const { error } = await admin.auth.admin.updateUserById(id, {
+    app_metadata: { ...(data.user?.app_metadata ?? {}), ...cambios },
+  });
+  if (error) throw traducirErrorDeAuth(error);
+}
+
 export async function cambiarRolDeUsuario(
   id: string,
   rol: RolPanel,
 ): Promise<void> {
-  const admin = crearClienteAdmin();
-  const { error } = await admin.auth.admin.updateUserById(id, {
-    app_metadata: { rol },
-  });
-  if (error) throw traducirErrorDeAuth(error);
+  await actualizarMetadatos(id, { rol });
+}
+
+/** Le pone o le cambia el usuario a una cuenta. El correo no se toca. */
+export async function cambiarNombreDeUsuario(
+  id: string,
+  usuario: string,
+): Promise<void> {
+  await actualizarMetadatos(id, { usuario });
 }
 
 export async function restablecerContrasenaDeUsuario(
@@ -151,7 +220,7 @@ export function traducirErrorDeAuth(error: {
     error.code === "user_already_exists"
   ) {
     return new ErrorDeValidacion(
-      "Ya hay una cuenta con ese correo. Si es de alguien que ya no trabaja aquí, cámbiale la contraseña o elimínala.",
+      "Ya hay una cuenta con ese correo. Usa otro correo de contacto, o déjalo vacío para que la cuenta use uno interno.",
     );
   }
 
