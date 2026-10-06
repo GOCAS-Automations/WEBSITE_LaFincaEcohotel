@@ -26,6 +26,13 @@ import {
 } from "@/lib/reserva/noches";
 import { nombreDelFestivo } from "@/lib/festivos-colombia";
 import { formatearFechaCorta } from "@/lib/utils/formato";
+import {
+  limitesDelCalendario,
+  mesEnPalabras,
+  puedeAvanzar,
+  puedeRetroceder,
+} from "@/lib/utils/selector-mes";
+import { RejillaMeses } from "@/components/ui/rejilla-meses";
 
 import { IconoCalendario } from "./iconos";
 import { useLadoDelPanel } from "./usar-lado-panel";
@@ -104,6 +111,12 @@ import { useLadoDelPanel } from "./usar-lado-panel";
  *   lector de pantalla nunca llegaba a decir POR QUÉ no se puede elegir.
  * · El foco NO se escapa del panel mientras está abierto, `Escape` lo cierra y
  *   devuelve el foco al botón.
+ * · **El título del mes es un botón** (2026-10-05): abre la rejilla de meses
+ *   con cambio de año (`RejillaMeses`), como en iOS. `Escape` dentro de ella
+ *   vuelve a los días sin cerrar el panel. Flechas, teclado y selector
+ *   respetan los MISMOS límites —del mes de la primera fecha elegible a
+ *   `MESES_VISIBLES_CALENDARIO` meses—, que viven en
+ *   `src/lib/utils/selector-mes.ts`.
  * · Un `aria-live="polite"` anuncia la selección y los errores.
  *
  * ---------------------------------------------------------------------------
@@ -320,6 +333,7 @@ export function CalendarioFechas({
 }: PropsCalendario) {
   const idPanel = useId();
   const idAviso = useId();
+  const idMeses = useId();
 
   /* La primera fecha elegible. Sin `minima`, el único límite es el pasado. */
   const primera = minima && minima > hoy ? minima : hoy;
@@ -327,6 +341,19 @@ export function CalendarioFechas({
   const [abierto, setAbierto] = useState(false);
   const [mes, setMes] = useState(() => inicioDeMes(entrada || primera));
   const [foco, setFoco] = useState(() => entrada || primera);
+  /** ¿Está abierta la rejilla de meses (al tocar el título del mes)? */
+  const [eligiendoMes, setEligiendoMes] = useState(false);
+  const eligiendoMesRef = useRef(false);
+  useEffect(() => {
+    eligiendoMesRef.current = eligiendoMes;
+  });
+
+  /*
+    HASTA DÓNDE SE PUEDE IR. Las flechas, el teclado y el selector de mes
+    preguntan lo mismo: del mes de la primera fecha elegible —no se vuelve a un
+    mes sin ningún día que elegir— a dos años vista.
+  */
+  const limites = useMemo(() => limitesDelCalendario(primera), [primera]);
   /**
    * Fase: si ya hay llegada y falta salida, el siguiente clic pone la salida.
    * En modo «solo ese día» no hay salida que elegir, así que cada clic mueve
@@ -350,6 +377,7 @@ export function CalendarioFechas({
 
   const contenedor = useRef<HTMLDivElement>(null);
   const disparador = useRef<HTMLButtonElement>(null);
+  const botonMes = useRef<HTMLButtonElement>(null);
   const celdaEnfocada = useRef<HTMLButtonElement>(null);
   const hoja = useRef<HTMLDivElement>(null);
 
@@ -381,6 +409,13 @@ export function CalendarioFechas({
     function alPulsarTecla(evento: KeyboardEvent) {
       if (evento.key === "Escape") {
         evento.stopPropagation();
+        /* Con la rejilla de meses abierta, Escape vuelve a los días: cerrar
+           el calendario entero de golpe sería perder lo que se miraba. */
+        if (eligiendoMesRef.current) {
+          setEligiendoMes(false);
+          botonMes.current?.focus();
+          return;
+        }
         setAbierto(false);
         disparador.current?.focus();
       }
@@ -398,10 +433,11 @@ export function CalendarioFechas({
     };
   }, [abierto]);
 
-  /* El foco va a la celda activa cada vez que se mueve. */
+  /* El foco va a la celda activa cada vez que se mueve. Con la rejilla de
+     meses abierta, el foco lo lleva ella. */
   useEffect(() => {
-    if (abierto) celdaEnfocada.current?.focus();
-  }, [abierto, foco, mes]);
+    if (abierto && !eligiendoMes) celdaEnfocada.current?.focus();
+  }, [abierto, foco, mes, eligiendoMes]);
 
   /* --- Reglas ----------------------------------------------------------- */
 
@@ -478,10 +514,12 @@ export function CalendarioFechas({
   const moverFoco = useCallback(
     (nuevo: string) => {
       if (nuevo < primera) return;
+      /* Ni más allá del último mes al que llegan las flechas. */
+      if (nuevo.slice(0, 7) > limites.maximo) return;
       setFoco(nuevo);
       if (nuevo.slice(0, 7) !== mes.slice(0, 7)) setMes(inicioDeMes(nuevo));
     },
-    [primera, mes],
+    [primera, mes, limites],
   );
 
   const teclasRejilla = useCallback(
@@ -540,8 +578,18 @@ export function CalendarioFechas({
             ? "Elige el día"
             : "Elige tus fechas";
 
-  /* No se retrocede a un mes en el que ya no queda ningún día elegible. */
-  const mesAnteriorPermitido = inicioDeMes(mes) > inicioDeMes(primera);
+  /* No se retrocede a un mes en el que ya no queda ningún día elegible, ni
+     se avanza más allá de dos años: los mismos límites que el selector. */
+  const mesAnteriorPermitido = puedeRetroceder(mes.slice(0, 7), limites);
+  const mesSiguientePermitido = puedeAvanzar(mes.slice(0, 7), limites);
+
+  /** Del selector de meses a los días de ese mes, con el foco en el primero elegible. */
+  const irAlMes = (clave: string) => {
+    const inicio = `${clave}-01`;
+    setMes(inicio);
+    setFoco(inicio < primera ? primera : inicio);
+    setEligiendoMes(false);
+  };
 
   const semanas = semanasDelMes(mes);
   /* ¿Hay algo tachado por ocupación en el mes que se ve? Entonces se explica
@@ -584,6 +632,7 @@ export function CalendarioFechas({
           setAbierto((valor) => !valor);
           setMes(inicioDeMes(entrada || primera));
           setFoco(entrada || primera);
+          setEligiendoMes(false);
         }}
         aria-expanded={abierto}
         aria-controls={idPanel}
@@ -689,25 +738,50 @@ export function CalendarioFechas({
             }
           >
           <div className="mb-3 flex items-center justify-between gap-2 lg:[grid-area:mes]">
+            {/* Mientras se elige el mes, las flechas de mes se apartan sin
+                dejar hueco: el año tiene las suyas dentro de la rejilla. */}
             <button
               type="button"
               onClick={() => setMes(sumarMeses(mes, -1))}
               disabled={!mesAnteriorPermitido}
-              className="flex size-11 shrink-0 items-center justify-center rounded-full text-petroleo-700 transition-colors duration-200 hover:bg-crema-100 disabled:pointer-events-none disabled:opacity-35"
+              className={`flex size-11 shrink-0 items-center justify-center rounded-full text-petroleo-700 transition-colors duration-200 hover:bg-crema-100 disabled:pointer-events-none disabled:opacity-35 ${eligiendoMes ? "invisible" : ""}`}
             >
               <span className="sr-only">Mes anterior</span>
               <Flecha className="size-4 rotate-180" />
             </button>
-            <p
-              aria-live="polite"
-              className="font-titulo text-sm font-bold text-petroleo-900 first-letter:uppercase"
+            {/*
+              EL TÍTULO DEL MES ABRE EL SELECTOR DE MES Y AÑO.
+              Como en el calendario del iPhone: tocar «octubre de 2026» para
+              saltar a marzo sin pasar cinco meses a golpe de flecha.
+            */}
+            <button
+              ref={botonMes}
+              type="button"
+              onClick={() => setEligiendoMes((valor) => !valor)}
+              aria-expanded={eligiendoMes}
+              aria-controls={idMeses}
+              aria-label={
+                eligiendoMes
+                  ? "Volver a los días del mes"
+                  : `${mesEnPalabras(mes.slice(0, 7))}. Cambiar de mes o de año`
+              }
+              className="flex min-h-11 items-center gap-1.5 rounded-full px-3 font-titulo text-sm font-bold text-petroleo-900 transition-colors duration-200 hover:bg-crema-100"
             >
-              {formateadorMes.format(aUTC(mes))}
-            </p>
+              <span className="first-letter:uppercase">
+                {formateadorMes.format(aUTC(mes))}
+              </span>
+              <Flecha
+                className={`size-3.5 text-petroleo-600 transition-transform duration-200 ${eligiendoMes ? "-rotate-90" : "rotate-90"}`}
+              />
+            </button>
+            <span aria-live="polite" className="sr-only">
+              {mesEnPalabras(mes.slice(0, 7))}
+            </span>
             <button
               type="button"
               onClick={() => setMes(sumarMeses(mes, 1))}
-              className="flex size-11 shrink-0 items-center justify-center rounded-full text-petroleo-700 transition-colors duration-200 hover:bg-crema-100"
+              disabled={!mesSiguientePermitido}
+              className={`flex size-11 shrink-0 items-center justify-center rounded-full text-petroleo-700 transition-colors duration-200 hover:bg-crema-100 disabled:pointer-events-none disabled:opacity-35 ${eligiendoMes ? "invisible" : ""}`}
             >
               <span className="sr-only">Mes siguiente</span>
               <Flecha className="size-4" />
@@ -813,6 +887,22 @@ export function CalendarioFechas({
           </div>
 
           <div className="lg:[grid-area:rejilla]">
+          {eligiendoMes ? (
+            <RejillaMeses
+              id={idMeses}
+              mes={mes.slice(0, 7)}
+              limites={limites}
+              mesDeHoy={hoy.slice(0, 7)}
+              motivoAntes="ya no queda ningún día que elegir"
+              motivoDespues="todavía no se puede reservar tan lejos"
+              alElegir={irAlMes}
+              alCerrar={() => {
+                setEligiendoMes(false);
+                botonMes.current?.focus();
+              }}
+              className="pb-1"
+            />
+          ) : (
           <table
             role="grid"
             aria-busy={cargandoOcupacion || undefined}
@@ -860,6 +950,7 @@ export function CalendarioFechas({
               ))}
             </tbody>
           </table>
+          )}
           </div>
 
           <div className="lg:[grid-area:pie] lg:self-end">
