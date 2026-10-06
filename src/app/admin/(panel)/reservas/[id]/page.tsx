@@ -157,6 +157,99 @@ export default async function PaginaReserva({
   const restanteHold = cuentaAtras(reserva.expira_at, ahora);
   const holdUrgente = vencePronto(reserva, ahora);
 
+  /* Un intento de pago. El más reciente se ve siempre; los anteriores quedan
+     tras «Ver los intentos anteriores» cuando hay más de uno, para que la
+     tarjeta del Pago no se alargue sin fin. Siguen todos a un clic. */
+  const intentoDePago = (pago: (typeof pagos)[number]) => (
+    <div
+      key={pago.id}
+      className="flex flex-col gap-1.5 rounded-tarjeta bg-crema-900/[0.03] px-3.5 py-3"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Pastilla
+          tono={
+            esAprobado(pago.estado)
+              ? "verde"
+              : esRechazado(pago.estado)
+                ? "rojo"
+                : "ambar"
+          }
+        >
+          {ETIQUETA_ESTADO_BOLD[pago.estado]}
+        </Pastilla>
+        <span className="font-titulo text-[0.9375rem] font-semibold text-crema-900">
+          {formatearCOP(pago.monto)}
+        </span>
+      </div>
+
+      <dl className="flex flex-col gap-1 text-[0.8125rem]">
+        <div className="flex flex-wrap items-baseline gap-x-2">
+          <dt className="text-crema-700">Referencia</dt>
+          <dd className="font-mono text-[0.75rem] break-all text-crema-900 select-all">
+            {pago.referencia}
+          </dd>
+        </div>
+        {pago.transaccionId ? (
+          <div className="flex flex-wrap items-baseline gap-x-2">
+            <dt className="text-crema-700">
+              Identificador en Bold
+            </dt>
+            <dd className="font-mono text-[0.75rem] break-all text-crema-900 select-all">
+              {pago.transaccionId}
+            </dd>
+          </div>
+        ) : null}
+        <div className="flex flex-wrap justify-between gap-x-3">
+          <dt className="text-crema-700">Método e intento</dt>
+          <dd className="text-crema-900">
+            {pago.metodo ?? "—"} · {formatearFechaHora(pago.creadoEn)}
+          </dd>
+        </div>
+      </dl>
+    </div>
+  );
+
+  /* «Cambiar el estado» es siempre la misma tarjeta; lo que cambia es dónde
+     cae, para que las dos columnas terminen casi a la misma altura:
+       · con pagos en línea el Pago es alto → izquierda, bajo el Resumen;
+       · sin pagos y con un Resumen largo (experiencias o notas) → derecha, bajo
+         el Pago, que es corto;
+       · sin pagos y con un Resumen corto → franja de ancho completo debajo de
+         las dos, porque Resumen y Pago ya miden casi lo mismo. */
+  const resumenLargo = elegidos.length > 0 || Boolean(reserva.notas);
+  const estadoALaDerecha = pagos.length === 0 && resumenLargo;
+  const estadoEnFranja = pagos.length === 0 && !resumenLargo;
+  const tarjetaEstado = (
+    <Tarjeta>
+      <CabeceraTarjeta
+        titulo="Cambiar el estado"
+        descripcion={AYUDA_ESTADO[reserva.estado]}
+      />
+      <CuerpoTarjeta className="flex flex-wrap gap-2">
+        {ESTADOS_RESERVA.filter((estado) => estado !== reserva.estado).map(
+          (estado) => (
+            <form key={estado} action={cambiarEstadoReservaAction}>
+              <input type="hidden" name="id" value={reserva.id} />
+              <input type="hidden" name="estado" value={estado} />
+              <BotonEnviar
+                tono="secundario"
+                tamano="sm"
+                etiquetaEnEspera="Cambiando…"
+                confirmar={
+                  estado === "cancelada"
+                    ? "¿Cancelar esta reserva? Esas noches volverán a quedar libres en el calendario."
+                    : undefined
+                }
+              >
+                Marcar como {ETIQUETA_ESTADO[estado].toLowerCase()}
+              </BotonEnviar>
+            </form>
+          ),
+        )}
+      </CuerpoTarjeta>
+    </Tarjeta>
+  );
+
   return (
     <>
       <EncabezadoPagina
@@ -174,8 +267,20 @@ export default async function PaginaReserva({
 
       <Aviso ok={aviso.ok} error={aviso.error} />
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
+      {/*
+        DISTRIBUCIÓN. En escritorio, dos columnas: a la izquierda el Resumen y,
+        debajo, «Cambiar el estado»; a la derecha el Pago. Cada tarjeta se
+        estira para que las dos columnas terminen a la misma altura y no quede
+        un hueco debajo de la más corta. Si la reserva no tiene ningún pago en
+        línea el Pago es corto y «Cambiar el estado» se va a su columna para
+        compensar. En el celular todo va en una columna y el orden es el del
+        código: Resumen, Pago, Cambiar el estado y, al final de la página, la
+        zona de peligro.
+      */}
+      <div className="grid gap-6 lg:grid-cols-3 lg:grid-rows-[1fr_auto]">
+        <div
+          className={`flex flex-col lg:col-span-2 lg:col-start-1 lg:row-start-1 [&>section]:flex-1 ${estadoALaDerecha ? "lg:row-span-2" : ""}`}
+        >
           <Tarjeta>
             <CabeceraTarjeta
               titulo="Resumen"
@@ -368,7 +473,9 @@ export default async function PaginaReserva({
           </Tarjeta>
         </div>
 
-        <div className="space-y-6">
+        <div
+          className={`flex flex-col gap-6 lg:col-start-3 lg:row-start-1 [&>section:first-child]:flex-1 ${estadoEnFranja ? "" : "lg:row-span-2"}`}
+        >
           <Tarjeta>
             <CabeceraTarjeta
               titulo="Pago"
@@ -472,58 +579,17 @@ export default async function PaginaReserva({
                       : `Intentos de pago (${pagos.length})`}
                   </p>
 
-                  {pagos.map((pago) => (
-                    <div
-                      key={pago.id}
-                      className="flex flex-col gap-1.5 rounded-tarjeta bg-crema-900/[0.03] px-3.5 py-3"
-                    >
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <Pastilla
-                          tono={
-                            esAprobado(pago.estado)
-                              ? "verde"
-                              : esRechazado(pago.estado)
-                                ? "rojo"
-                                : "ambar"
-                          }
-                        >
-                          {ETIQUETA_ESTADO_BOLD[pago.estado]}
-                        </Pastilla>
-                        <span className="font-titulo text-[0.9375rem] font-semibold text-crema-900">
-                          {formatearCOP(pago.monto)}
-                        </span>
+                  {intentoDePago(pagos[0])}
+                  {pagos.length > 1 ? (
+                    <details>
+                      <summary className="cursor-pointer text-[0.8125rem] font-semibold text-petroleo-700 underline-offset-4 hover:underline">
+                        Ver {pagos.length === 2 ? "el intento anterior" : `los ${pagos.length - 1} intentos anteriores`}
+                      </summary>
+                      <div className="mt-3 flex flex-col gap-3">
+                        {pagos.slice(1).map(intentoDePago)}
                       </div>
-
-                      <dl className="flex flex-col gap-1 text-[0.8125rem]">
-                        <div className="flex flex-wrap justify-between gap-x-3">
-                          <dt className="text-crema-700">Método</dt>
-                          <dd className="text-crema-900">{pago.metodo ?? "—"}</dd>
-                        </div>
-                        <div className="flex flex-col gap-0.5">
-                          <dt className="text-crema-700">Referencia</dt>
-                          <dd className="font-mono text-[0.75rem] break-all text-crema-900 select-all">
-                            {pago.referencia}
-                          </dd>
-                        </div>
-                        {pago.transaccionId ? (
-                          <div className="flex flex-col gap-0.5">
-                            <dt className="text-crema-700">
-                              Identificador en Bold
-                            </dt>
-                            <dd className="font-mono text-[0.75rem] break-all text-crema-900 select-all">
-                              {pago.transaccionId}
-                            </dd>
-                          </div>
-                        ) : null}
-                        <div className="flex flex-wrap justify-between gap-x-3">
-                          <dt className="text-crema-700">Intentado</dt>
-                          <dd className="text-crema-900">
-                            {formatearFechaHora(pago.creadoEn)}
-                          </dd>
-                        </div>
-                      </dl>
-                    </div>
-                  ))}
+                    </details>
+                  ) : null}
 
                   {/* ---------------------------------------------------------
                       «VERIFICAR PAGO CON BOLD».
@@ -581,57 +647,16 @@ export default async function PaginaReserva({
             </CuerpoTarjeta>
           </Tarjeta>
 
-          <Tarjeta>
-            <CabeceraTarjeta
-              titulo="Cambiar el estado"
-              descripcion={AYUDA_ESTADO[reserva.estado]}
-            />
-            <CuerpoTarjeta className="space-y-2">
-              {ESTADOS_RESERVA.filter((estado) => estado !== reserva.estado).map(
-                (estado) => (
-                  <form key={estado} action={cambiarEstadoReservaAction}>
-                    <input type="hidden" name="id" value={reserva.id} />
-                    <input type="hidden" name="estado" value={estado} />
-                    <BotonEnviar
-                      tono="secundario"
-                      tamano="sm"
-                      className="w-full"
-                      etiquetaEnEspera="Cambiando…"
-                      confirmar={
-                        estado === "cancelada"
-                          ? "¿Cancelar esta reserva? Esas noches volverán a quedar libres en el calendario."
-                          : undefined
-                      }
-                    >
-                      Marcar como {ETIQUETA_ESTADO[estado].toLowerCase()}
-                    </BotonEnviar>
-                  </form>
-                ),
-              )}
-            </CuerpoTarjeta>
-          </Tarjeta>
-
-          <Tarjeta>
-            <CabeceraTarjeta
-              titulo="Borrar"
-              descripcion="Lo normal es cancelar, que conserva el historial. Borrar es definitivo."
-            />
-            <CuerpoTarjeta>
-              <form action={eliminarReservaAction}>
-                <input type="hidden" name="id" value={reserva.id} />
-                <BotonEnviar
-                  tono="peligro"
-                  tamano="sm"
-                  className="w-full"
-                  etiquetaEnEspera="Borrando…"
-                  confirmar={`¿Seguro que quieres borrar la reserva ${reserva.codigo} de ${reserva.huesped_nombre}? Esta acción no se puede deshacer.`}
-                >
-                  Borrar la reserva
-                </BotonEnviar>
-              </form>
-            </CuerpoTarjeta>
-          </Tarjeta>
+          {estadoALaDerecha ? tarjetaEstado : null}
         </div>
+
+        {estadoALaDerecha ? null : (
+          <div
+            className={`lg:row-start-2 ${estadoEnFranja ? "lg:col-span-3" : "lg:col-span-2 lg:col-start-1"}`}
+          >
+            {tarjetaEstado}
+          </div>
+        )}
       </div>
 
       <div className="mt-8">
@@ -652,6 +677,31 @@ export default async function PaginaReserva({
           </CuerpoTarjeta>
         </Tarjeta>
       </div>
+
+      {/* Zona de peligro: al final de la página y discreta, para que borrar no
+          quede a la vista cuando uno solo quiere cambiar un estado. */}
+      <section className="mt-8 flex flex-col gap-4 rounded-amplio bg-red-600/[0.04] px-5 py-4 ring-1 ring-red-600/15 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="font-titulo text-[0.9375rem] font-semibold text-crema-900">
+            Borrar la reserva
+          </h2>
+          <p className="mt-0.5 text-[0.8125rem] leading-snug text-crema-700">
+            Lo normal es cancelar, que conserva el historial. Borrar es
+            definitivo.
+          </p>
+        </div>
+        <form action={eliminarReservaAction} className="shrink-0">
+          <input type="hidden" name="id" value={reserva.id} />
+          <BotonEnviar
+            tono="peligro"
+            tamano="sm"
+            etiquetaEnEspera="Borrando…"
+            confirmar={`¿Seguro que quieres borrar la reserva ${reserva.codigo} de ${reserva.huesped_nombre}? Esta acción no se puede deshacer.`}
+          >
+            Borrar la reserva
+          </BotonEnviar>
+        </form>
+      </section>
     </>
   );
 }

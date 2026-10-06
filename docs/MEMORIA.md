@@ -4157,3 +4157,9 @@ borró del bucket**: sigue en uso en las claves `galeria`, `lugar` y `home.plane
 - **Sin enumeración:** un usuario inexistente y una contraseña mala reciben el mismo mensaje. Con un usuario inexistente se hace un intento señuelo, y todo fallo tarda al menos 1 s (más 0–200 ms de azar). Medido en localhost: entre 1,1 y 1,2 s en los dos casos. Si se escribe un correo, el mensaje orienta («Entra con tu usuario…») sin consultar nada. Los límites no cambian: 10 intentos cada 5 min por usuario normalizado y 30 cada 15 min por IP.
 - **Cuentas:** `admin` (correo real del hotel, contraseña de siempre comprobada), `j-mejia` y `a-ospina` (propietarios nuevos con correo interno `@usuarios.lafincaecohotel.com`, creados con `auth.admin.createUser`) y `pruebas-gocas` (equipo). Las contraseñas están en `CREDENCIALES_PANEL.local.md`, cubierto por la regla `*.local.md` de `.gitignore`.
 - **Panel:** Usuarios crea cuentas con usuario, rol y un correo opcional, y deja poner o cambiar el usuario. Mi cuenta y la cabecera muestran el usuario. `requireAdmin()`, el middleware y RLS no cambian.
+
+### Ficha de reserva reorganizada (2026-10-06)
+
+- Escritorio: Resumen a la izquierda, Pago a la derecha, tarjetas estiradas para que las dos columnas terminen a la misma altura. «Cambiar el estado» (botones en fila) va bajo el Resumen si hay pagos en línea, bajo el Pago si no hay pagos y el Resumen es largo, y en franja de ancho completo si no hay pagos y el Resumen es corto. «Borrar» es una zona de peligro de ancho completo al final de la página. Celular: una columna (Resumen, Pago, Estado, Editar, Borrar).
+- Con varios intentos de pago solo el último se ve; los anteriores quedan tras «Ver los intentos anteriores».
+- Medido a 1280/1440/1920: el espacio vacío máximo es ~110 px (reserva con un solo pago, dentro de la tarjeta del Resumen), sin huecos de lienzo.
