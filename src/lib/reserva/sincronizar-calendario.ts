@@ -117,6 +117,15 @@ function eventoDeReserva(reserva: ReservaAdmin): EventoNuevo {
   };
 }
 
+/**
+ * ¿El fallo dice que el evento ya no está en Google? Solo 404 (no existe) y 410
+ * (borrado del todo). Cualquier otro fallo —429, 5xx, `timeout`, red, permisos—
+ * no prueba que el evento haya desaparecido.
+ */
+export function eventoYaNoExiste(resultado: { ok: boolean; http?: number }): boolean {
+  return !resultado.ok && (resultado.http === 404 || resultado.http === 410);
+}
+
 /** Guarda (o borra) el id del evento en la reserva, sin hacer ruido si falla. */
 async function guardarReferencia(
   supabase: SupabaseClient,
@@ -178,6 +187,8 @@ export async function sincronizarReservaEnCalendario(
   const evento = eventoDeReserva(reserva);
 
   if (reserva.referencia_externa) {
+    /* El PATCH lleva `status: "confirmed"`: si el equipo borró el evento en
+       Google (queda `cancelled`), con esto vuelve a verse en el calendario. */
     const actualizado = await actualizarEvento(
       calendarioId,
       reserva.referencia_externa,
@@ -187,9 +198,18 @@ export async function sincronizarReservaEnCalendario(
       invalidarCacheCalendario();
       return null;
     }
-    /* Si alguien borró el evento a mano en Google, actualizar ya no tiene
-       sentido: se crea uno nuevo y se reescribe la referencia. */
     console.error("[calendario] al actualizar el evento:", actualizado.mensaje);
+    /*
+      SOLO SE CREA OTRO SI EL EVENTO YA NO EXISTE (404 o 410).
+
+      Ante un fallo pasajero —429, 5xx, `timeout`, red— el evento sigue en
+      Google: crear uno nuevo dejaría dos (y el viejo, huérfano, sin que nadie
+      lo vuelva a tocar). Se avisa y se deja como está; el próximo guardado lo
+      vuelve a intentar con la misma referencia.
+    */
+    if (!eventoYaNoExiste(actualizado)) {
+      return `La reserva se guardó, pero no se pudo poner al día su evento en el calendario del hotel: ${actualizado.mensaje} Se volverá a intentar la próxima vez que se guarde; no lo crees a mano.`;
+    }
   }
 
   const creado = await crearEvento(calendarioId, evento);

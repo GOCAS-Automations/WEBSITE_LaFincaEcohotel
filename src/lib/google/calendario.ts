@@ -80,10 +80,25 @@ export type MotivoFallo = "no_configurado" | "error";
 
 export type ResultadoCalendario<T> =
   | { ok: true; datos: T }
-  | { ok: false; motivo: MotivoFallo; mensaje: string };
+  | {
+      ok: false;
+      motivo: MotivoFallo;
+      mensaje: string;
+      /**
+       * El código HTTP con el que respondió Google, si respondió. `undefined`
+       * en un `timeout` o un fallo de red. Distingue «ese evento ya no existe»
+       * (404/410) de un fallo pasajero (429, 5xx, red), que NO deben tratarse
+       * igual: ver `sincronizarReservaEnCalendario`.
+       */
+      http?: number;
+    };
 
-function fallo<T>(motivo: MotivoFallo, mensaje: string): ResultadoCalendario<T> {
-  return { ok: false, motivo, mensaje };
+function fallo<T>(
+  motivo: MotivoFallo,
+  mensaje: string,
+  http?: number,
+): ResultadoCalendario<T> {
+  return http === undefined ? { ok: false, motivo, mensaje } : { ok: false, motivo, mensaje, http };
 }
 
 /* ===========================================================================
@@ -354,7 +369,11 @@ async function llamar<T>(
       /* Un 401 puede ser un token que caducó antes de tiempo: se tira el que
          hay para que la siguiente llamada pida uno nuevo. */
       if (respuesta.status === 401) tokenEnCache = null;
-      return fallo("error", mensajeDeEstado(respuesta.status, resumirError(texto)));
+      return fallo(
+        "error",
+        mensajeDeEstado(respuesta.status, resumirError(texto)),
+        respuesta.status,
+      );
     }
 
     return { ok: true, datos: (texto ? JSON.parse(texto) : null) as T };
@@ -582,6 +601,10 @@ export type EventoNuevo = {
  */
 function cuerpoDeEvento(evento: EventoNuevo): Record<string, unknown> {
   return {
+    /* Explícito también al ACTUALIZAR: si el equipo borró el evento en Google,
+       el evento queda como `cancelled` y un PATCH sin `status` lo pondría al
+       día… sin devolverlo al calendario. Con `confirmed` vuelve a verse. */
+    status: "confirmed",
     summary: evento.titulo,
     description: evento.descripcion ?? undefined,
     start: { date: evento.inicio },
@@ -610,6 +633,15 @@ export async function crearEvento(
   return { ok: true, datos: { id: respuesta.datos.id } };
 }
 
+/**
+ * Pone al día un evento que ya existe y, si el equipo lo había borrado en
+ * Google (queda como `cancelled`), lo devuelve al calendario: el cuerpo lleva
+ * `status: "confirmed"`.
+ *
+ * Si Google ya no lo tiene (404/410) el fallo lleva ese `http` y quien llama
+ * crea uno nuevo. Ante cualquier otro fallo (429, 5xx, `timeout`) NO hay que
+ * crear otro: el evento sigue ahí y saldría duplicado.
+ */
 export async function actualizarEvento(
   calendarioId: string,
   eventoId: string,
@@ -620,6 +652,11 @@ export async function actualizarEvento(
     { metodo: "PATCH", cuerpo: cuerpoDeEvento(evento) },
   );
   if (!respuesta.ok) return respuesta;
+  /* Por si Google no aceptara devolverlo: un evento que sigue cancelado es,
+     para el hotel, un evento que no existe. */
+  if (respuesta.datos?.status === "cancelled") {
+    return fallo("error", "Google dice que ese evento sigue borrado.", 410);
+  }
   return { ok: true, datos: { id: respuesta.datos?.id ?? eventoId } };
 }
 
