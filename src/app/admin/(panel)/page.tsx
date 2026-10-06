@@ -336,7 +336,7 @@ export default async function PaginaResumen({
 
       <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <AtajoSeccion
-          href="/admin/reservas?estado=pendiente"
+          href="/admin/reservas?ver=todas&estado=pendiente#listado"
           titulo="Sin confirmar"
           detalle={
             pendientes.length === 0
@@ -345,7 +345,7 @@ export default async function PaginaResumen({
           }
         />
         <AtajoSeccion
-          href="/admin/reservas"
+          href="/admin/reservas?ver=todas#listado"
           titulo="Falta por cobrar"
           detalle={`${formatearCOP(porCobrar)} en todas las reservas activas`}
         />

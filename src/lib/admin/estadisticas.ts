@@ -17,7 +17,8 @@
  *   3. **Una estadía apuntada a mano en Google que además está en la base**
  *      (misma cabaña, mismas fechas exactas) se cuenta una sola vez, como la
  *      de la base, que es la que tiene nombre, código y montos. Aquí, en
- *      {@link estadiasDelHotel}.
+ *      {@link estadiasDelCalendario}, que comparten el Resumen y el listado
+ *      de Reservas (`listado-reservas.ts`).
  *
  * Y las NOCHES se cuentan con un conjunto por cabaña: aunque dos fuentes se
  * pisen, una noche ocupada es una noche.
@@ -83,57 +84,46 @@ export function etiquetaFuente(fuente: FuenteEstadia): string {
   return ETIQUETA_FUENTE[fuente];
 }
 
+/** Una reserva de la base es «Sitio web» si la hizo el huésped; si no, «Panel». */
+export function fuenteDeReserva(
+  reserva: Pick<ReservaAdmin, "origen">,
+): Exclude<FuenteEstadia, "calendario"> {
+  return reserva.origen === "web" ? "sitio" : "panel";
+}
+
 /**
- * Las estadías de las dos fuentes, ya sin duplicados.
- *
- * De la base entran las que ocupan (`ocupaCalendario`: ni canceladas ni
- * solicitudes vencidas). De Google, todas las franjas que llegan —ya sin las
- * del propio sitio— salvo las que repiten una estadía de la base.
+ * `cabaña|entrada|salida` de cada estadía de la base que ocupa: con esto se
+ * reconoce un evento de Google que repite una reserva de la base (capa 3).
  */
-export function estadiasDelHotel({
-  reservas,
+export function clavesDeLaBase(reservas: ReservaAdmin[], ahora: Date): Set<string> {
+  const claves = new Set<string>();
+  for (const reserva of reservas) {
+    if (!ocupaCalendario(reserva, ahora)) continue;
+    if (reserva.tipo !== "dia" && reserva.alojamiento_id) {
+      claves.add(`${reserva.alojamiento_id}|${reserva.entrada}|${reserva.salida}`);
+    }
+  }
+  return claves;
+}
+
+/**
+ * Lo que aporta el calendario de Google del hotel, ya sin lo que repite una
+ * estadía de la base: las franjas de cabaña y los «plan día». Es la misma
+ * lectura para el Resumen y para el listado de Reservas.
+ */
+export function estadiasDelCalendario({
   franjas,
   diasDeCalma = [],
   alojamientos,
-  ahora,
+  deLaBase,
 }: {
-  reservas: ReservaAdmin[];
   franjas: OcupacionExterna[];
-  /**
-   * «Plan día» del calendario general del hotel (regla 2b de
-   * `calendario-externo.ts`): entran como Día de Calma de 2 personas, sin
-   * cabaña y sin contar como «evento sin cabaña».
-   */
   diasDeCalma?: DiaDeCalmaExterno[];
   alojamientos: OpcionAlojamiento[];
-  ahora: Date;
+  /** De {@link clavesDeLaBase}. */
+  deLaBase: Set<string>;
 }): Estadia[] {
   const estadias: Estadia[] = [];
-  /** cabaña|entrada|salida de cada estadía de la base, para no repetirla. */
-  const deLaBase = new Set<string>();
-
-  for (const reserva of reservas) {
-    if (!ocupaCalendario(reserva, ahora)) continue;
-    const esDia = reserva.tipo === "dia";
-    if (!esDia && reserva.alojamiento_id) {
-      deLaBase.add(`${reserva.alojamiento_id}|${reserva.entrada}|${reserva.salida}`);
-    }
-    estadias.push({
-      clave: `reserva:${reserva.id}`,
-      fuente: reserva.origen === "web" ? "sitio" : "panel",
-      nombre: reserva.huesped_nombre,
-      cabana: esDia ? "Día de Calma" : (reserva.alojamiento_nombre ?? "Sin cabaña"),
-      alojamientoId: esDia ? null : reserva.alojamiento_id,
-      entrada: reserva.entrada,
-      salida: reserva.salida,
-      esDia,
-      personas: reserva.num_personas,
-      href: `/admin/reservas/${reserva.id}`,
-      estado: reserva.estado,
-      sinCabana: false,
-    });
-  }
-
   const cabanas = alojamientos.map((cabana) => ({ id: cabana.id, nombre: cabana.nombre }));
   for (const franja of franjas) {
     const sinCabana = franja.cabana === null;
@@ -176,6 +166,63 @@ export function estadiasDelHotel({
       sinCabana: false,
     });
   }
+  return estadias;
+}
+
+/**
+ * Las estadías de las dos fuentes, ya sin duplicados.
+ *
+ * De la base entran las que ocupan (`ocupaCalendario`: ni canceladas ni
+ * solicitudes vencidas). De Google, todas las franjas que llegan —ya sin las
+ * del propio sitio— salvo las que repiten una estadía de la base.
+ */
+export function estadiasDelHotel({
+  reservas,
+  franjas,
+  diasDeCalma = [],
+  alojamientos,
+  ahora,
+}: {
+  reservas: ReservaAdmin[];
+  franjas: OcupacionExterna[];
+  /**
+   * «Plan día» del calendario general del hotel (regla 2b de
+   * `calendario-externo.ts`): entran como Día de Calma de 2 personas, sin
+   * cabaña y sin contar como «evento sin cabaña».
+   */
+  diasDeCalma?: DiaDeCalmaExterno[];
+  alojamientos: OpcionAlojamiento[];
+  ahora: Date;
+}): Estadia[] {
+  const estadias: Estadia[] = [];
+
+  for (const reserva of reservas) {
+    if (!ocupaCalendario(reserva, ahora)) continue;
+    const esDia = reserva.tipo === "dia";
+    estadias.push({
+      clave: `reserva:${reserva.id}`,
+      fuente: fuenteDeReserva(reserva),
+      nombre: reserva.huesped_nombre,
+      cabana: esDia ? "Día de Calma" : (reserva.alojamiento_nombre ?? "Sin cabaña"),
+      alojamientoId: esDia ? null : reserva.alojamiento_id,
+      entrada: reserva.entrada,
+      salida: reserva.salida,
+      esDia,
+      personas: reserva.num_personas,
+      href: `/admin/reservas/${reserva.id}`,
+      estado: reserva.estado,
+      sinCabana: false,
+    });
+  }
+
+  estadias.push(
+    ...estadiasDelCalendario({
+      franjas,
+      diasDeCalma,
+      alojamientos,
+      deLaBase: clavesDeLaBase(reservas, ahora),
+    }),
+  );
 
   return estadias.sort(
     (a, b) =>
