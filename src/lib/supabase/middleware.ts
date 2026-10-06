@@ -17,6 +17,12 @@
  *      decisiones de seguridad.
  *   3. Sin sesión → a `/admin/login?next=…`. Con sesión en `/admin/login` → al
  *      panel.
+ *   4. **Sesión válida pero sin rol del panel** (`app_metadata.rol` distinto de
+ *      `propietario` o `equipo`) → se trata como si no hubiera sesión: se
+ *      cierra y se manda al login con `?motivo=sin-acceso`. Una sesión de
+ *      Supabase solo prueba que alguien tiene una cuenta, y una cuenta la puede
+ *      crear cualquiera si el registro público está encendido. Ver
+ *      `src/lib/admin/roles.ts`.
  *
  * Las otras dos capas: `requireAdmin()` en cada página y cada Server Action
  * (`src/lib/admin/auth.ts`) y, la última palabra, las políticas RLS de la base.
@@ -29,9 +35,18 @@ import {
   OPCIONES_COOKIE_SESION,
   recortarDuracion,
 } from "./opciones-cookie";
+import { rolDeMetadatos } from "@/lib/admin/roles";
 
 export const RUTA_LOGIN_ADMIN = "/admin/login";
 export const RUTA_INICIO_ADMIN = "/admin";
+
+/**
+ * Motivo con el que se llega al login cuando la sesión era de una cuenta sin
+ * rol. La página lo traduce a `MENSAJE_SIN_ACCESO`; en la URL solo va la clave,
+ * para que nadie pueda pintar un texto propio en el formulario de entrada.
+ */
+export const MOTIVO_SIN_ACCESO = "sin-acceso";
+export const RUTA_LOGIN_SIN_ACCESO = `${RUTA_LOGIN_ADMIN}?motivo=${MOTIVO_SIN_ACCESO}`;
 
 /**
  * Solo se acepta como destino después de entrar una ruta interna del panel.
@@ -94,6 +109,39 @@ export async function actualizarSesion(peticion: NextRequest) {
 
   const { pathname, search } = peticion.nextUrl;
   const esRutaLogin = pathname === RUTA_LOGIN_ADMIN;
+
+  /* El rol sale de `app_metadata` (solo lo escribe la clave de servicio) y
+     nunca de `user_metadata`, que el usuario edita con su propio token. */
+  if (usuario && !rolDeMetadatos(usuario.app_metadata)) {
+    /* Cerrar la sesión hace que la librería llame a `setAll` con las cookies
+       vaciadas, que quedan en `respuesta`. Si Supabase no contesta, se borran
+       igual en el navegador y la cuenta sigue sin poder hacer nada: RLS no la
+       deja leer ni escribir. */
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      /* Nada que hacer: la redirección de abajo sigue siendo correcta. */
+    }
+
+    /* En el propio login no se redirige —sería un bucle—: se deja ver el
+       formulario con la sesión ya cerrada. */
+    if (esRutaLogin) return respuesta;
+
+    const destino = peticion.nextUrl.clone();
+    destino.pathname = RUTA_LOGIN_ADMIN;
+    destino.search = "";
+    destino.searchParams.set("motivo", MOTIVO_SIN_ACCESO);
+    const redireccion = NextResponse.redirect(destino);
+    /* Las cookies vaciadas viajan con la redirección: sin esto el navegador
+       conservaría la sesión y volvería a entrar aquí en cada clic. */
+    for (const cookie of respuesta.cookies.getAll()) {
+      redireccion.cookies.set(cookie);
+    }
+    for (const [clave, valor] of Object.entries(CABECERAS_SIN_CACHE)) {
+      redireccion.headers.set(clave, valor);
+    }
+    return redireccion;
+  }
 
   if (!usuario && !esRutaLogin) {
     const destino = peticion.nextUrl.clone();

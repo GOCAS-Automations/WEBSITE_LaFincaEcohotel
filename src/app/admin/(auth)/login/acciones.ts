@@ -7,6 +7,7 @@ import {
   contarPeticion,
   olvidarPeticiones,
 } from "@/lib/api/limite-peticiones";
+import { MENSAJE_SIN_ACCESO, rolDeMetadatos } from "@/lib/admin/roles";
 import { estadoError, type EstadoAccion } from "@/lib/admin/tipos";
 import { ejecutarAccion } from "@/lib/admin/validacion";
 import { destinoAdminSeguro } from "@/lib/supabase/middleware";
@@ -113,10 +114,21 @@ export async function entrarAction(
     }
 
     const supabase = await crearClienteServidor();
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: correo,
       password: contrasena,
     });
+
+    if (!error && !rolDeMetadatos(data.user?.app_metadata)) {
+      /* La contraseña es correcta, pero la cuenta no es del panel (no tiene
+         `app_metadata.rol`): pudo crearla cualquiera si el registro público de
+         Supabase quedó encendido. Se cierra en el acto —desde una Server
+         Action sí se pueden borrar las cookies— y no se reinicia el contador
+         de intentos. Decir «no tiene acceso» no revela nada que quien escribe
+         la contraseña correcta no sepa ya. */
+      await supabase.auth.signOut().catch(() => {});
+      return estadoError(MENSAJE_SIN_ACCESO);
+    }
 
     if (error) {
       /* No se distingue entre "ese correo no existe" y "la contraseña está

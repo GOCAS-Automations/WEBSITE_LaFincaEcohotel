@@ -45,7 +45,9 @@ export function FilaUsuario({
   esMiCuenta: boolean;
   ultimoPropietario: boolean;
 }) {
-  const [rol, setRol] = useState<RolPanel>(usuario.rol);
+  /* "" = la cuenta no tiene rol todavía: el desplegable lo dice y obliga a
+     elegir uno antes de guardar. */
+  const [rol, setRol] = useState<RolPanel | "">(usuario.rol ?? "");
   const [abrirContrasena, setAbrirContrasena] = useState(false);
 
   const [estadoRol, guardarRol] = useActionState(
@@ -76,7 +78,7 @@ export function FilaUsuario({
           )}
         </p>
         <Pastilla tono={usuario.rol === "propietario" ? "verde" : "gris"}>
-          {ETIQUETA_ROL[usuario.rol]}
+          {usuario.rol ? ETIQUETA_ROL[usuario.rol] : "Sin acceso al panel"}
         </Pastilla>
       </div>
 
@@ -99,6 +101,11 @@ export function FilaUsuario({
             disabled={rolBloqueado}
             onChange={(evento) => setRol(evento.target.value as RolPanel)}
           >
+            {!usuario.rol && (
+              <option value="" disabled>
+                Sin rol: elige uno para darle acceso
+              </option>
+            )}
             {ROLES_PANEL.map((opcion) => (
               <option key={opcion} value={opcion}>
                 {ETIQUETA_ROL[opcion]}
@@ -107,7 +114,7 @@ export function FilaUsuario({
           </Desplegable>
         </Campo>
 
-        {!rolBloqueado && rol !== usuario.rol && (
+        {!rolBloqueado && rol !== "" && rol !== usuario.rol && (
           <BotonEnviar tono="secundario" tamano="sm" etiquetaEnEspera="Guardando…">
             Guardar rol
           </BotonEnviar>

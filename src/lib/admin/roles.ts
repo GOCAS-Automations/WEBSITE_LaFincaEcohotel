@@ -24,9 +24,6 @@ export const ROLES_PANEL = ["propietario", "equipo"] as const;
 
 export type RolPanel = (typeof ROLES_PANEL)[number];
 
-/** El rol que se le supone a quien no tiene ninguno escrito. */
-export const ROL_POR_DEFECTO: RolPanel = "equipo";
-
 export const ETIQUETA_ROL: Record<RolPanel, string> = {
   propietario: "Propietario",
   equipo: "Equipo",
@@ -50,19 +47,38 @@ export function esRolPanel(valor: unknown): valor is RolPanel {
 }
 
 /**
- * El rol que trae el usuario de Supabase.
+ * El rol que trae el usuario de Supabase, o `null` si la cuenta no es del panel.
  *
- * Si no tiene ninguno —o trae uno que no reconocemos— se le da el MENOS
- * privilegiado. Un valor inesperado nunca puede abrir una puerta: las cuentas
- * anteriores a esta pantalla entran como «equipo» hasta que un propietario les
- * cambie el rol a mano.
+ * ---------------------------------------------------------------------------
+ * SIN ROL NO HAY PANEL
+ * ---------------------------------------------------------------------------
+ * Hasta octubre de 2026 a una cuenta sin rol se la trataba como «equipo». Eso,
+ * sumado al registro público de Supabase Auth —que se puede volver a encender
+ * desde su panel sin tocar el código—, dejaba entrar al panel a cualquiera que
+ * se creara una cuenta con la clave anónima que viaja en el sitio. Ahora una
+ * cuenta sin rol, o con uno que no reconocemos, **no es del panel**: el
+ * middleware y `requireAdmin()` le cierran la sesión, y las políticas RLS de la
+ * base (`es_admin()`, migración 018) tampoco la dejan leer ni escribir nada.
+ *
+ * Se lee SOLO de `app_metadata`. Quien llame a esta función le pasa
+ * `usuario.app_metadata`, nunca `usuario.user_metadata`: ese lo escribe el
+ * propio usuario con su token (`auth.updateUser({ data })`) y cualquiera podría
+ * darse ahí el rol de propietario.
  */
 export function rolDeMetadatos(
   metadatos: Record<string, unknown> | null | undefined,
-): RolPanel {
+): RolPanel | null {
   const valor = metadatos?.rol;
-  return esRolPanel(valor) ? valor : ROL_POR_DEFECTO;
+  return esRolPanel(valor) ? valor : null;
 }
+
+/**
+ * Lo que ve quien entra con una cuenta que no es del panel: en el login, al
+ * acertar la contraseña de una cuenta sin rol, y en la página de entrada cuando
+ * llega con `?motivo=sin-acceso` desde el middleware o desde `requireAdmin()`.
+ */
+export const MENSAJE_SIN_ACCESO =
+  "Esta cuenta no tiene acceso al panel. Si trabajas en el hotel, pídele al propietario que te asigne un rol desde Usuarios.";
 
 /** La contraseña más corta que aceptamos para una cuenta del panel. */
 export const LARGO_MINIMO_CONTRASENA = 10;

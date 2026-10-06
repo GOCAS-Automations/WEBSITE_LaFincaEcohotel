@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 
+import { leerSesionDelPanel } from "@/lib/admin/auth";
+import { MENSAJE_SIN_ACCESO } from "@/lib/admin/roles";
 import { CARPETAS_IMAGENES } from "@/lib/admin/tipos";
-import { crearClienteServidor } from "@/lib/supabase/server";
 
 /**
  * Subida de imágenes al bucket `imagenes` de Supabase Storage.
@@ -9,9 +10,10 @@ import { crearClienteServidor } from "@/lib/supabase/server";
  * Vive BAJO `/admin` a propósito: así queda dentro del `matcher` del middleware
  * y hereda la primera capa de protección. La subida se hace en el servidor —y
  * no directamente desde el navegador— para que la escritura viaje con la sesión
- * verificada del administrador: la política de Storage solo permite INSERT al
- * rol `authenticated`, y aquí `getUser()` confirma el JWT contra el servidor de
- * Auth antes de tocar el bucket.
+ * verificada del administrador: la política de Storage solo permite INSERT a
+ * una cuenta con rol del panel (`es_admin()`, migración 018), y aquí
+ * `getUser()` confirma el JWT contra el servidor de Auth —y que la cuenta tiene
+ * rol— antes de tocar el bucket.
  *
  * Devuelve `{ url, path }`. La `url` es la definitiva y es la que el editor de
  * galería guarda en la base.
@@ -32,17 +34,19 @@ const EXTENSIONES: Record<string, string> = {
 };
 
 export async function POST(peticion: Request) {
-  const supabase = await crearClienteServidor();
-  const {
-    data: { user: usuario },
-  } = await supabase.auth.getUser();
+  const sesion = await leerSesionDelPanel();
 
-  if (!usuario) {
+  if (sesion.estado === "sin-sesion") {
     return NextResponse.json(
       { error: "Tu sesión expiró. Vuelve a entrar al panel." },
       { status: 401 },
     );
   }
+  if (sesion.estado === "sin-rol") {
+    return NextResponse.json({ error: MENSAJE_SIN_ACCESO }, { status: 403 });
+  }
+
+  const { supabase } = sesion;
 
   let form: FormData;
   try {

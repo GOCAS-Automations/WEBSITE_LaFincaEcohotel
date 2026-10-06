@@ -343,7 +343,9 @@ export type CarpetaImagenes =
 export type UsuarioPanel = {
   id: string;
   correo: string;
-  rol: RolPanel;
+  /** `null`: la cuenta existe en Supabase pero no tiene rol, así que no entra
+      al panel. Se lista igual para que el propietario la vea y decida. */
+  rol: RolPanel | null;
   /** ISO del último inicio de sesión; `null` si nunca ha entrado. */
   ultimoAcceso: string | null;
   /** ISO de creación de la cuenta. */

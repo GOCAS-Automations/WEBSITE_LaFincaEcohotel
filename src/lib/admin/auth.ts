@@ -1,9 +1,46 @@
+import type { User } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 
 import { rolDeMetadatos, type RolPanel } from "./roles";
 import { ErrorDePermiso } from "./validacion";
 import { crearClienteServidor } from "@/lib/supabase/server";
-import { RUTA_LOGIN_ADMIN } from "@/lib/supabase/middleware";
+import {
+  RUTA_LOGIN_ADMIN,
+  RUTA_LOGIN_SIN_ACCESO,
+} from "@/lib/supabase/middleware";
+
+type ClienteServidor = Awaited<ReturnType<typeof crearClienteServidor>>;
+
+/**
+ * La sesión del panel, sin redirigir: la leen `requireAdmin()` y los Route
+ * Handlers de `/admin/api/…`, que contestan con un 401/403 en JSON en vez de
+ * navegar.
+ *
+ *   · `sin-sesion`: no hay usuario, o Supabase no validó el JWT.
+ *   · `sin-rol`: hay una cuenta, pero `app_metadata.rol` no es `propietario` ni
+ *     `equipo`. **No es del panel**, aunque la sesión sea válida.
+ *   · `ok`: cuenta del panel, con su rol.
+ */
+export type SesionDelPanel =
+  | { estado: "sin-sesion"; supabase: ClienteServidor }
+  | { estado: "sin-rol"; supabase: ClienteServidor; usuario: User }
+  | { estado: "ok"; supabase: ClienteServidor; usuario: User; rol: RolPanel };
+
+export async function leerSesionDelPanel(): Promise<SesionDelPanel> {
+  const supabase = await crearClienteServidor();
+  const {
+    data: { user: usuario },
+    error,
+  } = await supabase.auth.getUser();
+
+  if (error || !usuario) return { estado: "sin-sesion", supabase };
+
+  /* Solo `app_metadata`: ver `rolDeMetadatos()`. */
+  const rol = rolDeMetadatos(usuario.app_metadata);
+  if (!rol) return { estado: "sin-rol", supabase, usuario };
+
+  return { estado: "ok", supabase, usuario, rol };
+}
 
 /**
  * Puerta de entrada de todo el panel (capa 2 de 3).
@@ -22,20 +59,30 @@ import { RUTA_LOGIN_ADMIN } from "@/lib/supabase/middleware";
  *
  * El `rol` sale de `app_metadata`, que solo escribe la Admin API: no es un dato
  * que el navegador pueda falsificar. Ver `src/lib/admin/roles.ts`.
+ *
+ * Una sesión válida **sin rol** se trata como si no hubiera sesión: se cierra
+ * y se manda al login con el aviso de que esa cuenta no tiene acceso. Desde un
+ * Server Component no se pueden borrar cookies, así que ahí el cierre solo
+ * invalida la sesión en Supabase; el middleware termina de borrarlas al llegar
+ * al login. Desde una Server Action se borran aquí mismo.
  */
 export async function requireAdmin() {
-  const supabase = await crearClienteServidor();
-  const {
-    data: { user: usuario },
-    error,
-  } = await supabase.auth.getUser();
+  const sesion = await leerSesionDelPanel();
 
-  if (error || !usuario) {
+  if (sesion.estado === "sin-sesion") {
     redirect(RUTA_LOGIN_ADMIN);
   }
 
-  const rol: RolPanel = rolDeMetadatos(usuario.app_metadata);
+  if (sesion.estado === "sin-rol") {
+    try {
+      await sesion.supabase.auth.signOut();
+    } catch {
+      /* Aunque falle, la cuenta no pasa de aquí y RLS no la deja leer nada. */
+    }
+    redirect(RUTA_LOGIN_SIN_ACCESO);
+  }
 
+  const { supabase, usuario, rol } = sesion;
   return { supabase, usuario, rol };
 }
 

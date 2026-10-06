@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 
+import { leerSesionDelPanel } from "@/lib/admin/auth";
 import { esFechaISO, leerRangoFechas, nochesEntre } from "@/lib/admin/fechas";
+import { MENSAJE_SIN_ACCESO } from "@/lib/admin/roles";
 import {
   nochesOcupadasDeCabana,
   personasDeDiaSinLaPropia,
@@ -12,7 +14,6 @@ import {
 } from "@/lib/reserva/calendario-externo";
 import { MAXIMO_DIAS_DISPONIBILIDAD } from "@/lib/reserva/elegibilidad-calendario";
 import { ocupacionDelCalendario } from "@/lib/reserva/ocupacion-externa";
-import { crearClienteServidor } from "@/lib/supabase/server";
 
 /**
  * Ocupación de UNA cabaña para el calendario de la reserva manual del panel.
@@ -48,11 +49,12 @@ function error(mensaje: string, estado: number) {
 }
 
 export async function GET(peticion: Request) {
-  const supabase = await crearClienteServidor();
-  const {
-    data: { user: usuario },
-  } = await supabase.auth.getUser();
-  if (!usuario) return error("Tu sesión expiró. Vuelve a entrar al panel.", 401);
+  const sesion = await leerSesionDelPanel();
+  if (sesion.estado === "sin-sesion") {
+    return error("Tu sesión expiró. Vuelve a entrar al panel.", 401);
+  }
+  if (sesion.estado === "sin-rol") return error(MENSAJE_SIN_ACCESO, 403);
+  const { supabase } = sesion;
 
   const { searchParams } = new URL(peticion.url);
   const alojamientoId = searchParams.get("alojamiento") ?? "";

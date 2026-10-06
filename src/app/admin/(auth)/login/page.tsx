@@ -3,7 +3,12 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { FormularioLogin } from "./formulario-login";
-import { destinoAdminSeguro } from "@/lib/supabase/middleware";
+import { Banner } from "@/components/admin/ui";
+import { MENSAJE_SIN_ACCESO } from "@/lib/admin/roles";
+import {
+  destinoAdminSeguro,
+  MOTIVO_SIN_ACCESO,
+} from "@/lib/supabase/middleware";
 
 export const metadata: Metadata = {
   title: "Entrar al panel",
@@ -16,10 +21,13 @@ export const dynamic = "force-dynamic";
 export default async function PaginaLogin({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; motivo?: string }>;
 }) {
   const params = await searchParams;
   const destino = destinoAdminSeguro(params.next);
+  /* Llega aquí desde el middleware o desde `requireAdmin()` cuando la sesión
+     era de una cuenta sin rol del panel. En la URL solo viaja la clave. */
+  const sinAcceso = params.motivo === MOTIVO_SIN_ACCESO;
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-crema-100 px-4 py-12">
@@ -42,6 +50,12 @@ export default async function PaginaLogin({
               sitio web.
             </p>
           </div>
+
+          {sinAcceso && (
+            <div className="mt-6">
+              <Banner tono="error">{MENSAJE_SIN_ACCESO}</Banner>
+            </div>
+          )}
 
           <div className="mt-7">
             <FormularioLogin destino={destino} />
