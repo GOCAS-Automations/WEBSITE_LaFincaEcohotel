@@ -4,7 +4,6 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 
 import { CLASE_INPUT } from "@/components/admin/ui";
 import { IconoCalendario } from "@/components/sitio/iconos";
-import { useLadoDelPanel } from "@/components/sitio/usar-lado-panel";
 import { RejillaMeses } from "@/components/ui/rejilla-meses";
 import { nombreDelFestivo } from "@/lib/festivos-colombia";
 import {
@@ -153,12 +152,12 @@ export function SelectorFecha({
   const botonMes = useRef<HTMLButtonElement>(null);
   const celdaEnfocada = useRef<HTMLButtonElement>(null);
 
-  const { lado, espacio } = useLadoDelPanel({
-    abierto,
-    disparador,
-    panel: hoja,
-    altoEstimado: 420,
-  });
+  /* En el panel la página se desplaza: el calendario se abre siempre debajo
+     del campo, entero, y se trae a la vista. (En el sitio, el de reservar vive
+     dentro del hero y por eso a veces se abre hacia arriba.) */
+  useEffect(() => {
+    if (abierto) hoja.current?.scrollIntoView({ block: "nearest" });
+  }, [abierto]);
 
   const abrir = () => {
     const base = actual || (minima && minima > hoy ? minima : hoy);
@@ -308,14 +307,9 @@ export function SelectorFecha({
             role="group"
             aria-label={`Calendario: ${etiqueta}`}
             data-fab-evitar=""
-            style={{ "--alto-hoja": `${Math.max(320, espacio)}px` } as React.CSSProperties}
             className={[
               "fixed inset-x-3 bottom-3 z-50 rounded-[var(--radius-generoso)] bg-white p-4 shadow-[var(--shadow-elevada)] ring-1 ring-crema-200",
-              "sm:absolute sm:inset-x-auto sm:left-0 sm:w-[20.5rem]",
-              "sm:max-h-[var(--alto-hoja)] sm:overflow-y-auto sm:overscroll-contain",
-              lado === "arriba"
-                ? "sm:top-auto sm:bottom-[calc(100%+0.5rem)]"
-                : "sm:bottom-auto sm:top-[calc(100%+0.5rem)]",
+              "sm:absolute sm:inset-x-auto sm:bottom-auto sm:left-0 sm:top-[calc(100%+0.5rem)] sm:w-[20.5rem]",
             ].join(" ")}
           >
             <div className="mb-3 flex items-center justify-between gap-2">
