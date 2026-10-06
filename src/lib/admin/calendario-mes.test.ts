@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   armarCalendarioMes,
   cabanasEnDia,
+  detalleDiaDeCalma,
   lineasDelDia,
   sinCabanaEnTitulo,
 } from "./calendario-mes";
@@ -331,5 +332,145 @@ describe("sinCabanaEnTitulo", () => {
 
   it("si solo dice la cabaña, deja el título tal cual", () => {
     expect(sinCabanaEnTitulo("Cabaña 3")).toBe("Cabaña 3");
+  });
+});
+
+describe("detalleDiaDeCalma (quién viene al Día de Calma un día)", () => {
+  const dia = (parcial: Partial<ReservaAdmin>) =>
+    reserva({
+      tipo: "dia",
+      alojamiento_id: null,
+      alojamiento_nombre: null,
+      entrada: "2026-10-04",
+      salida: "2026-10-05",
+      num_personas: 2,
+      ...parcial,
+    });
+  const plan: DiaDeCalmaExterno = {
+    eventoId: "cristian",
+    titulo: "Cristian Arcila plan día",
+    inicio: "2026-10-04",
+    fin: "2026-10-05",
+    personas: 2,
+  };
+
+  it("trae todas las reservas de ese día con los datos del titular, y los «plan día» del hotel", () => {
+    const ana = dia({
+      id: "ana",
+      codigo: "LF-2026-0007",
+      huesped_nombre: "Ana Pérez",
+      huesped_telefono: "+57 300 111 2233",
+      huesped_email: "ana@ejemplo.com",
+      origen: "web",
+      estado: "confirmada",
+      created_at: "2026-09-20T10:00:00Z",
+    });
+    const bruno = dia({
+      id: "bruno",
+      codigo: "LF-2026-0003",
+      huesped_nombre: "Bruno Díaz",
+      num_personas: 1,
+      origen: "whatsapp",
+      estado: "pendiente",
+      created_at: "2026-09-10T10:00:00Z",
+    });
+    /* Otro día y una de hospedaje: no entran. */
+    const otroDia = dia({ id: "otro", entrada: "2026-10-05", salida: "2026-10-06" });
+    const hospedaje = reserva({ id: "hosp", entrada: "2026-10-03", salida: "2026-10-06" });
+
+    const detalle = detalleDiaDeCalma({
+      iso: "2026-10-04",
+      reservas: [ana, bruno, otroDia, hospedaje],
+      diasDeCalma: [plan],
+      ahora: AHORA,
+    });
+
+    expect(detalle.participantes.map((p) => p.nombre)).toEqual([
+      "Bruno Díaz", // reservó primero
+      "Ana Pérez",
+      "Cristian Arcila plan día",
+    ]);
+    expect(detalle.participantes[1]).toMatchObject({
+      fuente: "reserva",
+      personas: 2,
+      telefono: "+57 300 111 2233",
+      correo: "ana@ejemplo.com",
+      codigo: "LF-2026-0007",
+      estado: "confirmada",
+      origen: "sitio",
+      href: "/admin/reservas/ana",
+      cuenta: true,
+    });
+    expect(detalle.participantes[0]).toMatchObject({ origen: "panel", comoLlego: "Por WhatsApp" });
+    expect(detalle.participantes[2]).toMatchObject({ fuente: "calendario", personas: 2, cuenta: true });
+    expect(detalle).toMatchObject({ personas: 5, cupo: 10, libres: 5 });
+  });
+
+  it("canceladas, vencidas y completadas salen al final y no suman al cupo", () => {
+    const detalle = detalleDiaDeCalma({
+      iso: "2026-10-04",
+      reservas: [
+        dia({ id: "c", huesped_nombre: "Cancelada", estado: "cancelada" }),
+        dia({
+          id: "v",
+          huesped_nombre: "Vencida",
+          estado: "pendiente",
+          origen: "web",
+          expira_at: "2026-10-05T14:00:00Z",
+        }),
+        dia({ id: "k", huesped_nombre: "Completada", estado: "completada" }),
+        dia({ id: "ok", huesped_nombre: "Confirmada", estado: "confirmada" }),
+      ],
+      ahora: AHORA,
+    });
+    expect(detalle.participantes.map((p) => [p.nombre, p.cuenta])).toEqual([
+      ["Confirmada", true],
+      ["Cancelada", false],
+      ["Vencida", false],
+      ["Completada", false],
+    ]);
+    expect(detalle.participantes.map((p) => p.porQueNoCuenta)).toEqual([
+      null,
+      "Cancelada: no aparta cupo.",
+      "La solicitud venció sin pago: no aparta cupo.",
+      "Completada: ya no aparta cupo.",
+    ]);
+    expect(detalle.personas).toBe(2);
+  });
+
+  it("los cupos libres nunca bajan de cero", () => {
+    const llenas = Array.from({ length: 6 }, (_, i) => dia({ id: `r${i}`, codigo: `LF-${i}` }));
+    const detalle = detalleDiaDeCalma({ iso: "2026-10-04", reservas: llenas, ahora: AHORA });
+    expect(detalle).toMatchObject({ personas: 12, libres: 0 });
+  });
+
+  it("el calendario del mes trae el detalle solo de los días con alguien, y su total es el de la casilla", () => {
+    const calendario = armarCalendarioMes({
+      mes: MES,
+      hoy: "2026-10-05",
+      alojamientos: CABANAS,
+      reservas: [
+        dia({ id: "a", entrada: "2026-10-10", salida: "2026-10-11", num_personas: 2 }),
+        dia({ id: "b", entrada: "2026-10-10", salida: "2026-10-11", num_personas: 2, estado: "pendiente" }),
+        dia({ id: "c", entrada: "2026-10-12", salida: "2026-10-13", estado: "cancelada" }),
+        reserva({ id: "hosp" }),
+      ],
+      bloqueos: [],
+      franjas: [],
+      /* Lo que lee la base para la casilla: pendientes y confirmadas. */
+      personasDeDia: new Map([["2026-10-10", 4]]),
+      diasDeCalma: [plan],
+      ahora: AHORA,
+    });
+    expect(Object.keys(calendario.diaDeCalma).sort()).toEqual([
+      "2026-10-04",
+      "2026-10-10",
+      "2026-10-12",
+    ]);
+    for (const [iso, detalle] of Object.entries(calendario.diaDeCalma)) {
+      expect(detalle.personas).toBe(calendario.personasDeDia[iso] ?? 0);
+    }
+    /* Un día con solo una cancelada se puede abrir, pero no suma. */
+    expect(calendario.diaDeCalma["2026-10-12"]).toMatchObject({ personas: 0, libres: 10 });
   });
 });

@@ -1,8 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
+import {
+  BotonVerDiaDeCalma,
+  ProveedorDiaDeCalma,
+  VentanaDiaDeCalma,
+} from "./detalle-dia-de-calma";
 import { pielDeBarra, tonoCupo } from "./estilos-calendario";
 import {
   cabanasEnDia,
@@ -36,17 +41,37 @@ export function VistasCalendario({
   calendario,
   cuadricula,
   indiceInicial,
+  diaAbierto = null,
 }: {
   calendario: CalendarioDelMes;
   /** La cuadrícula del mes, ya pintada en el servidor. */
   cuadricula: ReactNode;
   /** Día que se abre en la agenda: hoy si es este mes, si no el 1. */
   indiceInicial: number;
+  /** Día cuyo detalle del Día de Calma se abre al cargar (`?dia=`). */
+  diaAbierto?: string | null;
 }) {
   const [vista, setVista] = useState<"dia" | "mes">("dia");
+  /* UNA ventana del Día de Calma para las dos vistas (ver
+     `detalle-dia-de-calma.tsx`). */
+  const [diaDeCalma, setDiaDeCalma] = useState<string | null>(diaAbierto);
+  const cerrarDiaDeCalma = useCallback(() => {
+    setDiaDeCalma(null);
+    /* Si se abrió desde la ficha (`?dia=`), recargar no la vuelve a abrir. */
+    const direccion = new URL(window.location.href);
+    if (direccion.searchParams.has("dia")) {
+      direccion.searchParams.delete("dia");
+      window.history.replaceState(null, "", direccion);
+    }
+  }, []);
 
   return (
-    <>
+    <ProveedorDiaDeCalma value={setDiaDeCalma}>
+      <VentanaDiaDeCalma
+        iso={diaDeCalma}
+        detalle={diaDeCalma ? calendario.diaDeCalma[diaDeCalma] : undefined}
+        alCerrar={cerrarDiaDeCalma}
+      />
       <div
         role="group"
         aria-label="Cómo ver el calendario"
@@ -80,7 +105,7 @@ export function VistasCalendario({
       <div className={vista === "mes" ? "mt-3 md:mt-0" : "hidden md:block"}>
         {cuadricula}
       </div>
-    </>
+    </ProveedorDiaDeCalma>
   );
 }
 
@@ -116,6 +141,7 @@ function AgendaDelMes({
   const personas = calendario.personasDeDia[dia.iso] ?? 0;
   /* «Plan día» del calendario del hotel: cuentan en el cupo, no en cabañas. */
   const delHotel = calendario.diaDeCalmaDelHotel[dia.iso] ?? [];
+  const detalleDia = calendario.diaDeCalma[dia.iso];
 
   /* Cuántas cabañas tiene ocupadas cada día, para la tira. */
   const ocupadasPorDia = dias.map(
@@ -280,29 +306,34 @@ function AgendaDelMes({
             </li>
           );
         })}
-        <li className="flex items-center gap-3 bg-crema-100/60 px-3.5 py-3">
-          <span className="w-[5.5rem] shrink-0 text-[0.8125rem] font-semibold text-crema-900">
+        <li className="flex items-start gap-3 bg-crema-100/60 px-3.5 py-3">
+          <span className="w-[5.5rem] shrink-0 pt-1 text-[0.8125rem] font-semibold text-crema-900">
             Día de Calma
           </span>
-          {personas > 0 ? (
-            <span className="flex min-w-0 flex-col items-start gap-1">
+          <span className="flex min-w-0 flex-col items-start gap-1.5">
+            {personas > 0 ? (
               <span
                 className={`rounded-full px-2.5 py-1 text-[0.75rem] font-bold tabular-nums ${tonoCupo(personas)}`}
               >
                 {personas} de {CUPO_DIA_DE_CALMA} cupos
               </span>
-              {delHotel.length > 0 ? (
-                <span className="text-[0.75rem] leading-snug text-crema-700">
-                  Incluye {delHotel.map((titulo) => `«${titulo}»`).join(", ")}, del
-                  calendario del hotel: cada «plan día» cuenta 2 y no ocupa cabaña.
-                </span>
-              ) : null}
-            </span>
-          ) : (
-            <span className="text-[0.8125rem] text-crema-600">
-              Nadie todavía · {CUPO_DIA_DE_CALMA} cupos libres
-            </span>
-          )}
+            ) : (
+              <span className="pt-1 text-[0.8125rem] text-crema-600">
+                Nadie todavía · {CUPO_DIA_DE_CALMA} cupos libres
+              </span>
+            )}
+            {delHotel.length > 0 ? (
+              <span className="text-[0.75rem] leading-snug text-crema-700">
+                Incluye {delHotel.map((titulo) => `«${titulo}»`).join(", ")}, del
+                calendario del hotel: cada «plan día» cuenta 2 y no ocupa cabaña.
+              </span>
+            ) : null}
+            {/* Quién viene: titular, personas, teléfono… en una ventana. Sale
+                también si solo hay canceladas, para poder verlas. */}
+            {detalleDia ? (
+              <BotonVerDiaDeCalma iso={dia.iso} />
+            ) : null}
+          </span>
         </li>
       </ul>
     </div>

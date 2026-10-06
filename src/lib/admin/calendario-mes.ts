@@ -58,7 +58,8 @@ import {
   type DiaDeCalmaExterno,
   type OcupacionExterna,
 } from "../reserva/calendario-externo";
-import { ocupaCalendario } from "../reserva/holds";
+import { CUPO_DIA_DE_CALMA } from "../reserva/dia-de-calma";
+import { estaVencida, ocupaCalendario } from "../reserva/holds";
 import type { EstadoReserva } from "../tipos/basedatos";
 import {
   DIAS_SEMANA_CORTOS,
@@ -132,7 +133,163 @@ export type CalendarioDelMes = {
   personasDeDia: Record<string, number>;
   /** Títulos de los «plan día» del calendario del hotel, por fecha. */
   diaDeCalmaDelHotel: Record<string, string[]>;
+  /**
+   * Quién viene al Día de Calma cada día (solo los días con alguien, aunque
+   * sea una cancelada): lo que abre el detalle al tocar la fila del Día de
+   * Calma en la cuadrícula o en la agenda del celular.
+   */
+  diaDeCalma: Record<string, DetalleDiaDeCalma>;
 };
+
+/* ===========================================================================
+ * El Día de Calma de un día: quién viene
+ * ======================================================================== */
+
+/**
+ * Una reserva de Día de Calma de un día concreto, venga de la base o del
+ * calendario del hotel.
+ *
+ * ⚠ QUÉ SE GUARDA DE CADA PARTICIPANTE. Una reserva de Día de Calma es de 1 o
+ * 2 personas y solo guarda los datos del TITULAR (nombre, teléfono, correo y,
+ * si la apuntó el equipo, documento) y el número de personas. Del acompañante
+ * no se guarda nada: ni el sitio ni el panel lo piden. Un «plan día» del
+ * calendario de Google solo tiene su título, y cuenta 2 personas.
+ */
+export type ParticipanteDiaDeCalma =
+  | {
+      fuente: "reserva";
+      clave: string;
+      /** El titular: la única persona de la que hay datos. */
+      nombre: string;
+      personas: number;
+      telefono: string;
+      correo: string;
+      codigo: string;
+      estado: EstadoReserva;
+      /** «Sitio web» o «Panel». */
+      origen: "sitio" | "panel";
+      /** Cómo llegó, con las palabras de la ficha: «Por WhatsApp»… */
+      comoLlego: string;
+      href: string;
+      /** ¿Suma al cupo del día? Es lo mismo que cuenta la casilla «4/10». */
+      cuenta: boolean;
+      /** Por qué no suma, en una frase; `null` si suma. */
+      porQueNoCuenta: string | null;
+    }
+  | {
+      fuente: "calendario";
+      clave: string;
+      /** El título del evento de Google, tal cual. */
+      nombre: string;
+      /** Siempre {@link PERSONAS_POR_EVENTO_DIA_DE_CALMA}: el evento no lo dice. */
+      personas: number;
+      cuenta: true;
+      porQueNoCuenta: null;
+    };
+
+export type DetalleDiaDeCalma = {
+  iso: string;
+  /** Primero los que suman al cupo; al final, canceladas y vencidas. */
+  participantes: ParticipanteDiaDeCalma[];
+  /** Personas que suman al cupo ese día. */
+  personas: number;
+  cupo: number;
+  /** Cupos que quedan (nunca negativo). */
+  libres: number;
+};
+
+/**
+ * ¿Suma esta reserva de la base al cupo del Día de Calma? La misma regla que
+ * `personasDeDiaPorFecha()` (la casilla «4/10») y que el trigger de la base:
+ * solo pendientes con el plazo de pago vigente y confirmadas.
+ */
+function porQueNoSumaAlCupo(reserva: ReservaAdmin, ahora: Date): string | null {
+  if (reserva.estado === "cancelada") return "Cancelada: no aparta cupo.";
+  if (reserva.estado === "completada") return "Completada: ya no aparta cupo.";
+  if (estaVencida(reserva, ahora)) {
+    return "La solicitud venció sin pago: no aparta cupo.";
+  }
+  return null;
+}
+
+/**
+ * Todas las reservas de Día de Calma de un día, de las dos fuentes: las de la
+ * base (sitio web y panel, en cualquier estado) y los «plan día» del calendario
+ * del hotel. Puro.
+ *
+ * El total solo suma lo que aparta cupo, así que coincide con la casilla del
+ * calendario; lo que no suma (canceladas, solicitudes vencidas) se lista al
+ * final para que el equipo vea también quién se cayó.
+ */
+export function detalleDiaDeCalma({
+  iso,
+  reservas,
+  diasDeCalma = [],
+  ahora,
+}: {
+  iso: string;
+  reservas: ReservaAdmin[];
+  diasDeCalma?: DiaDeCalmaExterno[];
+  ahora: Date;
+}): DetalleDiaDeCalma {
+  const deLaBase: ParticipanteDiaDeCalma[] = reservas
+    .filter(
+      (reserva) =>
+        reserva.tipo === "dia" && reserva.entrada <= iso && iso < reserva.salida,
+    )
+    /* Quien reservó primero, primero: así lee el equipo un día lleno. */
+    .sort(
+      (a, b) =>
+        a.created_at.localeCompare(b.created_at) || a.codigo.localeCompare(b.codigo),
+    )
+    .map((reserva) => {
+      const porQueNoCuenta = porQueNoSumaAlCupo(reserva, ahora);
+      return {
+        fuente: "reserva" as const,
+        clave: `reserva:${reserva.id}`,
+        nombre: reserva.huesped_nombre,
+        personas: reserva.num_personas,
+        telefono: reserva.huesped_telefono,
+        correo: reserva.huesped_email,
+        codigo: reserva.codigo,
+        estado: reserva.estado,
+        origen: reserva.origen === "web" ? ("sitio" as const) : ("panel" as const),
+        comoLlego: ETIQUETA_ORIGEN[reserva.origen] ?? reserva.origen,
+        href: `/admin/reservas/${reserva.id}`,
+        cuenta: porQueNoCuenta === null,
+        porQueNoCuenta,
+      };
+    });
+
+  const delHotel: ParticipanteDiaDeCalma[] = diasDeCalma
+    .filter((dia) => dia.inicio <= iso && iso < dia.fin)
+    .sort((a, b) => a.titulo.localeCompare(b.titulo, "es"))
+    .map((dia) => ({
+      fuente: "calendario" as const,
+      clave: `google-dia:${dia.eventoId}|${dia.inicio}`,
+      nombre: dia.titulo,
+      personas: dia.personas,
+      cuenta: true as const,
+      porQueNoCuenta: null,
+    }));
+
+  const participantes = [
+    ...deLaBase.filter((participante) => participante.cuenta),
+    ...delHotel,
+    ...deLaBase.filter((participante) => !participante.cuenta),
+  ];
+  const personas = participantes
+    .filter((participante) => participante.cuenta)
+    .reduce((suma, participante) => suma + participante.personas, 0);
+
+  return {
+    iso,
+    participantes,
+    personas,
+    cupo: CUPO_DIA_DE_CALMA,
+    libres: Math.max(CUPO_DIA_DE_CALMA - personas, 0),
+  };
+}
 
 type Ocupante =
   | { fuente: "reserva"; reserva: ReservaAdmin }
@@ -375,7 +532,15 @@ export function armarCalendarioMes({
     ),
   );
 
-  return { dias, filas, personasDeDia: personas, diaDeCalmaDelHotel };
+  /* El detalle de cada día con alguien en el Día de Calma (de cualquier
+     fuente y en cualquier estado). Los demás días no llevan entrada. */
+  const diaDeCalma: Record<string, DetalleDiaDeCalma> = {};
+  for (const iso of fechas) {
+    const detalle = detalleDiaDeCalma({ iso, reservas, diasDeCalma, ahora });
+    if (detalle.participantes.length > 0) diaDeCalma[iso] = detalle;
+  }
+
+  return { dias, filas, personasDeDia: personas, diaDeCalmaDelHotel, diaDeCalma };
 }
 
 

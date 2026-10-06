@@ -213,17 +213,42 @@ export default async function PaginaReserva({
                 {esDia ? (
                   <>
                     <Dato etiqueta="Plan">{reserva.plan_nombre ?? "—"}</Dato>
-                    <Dato etiqueta="Día">{formatearFechaConDia(reserva.entrada)}</Dato>
+                    <Dato etiqueta="Día">
+                      {formatearFechaConDia(reserva.entrada)}
+                      {/* Las demás reservas de ese día, con el total del cupo:
+                          abre el detalle del Día de Calma en el calendario. */}
+                      <Link
+                        href={`/admin/reservas?mes=${reserva.entrada.slice(0, 7)}&dia=${reserva.entrada}`}
+                        className="mt-1 block text-[0.8125rem] font-semibold text-petroleo-700 underline-offset-4 hover:underline"
+                      >
+                        Ver todos los de ese día →
+                      </Link>
+                    </Dato>
                     <Dato etiqueta="Cabaña">
                       Sin cabaña: el Día de Calma no incluye hospedaje y no
                       bloquea ninguna.
                     </Dato>
                     <Dato etiqueta="Personas">
-                      {reserva.num_personas}
+                      {reserva.num_personas}{" "}
+                      {reserva.num_personas === 1
+                        ? "· solo el titular"
+                        : `· el titular y ${reserva.num_personas === 2 ? "un acompañante" : `${reserva.num_personas - 1} acompañantes`}`}
                       <span className="ml-2 text-[0.8125rem] text-crema-600">
                         (de {CUPO_DIA_DE_CALMA} del día)
                       </span>
                     </Dato>
+                    {/* Una reserva de Día de Calma solo guarda los datos del
+                        titular y el número de personas: del acompañante no se
+                        pide nada. Se dice, para que nadie lo busque. */}
+                    <Dato etiqueta="Titular">{reserva.huesped_nombre}</Dato>
+                    {reserva.num_personas > 1 ? (
+                      <Dato etiqueta="Acompañante">
+                        <span className="text-crema-700">
+                          Sin datos: el sitio y el panel solo piden los del
+                          titular.
+                        </span>
+                      </Dato>
+                    ) : null}
                   </>
                 ) : (
                   <>

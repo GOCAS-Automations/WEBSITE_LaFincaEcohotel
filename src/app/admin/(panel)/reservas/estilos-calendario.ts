@@ -87,3 +87,10 @@ export const LEYENDA: {
   { etiqueta: "Fin de semana o festivo", clase: "bg-crema-200 ring-1 ring-inset ring-crema-300" },
   { etiqueta: "Hoy", clase: "bg-petroleo-50 ring-2 ring-inset ring-petroleo-500" },
 ];
+
+/** Clases de fondo de una columna del mes: hoy manda sobre fin de semana o festivo. */
+export function fondoDeColumna(dia: { esHoy: boolean; destacado: boolean }): string {
+  if (dia.esHoy) return "bg-petroleo-50";
+  if (dia.destacado) return "bg-crema-100";
+  return "";
+}

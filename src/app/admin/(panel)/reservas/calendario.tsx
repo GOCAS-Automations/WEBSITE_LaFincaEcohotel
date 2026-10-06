@@ -1,8 +1,10 @@
 import Link from "next/link";
 import type { CSSProperties } from "react";
 
+import { CeldasDiaDeCalma } from "./detalle-dia-de-calma";
 import {
   LEYENDA,
+  fondoDeColumna,
   pielDeBarra,
   tonoCupo,
 } from "./estilos-calendario";
@@ -78,6 +80,7 @@ export function CalendarioMes({
   ocupacionGoogle = [],
   diasDeCalmaGoogle = [],
   consulta = "",
+  diaAbierto = null,
 }: {
   mes: AnioMes;
   alojamientos: OpcionAlojamiento[];
@@ -91,6 +94,8 @@ export function CalendarioMes({
   diasDeCalmaGoogle?: DiaDeCalmaExterno[];
   /** El resto de la dirección (filtro del listado), para no perderlo al cambiar de mes. */
   consulta?: string;
+  /** Día del mes cuyo Día de Calma se abre al cargar (`?dia=`, desde la ficha). */
+  diaAbierto?: string | null;
 }) {
   const hoy = hoyISO();
   const calendario = armarCalendarioMes({
@@ -105,6 +110,9 @@ export function CalendarioMes({
     ahora: new Date(),
   });
   const indiceHoy = calendario.dias.findIndex((dia) => dia.esHoy);
+  const indiceAbierto = diaAbierto
+    ? calendario.dias.findIndex((dia) => dia.iso === diaAbierto)
+    : -1;
 
   return (
     <section
@@ -128,7 +136,10 @@ export function CalendarioMes({
       ) : (
         <VistasCalendario
           calendario={calendario}
-          indiceInicial={indiceHoy >= 0 ? indiceHoy : 0}
+          indiceInicial={
+            indiceAbierto >= 0 ? indiceAbierto : indiceHoy >= 0 ? indiceHoy : 0
+          }
+          diaAbierto={indiceAbierto >= 0 ? diaAbierto : null}
           cuadricula={<Cuadricula calendario={calendario} titulo={tituloMes(mes)} />}
         />
       )}
@@ -144,13 +155,6 @@ export function CalendarioMes({
  * La cuadrícula
  * ======================================================================== */
 
-/** Clases de fondo de una columna: hoy manda sobre fin de semana o festivo. */
-function fondoDeColumna(dia: DiaDelCalendario): string {
-  if (dia.esHoy) return "bg-petroleo-50";
-  if (dia.destacado) return "bg-crema-100";
-  return "";
-}
-
 function Cuadricula({
   calendario,
   titulo,
@@ -158,7 +162,7 @@ function Cuadricula({
   calendario: CalendarioDelMes;
   titulo: string;
 }) {
-  const { dias, filas, personasDeDia, diaDeCalmaDelHotel } = calendario;
+  const { dias, filas, personasDeDia, diaDeCalmaDelHotel, diaDeCalma } = calendario;
   const columnas = `repeat(${dias.length}, minmax(var(--ancho-dia), 1fr))`;
 
   return (
@@ -241,40 +245,18 @@ function Cuadricula({
           </span>
         </div>
         <div
+          role="group"
+          aria-label="Día de Calma: toca un día para ver quién viene"
           className="grid border-t-2 border-t-crema-900/[0.12]"
           style={{ gridColumn: `2 / span ${dias.length}`, gridTemplateColumns: columnas }}
         >
-          {dias.map((dia, indice) => {
-            const personas = personasDeDia[dia.iso] ?? 0;
-            /* Los «plan día» del calendario del hotel cuentan aquí (2 cada
-               uno) y no en ninguna cabaña: la casilla lleva borde punteado,
-               como todo lo que viene de Google, y los nombra en el detalle. */
-            const delHotel = diaDeCalmaDelHotel[dia.iso] ?? [];
-            const detalleHotel = delHotel.length
-              ? `. Incluye ${delHotel.map((titulo) => `«${titulo}»`).join(", ")} del calendario del hotel (cada «plan día» cuenta 2 y no ocupa cabaña)`
-              : "";
-            return (
-              <div
-                key={dia.iso}
-                style={{ gridColumn: indice + 1 }}
-                className={`flex h-12 items-center px-1 ${fondoDeColumna(dia)}`}
-              >
-                {personas > 0 ? (
-                  <span
-                    title={`${formatearFechaConDia(dia.iso)}: ${personas} de ${CUPO_DIA_DE_CALMA} cupos del Día de Calma${personas >= CUPO_DIA_DE_CALMA ? " (completo)" : ""}${detalleHotel}`}
-                    className={`flex h-8 flex-1 items-center justify-center rounded-[8px] text-[0.6875rem] font-bold tabular-nums ${tonoCupo(personas)} ${delHotel.length ? "border border-dashed border-crema-900/45" : ""}`}
-                  >
-                    {personas}/{CUPO_DIA_DE_CALMA}
-                    <span className="sr-only">
-                      {" "}
-                      personas en el Día de Calma el {formatearFechaConDia(dia.iso)}
-                      {detalleHotel}
-                    </span>
-                  </span>
-                ) : null}
-              </div>
-            );
-          })}
+          {/* De cliente: cada día con alguien abre el detalle de quién viene. */}
+          <CeldasDiaDeCalma
+            dias={dias}
+            personasDeDia={personasDeDia}
+            diaDeCalmaDelHotel={diaDeCalmaDelHotel}
+            conDetalle={Object.keys(diaDeCalma)}
+          />
         </div>
       </div>
     </div>
@@ -449,6 +431,9 @@ function Leyenda() {
           2/10
         </span>
         «Plan día» del calendario del hotel: cuenta 2 en el Día de Calma, no ocupa cabaña
+      </li>
+      <li className="text-crema-600">
+        Toca un día del Día de Calma para ver quién viene.
       </li>
     </ul>
   );
