@@ -6,7 +6,9 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { pielDeBarra, tonoCupo } from "./estilos-calendario";
 import {
   cabanasEnDia,
+  lineasDelDia,
   type CalendarioDelMes,
+  type LineaAgenda,
 } from "@/lib/admin/calendario-mes";
 import { CUPO_DIA_DE_CALMA } from "@/lib/reserva/dia-de-calma";
 import { formatearFechaConDia } from "@/lib/utils/formato";
@@ -235,8 +237,24 @@ function AgendaDelMes({
                     Libre
                   </span>
                 )}
-                <span className="mt-1 block text-[0.75rem] leading-snug text-crema-600">
-                  {describirDia(cabana.llega, noche, cabana.sale)}
+                {/* Una línea por huésped: quien sale por la mañana y quien
+                    llega (o se queda) esa noche, cada uno con su nombre. */}
+                <span className="mt-1 flex flex-col gap-0.5 text-[0.75rem] leading-snug text-crema-600">
+                  {lineasDelDia(cabana).map((linea) => (
+                    <span key={linea.tipo + linea.titulo} className="flex items-start gap-1.5">
+                      <span
+                        aria-hidden="true"
+                        className={`mt-[0.3rem] size-1.5 shrink-0 rounded-full ${PUNTO_LINEA[linea.tipo]}`}
+                      />
+                      <span className="min-w-0">
+                        <span className="font-semibold text-crema-800">
+                          {linea.titulo}
+                          {linea.texto ? ":" : ""}
+                        </span>
+                        {linea.texto ? ` ${linea.texto}` : null}
+                      </span>
+                    </span>
+                  ))}
                 </span>
               </span>
             </>
@@ -291,36 +309,14 @@ function AgendaDelMes({
   );
 }
 
-/** Una línea por cabaña: llega, se queda, sale por la mañana. */
-function describirDia(
-  llega: boolean,
-  noche: ReturnType<typeof cabanasEnDia>[number]["noche"],
-  sale: ReturnType<typeof cabanasEnDia>[number]["sale"],
-): string {
-  const partes: string[] = [];
-  if (sale) {
-    partes.push(
-      sale.fuente === "bloqueo"
-        ? "Termina un bloqueo esta mañana"
-        : `Sale por la mañana: ${sale.etiqueta}`,
-    );
-  }
-  if (noche?.fuente === "bloqueo") {
-    partes.push(
-      `Bloqueada${llega ? " desde hoy" : ""}; se libera el ${formatearFechaConDia(noche.salida)}`,
-    );
-  } else if (noche) {
-    const fuente =
-      noche.fuente === "google"
-        ? "Calendario del hotel"
-        : "Reserva del sitio o del panel";
-    const tramo = llega
-      ? `llega hoy, sale el ${formatearFechaConDia(noche.salida)}`
-      : `sale el ${formatearFechaConDia(noche.salida)}`;
-    partes.push(`${fuente} · ${tramo}`);
-  }
-  return partes.join(" · ") || "Nadie llega ni sale";
-}
+/** El puntito de color de cada línea de la agenda. */
+const PUNTO_LINEA: Record<LineaAgenda["tipo"], string> = {
+  sale: "bg-dorado-500",
+  llega: "bg-petroleo-500",
+  sigue: "bg-crema-400",
+  bloqueo: "bg-crema-500",
+  libre: "bg-oliva-400",
+};
 
 function Chevron({ girado = false }: { girado?: boolean }) {
   return (

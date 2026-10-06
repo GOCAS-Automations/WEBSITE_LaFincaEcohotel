@@ -60,7 +60,11 @@ import {
 } from "../reserva/calendario-externo";
 import { ocupaCalendario } from "../reserva/holds";
 import type { EstadoReserva } from "../tipos/basedatos";
-import { DIAS_SEMANA_CORTOS, formatearRangoConDias } from "../utils/formato";
+import {
+  DIAS_SEMANA_CORTOS,
+  formatearFechaConDia,
+  formatearRangoConDias,
+} from "../utils/formato";
 
 export type DiaDelCalendario = {
   iso: string;
@@ -108,6 +112,13 @@ export type FilaCabana = {
   nombre: string;
   activo: boolean;
   barras: Barra[];
+  /**
+   * La estadía que termina la mañana del día 1: empezó el mes anterior y su
+   * última noche es la del último día de ese mes. No tiene columna en la
+   * cuadrícula (no ocupa ninguna noche de este mes), pero la agenda del día 1
+   * tiene que decir que esa mañana sale alguien. `inicio` vale -1.
+   */
+  saleElPrimerDia?: Barra | null;
 };
 
 export type CalendarioDelMes = {
@@ -232,6 +243,11 @@ export function armarCalendarioMes({
   const noches = new Map<string, (Ocupante | undefined)[]>(
     alojamientos.map((cabana) => [cabana.id, new Array(fechas.length)]),
   );
+  /* La noche ANTERIOR al día 1, con la misma prioridad: de ahí sale quién se
+     va la mañana del 1 (solo si quien la ocupa la carga quien llama, que es
+     pedir la ocupación desde el último día del mes anterior). */
+  const diaAnterior = sumarDiasISO(fechas[0], -1);
+  const nocheAnterior = new Map<string, Ocupante>();
   const poner = (
     alojamientoId: string,
     entrada: string,
@@ -242,6 +258,9 @@ export function armarCalendarioMes({
     if (!ranuras) return;
     for (const dia of fechas) {
       if (dia >= entrada && dia < salida) ranuras[posicion.get(dia)!] = ocupante;
+    }
+    if (diaAnterior >= entrada && diaAnterior < salida) {
+      nocheAnterior.set(alojamientoId, ocupante);
     }
   };
 
@@ -275,6 +294,34 @@ export function armarCalendarioMes({
     });
   }
 
+  /* La barra de un ocupante entre las columnas `[indice, fin)` del mes. Para
+     la estadía que sale el día 1, `indice` = -1 y `fin` = 0: una noche, la
+     del último día del mes anterior. */
+  const barraDe = (ocupante: Ocupante, indice: number, fin: number): Barra => {
+    const { entrada, salida } = rangoDe(ocupante);
+    const { etiqueta, detalle } = describir(ocupante);
+    const primera = indice >= 0 ? fechas[indice] : diaAnterior;
+    const ultima = fin - 1 >= 0 ? fechas[fin - 1] : diaAnterior;
+    return {
+      clave: `${identidad(ocupante)}|${indice}`,
+      fuente: ocupante.fuente,
+      inicio: indice,
+      noches: fin - indice,
+      continuaAntes: primera > entrada,
+      continuaDespues: salida > sumarDiasISO(ultima, 1),
+      entrada,
+      salida,
+      etiqueta,
+      detalle,
+      href:
+        ocupante.fuente === "reserva"
+          ? `/admin/reservas/${ocupante.reserva.id}`
+          : null,
+      estado: ocupante.fuente === "reserva" ? ocupante.reserva.estado : null,
+      sinCabana: ocupante.fuente === "google" && ocupante.franja.cabana === null,
+    };
+  };
+
   const filas: FilaCabana[] = alojamientos.map((cabana) => {
     const ranuras = noches.get(cabana.id) ?? [];
     const barras: Barra[] = [];
@@ -288,30 +335,26 @@ export function armarCalendarioMes({
       const clave = identidad(ocupante);
       let fin = indice + 1;
       while (fin < fechas.length && identidad(ranuras[fin]) === clave) fin++;
-
-      const { entrada, salida } = rangoDe(ocupante);
-      const { etiqueta, detalle } = describir(ocupante);
-      barras.push({
-        clave: `${clave}|${indice}`,
-        fuente: ocupante.fuente,
-        inicio: indice,
-        noches: fin - indice,
-        continuaAntes: fechas[indice] > entrada,
-        continuaDespues: salida > sumarDiasISO(fechas[fin - 1], 1),
-        entrada,
-        salida,
-        etiqueta,
-        detalle,
-        href:
-          ocupante.fuente === "reserva"
-            ? `/admin/reservas/${ocupante.reserva.id}`
-            : null,
-        estado: ocupante.fuente === "reserva" ? ocupante.reserva.estado : null,
-        sinCabana: ocupante.fuente === "google" && ocupante.franja.cabana === null,
-      });
+      barras.push(barraDe(ocupante, indice, fin));
       indice = fin;
     }
-    return { id: cabana.id, nombre: cabana.nombre, activo: cabana.activo, barras };
+
+    /* ¿Sale alguien la mañana del día 1? Solo si la noche anterior era de
+       una estadía que termina justo ese día; si sigue dentro del mes, ya es
+       una barra con `continuaAntes` y no «sale». */
+    const anterior = nocheAnterior.get(cabana.id);
+    const saleElPrimerDia =
+      anterior && rangoDe(anterior).salida === fechas[0]
+        ? barraDe(anterior, -1, 0)
+        : null;
+
+    return {
+      id: cabana.id,
+      nombre: cabana.nombre,
+      activo: cabana.activo,
+      barras,
+      saleElPrimerDia,
+    };
   });
 
   const primerDia = fechas[0];
@@ -382,10 +425,15 @@ export function cabanasEnDia(
       fila.barras.find(
         (barra) => barra.inicio <= indice && indice < barra.inicio + barra.noches,
       ) ?? null;
+    /* El día 1 nadie del mes «termina» en la columna 0: quien sale esa
+       mañana empezó el mes anterior y viene aparte. */
     const sale =
-      fila.barras.find(
-        (barra) => barra.inicio + barra.noches === indice && !barra.continuaDespues,
-      ) ?? null;
+      (indice === 0
+        ? (fila.saleElPrimerDia ?? null)
+        : fila.barras.find(
+            (barra) =>
+              barra.inicio + barra.noches === indice && !barra.continuaDespues,
+          )) ?? null;
     return {
       id: fila.id,
       nombre: fila.nombre,
@@ -396,4 +444,60 @@ export function cabanasEnDia(
       sale: sale && sale !== noche ? sale : null,
     };
   });
+}
+
+/** Una línea de la agenda: «Sale por la mañana: Ana Pérez». */
+export type LineaAgenda = {
+  tipo: "sale" | "llega" | "sigue" | "bloqueo" | "libre";
+  /** Lo que va en negrita: «Sale por la mañana». */
+  titulo: string;
+  /** El resto: el nombre y las fechas. Vacío si no hace falta. */
+  texto: string;
+};
+
+function fuenteDeBarra(barra: Barra): string {
+  return barra.fuente === "google"
+    ? "calendario del hotel"
+    : "reserva del sitio o del panel";
+}
+
+/**
+ * Qué pasa en una cabaña un día, en líneas SEPARADAS y cada una con su
+ * nombre: quién sale por la mañana y quién llega (o se queda) esa noche.
+ *
+ * Antes era una sola frase unida con «·» y en un día de cambio de huésped se
+ * leía al revés: «Sale por la mañana: Ana · Calendario del hotel · llega hoy,
+ * sale el lun 12/10/2026» parecía decir que Ana llegaba. Ahora cada huésped
+ * tiene su línea.
+ */
+export function lineasDelDia(estado: EstadoCabanaEnDia): LineaAgenda[] {
+  const lineas: LineaAgenda[] = [];
+  const { sale, noche, llega } = estado;
+
+  if (sale) {
+    lineas.push(
+      sale.fuente === "bloqueo"
+        ? { tipo: "bloqueo", titulo: "Termina un bloqueo esta mañana", texto: "" }
+        : { tipo: "sale", titulo: "Sale por la mañana", texto: sale.etiqueta },
+    );
+  }
+
+  if (noche?.fuente === "bloqueo") {
+    lineas.push({
+      tipo: "bloqueo",
+      titulo: llega ? "Bloqueada desde hoy" : "Bloqueada",
+      texto: `se libera el ${formatearFechaConDia(noche.salida)}`,
+    });
+  } else if (noche) {
+    lineas.push({
+      tipo: llega ? "llega" : "sigue",
+      titulo: llega ? "Llega hoy" : "Se queda",
+      texto: `${noche.etiqueta} · sale el ${formatearFechaConDia(noche.salida)} (${fuenteDeBarra(noche)})`,
+    });
+  }
+
+  if (lineas.length === 0) {
+    lineas.push({ tipo: "libre", titulo: "Nadie llega ni sale", texto: "" });
+  }
+  return lineas;
 }

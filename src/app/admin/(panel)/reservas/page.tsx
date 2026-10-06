@@ -94,6 +94,11 @@ export default async function PaginaReservas({
      dejar el calendario y el listado a lados opuestos de un vencimiento. */
   const ahora = new Date();
 
+  /* La ocupación se pide desde la NOCHE ANTERIOR al día 1: la agenda del
+     celular tiene que decir quién sale la mañana del 1, y esa estadía empezó
+     el mes pasado. La cuadrícula no la pinta (no ocupa ninguna noche del mes). */
+  const desdeNocheAnterior = sumarDiasISO(primerDia, -1);
+
   const [
     alojamientos,
     reservasDelMes,
@@ -103,13 +108,13 @@ export default async function PaginaReservas({
     calendarioHotel,
   ] = await Promise.all([
     opcionesAlojamiento(supabase),
-    reservasEnRango(supabase, primerDia, finDeMes),
-    bloqueosEnRango(supabase, primerDia, finDeMes),
+    reservasEnRango(supabase, desdeNocheAnterior, finDeMes),
+    bloqueosEnRango(supabase, desdeNocheAnterior, finDeMes),
     listarReservas(supabase, { estado: estadoFiltro }),
     personasDeDiaPorFecha(supabase, primerDia, finDeMes),
     /* La capa de Google. Nunca lanza: si no está configurada o falla, viene
        con estado y una lista vacía, y el mes se pinta igual. */
-    ocupacionDelCalendario(primerDia, finDeMes),
+    ocupacionDelCalendario(desdeNocheAnterior, finDeMes),
   ]);
 
   /*

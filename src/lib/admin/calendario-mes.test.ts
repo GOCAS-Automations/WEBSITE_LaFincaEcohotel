@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   armarCalendarioMes,
   cabanasEnDia,
+  lineasDelDia,
   sinCabanaEnTitulo,
 } from "./calendario-mes";
 import type { BloqueoAdmin, OpcionAlojamiento, ReservaAdmin } from "./tipos";
@@ -210,6 +211,109 @@ describe("cabanasEnDia (la agenda del celular)", () => {
     expect(c3.noche?.etiqueta).toBe("Luis");
     expect(c3.llega).toBe(true);
     expect(c3.sale?.etiqueta).toBe("Ana Pérez");
+  });
+
+  it("el día de cambio de huésped, la salida y la llegada van en líneas separadas y con su nombre", () => {
+    const calendario = armar({
+      franjas: [
+        franja({ eventoId: "a", titulo: "Ana Ruiz cabaña 3", inicio: "2026-10-09", fin: "2026-10-11" }),
+        franja({ eventoId: "b", titulo: "Bruno Díaz cabaña 3", inicio: "2026-10-11", fin: "2026-10-12" }),
+      ],
+    });
+    const c3 = cabanasEnDia(calendario, 10)[1]; // 11 de octubre
+    expect(lineasDelDia(c3)).toEqual([
+      { tipo: "sale", titulo: "Sale por la mañana", texto: "Ana Ruiz" },
+      {
+        tipo: "llega",
+        titulo: "Llega hoy",
+        texto: "Bruno Díaz · sale el lun 12/10/2026 (calendario del hotel)",
+      },
+    ]);
+  });
+
+  it("una estadía que sigue dice «Se queda» y un día vacío, «Nadie llega ni sale»", () => {
+    const calendario = armar({
+      reservas: [reserva({ entrada: "2026-10-12", salida: "2026-10-15" })],
+    });
+    const [c1, c3] = cabanasEnDia(calendario, 12); // 13 de octubre
+    expect(lineasDelDia(c3)).toEqual([
+      {
+        tipo: "sigue",
+        titulo: "Se queda",
+        texto: "Ana Pérez · sale el jue 15/10/2026 (reserva del sitio o del panel)",
+      },
+    ]);
+    expect(lineasDelDia(c1)).toEqual([
+      { tipo: "libre", titulo: "Nadie llega ni sale", texto: "" },
+    ]);
+  });
+});
+
+describe("el día 1 del mes (estadías que empezaron el mes anterior)", () => {
+  function noviembre(entrada: { reservas?: ReservaAdmin[]; bloqueos?: BloqueoAdmin[]; franjas?: OcupacionExterna[] }) {
+    return armarCalendarioMes({
+      mes: { anio: 2026, mes: 11 },
+      hoy: "2026-10-05",
+      alojamientos: CABANAS,
+      reservas: entrada.reservas ?? [],
+      bloqueos: entrada.bloqueos ?? [],
+      franjas: entrada.franjas ?? [],
+      personasDeDia: new Map(),
+      ahora: AHORA,
+    });
+  }
+
+  it("dice quién sale la mañana del 1 aunque su estadía no tenga noches en el mes", () => {
+    const calendario = noviembre({
+      reservas: [reserva({ entrada: "2026-10-30", salida: "2026-11-01" })],
+    });
+    const fila = calendario.filas[1];
+    expect(fila.barras).toHaveLength(0); // la cuadrícula no la pinta
+    expect(fila.saleElPrimerDia).toMatchObject({ etiqueta: "Ana Pérez", inicio: -1, noches: 1 });
+    const c3 = cabanasEnDia(calendario, 0)[1];
+    expect(c3.sale?.etiqueta).toBe("Ana Pérez");
+    expect(lineasDelDia(c3)).toEqual([
+      { tipo: "sale", titulo: "Sale por la mañana", texto: "Ana Pérez" },
+    ]);
+    /* El día 2 ya no sale nadie. */
+    expect(cabanasEnDia(calendario, 1)[1].sale).toBeNull();
+  });
+
+  it("también con eventos del calendario del hotel y con bloqueos", () => {
+    const calendario = noviembre({
+      franjas: [franja({ titulo: "Diana cabaña 3", inicio: "2026-10-31", fin: "2026-11-01" })],
+      bloqueos: [
+        { id: "b1", alojamiento_id: "c1", alojamiento_nombre: "Cabaña 01", inicio: "2026-10-28", fin: "2026-11-01", motivo: "Pintura", created_at: "" } as BloqueoAdmin,
+      ],
+    });
+    const [c1, c3] = cabanasEnDia(calendario, 0);
+    expect(c3.sale?.etiqueta).toBe("Diana");
+    expect(lineasDelDia(c1)[0]).toMatchObject({ titulo: "Termina un bloqueo esta mañana" });
+  });
+
+  it("una estadía que cruza el cambio de mes no «sale» el 1: sigue", () => {
+    const calendario = noviembre({
+      reservas: [reserva({ entrada: "2026-10-31", salida: "2026-11-02" })],
+    });
+    const c3 = cabanasEnDia(calendario, 0)[1];
+    expect(c3.sale).toBeNull();
+    expect(c3.llega).toBe(false);
+    expect(c3.noche?.etiqueta).toBe("Ana Pérez");
+    expect(cabanasEnDia(calendario, 1)[1].sale?.etiqueta).toBe("Ana Pérez");
+  });
+
+  it("salida el 1 y llegada el 1 en la misma cabaña: dos líneas", () => {
+    const calendario = noviembre({
+      reservas: [
+        reserva({ id: "a", entrada: "2026-10-29", salida: "2026-11-01" }),
+        reserva({ id: "b", huesped_nombre: "Luis", entrada: "2026-11-01", salida: "2026-11-03" }),
+      ],
+    });
+    const c3 = cabanasEnDia(calendario, 0)[1];
+    expect(lineasDelDia(c3).map((linea) => linea.titulo)).toEqual([
+      "Sale por la mañana",
+      "Llega hoy",
+    ]);
   });
 });
 
