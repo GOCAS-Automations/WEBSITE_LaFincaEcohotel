@@ -44,7 +44,13 @@ import {
   normalizarPorcentajeAnticipo,
   type PorcentajeAnticipo,
 } from "@/lib/reserva/total";
-import { precioDeNoche, type TarifaCotizable } from "@/lib/reserva/cotizacion";
+import type { TarifaCotizable } from "@/lib/reserva/cotizacion";
+import {
+  cotizarReservaManual,
+  tramosDelDesglose,
+} from "@/lib/admin/cotizacion-panel";
+import { etiquetaTipoNoche } from "@/lib/reserva/noches";
+import { leerEnteroEscrito } from "@/lib/utils/importe";
 import {
   bloqueoDeCabana,
   tiposOfrecidosDe,
@@ -79,10 +85,14 @@ import type {
  * (extra, noche, cantidad) y con campos sueltos no había forma de distinguir
  * el fondue del viernes del fondue del sábado.
  *
- * El valor del alojamiento se calcula solo (precio del plan × noches) pero
- * queda EDITABLE: en la práctica se pacta un descuento, se cobra un festivo
- * distinto o se acuerda algo por fuera de la tarifa, y un panel que no deje
- * escribir el número real obliga a mentirle a la base de datos.
+ * El valor del alojamiento se calcula solo —con `cotizar()`, noche por noche,
+ * exactamente como lo cobraría el sitio (`src/lib/admin/cotizacion-panel.ts`)—
+ * pero queda EDITABLE: en la práctica se pacta un descuento, se cobra un
+ * festivo distinto o se acuerda algo por fuera de la tarifa, y un panel que no
+ * deje escribir el número real obliga a mentirle a la base de datos. Cuando el
+ * valor escrito (o el guardado) no coincide con el de las fechas de ahora, un
+ * aviso ámbar lo dice y ofrece aplicarlo; nunca se cambia solo un valor que
+ * alguien escribió.
  *
  * El total nunca se escribe a mano: es alojamiento + extras. Que salga de una
  * suma visible evita cuadres imposibles después.
@@ -126,7 +136,7 @@ export function FormularioReserva({
   planes: OpcionPlan[];
   /**
    * Las tarifas de cada cabaña × plan, con sus temporadas, indexadas por
-   * `alojamientoId|planId`. El valor sugerido sale de `precioDeNoche()`, la
+   * `alojamientoId|planId`. El valor sugerido sale de `cotizar()`, la
    * misma función con que cobra el sitio.
    */
   tarifas: Record<string, TarifaCotizable>;
@@ -298,33 +308,55 @@ export function FormularioReserva({
   /* --- El precio sugerido ----------------------------------------------- */
 
   const planElegido = planes.find((plan) => plan.id === planId) ?? null;
-  const tarifa = esDia ? null : (tarifas[`${alojamientoId}|${planId}`] ?? null);
 
-  /* Noche por noche con `precioDeNoche()`: la misma regla que el sitio
-     (temporadas incluidas, y el precio de una persona si viaja una sola). Aquí
-     el plan lo elige el equipo, no el tipo de noche: es una reserva pactada a
-     mano y el valor queda editable. */
-  const preciosPorNoche = useMemo(() => {
-    if (!tarifa) return [];
-    const adultos = Number(personas) === 1 ? 1 : 2;
-    return fechasDeNoche.map((fecha) => precioDeNoche(tarifa, fecha, adultos));
-  }, [tarifa, fechasDeNoche, personas]);
-  const precioNoche = preciosPorNoche[0]?.precio ?? tarifa?.precio_noche ?? null;
-  const mismoPrecioTodasLasNoches = preciosPorNoche.every(
-    (linea) => linea.precio === preciosPorNoche[0]?.precio,
+  /*
+    LA MISMA COTIZACIÓN QUE EL SITIO, NOCHE POR NOCHE.
+    `cotizarReservaManual()` llama a `cotizar()`, la función con la que cobra
+    el sitio: cada noche con el plan que le toca por su tipo (Entre Semana no
+    cubre un viernes: ese va con Estándar, o con Premium si es el elegido),
+    las tarifas diferenciales de esas fechas y el precio de una persona si
+    viaja sola. Antes se aplicaba el plan del desplegable a todas las noches
+    y una estadía mixta salía más barata que en el sitio.
+  */
+  const cotizacion = useMemo(
+    () =>
+      esDia
+        ? null
+        : cotizarReservaManual({
+            alojamientoId,
+            nombreCabana: cabanaElegida?.nombre ?? "cabaña",
+            planId,
+            planesIds: planesHospedaje.map((plan) => plan.id),
+            tarifas,
+            entrada,
+            salida,
+            personas: Number(personas),
+          }),
+    // `planesHospedaje` sale de `planes`, que no cambia en la vida del formulario.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [esDia, alojamientoId, cabanaElegida, planId, tarifas, entrada, salida, personas],
   );
-  const temporadasEnLaEstadia = [
-    ...new Set(
-      preciosPorNoche
-        .map((linea) => linea.temporada)
-        .filter((nombre): nombre is string => nombre !== null),
-    ),
-  ];
+  const tramos = cotizacion?.posible ? tramosDelDesglose(cotizacion.lineas) : [];
+  /* Noches que el plan elegido no cubre (un viernes con Entre Semana, un
+     martes con Estándar): van con otro plan y se dice cuál, como en el sitio. */
+  const lineasDeOtroPlan = cotizacion?.posible
+    ? cotizacion.lineas.filter((linea) => linea.plan !== planElegido?.nombre)
+    : [];
+  const avisoOtroPlan =
+    lineasDeOtroPlan.length > 0 && planElegido
+      ? `${planElegido.nombre} no cubre ${
+          lineasDeOtroPlan.length === 1
+            ? `la ${etiquetaTipoNoche(lineasDeOtroPlan[0].tipo)}`
+            : `las ${etiquetaTipoNoche(lineasDeOtroPlan[0].tipo, true)}`
+        }: ${lineasDeOtroPlan.length === 1 ? "va" : "van"} con ${[
+          ...new Set(lineasDeOtroPlan.map((linea) => linea.plan)),
+        ].join(" y ")}, como en el sitio.`
+      : null;
 
   const sugerido = esDia
     ? (planElegido?.precio_base ?? null)
-    : tarifa
-      ? preciosPorNoche.reduce((suma, linea) => suma + linea.precio, 0)
+    : cotizacion?.posible
+      ? cotizacion.total
       : null;
 
   // Mientras nadie toque el importe a mano, sigue a la tarifa.
@@ -377,7 +409,10 @@ export function FormularioReserva({
 
   /* --- Las cuentas ------------------------------------------------------- */
 
-  const subtotalNumero = Number(subtotal.replace(/[.\s$,]/g, "")) || 0;
+  /* La misma lectura que al guardar: con centavos no vale (el servidor lo
+     rechaza), así que tampoco se suma al total que se pinta. */
+  const lecturaSubtotal = leerEnteroEscrito(subtotal);
+  const subtotalNumero = lecturaSubtotal.ok ? lecturaSubtotal.valor : 0;
 
   /** Las líneas de extras que se van a guardar, ya con su precio y su noche. */
   const lineasExtras = useMemo(() => {
@@ -783,11 +818,20 @@ export function FormularioReserva({
                 planElegido?.precio_base !== undefined
                 ? `Precio publicado del plan: ${formatearCOP(planElegido.precio_base)} para dos personas. Puedes cambiarlo si acordaste otro valor.`
                 : "Ese plan no tiene precio publicado. Escribe el valor acordado."
-              : tarifa && precioNoche !== null
-                ? mismoPrecioTodasLasNoches
-                  ? `Tarifa de esa cabaña con ese plan: ${formatearCOP(precioNoche)} por noche × ${noches} = ${formatearCOP(sugerido ?? 0)}${temporadasEnLaEstadia.length > 0 ? ` (${temporadasEnLaEstadia.join(", ")})` : ""}. Puedes cambiarlo si acordaste otro precio.`
-                  : `Suma noche por noche de esa cabaña con ese plan: ${formatearCOP(sugerido ?? 0)} por ${noches} noches; algunas tienen precio de ${temporadasEnLaEstadia.join(", ")}. Puedes cambiarlo si acordaste otro precio.`
-                : "Esa cabaña no tiene precio para ese plan. Escribe el valor acordado."
+              : !alojamientoId
+                ? "Elige la cabaña y las fechas: el valor se calcula solo, noche por noche, como en el sitio."
+                : cotizacion === null
+                  ? "Se calcula solo al elegir las fechas, noche por noche, como en el sitio."
+                  : !cotizacion.posible
+                    ? `${cotizacion.motivo} Escribe el valor acordado.`
+                    : `Como lo cobraría el sitio: ${tramos
+                        .map(
+                          (tramo) =>
+                            `${tramo.noches} × ${formatearCOP(tramo.precio)} (${tramo.plan}${tramo.temporada ? `, ${tramo.temporada}` : ""})`,
+                        )
+                        .join(" + ")} = ${formatearCOP(cotizacion.total)}.${
+                        avisoOtroPlan ? ` ${avisoOtroPlan}` : ""
+                      } Puedes cambiarlo si acordaste otro precio.`
           }
         >
           <div className="relative">
@@ -811,18 +855,56 @@ export function FormularioReserva({
               className={`${CLASE_INPUT} pl-8`}
             />
           </div>
-          {subtotalTocado && sugerido !== null && subtotalNumero !== sugerido && (
-            <button
-              type="button"
-              onClick={() => {
-                setSubtotalTocado(false);
-                setSubtotal(String(sugerido));
-              }}
-              className="mt-1.5 text-[0.75rem] font-semibold text-petroleo-700 underline-offset-4 hover:underline"
+          {!lecturaSubtotal.ok && lecturaSubtotal.problema !== "vacio" ? (
+            <p className="mt-1.5 text-[0.75rem] font-semibold text-red-700">
+              {lecturaSubtotal.problema === "centavos"
+                ? "Escribe el valor sin centavos: por ejemplo, 552.000."
+                : "Escribe solo cifras: por ejemplo, 552000 o 552.000."}
+            </p>
+          ) : null}
+          {/*
+            EL AVISO ÁMBAR: el valor escrito (o el guardado, al editar) no es
+            el que da la tarifa para las fechas, el plan y las personas de
+            AHORA. No se cambia solo —puede ser un precio pactado—, pero se
+            dice y se ofrece aplicarlo de un toque. Antes, al mover las fechas
+            de una reserva el valor se quedaba igual sin ningún aviso visible.
+          */}
+          {subtotalTocado &&
+          sugerido !== null &&
+          subtotalNumero !== sugerido &&
+          (lecturaSubtotal.ok || lecturaSubtotal.problema === "vacio") ? (
+            <div
+              role="status"
+              className="mt-2 rounded-tarjeta bg-dorado-50 px-3.5 py-3 text-[0.8125rem] leading-snug text-dorado-900 ring-1 ring-dorado-300/70"
             >
-              Volver a la tarifa ({formatearCOP(sugerido)})
-            </button>
-          )}
+              <p className="font-semibold">
+                {esDia
+                  ? "El valor no es el precio publicado del plan"
+                  : "El valor no coincide con la tarifa de estas fechas"}
+              </p>
+              <p className="mt-1">
+                {lecturaSubtotal.ok
+                  ? `Escrito: ${formatearCOP(subtotalNumero)}. `
+                  : "No hay valor escrito. "}
+                {esDia
+                  ? `El plan se publica a ${formatearCOP(sugerido)}.`
+                  : `Con ${noches} ${noches === 1 ? "noche" : "noches"} en la ${cabanaElegida?.nombre ?? "cabaña"}, el sitio cobraría ${formatearCOP(sugerido)}.`}{" "}
+                Si cambiaste las fechas, el plan o las personas, aplica el
+                valor nuevo; si acordaste otro precio con el huésped, déjalo
+                como está.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setSubtotalTocado(false);
+                  setSubtotal(String(sugerido));
+                }}
+                className="mt-2.5 inline-flex min-h-9 items-center rounded-full bg-dorado-600 px-4 text-[0.8125rem] font-semibold text-white shadow-tenue transition-colors hover:bg-dorado-700"
+              >
+                Usar {formatearCOP(sugerido)}
+              </button>
+            </div>
+          ) : null}
         </Campo>
 
         <Campo
