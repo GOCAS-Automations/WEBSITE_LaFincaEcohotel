@@ -73,7 +73,7 @@ import {
   type ExtraElegido,
   type ResumenDePago,
 } from "../reserva/total";
-import { hoyEnBogota, sumarDias, type FechaISO } from "../utils/formato";
+import { formatearFecha, hoyEnBogota, sumarDias, type FechaISO } from "../utils/formato";
 
 /* ===========================================================================
  * Lo que llega del navegador
@@ -368,6 +368,42 @@ export async function cotizarEnServidor(
  * Hospedaje
  * ======================================================================== */
 
+/**
+ * UN PRECIO DE 0 ES UN ERROR DE CONFIGURACIÓN, NUNCA UNA NOCHE GRATIS.
+ *
+ * Si el panel guardara una tarifa (o una tarifa diferencial, o el precio del
+ * Día de Calma) en 0, `cotizar()` lo sumaría tal cual y el servidor cobraría $0
+ * por esa noche. Aquí se corta: se lanza este error, el registro del servidor
+ * lo dice con todas las letras para el equipo, y el huésped lee que escriba por
+ * WhatsApp. (La validación del formulario de precios es aparte, en el panel.)
+ */
+export class ErrorDeConfiguracionDePrecio extends Error {
+  constructor(mensaje: string) {
+    super(mensaje);
+    this.name = "ErrorDeConfiguracionDePrecio";
+  }
+}
+
+/** Lanza {@link ErrorDeConfiguracionDePrecio} si alguna noche cuesta 0 o menos. */
+export function exigirPreciosPositivos(
+  lineas: { fecha: string; plan: string; precio: number }[],
+  nombreCabana: string,
+): void {
+  const sinPrecio = lineas.filter(
+    (linea) => !(Number.isFinite(linea.precio) && linea.precio > 0),
+  );
+  if (sinPrecio.length === 0) return;
+  throw new ErrorDeConfiguracionDePrecio(
+    `La ${nombreCabana} tiene noches sin precio configurado: ${sinPrecio
+      .map((linea) => `${formatearFecha(linea.fecha)} (${linea.plan}: ${linea.precio})`)
+      .join(", ")}.`,
+  );
+}
+
+/** Lo que lee el huésped ante un precio mal configurado. */
+const MENSAJE_PRECIO_SIN_CONFIGURAR =
+  "No pudimos calcular el precio de esas fechas porque falta configurar una tarifa. Escríbenos por WhatsApp y te ayudamos con la reserva.";
+
 type FilaPlan = {
   id: string;
   nombre: string;
@@ -541,6 +577,15 @@ async function cotizarHospedaje(
     return { ok: false, motivo: cotizacion.motivo };
   }
 
+  /* Ninguna noche se cobra a $0: eso es una tarifa mal guardada, no un regalo. */
+  try {
+    exigirPreciosPositivos(cotizacion.lineas, String(alojamiento.nombre));
+  } catch (error) {
+    if (!(error instanceof ErrorDeConfiguracionDePrecio)) throw error;
+    console.error(`[precios] ERROR DE CONFIGURACIÓN: ${error.message}`);
+    return { ok: false, motivo: MENSAJE_PRECIO_SIN_CONFIGURAR, servidor: true };
+  }
+
   /*
     EL `plan_id` QUE SE GUARDA EN LA RESERVA.
 
@@ -684,6 +729,14 @@ async function cotizarDia(
         cotizacion.nota ??
         "No pudimos calcular el precio de ese día. Escríbenos por WhatsApp.",
     };
+  }
+
+  /* Lo mismo para el Día de Calma: su precio vive en `planes.precio_base`. */
+  if (!(cotizacion.precio > 0)) {
+    console.error(
+      `[precios] ERROR DE CONFIGURACIÓN: el plan «${plan.nombre}» (Día de Calma) tiene precio ${cotizacion.precio}.`,
+    );
+    return { ok: false, motivo: MENSAJE_PRECIO_SIN_CONFIGURAR, servidor: true };
   }
 
   return {
