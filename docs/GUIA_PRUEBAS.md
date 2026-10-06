@@ -93,6 +93,7 @@ El orden es **primero la cabaña, luego las fechas**. En `/reservar`, el paso 1 
 - [x] **Día de Calma**: en el paso 1 elige **Día de Calma**. El calendario pasa a pedir **un solo día** (sin salida) y tacha los días sin cupo. Aparece el plan de día, $250.000, máximo 2 adultos y los cupos que quedan.
 - [x] **No se reserva para hoy**: abre el calendario y comprueba que **el día de hoy sale tachado** y no se puede pulsar (igual que los días que ya pasaron). El primer día elegible es **mañana**. Pruébalo también en el **Día de Calma** y en el calendario de la **portada**.
 - [x] Intenta reservar una fecha ya ocupada (por ejemplo, entrando con `?cabana=…&entrada=…&salida=…` de unas noches ocupadas): debe avisar en español, sin errores técnicos.
+- [ ] **El aviso de noches ocupadas no dice quién las tiene** (nuevo el 2026-10-05): si al pagar las noches se acaban de ocupar, el mensaje es «Esas noches ya no están disponibles en la Cabaña 03. Elige otras fechas o escríbenos por WhatsApp.», **sin** el nombre de otro huésped, ni el código de su reserva, ni el título del evento del calendario de Google. (En el panel, el mensaje sí sigue diciendo quién es.)
 
 ## 3 · Pagos — **esta sección va en `pruebas.lafincaecohotel.com`**
 
@@ -166,7 +167,7 @@ Usa fechas a tres meses o más y una cabaña libre. La «Temporada de fin de añ
 **no la borres**; crea una de prueba y bórrala al terminar.
 
 - [x] **Tarifas diferenciales** aparece en el menú (en `/admin/tarifas-diferenciales`). El listado muestra la «Temporada de fin de año» en
-      **Próximas** (o **Activas ahora** si ya es diciembre), con «1 dic 2026 – 8 ene 2027 · 39 noches ·
+      **Próximas** (o **Activas ahora** si ya es diciembre), con «01/12/2026 al 08/01/2027 · 39 noches ·
       Todas las cabañas» y sus tres precios.
 - [x] Ábrela con **Editar**: al lado de cada uno de los cuatro precios dice **«+15 % sobre la base»**.
       No guardes nada.
@@ -190,6 +191,10 @@ Usa fechas a tres meses o más y una cabaña libre. La «Temporada de fin de añ
 - [x] La Cabaña 02 sigue sin ofrecerse entre semana en diciembre (sus lunes a jueves salen tachados).
 - [ ] La dirección vieja `/admin/temporadas` lleva sola a `/admin/tarifas-diferenciales`.
 - [ ] El recuadro **«Cómo se aplican»** se entiende sin ayuda: para qué sirven, que el tipo de noche sigue decidiendo el plan, que «Primera noche» y «Última noche» son noches y las dos cuentan, qué pasa con un plan en blanco, quién gana entre una de cabaña y una de todas, y que las reservas hechas no cambian. Trae un ejemplo.
+
+### Fechas siempre en dd/mm/aaaa (nuevo el 2026-10-05)
+
+- [ ] **Todas las fechas se leen como `05/10/2026`**, nunca al estilo de EE. UU.: en `/reservar` (botón de fechas, desglose «mar 15/12/2026», resumen), en la ficha de una cabaña («Del 01/12/2026 al 08/01/2027 aplican tarifas de temporada…»), en la confirmación de pago, en «Última actualización» de las páginas legales, en el correo al huésped y al hotel, en el mensaje de WhatsApp y en el panel (listados, fichas, Resumen, calendario, bloqueos, tarifas diferenciales, usuarios). Solo los títulos de mes («octubre de 2026») llevan el nombre del mes. En **Bloqueos**, **Tarifas diferenciales** y la **fecha de actualización** de las páginas legales, la fecha se escribe a mano (`05/10/2026`, `5/10/2026` o `05102026`) o se toca en el calendario del icono, **también con el navegador en inglés**; una fecha imposible o fuera de rango no deja guardar y lo explica.
 
 ## 6 · Calendario de Google
 
@@ -229,6 +234,14 @@ termines: esos calendarios los usa el hotel y los leerá el bot.
       vende.
 - [x] Borra de Google los tres eventos de prueba y pulsa «Actualizar ahora»: las
       fechas vuelven a estar libres.
+- [ ] **Un «plan día» no bloquea cabañas** (nuevo el 2026-10-05): un evento del calendario
+      general que no nombra cabaña y dice «plan día», «plan de día», «día de calma» o
+      «pasadía» (como «Cristian Arcila plan día», del 04/10/2026) **no ocupa ninguna
+      cabaña** y **gasta 2 cupos del Día de Calma** ese día: en el panel sale en la fila
+      del Día de Calma con borde punteado («2/10») y no en las cabañas; en el sitio las
+      cinco cabañas siguen libres ese día y al Día de Calma le quedan 8 cupos. Si el
+      evento nombra una cabaña («Cabaña 3 plan día») ocupa esa cabaña, y uno sin cabaña
+      ni «plan día» («Reunión») sigue bloqueando las cinco.
 
 ## 7 · Limpieza (importante)
 

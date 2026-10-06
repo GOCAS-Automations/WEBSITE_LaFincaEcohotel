@@ -3667,3 +3667,95 @@ pastilla—; ahora baja a su propia línea.
    ronda): el sitio debería responder un texto genérico («esas fechas acaban de ocuparse»).
 3. La agenda del celular no ve la salida de una estadía cuya última noche fue la del mes anterior: el
    día 1 no dice «sale por la mañana».
+
+### 2026-10-05 (noche) — Fechas `dd/mm/aaaa` en todo el sitio, la fuga de `/api/reservar` y el «plan día»
+
+Tres encargos de Cesar. Los dos hallazgos 1 y 2 de la entrada anterior quedan resueltos.
+
+#### 1. Fechas siempre `dd/mm/aaaa`
+
+- **Una sola fuente:** `src/lib/utils/formato.ts` → `formatearFecha` («05/10/2026») y
+  `formatearFechaConDia` («lun 05/10/2026»), y lo que se arma con ellas: `formatearRango`
+  («01/12/2026 al 08/01/2027»), `formatearRangoConDias`, `formatearEstadia`, `formatearFechaHora`
+  («05/10/2026, 14:35», hora de Bogotá) y `leerFechaNumerica` (lo que se escribe a mano: `05/10/2026`,
+  `5/10/2026`, `05102026`; nunca mm/dd). Una fecha plana se corta como texto (sin `Date`, sin desfase
+  de un día en ninguna zona); un instante se lleva al día de Bogotá. 120 llamadas en 22 archivos.
+- Desaparecen `formatearFechaCorta` y los formateadores propios de `admin/fechas.ts` (`fechaCorta`,
+  `fechaLarga`, `rangoCorto`, `fechaHora`, `fechaNumerica`, `fechaConDia`, `rangoConDias`), el
+  `toLocaleDateString` de la autorización de datos y los dos `Intl.DateTimeFormat` de
+  `calendario-fechas.tsx` (el lector de pantalla oye «sábado 19/09/2026»).
+- **Regla para lo que venga:** fecha para personas → `formatearFecha`/`formatearFechaConDia`. Nombre
+  de mes solo en cabeceras de calendario y selector de mes (`mesEnPalabras`, `tituloMes`). ISO para
+  máquinas (base, URL, JSON-LD, sitemap, `datetime`, parámetros de las API).
+- Cubre también: la línea de tarifas de la ficha («Del 01/12/2026 al 08/01/2027 aplican tarifas de
+  temporada…», ya siempre con año), la descripción del cobro en Bold, la versión de la política en el
+  WhatsApp y la **descripción de los eventos que el sitio escribe en Google**, que ahora dice
+  «Llegada: mar 15/12/2026 · Salida: vie 18/12/2026 (3 noches)» (Google pinta un evento de todo el día
+  hasta la víspera de la salida).
+- **`SelectorFecha`** (`src/components/admin/selector-fecha.tsx`) reemplaza los cinco
+  `<input type="date">` del panel (bloqueos ×2, tarifas diferenciales ×2, fecha de actualización de las
+  páginas legales), que con el navegador en inglés salían en mm/dd/yyyy. Campo de texto `dd/mm/aaaa` +
+  calendario del mismo estilo que el de reservar (con selector de mes y año); al formulario viaja la
+  ISO en un campo oculto; lo escrito a medias o fuera de rango bloquea el envío con `setCustomValidity`
+  en español. Es de UN día: «Primera noche / Última noche» siguen siendo noches incluidas (la última
+  puede ser igual a la primera). No se usó `CalendarioFechas` porque habla de llegada y salida.
+
+#### 2. `/api/reservar` ya no dice quién tiene las noches
+
+Con noches ocupadas devolvía `describirChoques()` (nombre del otro huésped, código de su reserva o
+título del evento de Google): con un POST a mano se sabía quién se aloja cuándo (Ley 1581). Ahora
+responde `mensajeNochesOcupadasParaHuesped()` («Esas noches ya no están disponibles en la Cabaña 03.
+Elige otras fechas o escríbenos por WhatsApp.») y el detalle va a `console.warn` del servidor. El
+panel sigue con el detalle (`describirChoquesEnCabana`, `describirChoques` en bloqueos). Prueba del
+Route Handler entero (`src/lib/pagos/respuesta-publica.test.ts`; Vitest tiene ahora el alias `@/`).
+Revisadas también: `/api/disponibilidad` y `/api/dia-de-calma/cupo` (solo cabaña, fechas y conteos),
+la confirmación de pago (código, fechas, cabaña e importes de la propia reserva, por una referencia de
+Bold que lleva la marca de tiempo en milisegundos; ni nombre, ni correo, ni teléfono), el WhatsApp
+(solo los datos que escribe el propio huésped) y el webhook (responde textos fijos tras validar la
+firma). El mensaje del trigger del cupo (`LF010`) solo trae cifras.
+
+#### 3. Regla 2b: un «plan día» del calendario general no ocupa cabaña
+
+**Manual interno:** un evento de Google **sin cabaña reconocible** cuyo título dice «plan día», «plan
+de día», «día de calma», «dia de calma», «pasadía» o «pasadia» (sin mirar mayúsculas ni tildes) es un
+Día de Calma: **no bloquea ninguna cabaña** y **gasta 2 cupos** del Día de Calma ese día. Si nombra
+una cabaña o viene del subcalendario de una cabaña, sigue ocupando esa cabaña; sin cabaña ni señal,
+sigue bloqueando las cinco.
+
+- Vive en `calendario-externo.ts` (`esTituloDeDiaDeCalma`, `leerEventos`, `lecturaDeVariosCalendarios`,
+  `personasDeDiaDeCalmaPorFecha`, `PERSONAS_POR_EVENTO_DIA_DE_CALMA = 2`). Los Días de Calma van en
+  una lista **aparte** (`LecturaCalendario.diasDeCalma`), no en `ocupacion`: así ningún código que lea
+  `cabana === null` como «ocupa todas» los cuenta por descuido.
+- Suman al cupo en `/api/disponibilidad` (`dia`), `/api/dia-de-calma/cupo`, `cotizarEnServidor`, la
+  reserva manual del panel (el aviso nombra el evento), `/admin/api/ocupacion`, la fila del Día de
+  Calma del calendario del mes (borde punteado y el título en el detalle), la agenda del celular y el
+  Resumen (como Día de Calma de 2 personas, ya no como «evento sin cabaña»). Leyenda, diagnóstico e
+  indicador de conexión lo explican. **El trigger de la base no ve Google**: el límite con los «plan
+  día» lo ponen el sitio y el panel.
+- Datos reales tras el cambio: el 04/10/2026 quedan libres las Cabañas 02 a 05 (la 01 tiene su propia
+  reserva) y el Día de Calma marca 2/10. El indicador dice «35 eventos ocupan fechas; 1 evento es de
+  Día de Calma».
+
+#### Verificación
+
+`tsc` limpio · `npm test` **523 en verde** (496 + 27) · `next build` sin errores en un worktree fuera
+de OneDrive (borrado al terminar) · eslint limpio en lo tocado. Capturas con Chrome headless contra
+`localhost:3191` (`next start`), a 1440 y 390: desglose de `/reservar` con 15–18/12/2026, calendario
+abierto, ficha de la Cabaña 03 con la línea de tarifas, `/legal/terminos`, y en el panel —con un
+usuario **temporal** creado por la Admin API y **borrado** al terminar (no se usó
+`panel@lafincaecohotel.com`)— el selector en Bloqueos y en Tarifas diferenciales (escribir
+`1/12/2026` → `01/12/2026`; una última noche anterior a la primera se rechaza en español) y el
+calendario de octubre con el «plan día» en la fila del Día de Calma. Correos renderizados con
+`scripts/probar-correos.mjs`.
+
+**Ojo con ese script:** con `RESEND_API_KEY` y `EMAIL_NOTIFY_TO` en `.env.local` **envía** los seis
+correos de prueba aunque no se pase `--enviar`. El 05/10/2026 hacia las 20:45 llegaron seis correos
+«[PRUEBA] …» (reservas de ejemplo de octubre de 2026) a `fincavillarrealcali@gmail.com`. Para solo
+renderizar, correrlo sin `RESEND_API_KEY` en el entorno.
+
+#### Pendiente
+
+- El hallazgo 3 de la entrada anterior (la agenda del celular no ve la salida de una estadía cuya
+  última noche fue la del mes anterior) sigue abierto.
+- Las API públicas responden «Escribe las fechas en formato AAAA-MM-DD.» a un parámetro mal formado:
+  es el formato de la URL, no una fecha para leer; se dejó así.
