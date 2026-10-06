@@ -16,13 +16,7 @@ import {
   Entrada,
 } from "@/components/admin/ui";
 import type { ExtraDeReserva } from "@/lib/admin/datos";
-import {
-  fechaConDia,
-  fechaCorta,
-  hoyISO,
-  nochesEntre,
-  sumarDiasISO,
-} from "@/lib/admin/fechas";
+import { hoyISO, nochesEntre, sumarDiasISO } from "@/lib/admin/fechas";
 import {
   AYUDA_ESTADO,
   AYUDA_TIPO_RESERVA,
@@ -56,7 +50,7 @@ import {
   tiposOfrecidosDe,
   validarFechas,
 } from "@/lib/reserva/elegibilidad-calendario";
-import { formatearCOP } from "@/lib/utils/formato";
+import { formatearCOP, formatearFechaConDia } from "@/lib/utils/formato";
 import type {
   EstadoReserva,
   Extra,
@@ -582,7 +576,7 @@ export function FormularioReserva({
               : esDia
                 ? "El Día de Calma dura un solo día y no ocupa ninguna cabaña. Los días sin cupo salen tachados."
                 : noches > 0
-                  ? `${noches} ${noches === 1 ? "noche" : "noches"}: del ${fechaConDia(entrada)} al ${fechaConDia(salida)}. Desde el panel sí se puede reservar para hoy.`
+                  ? `${noches} ${noches === 1 ? "noche" : "noches"}: del ${formatearFechaConDia(entrada)} al ${formatearFechaConDia(salida)}. Desde el panel sí se puede reservar para hoy.`
                   : "Toca el día de llegada y luego el de salida. Desde el panel sí se puede reservar para hoy."}
           </p>
           {conflictoDeFechas ? (
@@ -591,10 +585,10 @@ export function FormularioReserva({
               className="mt-2 rounded-tarjeta bg-red-50 px-3.5 py-2.5 text-[0.8125rem] leading-snug text-red-800 ring-1 ring-red-200"
             >
               {esDia
-                ? `El ${fechaConDia(conflictoDeFechas.fecha)} no se puede: ${conflictoDeFechas.motivo}. Elige otro día.`
+                ? `El ${formatearFechaConDia(conflictoDeFechas.fecha)} no se puede: ${conflictoDeFechas.motivo}. Elige otro día.`
                 : conflictoDeFechas.causa === "no_ofrecida"
-                  ? `Esas fechas no se pueden en la ${cabanaElegida?.nombre ?? "cabaña"}: ${conflictoDeFechas.motivo.replace(/^no disponible: /, "")} (la noche del ${fechaConDia(conflictoDeFechas.fecha)}). Elige otras fechas u otra cabaña.`
-                  : `Esas fechas no están libres en la ${cabanaElegida?.nombre ?? "cabaña"}: la noche del ${fechaConDia(conflictoDeFechas.fecha)} ya está ocupada. Elige otras fechas u otra cabaña.`}
+                  ? `Esas fechas no se pueden en la ${cabanaElegida?.nombre ?? "cabaña"}: ${conflictoDeFechas.motivo.replace(/^no disponible: /, "")} (la noche del ${formatearFechaConDia(conflictoDeFechas.fecha)}). Elige otras fechas u otra cabaña.`
+                  : `Esas fechas no están libres en la ${cabanaElegida?.nombre ?? "cabaña"}: la noche del ${formatearFechaConDia(conflictoDeFechas.fecha)} ya está ocupada. Elige otras fechas u otra cabaña.`}
             </p>
           ) : null}
         </fieldset>
@@ -914,7 +908,7 @@ export function FormularioReserva({
                     className="rounded-tarjeta bg-crema-900/[0.03] px-3.5 py-3"
                   >
                     <legend className="px-1 text-[0.75rem] font-semibold text-crema-700">
-                      Noche del {fechaCorta(noche)}
+                      Noche del {formatearFechaConDia(noche)}
                     </legend>
                     <ul className="space-y-2">
                       {experiencias.map((extra) => (

@@ -30,7 +30,6 @@ import {
 } from "@/lib/admin/estadisticas";
 import {
   diasDelMes,
-  fechaConDia,
   hoyISO,
   isoDe,
   mesDe,
@@ -43,7 +42,7 @@ import { ETIQUETA_ESTADO, TONO_ESTADO } from "@/lib/admin/tipos";
 import { CUPO_DIA_DE_CALMA } from "@/lib/reserva/dia-de-calma";
 import { tiposOfrecidosDe } from "@/lib/reserva/elegibilidad-calendario";
 import { ocupacionDelCalendario } from "@/lib/reserva/ocupacion-externa";
-import { formatearCOP } from "@/lib/utils/formato";
+import { formatearCOP, formatearFechaConDia } from "@/lib/utils/formato";
 
 export const metadata: Metadata = { title: "Resumen" };
 export const dynamic = "force-dynamic";
@@ -151,7 +150,7 @@ export default async function PaginaResumen({
     <>
       <EncabezadoPagina
         titulo="Resumen"
-        descripcion={`Hoy es ${fechaConDia(hoy)}. Cuenta las reservas del sitio, las del panel y las del calendario de Google del hotel.`}
+        descripcion={`Hoy es ${formatearFechaConDia(hoy)}. Cuenta las reservas del sitio, las del panel y las del calendario de Google del hotel.`}
         accion={
           <EnlaceBoton href="/admin/reservas/nueva">Nueva reserva</EnlaceBoton>
         }
@@ -230,7 +229,7 @@ export default async function PaginaResumen({
         <Tarjeta>
           <CabeceraTarjeta
             titulo="Próximos siete días"
-            descripcion={`Las llegadas del ${fechaConDia(sumarDiasISO(hoy, 1))} al ${fechaConDia(sumarDiasISO(hoy, 7))}.`}
+            descripcion={`Las llegadas del ${formatearFechaConDia(sumarDiasISO(hoy, 1))} al ${formatearFechaConDia(sumarDiasISO(hoy, 7))}.`}
           />
           {resumen.llegadasProximas.length === 0 ? (
             <CuerpoTarjeta>
@@ -415,10 +414,10 @@ function FilaEstadia({
         <p className="mt-0.5 text-[0.75rem] text-crema-600">
           {estadia.cabana}
           <span className="mx-1.5">·</span>
-          {conFecha ? `${fechaConDia(estadia.entrada)} · ` : ""}
+          {conFecha ? `${formatearFechaConDia(estadia.entrada)} · ` : ""}
           {estadia.esDia
             ? `${estadia.personas ?? 0} ${estadia.personas === 1 ? "persona" : "personas"}`
-            : `${noches} ${noches === 1 ? "noche" : "noches"}, sale el ${fechaConDia(estadia.salida)}`}
+            : `${noches} ${noches === 1 ? "noche" : "noches"}, sale el ${formatearFechaConDia(estadia.salida)}`}
           {/* La fuente de las del calendario ya la dice la pastilla. */}
           {estadia.fuente !== "calendario" ? (
             <>

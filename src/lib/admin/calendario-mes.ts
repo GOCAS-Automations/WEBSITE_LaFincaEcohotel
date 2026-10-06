@@ -39,7 +39,6 @@ import {
   diasDeMes,
   esFinDeSemana,
   indiceDiaSemana,
-  rangoConDias,
   sumarDiasISO,
   type AnioMes,
 } from "./fechas";
@@ -61,9 +60,7 @@ import {
 } from "../reserva/calendario-externo";
 import { ocupaCalendario } from "../reserva/holds";
 import type { EstadoReserva } from "../tipos/basedatos";
-
-/** Abreviatura del día de la semana, de lunes (0) a domingo (6). */
-const DIAS_CORTOS = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"];
+import { DIAS_SEMANA_CORTOS, formatearRangoConDias } from "../utils/formato";
 
 export type DiaDelCalendario = {
   iso: string;
@@ -154,7 +151,7 @@ function describir(ocupante: Ocupante): {
   detalle: string;
 } {
   const { entrada, salida } = rangoDe(ocupante);
-  const fechas = `del ${rangoConDias(entrada, salida)}`;
+  const fechas = `del ${formatearRangoConDias(entrada, salida)}`;
   if (ocupante.fuente === "reserva") {
     const { reserva } = ocupante;
     return {
@@ -223,7 +220,7 @@ export function armarCalendarioMes({
     return {
       iso,
       numero: Number(iso.slice(8, 10)),
-      semana: DIAS_CORTOS[indiceDiaSemana(iso)],
+      semana: DIAS_SEMANA_CORTOS[indiceDiaSemana(iso)],
       finDeSemana,
       festivo,
       destacado: finDeSemana || festivo !== null,

@@ -29,12 +29,7 @@ import {
   opcionesAlojamiento,
   opcionesPlan,
 } from "@/lib/admin/datos";
-import {
-  fechaCorta,
-  fechaHora,
-  fechaLarga,
-  nochesEntre,
-} from "@/lib/admin/fechas";
+import { nochesEntre } from "@/lib/admin/fechas";
 import {
   AYUDA_ESTADO,
   ESTADOS_RESERVA,
@@ -49,7 +44,12 @@ import { cuentaAtras, vencePronto } from "@/lib/reserva/holds";
 import { pagosDeReserva, resumirPagoDeReserva } from "@/lib/admin/pagos";
 import { ETIQUETA_ESTADO_BOLD, esAprobado, esRechazado } from "@/lib/pagos/bold";
 import { esUuid } from "@/lib/admin/validacion";
-import { formatearCOP } from "@/lib/utils/formato";
+import {
+  formatearCOP,
+  formatearFecha,
+  formatearFechaConDia,
+  formatearFechaHora,
+} from "@/lib/utils/formato";
 
 export const metadata: Metadata = { title: "Reserva" };
 export const dynamic = "force-dynamic";
@@ -161,7 +161,7 @@ export default async function PaginaReserva({
     <>
       <EncabezadoPagina
         titulo={reserva.huesped_nombre}
-        descripcion={`Reserva ${reserva.codigo} · registrada el ${fechaHora(reserva.created_at)}`}
+        descripcion={`Reserva ${reserva.codigo} · registrada el ${formatearFechaHora(reserva.created_at)}`}
         accion={
           <Link
             href="/admin/reservas"
@@ -213,7 +213,7 @@ export default async function PaginaReserva({
                 {esDia ? (
                   <>
                     <Dato etiqueta="Plan">{reserva.plan_nombre ?? "—"}</Dato>
-                    <Dato etiqueta="Día">{fechaLarga(reserva.entrada)}</Dato>
+                    <Dato etiqueta="Día">{formatearFechaConDia(reserva.entrada)}</Dato>
                     <Dato etiqueta="Cabaña">
                       Sin cabaña: el Día de Calma no incluye hospedaje y no
                       bloquea ninguna.
@@ -231,9 +231,9 @@ export default async function PaginaReserva({
                       {reserva.alojamiento_nombre ?? "—"}
                     </Dato>
                     <Dato etiqueta="Plan">{reserva.plan_nombre ?? "—"}</Dato>
-                    <Dato etiqueta="Entrada">{fechaLarga(reserva.entrada)}</Dato>
+                    <Dato etiqueta="Entrada">{formatearFechaConDia(reserva.entrada)}</Dato>
                     <Dato etiqueta="Salida">
-                      {fechaLarga(reserva.salida)}
+                      {formatearFechaConDia(reserva.salida)}
                       <span className="ml-2 text-[0.8125rem] text-crema-600">
                         ({noches} {noches === 1 ? "noche" : "noches"})
                       </span>
@@ -281,12 +281,9 @@ export default async function PaginaReserva({
                         reserva.autorizacion_datos_canal ?? ""
                       ] ?? reserva.autorizacion_datos_canal}
                       {" · "}
-                      {new Date(reserva.autorizacion_datos_en).toLocaleDateString(
-                        "es-CO",
-                        { day: "numeric", month: "long", year: "numeric" },
-                      )}
+                      {formatearFechaHora(reserva.autorizacion_datos_en)}
                       {reserva.autorizacion_datos_version
-                        ? ` · texto del ${reserva.autorizacion_datos_version}`
+                        ? ` · texto del ${formatearFecha(reserva.autorizacion_datos_version)}`
                         : ""}
                     </span>
                   ) : (
@@ -314,7 +311,7 @@ export default async function PaginaReserva({
                       <div key={noche || "estadia"}>
                         <p className="text-[0.75rem] font-semibold text-crema-700">
                           {noche
-                            ? `Noche del ${fechaCorta(noche)}`
+                            ? `Noche del ${formatearFechaConDia(noche)}`
                             : esDia
                               ? "Para ese día"
                               : "Para toda la estadía"}
@@ -496,7 +493,7 @@ export default async function PaginaReserva({
                         <div className="flex flex-wrap justify-between gap-x-3">
                           <dt className="text-crema-700">Intentado</dt>
                           <dd className="text-crema-900">
-                            {fechaHora(pago.creadoEn)}
+                            {formatearFechaHora(pago.creadoEn)}
                           </dd>
                         </div>
                       </dl>

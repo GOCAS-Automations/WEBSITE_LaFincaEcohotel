@@ -137,7 +137,7 @@ export function casilla(form: FormData, campo: string): boolean {
   return valor === "on" || valor === "true" || valor === "1";
 }
 
-/** Fecha ISO obligatoria (input type="date"). */
+/** Fecha ISO obligatoria (el campo oculto de `SelectorFecha`, que muestra dd/mm/aaaa). */
 export function fechaRequerida(
   form: FormData,
   campo: string,

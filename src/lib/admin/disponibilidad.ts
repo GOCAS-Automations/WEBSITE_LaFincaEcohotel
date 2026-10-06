@@ -25,13 +25,7 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import {
-  fechaCorta,
-  leerRangoFechas,
-  rangoConDias,
-  rangoCorto,
-  seCruzan,
-} from "./fechas";
+import { leerRangoFechas, seCruzan } from "./fechas";
 import { ESTADOS_QUE_OCUPAN, ETIQUETA_ESTADO } from "./tipos";
 import { ocupaCalendario } from "../reserva/holds";
 import {
@@ -39,6 +33,7 @@ import {
   ocupacionDelCalendario,
 } from "../reserva/ocupacion-externa";
 import type { EstadoReserva } from "../tipos/basedatos";
+import { formatearFecha, formatearRango, formatearRangoConDias } from "../utils/formato";
 
 export type Choque = {
   tipo: "reserva" | "bloqueo" | "calendario";
@@ -133,7 +128,7 @@ export async function buscarChoques(
     })`;
     choques.push({
       tipo: "reserva",
-      descripcion: `${quien}, del ${rangoCorto(rango.inicio, rango.fin)}`,
+      descripcion: `${quien}, del ${formatearRango(rango.inicio, rango.fin)}`,
       inicio: rango.inicio,
       fin: rango.fin,
       quien,
@@ -148,7 +143,7 @@ export async function buscarChoques(
       typeof fila.motivo === "string" && fila.motivo ? fila.motivo : "Bloqueo";
     choques.push({
       tipo: "bloqueo",
-      descripcion: `${motivo}, del ${rangoCorto(rango.inicio, rango.fin)}`,
+      descripcion: `${motivo}, del ${formatearRango(rango.inicio, rango.fin)}`,
       inicio: rango.inicio,
       fin: rango.fin,
       quien: motivo,
@@ -166,11 +161,11 @@ export async function buscarChoques(
         tipo: "calendario",
         descripcion:
           franja.motivo === "sin_cabana"
-            ? `«${franja.titulo}» en el calendario del hotel, del ${rangoCorto(
+            ? `«${franja.titulo}» en el calendario del hotel, del ${formatearRango(
                 franja.inicio,
                 franja.fin,
               )} (no dice qué cabaña, así que se cuentan todas como ocupadas)`
-            : `«${franja.titulo}» en el calendario del hotel, del ${rangoCorto(
+            : `«${franja.titulo}» en el calendario del hotel, del ${formatearRango(
                 franja.inicio,
                 franja.fin,
               )}`,
@@ -231,7 +226,7 @@ export function describirChoquesEnCabana(
   nombreCabana: string,
 ): string {
   const frase = (choque: Choque) => {
-    const fechas = `del ${rangoConDias(choque.inicio, choque.fin)}`;
+    const fechas = `del ${formatearRangoConDias(choque.inicio, choque.fin)}`;
     if (choque.tipo === "reserva") {
       return `la reserva de ${choque.quien}, ${fechas}`;
     }
@@ -289,14 +284,17 @@ export async function buscarChoquesDeBloqueo(
     .maybeSingle();
   const propio = leerRangoFechas(data?.rango);
   if (!propio) return choques;
-  const etiquetaPropia = rangoCorto(propio.inicio, propio.fin);
   return choques.filter(
     (choque) =>
-      !(choque.tipo === "bloqueo" && choque.descripcion.includes(etiquetaPropia)),
+      !(
+        choque.tipo === "bloqueo" &&
+        choque.inicio === propio.inicio &&
+        choque.fin === propio.fin
+      ),
   );
 }
 
 /** Texto amable de una fecha suelta, para los avisos. */
 export function diaLegible(iso: string): string {
-  return fechaCorta(iso);
+  return formatearFecha(iso);
 }

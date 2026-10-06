@@ -16,21 +16,6 @@
 
 const FECHA_ISO = /^\d{4}-\d{2}-\d{2}$/;
 
-const MESES_CORTOS = [
-  "ene",
-  "feb",
-  "mar",
-  "abr",
-  "may",
-  "jun",
-  "jul",
-  "ago",
-  "sep",
-  "oct",
-  "nov",
-  "dic",
-];
-
 const MESES_LARGOS = [
   "enero",
   "febrero",
@@ -46,16 +31,11 @@ const MESES_LARGOS = [
   "diciembre",
 ];
 
-/** Cabecera del calendario: la semana empieza en lunes (convención de Colombia). */
-export const DIAS_SEMANA_CORTOS = [
-  "lun",
-  "mar",
-  "mié",
-  "jue",
-  "vie",
-  "sáb",
-  "dom",
-];
+/**
+ * Cabecera del calendario: la semana empieza en lunes (convención de Colombia).
+ * Vive en `@/lib/utils/formato`, junto a las fechas `dd/mm/aaaa`.
+ */
+export { DIAS_SEMANA_CORTOS } from "../utils/formato";
 
 /** Inicial de cada día, para el calendario mensual del panel. */
 export const DIAS_SEMANA_INICIAL = ["L", "M", "M", "J", "V", "S", "D"];
@@ -105,52 +85,6 @@ export function seCruzan(
   bFin: string,
 ): boolean {
   return aInicio < bFin && bInicio < aFin;
-}
-
-/** "2026-08-12" → "12 ago 2026". */
-export function fechaCorta(iso: string): string {
-  if (!FECHA_ISO.test(iso)) return iso;
-  const [anio, mes, dia] = iso.split("-");
-  return `${Number(dia)} ${MESES_CORTOS[Number(mes) - 1]} ${anio}`;
-}
-
-/** "2026-08-12" → "12 de agosto de 2026". */
-export function fechaLarga(iso: string): string {
-  if (!FECHA_ISO.test(iso)) return iso;
-  const [anio, mes, dia] = iso.split("-");
-  return `${Number(dia)} de ${MESES_LARGOS[Number(mes) - 1]} de ${anio}`;
-}
-
-/** "12 – 15 ago 2026" (omite el mes y el año repetidos). */
-export function rangoCorto(inicio: string, fin: string): string {
-  if (!FECHA_ISO.test(inicio) || !FECHA_ISO.test(fin)) {
-    return `${inicio} – ${fin}`;
-  }
-  const [anioI, mesI, diaI] = inicio.split("-");
-  const [anioF, mesF] = fin.split("-");
-  const izquierda =
-    anioI === anioF && mesI === mesF
-      ? `${Number(diaI)}`
-      : `${Number(diaI)} ${MESES_CORTOS[Number(mesI) - 1]}`;
-  return `${izquierda} – ${fechaCorta(fin)}`;
-}
-
-/**
- * Fecha y hora legibles, SIEMPRE en hora de Colombia: "12 ago 2026, 14:35".
- * Nunca la del dispositivo — un dato que se lea distinto según dónde esté quien
- * mira no es un dato.
- */
-export function fechaHora(valor: string | null): string {
-  if (!valor) return "—";
-  const fecha = new Date(valor);
-  if (Number.isNaN(fecha.getTime())) return valor;
-  const bogota = new Date(fecha.getTime() - 5 * 60 * 60 * 1000);
-  const dia = bogota.getUTCDate();
-  const mes = MESES_CORTOS[bogota.getUTCMonth()];
-  const anio = bogota.getUTCFullYear();
-  const hh = String(bogota.getUTCHours()).padStart(2, "0");
-  const mm = String(bogota.getUTCMinutes()).padStart(2, "0");
-  return `${dia} ${mes} ${anio}, ${hh}:${mm}`;
 }
 
 /* ---------------------------------------------------------------------------
@@ -246,30 +180,4 @@ export function diasDeMes(objetivo: AnioMes): string[] {
 /** ¿Es sábado o domingo? El calendario tiñe esas columnas. */
 export function esFinDeSemana(iso: string): boolean {
   return indiceDiaSemana(iso) >= 5;
-}
-
-/* ---------------------------------------------------------------------------
- * Fechas numéricas `dd/mm/aaaa` (2026-10-05)
- *
- * Lo nuevo del panel (el calendario del mes, el Resumen, los mensajes de
- * choque) ya escribe las fechas así. El resto del sitio pasará a este formato
- * en una ronda aparte.
- * ------------------------------------------------------------------------- */
-
-/** "2026-12-15" → "15/12/2026". */
-export function fechaNumerica(iso: string): string {
-  if (!FECHA_ISO.test(iso)) return iso;
-  const [anio, mes, dia] = iso.split("-");
-  return `${dia}/${mes}/${anio}`;
-}
-
-/** "2026-12-15" → "mar 15/12/2026". */
-export function fechaConDia(iso: string): string {
-  if (!FECHA_ISO.test(iso)) return iso;
-  return `${DIAS_SEMANA_CORTOS[indiceDiaSemana(iso)]} ${fechaNumerica(iso)}`;
-}
-
-/** "mar 13/10/2026 al vie 16/10/2026" (la salida es el día en que se va). */
-export function rangoConDias(inicio: string, fin: string): string {
-  return `${fechaConDia(inicio)} al ${fechaConDia(fin)}`;
 }

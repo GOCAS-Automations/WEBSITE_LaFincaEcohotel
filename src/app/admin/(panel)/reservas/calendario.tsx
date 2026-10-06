@@ -16,7 +16,6 @@ import {
 } from "@/lib/admin/calendario-mes";
 import {
   claveMes,
-  fechaConDia,
   hoyISO,
   tituloMes,
   type AnioMes,
@@ -32,6 +31,7 @@ import type {
 } from "@/lib/reserva/calendario-externo";
 import { CUPO_DIA_DE_CALMA } from "@/lib/reserva/dia-de-calma";
 import { limitesDelPanel } from "@/lib/utils/selector-mes";
+import { formatearFechaConDia } from "@/lib/utils/formato";
 
 /**
  * Calendario mensual del hotel: una fila por cabaña, una columna por día.
@@ -189,8 +189,8 @@ function Cuadricula({
             key={dia.iso}
             title={
               dia.festivo
-                ? `${fechaConDia(dia.iso)} · festivo: ${dia.festivo}`
-                : fechaConDia(dia.iso)
+                ? `${formatearFechaConDia(dia.iso)} · festivo: ${dia.festivo}`
+                : formatearFechaConDia(dia.iso)
             }
             className={`sticky top-0 z-20 flex flex-col items-center gap-0.5 border-b border-crema-900/[0.08] px-0.5 pb-1.5 pt-2 ${
               dia.esHoy ? "bg-petroleo-50" : dia.destacado ? "bg-crema-100" : "bg-white"
@@ -261,13 +261,13 @@ function Cuadricula({
               >
                 {personas > 0 ? (
                   <span
-                    title={`${fechaConDia(dia.iso)}: ${personas} de ${CUPO_DIA_DE_CALMA} cupos del Día de Calma${personas >= CUPO_DIA_DE_CALMA ? " (completo)" : ""}${detalleHotel}`}
+                    title={`${formatearFechaConDia(dia.iso)}: ${personas} de ${CUPO_DIA_DE_CALMA} cupos del Día de Calma${personas >= CUPO_DIA_DE_CALMA ? " (completo)" : ""}${detalleHotel}`}
                     className={`flex h-8 flex-1 items-center justify-center rounded-[8px] text-[0.6875rem] font-bold tabular-nums ${tonoCupo(personas)} ${delHotel.length ? "border border-dashed border-crema-900/45" : ""}`}
                   >
                     {personas}/{CUPO_DIA_DE_CALMA}
                     <span className="sr-only">
                       {" "}
-                      personas en el Día de Calma el {fechaConDia(dia.iso)}
+                      personas en el Día de Calma el {formatearFechaConDia(dia.iso)}
                       {detalleHotel}
                     </span>
                   </span>

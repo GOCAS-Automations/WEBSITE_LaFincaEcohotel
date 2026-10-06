@@ -8,8 +8,8 @@ import {
   cabanasEnDia,
   type CalendarioDelMes,
 } from "@/lib/admin/calendario-mes";
-import { fechaConDia } from "@/lib/admin/fechas";
 import { CUPO_DIA_DE_CALMA } from "@/lib/reserva/dia-de-calma";
+import { formatearFechaConDia } from "@/lib/utils/formato";
 
 /**
  * Las dos vistas del calendario de ocupación.
@@ -145,7 +145,7 @@ function AgendaDelMes({
               type="button"
               onClick={() => setIndice(posicion)}
               aria-pressed={activo}
-              aria-label={`${fechaConDia(otro.iso)}${otro.festivo ? `, festivo (${otro.festivo})` : ""}${otro.esHoy ? ", hoy" : ""}: ${ocupadasPorDia[posicion]} de ${calendario.filas.length} cabañas ocupadas`}
+              aria-label={`${formatearFechaConDia(otro.iso)}${otro.festivo ? `, festivo (${otro.festivo})` : ""}${otro.esHoy ? ", hoy" : ""}: ${ocupadasPorDia[posicion]} de ${calendario.filas.length} cabañas ocupadas`}
               className={`flex w-12 shrink-0 flex-col items-center rounded-[14px] py-1.5 transition-colors ${
                 activo
                   ? "bg-petroleo-600 text-white shadow-tenue"
@@ -185,7 +185,7 @@ function AgendaDelMes({
         </button>
         <div className="min-w-0 text-center" aria-live="polite">
           <p className="font-titulo text-[1rem] font-semibold text-crema-900">
-            {fechaConDia(dia.iso)}
+            {formatearFechaConDia(dia.iso)}
             {dia.esHoy ? (
               <span className="ml-2 rounded-full bg-petroleo-600 px-2 py-0.5 align-middle text-[0.6875rem] font-semibold text-white">
                 hoy
@@ -307,7 +307,7 @@ function describirDia(
   }
   if (noche?.fuente === "bloqueo") {
     partes.push(
-      `Bloqueada${llega ? " desde hoy" : ""}; se libera el ${fechaConDia(noche.salida)}`,
+      `Bloqueada${llega ? " desde hoy" : ""}; se libera el ${formatearFechaConDia(noche.salida)}`,
     );
   } else if (noche) {
     const fuente =
@@ -315,8 +315,8 @@ function describirDia(
         ? "Calendario del hotel"
         : "Reserva del sitio o del panel";
     const tramo = llega
-      ? `llega hoy, sale el ${fechaConDia(noche.salida)}`
-      : `sale el ${fechaConDia(noche.salida)}`;
+      ? `llega hoy, sale el ${formatearFechaConDia(noche.salida)}`
+      : `sale el ${formatearFechaConDia(noche.salida)}`;
     partes.push(`${fuente} · ${tramo}`);
   }
   return partes.join(" · ") || "Nadie llega ni sale";

@@ -2,8 +2,8 @@ import type { ReactNode } from "react";
 
 import { refrescarCalendarioAction } from "./acciones";
 import { Pastilla, claseBoton } from "@/components/admin/ui";
-import { fechaHora } from "@/lib/admin/fechas";
 import type { EstadoConexion } from "@/lib/reserva/ocupacion-externa";
+import { formatearFechaHora } from "@/lib/utils/formato";
 
 /**
  * «Calendario del hotel: conectado / sin configurar / error».
@@ -89,7 +89,7 @@ export function EstadoCalendarioHotel({
         {mensaje}
         {consultado && (
           <span className="block text-crema-500">
-            Última consulta: {fechaHora(consultado)}.
+            Última consulta: {formatearFechaHora(consultado)}.
           </span>
         )}
       </p>

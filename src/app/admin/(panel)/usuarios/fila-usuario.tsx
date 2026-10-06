@@ -15,7 +15,6 @@ import {
   Entrada,
   Pastilla,
 } from "@/components/admin/ui";
-import { fechaHora } from "@/lib/admin/fechas";
 import {
   ETIQUETA_ROL,
   LARGO_MINIMO_CONTRASENA,
@@ -23,6 +22,7 @@ import {
   type RolPanel,
 } from "@/lib/admin/roles";
 import { ESTADO_INICIAL, type UsuarioPanel } from "@/lib/admin/tipos";
+import { formatearFechaHora } from "@/lib/utils/formato";
 
 /**
  * Una cuenta de la lista: su rol, su último acceso y las tres cosas que se le
@@ -82,10 +82,10 @@ export function FilaUsuario({
 
       <p className="text-[0.75rem] text-crema-600">
         {usuario.ultimoAcceso
-          ? `Último acceso: ${fechaHora(usuario.ultimoAcceso)}`
+          ? `Último acceso: ${formatearFechaHora(usuario.ultimoAcceso)}`
           : "Todavía no ha entrado nunca"}
         <span className="mx-1.5">·</span>
-        cuenta creada el {fechaHora(usuario.creada)}
+        cuenta creada el {formatearFechaHora(usuario.creada)}
       </p>
 
       {/* --- Rol --- */}

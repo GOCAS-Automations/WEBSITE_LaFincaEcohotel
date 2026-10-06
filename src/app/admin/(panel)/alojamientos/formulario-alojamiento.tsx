@@ -145,7 +145,7 @@ function FilaTarifa({ tarifa }: { tarifa: TarifaAdmin }) {
 export type TemporadaDeLaCabana = {
   id: string;
   nombre: string;
-  /** «1 dic 2026 – 8 ene 2027». */
+  /** «01/12/2026 al 08/01/2027». */
   fechas: string;
   /** Cierto si es solo de esta cabaña; falso si es de todas. */
   soloEsta: boolean;

@@ -14,7 +14,8 @@ import {
 } from "@/components/admin/ui";
 import { requireAdmin } from "@/lib/admin/auth";
 import { listarBloqueos, opcionesAlojamiento } from "@/lib/admin/datos";
-import { fechaLarga, hoyISO, nochesEntre, rangoCorto } from "@/lib/admin/fechas";
+import { hoyISO, nochesEntre } from "@/lib/admin/fechas";
+import { formatearFechaConDia, formatearRango } from "@/lib/utils/formato";
 
 export const metadata: Metadata = { title: "Bloqueos" };
 export const dynamic = "force-dynamic";
@@ -101,7 +102,7 @@ export default async function PaginaBloqueos({
                             ·
                           </span>
                           <span className="font-normal">
-                            {rangoCorto(bloqueo.inicio, bloqueo.fin)}
+                            {formatearRango(bloqueo.inicio, bloqueo.fin)}
                           </span>
                         </p>
                         <p className="mt-0.5 text-[0.75rem] text-crema-600">
@@ -109,7 +110,7 @@ export default async function PaginaBloqueos({
                           <span className="mx-1.5">·</span>
                           {noches} {noches === 1 ? "noche" : "noches"}
                           <span className="mx-1.5">·</span>
-                          libre desde el {fechaLarga(bloqueo.fin)}
+                          libre desde el {formatearFechaConDia(bloqueo.fin)}
                         </p>
                       </div>
                       <form action={eliminarBloqueoAction}>
@@ -145,7 +146,7 @@ export default async function PaginaBloqueos({
                     <p className="min-w-[12rem] flex-1 text-[0.8125rem] text-crema-600">
                       {bloqueo.alojamiento_nombre ?? "Cabaña"}
                       <span className="mx-1.5">·</span>
-                      {rangoCorto(bloqueo.inicio, bloqueo.fin)}
+                      {formatearRango(bloqueo.inicio, bloqueo.fin)}
                       <span className="mx-1.5">·</span>
                       {bloqueo.motivo ?? "sin motivo"}
                     </p>

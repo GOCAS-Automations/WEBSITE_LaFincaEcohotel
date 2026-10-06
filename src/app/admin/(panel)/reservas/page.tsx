@@ -27,7 +27,6 @@ import {
   diasDelMes,
   isoDe,
   leerClaveMes,
-  rangoCorto,
   sumarDiasISO,
 } from "@/lib/admin/fechas";
 import {
@@ -41,7 +40,7 @@ import { resumirPagoDeReserva, ultimoPagoPorReserva } from "@/lib/admin/pagos";
 import { cuentaAtras, vencePronto } from "@/lib/reserva/holds";
 import { liberarReservasVencidas } from "@/lib/reserva/liberar-vencidas";
 import { ocupacionDelCalendario } from "@/lib/reserva/ocupacion-externa";
-import { formatearCOP } from "@/lib/utils/formato";
+import { formatearCOP, formatearRango } from "@/lib/utils/formato";
 import type { EstadoReserva } from "@/lib/tipos/basedatos";
 
 export const metadata: Metadata = { title: "Reservas" };
@@ -297,7 +296,7 @@ export default async function PaginaReservas({
                           ? `${ETIQUETA_CORTA_TIPO_RESERVA.dia} · ${reserva.num_personas} ${reserva.num_personas === 1 ? "persona" : "personas"}`
                           : (reserva.alojamiento_nombre ?? "Sin cabaña")}
                         <span className="mx-1.5">·</span>
-                        {rangoCorto(reserva.entrada, reserva.salida)}
+                        {formatearRango(reserva.entrada, reserva.salida)}
                         <span className="mx-1.5">·</span>
                         {ETIQUETA_ORIGEN[reserva.origen]}
                       </p>
