@@ -3961,3 +3961,91 @@ después; no se escribió en ningún calendario del hotel.
 
 - La reserva marcada para revisión manual solo se ve en sus notas y en el correo interno: no hay un
   filtro «para revisar» en el listado del panel.
+
+### 2026-10-06 — Quién viene al Día de Calma y el listado de Reservas con el calendario del hotel
+
+Dos pedidos de Cesar tras probar el panel. En paralelo, otro agente trabajaba en el sitio público;
+no se tocaron sus archivos.
+
+#### 1. El detalle del Día de Calma de un día
+
+- **Reglas** en `src/lib/admin/calendario-mes.ts` → `detalleDiaDeCalma()` (puro) y
+  `CalendarioDelMes.diaDeCalma` (un detalle por día con alguien, aunque sea una cancelada). Por cada
+  reserva de la base: titular, personas, teléfono, correo, estado, código, `origen` (sitio/panel),
+  `deDonde` («Sitio web» / «Panel (por WhatsApp)», de `origenEnLinea()` en `tipos.ts`) y ficha. Por
+  cada «plan día» de Google: título y 2 personas. **Suma al cupo** lo mismo que la casilla «4/10»
+  (`personasDeDiaPorFecha` y el trigger): pendientes en plazo y confirmadas, más los «plan día».
+  Canceladas, solicitudes vencidas y completadas van al final con su motivo y no suman.
+- **Pantalla** (`reservas/detalle-dia-de-calma.tsx`, cliente): UNA ventana (`<dialog>` con
+  `showModal()`: foco atrapado, Escape, clic fuera) que tiene `VistasCalendario` y que piden por
+  contexto (`ProveedorDiaDeCalma`) las celdas de la cuadrícula (`CeldasDiaDeCalma`, ahora botones) y
+  el botón **«Ver quién viene»** de la agenda «Por día». Pie: «Total: N de 10 personas · quedan M
+  cupos». `fondoDeColumna` pasó a `estilos-calendario.ts`. Leyenda: «Toca un día del Día de Calma
+  para ver quién viene».
+- **`?dia=AAAA-MM-DD`** en `/admin/reservas` abre la ventana de ese día al cargar (y la agenda en ese
+  día); al cerrarla se quita de la dirección. Lo usa la ficha.
+- **Ficha de un Día de Calma**: **qué guarda el modelo de cada participante** — solo el **titular**
+  (nombre, teléfono, correo, documento si lo apuntó el equipo; el sitio no lo pide) y el **número de
+  personas** (1 o 2), más las notas. **Del acompañante no se guarda nada.** No se inventaron campos:
+  la ficha ahora dice «Titular», «Personas: 2 · el titular y un acompañante» y «Acompañante: Sin
+  datos: el sitio y el panel solo piden los del titular», con el enlace «Ver todos los de ese día →».
+
+#### 2. El listado de Reservas incluye el calendario del hotel
+
+- **Reglas** en `src/lib/admin/listado-reservas.ts` (puro): `armarListado`, `leerFiltrosListado`,
+  `cambiarFiltro`, `parametrosDeFiltros`. **La misma lectura sin doble conteo** que el Resumen: se
+  extrajo `estadiasDelCalendario()` + `clavesDeLaBase()` + `fuenteDeReserva()` en `estadisticas.ts`, y
+  `estadiasDelHotel()` (Resumen) las usa también.
+- **Decisión: el listado sigue el mes del calendario** («Reservas de octubre de 2026», por fecha de
+  llegada, todo lo que tiene noches o Día de Calma en el mes). Google se lee por ventanas de fechas y
+  sus eventos no tienen fecha de registro, así que «las últimas registradas» no puede incluirlos; y así
+  lo que se ve en el calendario está debajo. La vista anterior queda como **«Todas las fechas»**
+  (`?ver=todas`, solo la base, últimas registradas primero, hasta 300); a ella llevan «Sin confirmar»
+  y «Falta por cobrar» del Resumen.
+- **Filtros**: Fechas (el mes / Todas las fechas), **Origen** (Todos, Sitio web, Panel, Calendario del
+  hotel, con su número) y **Estado**. **Cómo se combinan:** el estado es solo de la base; con un estado
+  elegido no salen los eventos de Google y una línea dice cuántos quedaron fuera. Tocar «Calendario
+  del hotel» pone el estado en «Todos» y la vista en el mes; tocar un estado o «Todas las fechas» con
+  «Calendario del hotel» puesto vuelve el origen a «Todos». Los enlaces nunca llevan a una
+  combinación vacía por definición. Los filtros se conservan al cambiar de mes (`#listado` en sus
+  enlaces para no volver arriba).
+- **Filas de Google** (`reservas/listado.tsx`): nombre según el título (sin la cabaña si la nombra),
+  etiqueta rayada «Calendario del hotel», cabaña / «Día de Calma · 2 personas» / «Sin cabaña: ocupa
+  las cinco», fechas; sin enlace, teléfono ni importes; «Se cambia en Google» (no en el celular).
+  Un Día de Calma de la base ya sale con su fecha («13/03/2027») y no como rango de dos días.
+- **Si Google no responde** (o no está conectado, o falla uno de los calendarios): el listado trae la
+  base y lo avisa en un recuadro.
+- Línea de ayuda: «Sitio web y Panel son reservas registradas aquí, con ficha, teléfono e importes;
+  Calendario del hotel son los eventos que el equipo apunta a mano en Google: se ven, pero se cambian
+  en Google. Nada sale dos veces.»
+
+#### Verificación
+
+`tsc` limpio · `npm test` **740 en verde** (43 archivos; nuevos `listado-reservas.test.ts` y 4 casos
+en `calendario-mes.test.ts`) · `next build` sin errores en un worktree fuera de OneDrive (borrado) ·
+eslint limpio en lo tocado. Capturas con Chrome headless contra `localhost:3241` (`next start`) a 1440
+y 390, con una cuenta temporal `equipo` creada con la Admin API y **borrada**: el 04/10/2026 («Cristian
+Arcila plan día», 2/10), un día de prueba (sáb 13/03/2027) con tres reservas de Día de Calma
+insertadas en la base (confirmada del sitio, pendiente por WhatsApp, cancelada por teléfono; 4 de 10)
+y **borradas**, la ficha y su enlace al día, el listado de octubre (36 eventos del calendario del
+hotel) con sus filtros, «Todas las fechas». Sin desborde lateral a 320/390/768/1024/1440/1920.
+Tras las capturas: «Panel (por whatsapp)» pasó a «Panel (por WhatsApp)». Base antes y después: 0
+reservas, 0 extras, 0 bloqueos, 0 pagos, 0 eventos de pago, `reservas_contador` vacío (las de prueba
+crearon la fila 2026 y se borró), 2 cuentas; calendario de escritura del sitio: 0 eventos antes y
+después. No se escribió en ningún calendario del hotel.
+
+#### Para el manual del panel (nombres nuevos)
+
+Ventana **«Día de Calma · <día>»** con **«No suman al cupo»** y **«Total: N de 10 personas · quedan M
+cupos»**; botón **«Ver quién viene»** (celular); en la ficha, **«Titular»**, **«Acompañante»** y
+**«Ver todos los de ese día →»**; listado **«Reservas de <mes>»** / **«Todas las reservas del sitio
+y del panel»**, filtros **Fechas** («<Mes>», «Todas las fechas»), **Origen** («Todos», «Sitio web»,
+«Panel», «Calendario del hotel») y **Estado**; etiqueta **«Calendario del hotel»** y **«Se cambia en
+Google»** en las filas de Google; **«Ver la ficha →»** en la ventana.
+
+#### Pendiente
+
+- Un evento de Google que nombra dos cabañas sale una vez por cabaña en el listado (igual que en el
+  Resumen).
+- «Todas las fechas» filtra el origen después de traer las 300 últimas: con más de 300 reservas, el
+  filtro de origen podría quedarse corto (hoy la base tiene 0).

@@ -70,8 +70,8 @@ El orden es **primero la cabaña, luego las fechas**. En `/reservar`, el paso 1 
 - [x] Con una llegada elegida justo antes de una noche ocupada, los días posteriores salen tachados y el calendario dice «como tarde, el …».
 - [x] **Fechas que llegan sin cabaña** (desde la portada sin elegir cabaña): se conservan; al elegir cabaña, si están libres se quedan y si no, se quitan con un aviso corto.
 - [x] En la **portada**, con una cabaña elegida en el módulo, el calendario tacha sus noches ocupadas; sin cabaña, solo los días en que no queda ninguna libre, y lo explica.
-- [ ] **Selector de mes y año** (en `/reservar` y en la portada): toca el título del mes («Octubre de 2026») y se abre una rejilla con los doce meses y el año arriba. Toca, por ejemplo, marzo de 2027: el calendario salta a ese mes. Los meses que ya pasaron salen tachados, y no deja ir más allá de dos años; las flechas de mes se detienen en los mismos límites.
-- [ ] Con el selector de meses abierto, la tecla **Escape** vuelve a los días sin cerrar el calendario; con el teclado, las flechas se mueven entre meses y Enter elige.
+- [x] **Selector de mes y año** (en `/reservar` y en la portada): toca el título del mes («Octubre de 2026») y se abre una rejilla con los doce meses y el año arriba. Toca, por ejemplo, marzo de 2027: el calendario salta a ese mes. Los meses que ya pasaron salen tachados, y no deja ir más allá de dos años; las flechas de mes se detienen en los mismos límites.
+- [x] Con el selector de meses abierto, la tecla **Escape** vuelve a los días sin cerrar el calendario; con el teclado, las flechas se mueven entre meses y Enter elige.
 **Precios normales** (fechas de febrero de 2027 en adelante):
 
 - [x] **Hospedaje entre semana**: elige lunes a jueves. Solo aparece Plan Entre Semana. Precio $350.000 por noche ($200.000 si viaja una sola persona).
@@ -137,30 +137,30 @@ Entra en `lafincaecohotel.com/admin` con la cuenta propietaria.
 
 ### Reservas: el calendario del mes (nuevo el 2026-10-05)
 
-- [ ] **La página no se desplaza hacia los lados**, ni en el computador ni en el celular: lo que no cabe (el mes completo) se desplaza dentro de su recuadro, y la columna de las cabañas y la fila de los días se quedan fijas al desplazarlo.
-- [ ] **Todos los días miden lo mismo**, tengan o no reservas, y cada estadía es **una barra** con el nombre del huésped a lo largo de sus noches. Sábados, domingos y festivos tienen un tono suave; **hoy** va marcado.
-- [ ] La leyenda de abajo distingue las **reservas del sitio y del panel** (color lleno según el estado: confirmada, pendiente, completada) de los **eventos del calendario del hotel** (rayados) y de los **eventos que no dicen qué cabaña** (rayados con borde ámbar: ocupan todas). Pasar el ratón por una barra dice quién es, de dónde viene y sus fechas.
-- [ ] La fila del **Día de Calma** muestra los cupos tomados de cada día («4/10»).
-- [ ] **Selector de mes y año**: toca «Octubre 2026» y elige otro mes o año; el botón **Hoy** vuelve al mes actual. Las flechas siguen funcionando.
-- [ ] **En el celular** se abre **Por día**: una tira con los días del mes (cada uno dice cuántas cabañas tiene ocupadas) y, debajo, las cinco cabañas de ese día con quién duerme, quién llega, quién sale por la mañana y el cupo del Día de Calma. **Mes completo** muestra la cuadrícula.
+- [x] **La página no se desplaza hacia los lados**, ni en el computador ni en el celular: lo que no cabe (el mes completo) se desplaza dentro de su recuadro, y la columna de las cabañas y la fila de los días se quedan fijas al desplazarlo.
+- [x] **Todos los días miden lo mismo**, tengan o no reservas, y cada estadía es **una barra** con el nombre del huésped a lo largo de sus noches. Sábados, domingos y festivos tienen un tono suave; **hoy** va marcado.
+- [x] La leyenda de abajo distingue las **reservas del sitio y del panel** (color lleno según el estado: confirmada, pendiente, completada) de los **eventos del calendario del hotel** (rayados) y de los **eventos que no dicen qué cabaña** (rayados con borde ámbar: ocupan todas). Pasar el ratón por una barra dice quién es, de dónde viene y sus fechas.
+- [x] La fila del **Día de Calma** muestra los cupos tomados de cada día («4/10»).
+- [x] **Selector de mes y año**: toca «Octubre 2026» y elige otro mes o año; el botón **Hoy** vuelve al mes actual. Las flechas siguen funcionando.
+- [x] **En el celular** se abre **Por día**: una tira con los días del mes (cada uno dice cuántas cabañas tiene ocupadas) y, debajo, las cinco cabañas de ese día con quién duerme, quién llega, quién sale por la mañana y el cupo del Día de Calma. **Mes completo** muestra la cuadrícula.
 
 ### Resumen (nuevo el 2026-10-05)
 
-- [ ] El Resumen cuenta **también** las reservas del calendario de Google del hotel: «En casa esta noche», «Llegan hoy», «Llegan esta semana» y la ocupación del mes ya no salen en cero.
-- [ ] **Hoy** y **Próximos siete días** listan nombre, cabaña, noches y de dónde viene cada reserva (estado si es del sitio o del panel; «Calendario del hotel» si es de Google).
-- [ ] **Ocupación del mes**: una barra por cabaña con «% · noches ocupadas / noches que se podían vender» y el total. La Cabaña 02 cuenta solo sus noches de fin de semana o festivo.
-- [ ] **Reservas del mes** por origen (Sitio web, Panel, Calendario del hotel) e **Ingresos del mes**, que dicen claro que solo suman las reservas del sitio y del panel.
-- [ ] Una reserva del panel **no se cuenta dos veces** aunque también esté en el calendario de Google (crea una manual y comprueba que el total de «Reservas del mes» sube en uno; bórrala después).
+- [x] El Resumen cuenta **también** las reservas del calendario de Google del hotel: «En casa esta noche», «Llegan hoy», «Llegan esta semana» y la ocupación del mes ya no salen en cero.
+- [x] **Hoy** y **Próximos siete días** listan nombre, cabaña, noches y de dónde viene cada reserva (estado si es del sitio o del panel; «Calendario del hotel» si es de Google).
+- [x] **Ocupación del mes**: una barra por cabaña con «% · noches ocupadas / noches que se podían vender» y el total. La Cabaña 02 cuenta solo sus noches de fin de semana o festivo.
+- [x] **Reservas del mes** por origen (Sitio web, Panel, Calendario del hotel) e **Ingresos del mes**, que dicen claro que solo suman las reservas del sitio y del panel.
+- [x] Una reserva del panel **no se cuenta dos veces** aunque también esté en el calendario de Google (crea una manual y comprueba que el total de «Reservas del mes» sube en uno; bórrala después).
 
 ### Reserva manual con el calendario del sitio (nuevo el 2026-10-05)
 
-- [ ] **Primero la cabaña**: en «Nueva reserva», sin cabaña elegida el calendario está apagado y dice «Elige primero la cabaña para ver sus fechas libres».
-- [ ] Con una cabaña elegida, el calendario es **el mismo del sitio** y **tacha** sus noches ocupadas: reservas, bloqueos y eventos del calendario de Google del hotel. Se puede elegir **hoy**.
-- [ ] La **Cabaña 02** tacha sus noches de lunes a jueves y lo explica dentro del calendario.
-- [ ] **Día de Calma**: el tipo «Día de Calma» cambia el calendario a un solo día y tacha los días sin cupo.
-- [ ] **Al editar** una reserva, sus propias noches **no** salen tachadas: se pueden conservar o alargar sus fechas.
-- [ ] Elige fechas libres en una cabaña y cambia a otra que las tenga ocupadas: sale un aviso rojo debajo del calendario.
-- [ ] **El servidor no deja duplicar una reserva de Google**: si aun así se pulsa «Crear reserva» sobre noches que el hotel tiene en su calendario de Google, no se guarda y el mensaje dice la cabaña y el evento, por ejemplo «Esas noches ya están ocupadas en la Cabaña 03 por «Alvaro Pacheco cabaña 3» (calendario del hotel)…». **Lo escrito no se borra** (nombre, teléfono, cabaña).
+- [x] **Primero la cabaña**: en «Nueva reserva», sin cabaña elegida el calendario está apagado y dice «Elige primero la cabaña para ver sus fechas libres».
+- [x] Con una cabaña elegida, el calendario es **el mismo del sitio** y **tacha** sus noches ocupadas: reservas, bloqueos y eventos del calendario de Google del hotel. Se puede elegir **hoy**.
+- [x] La **Cabaña 02** tacha sus noches de lunes a jueves y lo explica dentro del calendario.
+- [x] **Día de Calma**: el tipo «Día de Calma» cambia el calendario a un solo día y tacha los días sin cupo.
+- [x] **Al editar** una reserva, sus propias noches **no** salen tachadas: se pueden conservar o alargar sus fechas.
+- [x] Elige fechas libres en una cabaña y cambia a otra que las tenga ocupadas: sale un aviso rojo debajo del calendario.
+- [x] **El servidor no deja duplicar una reserva de Google**: si aun así se pulsa «Crear reserva» sobre noches que el hotel tiene en su calendario de Google, no se guarda y el mensaje dice la cabaña y el evento, por ejemplo «Esas noches ya están ocupadas en la Cabaña 03 por «Alvaro Pacheco cabaña 3» (calendario del hotel)…». **Lo escrito no se borra** (nombre, teléfono, cabaña).
 
 ### Tarifas diferenciales (antes «Temporadas»)
 
@@ -195,16 +195,27 @@ Usa fechas a tres meses o más y una cabaña libre. La «Temporada de fin de añ
 
 ### Fechas siempre en dd/mm/aaaa (nuevo el 2026-10-05)
 
-- [ ] **Todas las fechas se leen como `05/10/2026`**, nunca al estilo de EE. UU.: en `/reservar` (botón de fechas, desglose «mar 15/12/2026», resumen), en la ficha de una cabaña («Del 01/12/2026 al 08/01/2027 aplican tarifas de temporada…»), en la confirmación de pago, en «Última actualización» de las páginas legales, en el correo al huésped y al hotel, en el mensaje de WhatsApp y en el panel (listados, fichas, Resumen, calendario, bloqueos, tarifas diferenciales, usuarios). Solo los títulos de mes («octubre de 2026») llevan el nombre del mes. En **Bloqueos**, **Tarifas diferenciales** y la **fecha de actualización** de las páginas legales, la fecha se escribe a mano (`05/10/2026`, `5/10/2026` o `05102026`) o se toca en el calendario del icono, **también con el navegador en inglés**; una fecha imposible o fuera de rango no deja guardar y lo explica.
+- [x] **Todas las fechas se leen como `05/10/2026`**, nunca al estilo de EE. UU.: en `/reservar` (botón de fechas, desglose «mar 15/12/2026», resumen), en la ficha de una cabaña («Del 01/12/2026 al 08/01/2027 aplican tarifas de temporada…»), en la confirmación de pago, en «Última actualización» de las páginas legales, en el correo al huésped y al hotel, en el mensaje de WhatsApp y en el panel (listados, fichas, Resumen, calendario, bloqueos, tarifas diferenciales, usuarios). Solo los títulos de mes («octubre de 2026») llevan el nombre del mes. En **Bloqueos**, **Tarifas diferenciales** y la **fecha de actualización** de las páginas legales, la fecha se escribe a mano (`05/10/2026`, `5/10/2026` o `05102026`) o se toca en el calendario del icono, **también con el navegador en inglés**; una fecha imposible o fuera de rango no deja guardar y lo explica.
 
 ### Mi cuenta, páginas de error y precios (nuevo el 2026-10-05)
 
-- [ ] **Cambiar mi contraseña**: entra con una cuenta de **equipo** (créala en Usuarios con una contraseña temporal). Arriba a la derecha aparece **«Mi cuenta»**, en el celular y en el computador. Ábrelo: dice el correo y el rol, y debajo está **«Cambiar mi contraseña»** (actual, nueva y repetida). Prueba tres veces: con la actual equivocada dice «La contraseña actual no es correcta»; con la repetida distinta, «La contraseña nueva y la repetida no son iguales»; bien escrita, «Listo: tu contraseña quedó cambiada» y **sigues dentro**. Sal y entra con la nueva. Borra la cuenta al terminar.
-- [ ] **Página de error del panel**: abre `/admin/prueba-de-error` (falla a propósito). Debe salir **«No se pudo cargar esta pantalla»** en español, con el menú del panel a la vista, el botón **Reintentar**, «Ir al resumen» y los pasos «Si sigue sin cargar». Nada en inglés ni pantalla en blanco.
-- [ ] **No encontrado dentro del panel**: abre `/admin/reservas/no-es-uuid` y `/admin/xyz`. Sale **«Eso no está en el panel»** con el menú y los botones «Ver las reservas» e «Ir al resumen», no la página 404 del sitio.
-- [ ] **Precios sin centavos**: en una cabaña, escribe un precio como `552.000,50` y guarda: dice «Escribe el precio sin centavos…» y no cambia nada. `552.000` y `552000` sí guardan $552.000. Un precio de noche en `0` no deja guardar. Vuelve a dejar el precio como estaba.
-- [ ] **Valor sugerido de la reserva manual**: «Nueva reserva», una cabaña, de **jueves a sábado**, plan **Entre Semana**. Debajo del valor dice «Como lo cobraría el sitio: 1 × $350.000 (Entre Semana) + 1 × $480.000 (Estándar)…»; el total es el mismo que da `/reservar` con esas fechas. Escribe otro valor a mano: aparece un **aviso ámbar** con el botón «Usar $…». No guardes la reserva.
-- [ ] **Agenda del celular**: en Reservas → «Por día», un día en que un huésped sale y otro llega en la misma cabaña muestra **dos líneas**, «Sale por la mañana: …» y «Llega hoy: …», cada una con su nombre. El **día 1** de un mes dice quién sale esa mañana aunque haya llegado el mes anterior.
+- [x] **Cambiar mi contraseña**: entra con una cuenta de **equipo** (créala en Usuarios con una contraseña temporal). Arriba a la derecha aparece **«Mi cuenta»**, en el celular y en el computador. Ábrelo: dice el correo y el rol, y debajo está **«Cambiar mi contraseña»** (actual, nueva y repetida). Prueba tres veces: con la actual equivocada dice «La contraseña actual no es correcta»; con la repetida distinta, «La contraseña nueva y la repetida no son iguales»; bien escrita, «Listo: tu contraseña quedó cambiada» y **sigues dentro**. Sal y entra con la nueva. Borra la cuenta al terminar.
+- [x] **Página de error del panel**: abre `/admin/prueba-de-error` (falla a propósito). Debe salir **«No se pudo cargar esta pantalla»** en español, con el menú del panel a la vista, el botón **Reintentar**, «Ir al resumen» y los pasos «Si sigue sin cargar». Nada en inglés ni pantalla en blanco.
+- [x] **No encontrado dentro del panel**: abre `/admin/reservas/no-es-uuid` y `/admin/xyz`. Sale **«Eso no está en el panel»** con el menú y los botones «Ver las reservas» e «Ir al resumen», no la página 404 del sitio.
+- [x] **Precios sin centavos**: en una cabaña, escribe un precio como `552.000,50` y guarda: dice «Escribe el precio sin centavos…» y no cambia nada. `552.000` y `552000` sí guardan $552.000. Un precio de noche en `0` no deja guardar. Vuelve a dejar el precio como estaba.
+- [x] **Valor sugerido de la reserva manual**: «Nueva reserva», una cabaña, de **jueves a sábado**, plan **Entre Semana**. Debajo del valor dice «Como lo cobraría el sitio: 1 × $350.000 (Entre Semana) + 1 × $480.000 (Estándar)…»; el total es el mismo que da `/reservar` con esas fechas. Escribe otro valor a mano: aparece un **aviso ámbar** con el botón «Usar $…». No guardes la reserva.
+- [x] **Agenda del celular**: en Reservas → «Por día», un día en que un huésped sale y otro llega en la misma cabaña muestra **dos líneas**, «Sale por la mañana: …» y «Llega hoy: …», cada una con su nombre. El **día 1** de un mes dice quién sale esa mañana aunque haya llegado el mes anterior.
+
+### Quién viene al Día de Calma y el listado con el calendario del hotel (nuevo el 2026-10-06)
+
+- [ ] **Quién viene, en el computador**: en Reservas, octubre de 2026, toca la casilla **«2/10»** del domingo 4 en la fila **Día de Calma**. Se abre una ventana «Día de Calma · dom 04/10/2026» con **«Cristian Arcila plan día»**, «2 personas», la etiqueta **«Calendario del hotel»** y la explicación de que no tiene teléfono ni correo. Abajo: **«Total: 2 de 10 personas · quedan 8 cupos»**. Se cierra con la ✕, con Escape o tocando fuera.
+- [ ] **Quién viene, con reservas del sitio o del panel**: en un día con un Día de Calma registrado, la ventana muestra por cada reserva el **titular**, las personas, el **teléfono** y el **correo** (se pueden tocar), el **estado**, el **código**, si es **Sitio web** o **Panel (por WhatsApp…)** y **«Ver la ficha →»**. Las canceladas salen al final, bajo **«No suman al cupo»**, y no cuentan en el total. El total coincide con la casilla del calendario.
+- [ ] **Quién viene, en el celular**: Reservas → **Por día** → elige el día. La fila **Día de Calma** tiene el botón **«Ver quién viene»**, que abre la misma ventana.
+- [ ] **La ficha de un Día de Calma** dice **Titular**, **Personas** («2 · el titular y un acompañante») y, si son dos, **Acompañante: «Sin datos: el sitio y el panel solo piden los del titular.»** El enlace **«Ver todos los de ese día →»** lleva al calendario de ese mes con la ventana de ese día ya abierta.
+- [ ] **El listado sigue el mes del calendario**: debajo del calendario dice **«Reservas de octubre de 2026»** y trae, por fecha de llegada, las reservas del sitio y del panel **y** los eventos del calendario de Google del hotel (con la etiqueta rayada **«Calendario del hotel»**, la cabaña o «Día de Calma» y sus fechas, sin teléfono ni importes, sin enlace). Al cambiar de mes con las flechas del calendario, cambia el listado. Arriba hay una línea que explica de dónde sale cada cosa.
+- [ ] **Nada sale dos veces**: una reserva manual del panel (que el sitio apunta en Google) sale **una sola vez**, como reserva del panel, no también como evento del calendario.
+- [ ] **Filtros**: **Origen** (Todos, Sitio web, Panel, Calendario del hotel, cada uno con su número) y **Estado** (Todos, Pendiente, Confirmada, Completada, Cancelada). Con un estado elegido, los eventos del calendario del hotel no salen y una línea dice cuántos quedaron fuera; al tocar **«Calendario del hotel»** el estado vuelve a «Todos».
+- [ ] **Todas las fechas**: el botón **«Todas las fechas»** muestra solo las reservas del sitio y del panel, las últimas registradas primero (como era antes). En el Resumen, **«Sin confirmar»** lleva al listado de pendientes de todas las fechas.
 
 ## 6 · Calendario de Google
 
