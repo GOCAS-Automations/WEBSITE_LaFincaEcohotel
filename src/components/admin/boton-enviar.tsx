@@ -1,7 +1,7 @@
 "use client";
 
 import { useFormStatus } from "react-dom";
-import type { ReactNode } from "react";
+import { createContext, useContext, type ReactNode } from "react";
 
 import { claseBoton, type TamanoBoton, type TonoBoton } from "./ui";
 
@@ -12,6 +12,13 @@ import { claseBoton, type TamanoBoton, type TonoBoton } from "./ui";
  *
  * `confirmar` pide confirmación antes de enviar: se usa en todo lo que borra.
  */
+/**
+ * «Enviando», dicho por `FormularioAccion`. Ese formulario despacha la acción
+ * a mano (para que un error no lo reinicie) y entonces `useFormStatus` no se
+ * entera: el estado llega por aquí.
+ */
+export const EnvioPendiente = createContext(false);
+
 export function BotonEnviar({
   children,
   etiquetaEnEspera = "Guardando…",
@@ -31,7 +38,9 @@ export function BotonEnviar({
   name?: string;
   value?: string;
 }) {
-  const { pending } = useFormStatus();
+  const { pending: enviandoFormulario } = useFormStatus();
+  const enviandoAMano = useContext(EnvioPendiente);
+  const pending = enviandoFormulario || enviandoAMano;
 
   return (
     <button
