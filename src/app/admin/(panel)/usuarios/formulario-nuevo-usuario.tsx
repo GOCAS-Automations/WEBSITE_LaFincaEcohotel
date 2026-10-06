@@ -14,7 +14,6 @@ import {
 } from "@/lib/admin/roles";
 import {
   AYUDA_USUARIO,
-  DOMINIO_CORREO_INTERNO,
   LARGO_MAXIMO_USUARIO,
   PATRON_USUARIO_HTML,
 } from "@/lib/admin/usuario-panel";
@@ -76,14 +75,14 @@ export function FormularioNuevoUsuario() {
             autoComplete="new-password"
             required
             minLength={LARGO_MINIMO_CONTRASENA}
-            placeholder="Ej.: LaFinca2026*"
+            placeholder="Ej.: CedroBrumaTucan-58"
           />
         </Campo>
 
         <Campo
           etiqueta="Correo de contacto (opcional)"
           htmlFor="correo"
-          ayuda={`No sirve para entrar. Si lo dejas vacío, la cuenta usa uno interno (…@${DOMINIO_CORREO_INTERNO}) que nadie lee.`}
+          ayuda="No sirve para entrar. Si lo dejas vacío, la cuenta usa un correo interno que nadie lee."
         >
           <Entrada
             id="correo"
