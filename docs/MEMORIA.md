@@ -3527,3 +3527,143 @@ el usuario de pruebas rotando su contraseña por la Admin API y rotándola de nu
 con un festivo en **viernes** (25 dic 2026, 1 ene 2027) el jueves anterior se cobra como entre
 semana. El comentario dice que se excluyen los festivos de sábado y domingo, así que parece un
 `<= 4` que debía ser `<= 5`. Cambia precios: decidirlo con Cesar.
+
+### 2026-10-05 (tarde) — El panel sin scroll lateral, el calendario del mes rehecho, el Resumen con Google y la reserva manual con el calendario del sitio
+
+Pedido de Cesar tras probar el panel. Seis cosas; las seis hechas.
+
+#### 1. La página del panel se iba 700 px a la derecha
+
+**Causa real:** en el calendario de `/admin/reservas` cada barra llevaba un `<span class="sr-only">`
+(texto para lector de pantalla), que es `position: absolute`. El contenedor con `overflow-x: auto`
+**no estaba posicionado**, así que esos spans tomaban como bloque contenedor un antepasado de fuera,
+escapaban del recorte y ensanchaban el documento: `scrollWidth` 2112 en una ventana de 1440 (y 1808
+en una de 320). La tabla en sí sí estaba recortada. Arreglo: el contenedor que se desplaza lleva
+`relative` (comentado en `calendario.tsx`). Medido en todas las páginas del panel a 320, 390, 768,
+1024, 1440 y 1920 (abajo). **Regla para lo que venga:** todo contenedor con `overflow-*: auto` que
+tenga dentro algo `absolute` (incluido `sr-only`) lleva `relative`.
+
+#### 2. El calendario del mes (`/admin/reservas`)
+
+- Reglas en **`src/lib/admin/calendario-mes.ts`** (puro, 16 pruebas): una ranura por noche y cabaña;
+  Google debajo, bloqueos encima y reservas de la base arriba; los eventos sin cabaña van primero para
+  que uno con cabaña mande sobre ellos; las noches seguidas de lo mismo se juntan en **una barra** con
+  su inicio, sus noches y si continúa antes o después del mes. En la barra de un evento de Google no se
+  repite la cabaña (`sinCabanaEnTitulo`: «Diana Montoya cabaña 1» → «Diana Montoya»); el título
+  completo va en el detalle.
+- **Escritorio:** rejilla CSS, **todas las columnas iguales** (`minmax(5rem, 1fr)`; 4,25rem en el
+  celular). Ojo: con `min-width: max-content` cada columna crecía hasta el nombre más largo; el ancho
+  va explícito (`max(100%, cabaña + n × día)`). Barras de dos líneas, columna de cabañas y cabecera de
+  días `sticky` dentro del contenedor (alto máximo 78vh), fines de semana y festivos en `crema-100`
+  (festivo con punto), hoy en `petroleo-50` con el número en círculo. Colores en
+  `estilos-calendario.ts`: reservas de la base en color lleno por estado, **Google rayado con borde
+  punteado**, **Google sin cabaña rayado con borde ámbar** («ocupa todas»), bloqueo con candado.
+  Leyenda abajo. Fila del Día de Calma con «4/10».
+- **Navegación** (`navegacion-mes.tsx`, cliente): flechas, el título abre el **selector de mes y
+  año** (`RejillaMeses`) y botón **Hoy**. Límites del panel: enero de hace 2 años a diciembre de dentro
+  de 2 (`limitesDelPanel`); flechas y selector los respetan. Conserva el filtro `?estado=`.
+- **Celular** (`vistas-calendario.tsx`): **agenda por día** por defecto —tira de días con «3/5»
+  cabañas ocupadas y, debajo, las cinco cabañas de ese día (quién duerme, quién llega, quién sale por
+  la mañana) y el cupo del Día de Calma—, con «Mes completo» para la cuadrícula. **Por qué:** cinco
+  filas × 31 columnas no se leen a 390 px, y la pregunta que llega por WhatsApp es de un día.
+
+#### 3. El Resumen cuenta también Google
+
+`src/lib/admin/estadisticas.ts` (puro, 12 pruebas) + `src/app/admin/(panel)/page.tsx`. Una sola
+lectura de Google (`ocupacionDelCalendario`) para el mes y los próximos 7 días. Muestra: en casa esta
+noche, llegan hoy (y salen), llegan esta semana, ocupación del mes (noches ocupadas / noches que se
+podían vender: sin bloqueos ni las noches que la cabaña no ofrece —la 02 cuenta 16 en octubre—, por
+cabaña y total), reservas del mes por origen (sitio web / panel / calendario del hotel, por **llegada**
+en el mes) e **ingresos aparte, solo de la base**, dicho en la tarjeta. **Sin doble conteo:** los
+eventos con `origen = lafinca-web` ya llegan descartados; el mismo evento en dos calendarios se une;
+un evento de Google con la misma cabaña y fechas exactas que una reserva de la base se cuenta como la
+de la base; las noches se cuentan con un conjunto por cabaña. **Un evento sin cabaña** cuenta como una
+reserva «sin cabaña», sale en las llegadas y queda **fuera** del porcentaje (lo dice). Si Google falla
+o no está conectado: cuenta la base y lo avisa en una línea.
+
+Datos reales del 2026-10-05: 2 en casa, 2 llegan hoy, 10 en la semana, ocupación de octubre 28 %
+(39 de 140 noches), 36 reservas del calendario del hotel con llegada en octubre.
+
+#### 4. La reserva manual con el calendario del sitio
+
+- `formulario-reserva.tsx` usa **`CalendarioFechas`** con `elegibilidad-calendario.ts`. **Primero la
+  cabaña** (una nueva empieza sin cabaña y el calendario va en `<fieldset disabled>`), luego las
+  fechas. Sin `minima`: **el panel reserva para hoy**. Al editar una estadía que ya empezó, el «hoy»
+  del calendario es su llegada (para poder conservarla). La 02 tacha lunes a jueves (`tiposOfrecidosDe`
+  sobre sus tarifas); el Día de Calma pasa el calendario a `diaUnico` y tacha los días sin cupo.
+  Cambiar de cabaña con fechas puestas no las borra: si chocan, aviso rojo debajo.
+- **`/admin/api/ocupacion`** (nuevo, comprueba sesión): noches ocupadas de UNA cabaña (también
+  pausada) y cupo del Día de Calma, **sin la reserva que se edita** (`excluir`). Reglas en
+  `src/lib/admin/ocupacion-panel.ts` (puro, 10 pruebas): `ocupaCalendario` + bloqueos +
+  `franjasQueChocan` (la misma regla del servidor). Hook `usar-ocupacion-panel.ts` (mes visible y el
+  siguiente, caché 5 min por cabaña).
+- **Servidor:** `buscarChoques` ya sumaba los eventos de Google y cualquier choque bloqueaba; no había
+  un aviso aparte que convertir. Lo nuevo: `describirChoquesEnCabana()` («Esas noches ya están ocupadas
+  en la Cabaña 03 por «Alvaro Pacheco cabaña 3» (calendario del hotel), del lun 05/10/2026 al mar
+  06/10/2026. Si es la misma reserva, ya está apuntada en el calendario de Google del hotel: no hace
+  falta registrarla otra vez…»), usado al guardar y al cambiar de estado; y si Google no respondió, el
+  mensaje de éxito avisa (`calendarioSinLeer`, de la caché). `describirChoques` (el del sitio y los
+  bloqueos) no cambió. 5 pruebas con un doble de Google.
+- **Arreglo colateral, todo el panel:** React 19 **reinicia un `<form action>` al terminar la acción
+  aunque falle**. Tras un rechazo se vaciaban nombre y teléfono y el desplegable de cabaña volvía en
+  pantalla a la 01 mientras su estado seguía en la 03 (el siguiente envío habría mandado la 01).
+  `FormularioAccion` ahora despacha a mano desde `onSubmit` (sin reinicio), reinicia solo si salió bien
+  y trae el aviso a la vista; `BotonEnviar` lee el «enviando» por contexto.
+
+#### 5. Selector de mes y año en `calendario-fechas.tsx`
+
+El título del mes es un botón que abre `src/components/ui/rejilla-meses.tsx` (doce meses, año con
+flechas, tabulación itinerante, `aria-disabled` con motivo, Escape vuelve a los días sin cerrar el
+calendario). Límites en `src/lib/utils/selector-mes.ts` (10 pruebas): del mes de la primera fecha
+elegible a **24 meses** (`MESES_VISIBLES_CALENDARIO`). **Antes las flechas no tenían tope hacia
+delante**; ahora flechas, teclado (RePág/AvPág) y selector paran en el mismo sitio. Funciona en la
+portada, `/reservar` y el panel. De paso, la ayuda del Día de Calma ya no dice «desde mañana» cuando
+no hay antelación (panel).
+
+#### 6. «Temporadas» → «Tarifas diferenciales»
+
+Lo hizo un agente Sonnet en paralelo (commits `1d86dbd`, `381c12e`): menú, títulos, botones («Nueva
+tarifa diferencial», «Crear tarifa diferencial», «Borrar tarifa diferencial»), mensajes, avisos de
+cruce, ficha de cabaña y el bloqueo al borrar un plan. Ruta `/admin/tarifas-diferenciales` con
+redirección permanente desde `/admin/temporadas/:path*` (`next.config.ts`). Tablas e identificadores
+siguen siendo `temporadas` (comentado). Recuadro «Cómo se aplican» reescrito con un ejemplo de fin de
+año. El huésped sigue viendo «temporada».
+
+#### Fechas `dd/mm/aaaa`
+
+Lo nuevo ya las escribe así (`fechaNumerica`, `fechaConDia` → «lun 05/10/2026», `rangoConDias` en
+`src/lib/admin/fechas.ts`). El barrido del resto lo hace otra ronda.
+
+#### Verificación
+
+`tsc` limpio · `npm test` **496 en verde** (444 + 52) · `next build` sin errores (en un worktree de git
+fuera de OneDrive, con el mismo commit) · eslint limpio en lo tocado. Capturas con Chrome headless
+contra `localhost:3127` (dev y luego `next start`), a 1440 y 390: calendario de octubre con los 36
+eventos reales, selector de mes, agenda del celular, Resumen, reserva manual con noches tachadas
+(Cabaña 03 y 02), rechazo del servidor por «Alvaro Pacheco cabaña 3» (sin escribir nada en la base ni
+en Google), Tarifas diferenciales y el selector en `/reservar`. Sesión con el usuario de pruebas
+rotando su contraseña por la Admin API y rotándola de nuevo al terminar. **No se creó ninguna reserva,
+bloqueo ni tarifa**: la exclusión de la propia reserva al editar está cubierta por pruebas, no por un
+recorrido real (crear una reserva de prueba habría escrito en el calendario de Google del hotel).
+
+**Medición de `scrollWidth`** (`next start`, con sesión): las **31 páginas del panel** (Resumen,
+Reservas en octubre de 2026, Nueva reserva, Bloqueos, Cabañas y su ficha y alta, Planes, Tarifas
+diferenciales con su alta y edición, Experiencias, Adicionales, Contenido y sus diez secciones,
+Usuarios) más la redirección de `/admin/temporadas`, a 320, 390, 768, 1024, 1440 y 1920: **192 de
+192 con `scrollWidth <= innerWidth`** (el máximo es exactamente el ancho de la ventana en cada caso).
+Antes: Reservas daba 2112 a 1440 y 1808 a 320. La primera pasada encontró un segundo culpable de 8 px
+a 320 en la misma página —el texto del recuadro «Calendario del hotel», apretado a 24 px junto a la
+pastilla—; ahora baja a su propia línea.
+
+#### Hallazgos que quedan anotados (no se tocaron)
+
+1. **Un evento de Google sin cabaña bloquea las cinco**, y ya hay uno real: «Cristian Arcila plan
+   día» (4 de octubre, general). Parece un Día de Calma apuntado en el calendario de cabañas. Dejó
+   el domingo 4 sin ninguna cabaña libre en el sitio. Pedir al hotel que no apunte los Días de Calma
+   ahí o que les ponga otra marca; o decidir una regla («plan día» no ocupa cabaña).
+2. **`/api/reservar` devuelve al navegador `describirChoques()`**, que lleva nombre del huésped,
+   código de reserva o título del evento de Google: cualquiera que haga un POST a mano sobre unas
+   fechas ocupadas lee quién las tiene. Está en `src/lib/pagos/crear-reserva.ts` (fuera de esta
+   ronda): el sitio debería responder un texto genérico («esas fechas acaban de ocuparse»).
+3. La agenda del celular no ve la salida de una estadía cuya última noche fue la del mes anterior: el
+   día 1 no dice «sale por la mañana».
