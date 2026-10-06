@@ -6,8 +6,8 @@ import { requireAdmin } from "@/lib/admin/auth";
 import { REINTENTOS_CODIGO, siguienteCodigo } from "@/lib/admin/codigo-reserva";
 import {
   buscarChoques,
-  calendarioSinLeer,
   describirChoquesEnCabana,
+  tomaNochesNuevas,
 } from "@/lib/admin/disponibilidad";
 import {
   aRangoFechas,
@@ -40,8 +40,13 @@ import { liberarReservasVencidas } from "@/lib/reserva/liberar-vencidas";
 import { diasDeCalmaPorFecha } from "@/lib/reserva/calendario-externo";
 import {
   invalidarCacheCalendario,
+  leerCalendarioParaEscribir,
   ocupacionDelCalendario,
 } from "@/lib/reserva/ocupacion-externa";
+import {
+  CalendarioSinRespuesta,
+  MENSAJE_SIN_CALENDARIO_PANEL,
+} from "@/lib/reserva/calendario-sin-respuesta";
 import {
   borrarEventoDeReserva,
   sincronizarReservaEnCalendario,
@@ -205,18 +210,88 @@ async function personasDeDiaEn(
 /**
  * Los «plan día» del calendario general del hotel en esa fecha: no ocupan
  * cabaña y gastan 2 cupos cada uno (regla 2b de `calendario-externo.ts`).
- * Sin conexión con Google, ninguno. Los títulos van en el aviso del panel.
+ * Sin Google configurado, ninguno. Los títulos van en el aviso del panel.
+ *
+ * `estricto` (para tomar cupo nuevo): se lee sin caché y, si Google está
+ * configurado y no responde, lanza `CalendarioSinRespuesta`. Si no, sale de la
+ * caché y un fallo cuenta como cero.
  */
 async function diaDeCalmaDelHotelEn(
   fecha: string,
+  estricto: boolean,
 ): Promise<{ personas: number; titulos: string[] }> {
   const siguiente = sumarDiasISO(fecha, 1);
-  const lectura = await ocupacionDelCalendario(fecha, siguiente);
+  const lectura = estricto
+    ? await leerCalendarioParaEscribir(fecha, siguiente)
+    : await ocupacionDelCalendario(fecha, siguiente);
   if (lectura.estado !== "conectado") return { personas: 0, titulos: [] };
   const eventos = diasDeCalmaPorFecha(lectura.diasDeCalma, fecha, siguiente)[fecha] ?? [];
   return {
     personas: eventos.reduce((suma, evento) => suma + evento.personas, 0),
     titulos: eventos.map((evento) => evento.titulo),
+  };
+}
+
+/**
+ * Corre una comprobación que lee el calendario de Google y traduce su caída al
+ * mensaje del panel: «el calendario del hotel no respondió; no se guardó nada».
+ * Cualquier otro error sigue su camino.
+ */
+async function sinCalendarioNoSeGuarda<T>(comprobar: () => Promise<T>): Promise<T> {
+  try {
+    return await comprobar();
+  } catch (error) {
+    if (error instanceof CalendarioSinRespuesta) {
+      console.error("[panel] el calendario de Google no respondió:", error.detalle);
+      throw new ErrorDeValidacion(MENSAJE_SIN_CALENDARIO_PANEL);
+    }
+    throw error;
+  }
+}
+
+type ReservaGuardada = {
+  estado: string | null;
+  tipo: string | null;
+  alojamientoId: string | null;
+  inicio: string;
+  fin: string;
+  numPersonas: number;
+  /** ¿Aparta hoy sus fechas? (estado que ocupa y hold no vencido) */
+  ocupaAhora: boolean;
+};
+
+/** La reserva tal como está guardada, para saber qué cambia al editarla. */
+async function reservaGuardada(
+  supabase: Awaited<ReturnType<typeof requireAdmin>>["supabase"],
+  id: string,
+): Promise<ReservaGuardada | null> {
+  const { data, error } = await supabase
+    .from("reservas")
+    .select("estado, tipo, alojamiento_id, estancia, num_personas, expira_at")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) {
+    console.error("[panel] no se pudo leer la reserva:", error.message);
+    throw new ErrorDeValidacion(
+      "No se pudo leer la reserva para guardarla. Vuelve a intentarlo en un momento.",
+    );
+  }
+  if (!data) return null;
+  const rango = leerRangoFechas(data.estancia);
+  const estado = typeof data.estado === "string" ? data.estado : null;
+  return {
+    estado,
+    tipo: typeof data.tipo === "string" ? data.tipo : null,
+    alojamientoId: data.alojamiento_id ? String(data.alojamiento_id) : null,
+    inicio: rango?.inicio ?? "",
+    fin: rango?.fin ?? "",
+    numPersonas: Number(data.num_personas ?? 0),
+    ocupaAhora:
+      ESTADOS_QUE_OCUPAN.includes(estado as EstadoReserva) &&
+      ocupaCalendario({
+        estado: estado ?? "",
+        expira_at: typeof data.expira_at === "string" ? data.expira_at : null,
+      }),
   };
 }
 
@@ -399,8 +474,36 @@ export async function guardarReservaAction(
     }
 
     let alojamiento: { nombre: string; capacidad: number } | null = null;
-    /** Si Google no respondió, sus eventos no pudieron bloquear: se avisa. */
-    let avisoGoogle = "";
+
+    /*
+      ¿TOMA NOCHES NUEVAS? Decide si el calendario de Google se lee en modo
+      estricto (sin caché y fallando cerrado) o tolerante.
+
+      Crear, reactivar, cambiar de cabaña, alargar o subir personas de un Día de
+      Calma toma noches o cupo que la reserva no tenía: si Google está
+      configurado y no responde, no se guarda. Corregir el teléfono de una
+      reserva confirmada no toma nada nuevo y se deja guardar aunque Google
+      esté caído.
+    */
+    const anterior = id ? await reservaGuardada(supabase, id) : null;
+    if (id && !anterior) {
+      throw new ErrorDeValidacion(
+        "Esa reserva ya no existe. Vuelve al listado y ábrela de nuevo.",
+      );
+    }
+    const tomaNuevas =
+      tomaNochesNuevas(
+        anterior
+          ? {
+              alojamientoId: anterior.alojamientoId,
+              inicio: anterior.inicio,
+              fin: anterior.fin,
+              ocupaAhora: anterior.ocupaAhora,
+            }
+          : null,
+        { alojamientoId, inicio: entrada, fin: salida },
+      ) ||
+      (esDia && numPersonas > (anterior?.numPersonas ?? 0));
 
     if (!esDia && alojamientoId) {
       const { data } = await supabase
@@ -418,12 +521,10 @@ export async function guardarReservaAction(
       };
 
       if (ESTADOS_QUE_OCUPAN.includes(estado)) {
-        const choques = await buscarChoques(
-          supabase,
-          alojamientoId,
-          entrada,
-          salida,
-          id || undefined,
+        const choques = await sinCalendarioNoSeGuarda(() =>
+          buscarChoques(supabase, alojamientoId, entrada, salida, id || undefined, {
+            calendario: tomaNuevas ? "estricto" : "tolerante",
+          }),
         );
         /*
           AQUÍ SE BLOQUEA TAMBIÉN POR EL CALENDARIO DE GOOGLE.
@@ -438,10 +539,6 @@ export async function guardarReservaAction(
             describirChoquesEnCabana(choques, alojamiento.nombre),
           );
         }
-        if (await calendarioSinLeer(entrada, salida)) {
-          avisoGoogle =
-            "\nOjo: no se pudo consultar el calendario de Google del hotel. Revisa allí que esas noches no estén ya apuntadas.";
-        }
       }
     }
 
@@ -450,7 +547,7 @@ export async function guardarReservaAction(
     if (esDia && ["pendiente", "confirmada"].includes(estado)) {
       const [deLaBase, delHotel] = await Promise.all([
         personasDeDiaEn(supabase, entrada, id || undefined),
-        diaDeCalmaDelHotelEn(entrada),
+        sinCalendarioNoSeGuarda(() => diaDeCalmaDelHotelEn(entrada, tomaNuevas)),
       ]);
       const ocupadas = deLaBase + delHotel.personas;
       if (ocupadas + numPersonas > CUPO_DIA_DE_CALMA) {
@@ -591,20 +688,14 @@ export async function guardarReservaAction(
 
     const avisoCapacidad =
       alojamiento && numPersonas > alojamiento.capacidad
-        ? `\nAviso: son más personas de las que caben normalmente en ${alojamiento.nombre} (${alojamiento.capacidad}).${avisoGoogle}`
-        : avisoGoogle;
+        ? `\nAviso: son más personas de las que caben normalmente en ${alojamiento.nombre} (${alojamiento.capacidad}).`
+        : "";
 
     if (id) {
       /* El estado anterior, para saber si esta edición ES la confirmación (y
-         mandar entonces el correo al huésped). Se lee ANTES del update: después
+         mandar entonces el correo al huésped). Se leyó ANTES del update: después
          ya no hay con qué comparar. */
-      const { data: antes } = await supabase
-        .from("reservas")
-        .select("estado")
-        .eq("id", id)
-        .maybeSingle();
-      const estadoAnterior =
-        typeof antes?.estado === "string" ? antes.estado : null;
+      const estadoAnterior = anterior?.estado ?? null;
 
       const { error } = await supabase.from("reservas").update(datos).eq("id", id);
       if (error) throw traducirErrorPostgres(error);
@@ -797,7 +888,9 @@ export async function cambiarEstadoReservaAction(formData: FormData) {
 
   const { data: reserva, error: errorLectura } = await supabase
     .from("reservas")
-    .select("alojamiento_id, estancia, estado, huesped_email, alojamientos(nombre)")
+    .select(
+      "alojamiento_id, estancia, estado, expira_at, tipo, num_personas, huesped_email, alojamientos(nombre)",
+    )
     .eq("id", id)
     .maybeSingle();
 
@@ -807,30 +900,79 @@ export async function cambiarEstadoReservaAction(formData: FormData) {
     );
   }
 
-  if (ESTADOS_QUE_OCUPAN.includes(estado) && reserva.alojamiento_id) {
-    const rango = leerRangoFechas(reserva.estancia);
-    if (rango) {
+  /*
+    ¿Toma noches que no tenía? Reactivar una cancelada (o una solicitud
+    vencida) sí: ahí Google se lee sin caché y, si no responde, no se cambia
+    nada. Confirmar una que ya aparta sus fechas, o marcarla completada, no
+    toma nada nuevo: se comprueba con la caché y una caída de Google no lo
+    impide.
+  */
+  const ocupaAhora =
+    ESTADOS_QUE_OCUPAN.includes(String(reserva.estado) as EstadoReserva) &&
+    ocupaCalendario({
+      estado: String(reserva.estado ?? ""),
+      expira_at: typeof reserva.expira_at === "string" ? reserva.expira_at : null,
+    });
+  const rangoActual = leerRangoFechas(reserva.estancia);
+
+  let errorComprobacion: string | null = null;
+  try {
+    if (ESTADOS_QUE_OCUPAN.includes(estado) && reserva.alojamiento_id && rangoActual) {
       const choques = await buscarChoques(
         supabase,
         String(reserva.alojamiento_id),
-        rango.inicio,
-        rango.fin,
+        rangoActual.inicio,
+        rangoActual.fin,
         id,
+        { calendario: ocupaAhora ? "tolerante" : "estricto" },
       );
       if (choques.length > 0) {
-          const relacion = reserva.alojamientos as
+        const relacion = reserva.alojamientos as
           | { nombre?: string }
           | { nombre?: string }[]
           | null;
         const nombreCabana =
           (Array.isArray(relacion) ? relacion[0]?.nombre : relacion?.nombre) ?? "";
-        redirect(
-          `${RUTA_LISTA}/${id}?error=${encodeURIComponent(
-            `No se pudo cambiar el estado. ${describirChoquesEnCabana(choques, nombreCabana)}`,
-          )}`,
-        );
+        errorComprobacion = `No se pudo cambiar el estado. ${describirChoquesEnCabana(choques, nombreCabana)}`;
       }
     }
+
+    /* Un Día de Calma que vuelve a contar para el cupo: la base lo vigila con
+       su trigger, pero no ve los «plan día» de Google. */
+    if (
+      !errorComprobacion &&
+      !ocupaAhora &&
+      reserva.tipo === "dia" &&
+      ["pendiente", "confirmada"].includes(estado) &&
+      rangoActual
+    ) {
+      const [deLaBase, delHotel] = await Promise.all([
+        personasDeDiaEn(supabase, rangoActual.inicio, id),
+        diaDeCalmaDelHotelEn(rangoActual.inicio, true),
+      ]);
+      const ocupadas = deLaBase + delHotel.personas;
+      if (ocupadas + Number(reserva.num_personas ?? 0) > CUPO_DIA_DE_CALMA) {
+        errorComprobacion = `No se pudo cambiar el estado. El Día de Calma admite ${CUPO_DIA_DE_CALMA} personas por día y para esa fecha ya hay ${ocupadas}${
+          delHotel.personas > 0 ? " (contando los «plan día» del calendario del hotel)" : ""
+        }.`;
+      }
+    }
+  } catch (error) {
+    if (error instanceof CalendarioSinRespuesta) {
+      console.error("[panel] el calendario de Google no respondió:", error.detalle);
+      errorComprobacion = `No se pudo cambiar el estado. ${MENSAJE_SIN_CALENDARIO_PANEL}`;
+    } else {
+      console.error(
+        "[panel] no se pudo comprobar la disponibilidad:",
+        error instanceof Error ? error.message : error,
+      );
+      errorComprobacion =
+        "No se pudo cambiar el estado: no logramos comprobar la disponibilidad. Vuelve a intentarlo en un momento.";
+    }
+  }
+
+  if (errorComprobacion) {
+    redirect(`${RUTA_LISTA}/${id}?error=${encodeURIComponent(errorComprobacion)}`);
   }
 
   const estadoAnterior =

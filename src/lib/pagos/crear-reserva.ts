@@ -66,6 +66,10 @@ import {
 } from "../admin/disponibilidad";
 import { aRangoFechas, formatearEstadia, formatearFecha } from "../utils/formato";
 import { LEGAL_ACTUALIZADO } from "../sitio";
+import {
+  CalendarioSinRespuesta,
+  MENSAJE_SIN_CALENDARIO_HUESPED,
+} from "../reserva/calendario-sin-respuesta";
 import { calcularVencimiento } from "../reserva/holds";
 import { liberarReservasVencidas } from "../reserva/liberar-vencidas";
 
@@ -135,7 +139,12 @@ export async function crearReservaYCobro(
      1. EL PRECIO, RECALCULADO AQUÍ
      ------------------------------------------------------------------ */
   const recalculo = await cotizarEnServidor(supabase, peticion.solicitud, ahora);
-  if (!recalculo.ok) return fallo(recalculo.motivo);
+  if (!recalculo.ok) {
+    /* Lo que el huésped puede arreglar (otras fechas, otra cabaña) es un 400;
+       lo que no depende de él —Google sin respuesta, un precio mal
+       configurado— es del servidor. */
+    return fallo(recalculo.motivo, recalculo.servidor ? "servidor" : "datos");
+  }
 
   const cotizacion = recalculo.cotizacion;
   const { pago } = cotizacion;
@@ -185,14 +194,19 @@ export async function crearReservaYCobro(
         );
       }
     } catch (error) {
+      /* FALLA CERRADO. Con el calendario de Google del hotel configurado y sin
+         respuesta, no se sabe si esas noches están libres —hoy todas las
+         reservas reales viven allí—, así que no se aparta nada. Lo mismo si la
+         base no respondió. */
       console.error(
         "[pagos] no se pudo comprobar la disponibilidad:",
-        error instanceof Error ? error.message : error,
+        error instanceof CalendarioSinRespuesta
+          ? `calendario de Google: ${error.detalle}`
+          : error instanceof Error
+            ? error.message
+            : error,
       );
-      return fallo(
-        "No pudimos comprobar la disponibilidad ahora mismo. Inténtalo en un momento o escríbenos por WhatsApp.",
-        "servidor",
-      );
+      return fallo(MENSAJE_SIN_CALENDARIO_HUESPED, "servidor");
     }
   }
 

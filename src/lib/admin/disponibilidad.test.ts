@@ -15,18 +15,19 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  */
 vi.mock("../reserva/ocupacion-externa", () => ({
   choquesDelCalendario: vi.fn(),
-  ocupacionDelCalendario: vi.fn(),
+  choquesDelCalendarioParaEscribir: vi.fn(),
 }));
 
 import {
   buscarChoques,
-  calendarioSinLeer,
   describirChoquesEnCabana,
+  tomaNochesNuevas,
 } from "./disponibilidad";
 import {
   choquesDelCalendario,
-  ocupacionDelCalendario,
+  choquesDelCalendarioParaEscribir,
 } from "../reserva/ocupacion-externa";
+import { CalendarioSinRespuesta } from "../reserva/calendario-sin-respuesta";
 
 /** Un cliente de Supabase de mentira: cada tabla devuelve sus filas. */
 function clienteFalso(filas: Record<string, unknown>): SupabaseClient {
@@ -55,12 +56,14 @@ const EVENTO = {
 
 beforeEach(() => {
   vi.mocked(choquesDelCalendario).mockReset();
-  vi.mocked(ocupacionDelCalendario).mockReset();
+  vi.mocked(choquesDelCalendarioParaEscribir).mockReset();
+  vi.mocked(choquesDelCalendario).mockResolvedValue([]);
+  vi.mocked(choquesDelCalendarioParaEscribir).mockResolvedValue([]);
 });
 
 describe("buscarChoques con el calendario de Google", () => {
   it("un evento de Google en esas noches es un choque, y bloquea", async () => {
-    vi.mocked(choquesDelCalendario).mockResolvedValue([EVENTO]);
+    vi.mocked(choquesDelCalendarioParaEscribir).mockResolvedValue([EVENTO]);
     const supabase = clienteFalso({
       reservas: [],
       bloqueos: [],
@@ -69,7 +72,13 @@ describe("buscarChoques con el calendario de Google", () => {
 
     const choques = await buscarChoques(supabase, "c3", "2026-10-16", "2026-10-18");
 
-    expect(choquesDelCalendario).toHaveBeenCalledWith("Cabaña 03", "2026-10-16", "2026-10-18");
+    /* Por defecto, la lectura para escribir: sin caché y sin tolerar fallos. */
+    expect(choquesDelCalendarioParaEscribir).toHaveBeenCalledWith(
+      "Cabaña 03",
+      "2026-10-16",
+      "2026-10-18",
+    );
+    expect(choquesDelCalendario).not.toHaveBeenCalled();
     expect(choques).toHaveLength(1);
     expect(choques[0]).toMatchObject({
       tipo: "calendario",
@@ -99,7 +108,6 @@ describe("buscarChoques con el calendario de Google", () => {
   });
 
   it("al editar, la propia reserva no choca consigo misma (pero Google sí)", async () => {
-    vi.mocked(choquesDelCalendario).mockResolvedValue([]);
     const supabase = clienteFalso({
       reservas: [
         {
@@ -138,18 +146,65 @@ describe("buscarChoques con el calendario de Google", () => {
   });
 });
 
-describe("calendarioSinLeer", () => {
-  it("avisa cuando Google no respondió (sus eventos no pudieron bloquear)", async () => {
-    vi.mocked(ocupacionDelCalendario).mockResolvedValue({
-      estado: "error",
-      lecturaIncompleta: true,
-    } as Awaited<ReturnType<typeof ocupacionDelCalendario>>);
-    expect(await calendarioSinLeer("2026-10-12", "2026-10-13")).toBe(true);
+describe("buscarChoques cuando Google no responde", () => {
+  const supabase = () =>
+    clienteFalso({ reservas: [], bloqueos: [], alojamientos: { nombre: "Cabaña 03" } });
 
-    vi.mocked(ocupacionDelCalendario).mockResolvedValue({
-      estado: "conectado",
-      lecturaIncompleta: false,
-    } as Awaited<ReturnType<typeof ocupacionDelCalendario>>);
-    expect(await calendarioSinLeer("2026-10-12", "2026-10-13")).toBe(false);
+  it("para tomar noches (por defecto) falla cerrado: lanza CalendarioSinRespuesta", async () => {
+    vi.mocked(choquesDelCalendarioParaEscribir).mockRejectedValue(
+      new CalendarioSinRespuesta("401 clave revocada"),
+    );
+    await expect(
+      buscarChoques(supabase(), "c3", "2026-10-16", "2026-10-18"),
+    ).rejects.toBeInstanceOf(CalendarioSinRespuesta);
+  });
+
+  it("un bloqueo (modo tolerante) no se frena: lee la caché y un fallo no impide", async () => {
+    vi.mocked(choquesDelCalendarioParaEscribir).mockRejectedValue(
+      new CalendarioSinRespuesta("timeout"),
+    );
+    const choques = await buscarChoques(supabase(), "c3", "2026-10-16", "2026-10-18", undefined, {
+      calendario: "tolerante",
+    });
+    expect(choques).toEqual([]);
+    expect(choquesDelCalendario).toHaveBeenCalledOnce();
+    expect(choquesDelCalendarioParaEscribir).not.toHaveBeenCalled();
+  });
+});
+
+describe("tomaNochesNuevas", () => {
+  const guardada = {
+    alojamientoId: "c3",
+    inicio: "2026-10-12",
+    fin: "2026-10-15",
+    ocupaAhora: true,
+  };
+
+  it("una reserva nueva, una cancelada o una solicitud vencida toman noches", () => {
+    const nueva = { alojamientoId: "c3", inicio: "2026-10-12", fin: "2026-10-15" };
+    expect(tomaNochesNuevas(null, nueva)).toBe(true);
+    expect(tomaNochesNuevas({ ...guardada, ocupaAhora: false }, nueva)).toBe(true);
+  });
+
+  it("retocar una reserva que ya aparta sus noches no toma nada nuevo", () => {
+    expect(
+      tomaNochesNuevas(guardada, { alojamientoId: "c3", inicio: "2026-10-12", fin: "2026-10-15" }),
+    ).toBe(false);
+    /* Acortarla tampoco. */
+    expect(
+      tomaNochesNuevas(guardada, { alojamientoId: "c3", inicio: "2026-10-13", fin: "2026-10-14" }),
+    ).toBe(false);
+  });
+
+  it("cambiar de cabaña o alargarla sí", () => {
+    expect(
+      tomaNochesNuevas(guardada, { alojamientoId: "c4", inicio: "2026-10-12", fin: "2026-10-15" }),
+    ).toBe(true);
+    expect(
+      tomaNochesNuevas(guardada, { alojamientoId: "c3", inicio: "2026-10-11", fin: "2026-10-15" }),
+    ).toBe(true);
+    expect(
+      tomaNochesNuevas(guardada, { alojamientoId: "c3", inicio: "2026-10-12", fin: "2026-10-16" }),
+    ).toBe(true);
   });
 });

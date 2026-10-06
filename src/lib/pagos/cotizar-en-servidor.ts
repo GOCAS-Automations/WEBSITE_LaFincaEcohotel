@@ -58,7 +58,11 @@ import {
   validarRango,
 } from "../reserva/noches";
 import { ocupaCalendario } from "../reserva/holds";
-import { personasDiaDeCalmaDelCalendario } from "../reserva/ocupacion-externa";
+import {
+  CalendarioSinRespuesta,
+  MENSAJE_SIN_CALENDARIO_HUESPED,
+} from "../reserva/calendario-sin-respuesta";
+import { personasDiaDeCalmaParaEscribir } from "../reserva/ocupacion-externa";
 import { temporadasDeTarifa, type Temporada } from "../reserva/temporadas";
 import { leerTemporadas } from "../reserva/temporadas-db";
 import {
@@ -130,7 +134,16 @@ export type CotizacionAutoritativa = {
 
 export type ResultadoCotizacion =
   | { ok: true; cotizacion: CotizacionAutoritativa }
-  | { ok: false; motivo: string };
+  | {
+      ok: false;
+      motivo: string;
+      /**
+       * Cierto cuando el fallo no depende del huésped (el calendario del hotel
+       * no respondió, un precio mal configurado): `/api/reservar` responde 503
+       * en vez de 400.
+       */
+      servidor?: boolean;
+    };
 
 /** Fracaso con un motivo en español que se le puede mostrar al huésped. */
 function no(motivo: string): ResultadoCotizacion {
@@ -365,7 +378,9 @@ type DatosBase = {
   noches: LineaNoche[];
 };
 
-type ResultadoBase = { ok: true; datos: DatosBase } | { ok: false; motivo: string };
+type ResultadoBase =
+  | { ok: true; datos: DatosBase }
+  | { ok: false; motivo: string; servidor?: boolean };
 
 async function cotizarHospedaje(
   supabase: SupabaseClient,
@@ -621,14 +636,29 @@ async function cotizarDia(
 
   /* Los «plan día» del calendario general del hotel también gastan cupo: 2
      cada uno (regla 2b de `calendario-externo.ts`). Misma suma que
-     `/api/dia-de-calma/cupo` y `/api/disponibilidad`. Sin Google, 0. */
-  const delHotel =
-    (
-      await personasDiaDeCalmaDelCalendario(
-        solicitud.entrada,
-        sumarDias(solicitud.entrada, 1),
-      )
-    )[solicitud.entrada] ?? 0;
+     `/api/dia-de-calma/cupo` y `/api/disponibilidad`. Sin Google configurado,
+     0. Esto decide un cobro, así que se lee SIN caché y, si Google está
+     configurado y no responde, no se vende el día (falla cerrado). */
+  let delHotel = 0;
+  try {
+    delHotel =
+      (
+        await personasDiaDeCalmaParaEscribir(
+          solicitud.entrada,
+          sumarDias(solicitud.entrada, 1),
+        )
+      )[solicitud.entrada] ?? 0;
+  } catch (error) {
+    console.error(
+      "[pagos] no se pudo leer el calendario del hotel para el cupo del Día de Calma:",
+      error instanceof CalendarioSinRespuesta
+        ? error.detalle
+        : error instanceof Error
+          ? error.message
+          : error,
+    );
+    return { ok: false, motivo: MENSAJE_SIN_CALENDARIO_HUESPED, servidor: true };
+  }
 
   const restante = Math.max(0, CUPO_DIA_DE_CALMA - usado - delHotel);
 

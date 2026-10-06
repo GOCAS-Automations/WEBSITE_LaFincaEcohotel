@@ -19,6 +19,7 @@ import {
   type LoteDeCalendario,
   type OcupacionExterna,
 } from "./calendario-externo";
+import { CalendarioSinRespuesta } from "./calendario-sin-respuesta";
 import {
   armarDiagnostico,
   avisoDeEscrituraSinPermiso,
@@ -71,13 +72,16 @@ export type {
  * del hotel y, cuando existan, los cinco subcalendarios por cabaña. Se consultan
  * **todos en paralelo** y la ocupación se une.
  *
- * Si uno falla y otro responde, se usa **lo que sí llegó** y el fallo se cuenta
- * como aviso. Es la misma decisión que ya tomaba el caso de un solo calendario:
- * un error de lectura no bloquea nada (devolvía ocupación vacía, y
- * `choquesDelCalendario` no añadía ningún choque), porque la fuente de verdad es
- * Postgres y el calendario de Google solo puede añadir ocupación, nunca quitarla.
- * Un fallo parcial se comporta igual: lo que no se pudo leer simplemente no
- * bloquea, y el panel lo dice en lugar de callárselo.
+ * PARA PINTAR (el calendario del sitio, el del panel, el Resumen): si uno falla
+ * y otro responde, se usa **lo que sí llegó** y el fallo se cuenta como aviso;
+ * si fallan todos, ocupación vacía y estado `error`. Una pantalla no puede
+ * tumbarse por Google.
+ *
+ * PARA ESCRIBIR (crear o reactivar una reserva) eso ya no vale: hoy todas las
+ * reservas reales viven en Google y un fallo de lectura abriría el calendario
+ * entero a la venta. Las escrituras usan {@link leerCalendarioParaEscribir}, que
+ * no mira la caché y, ante cualquier fallo con Google configurado, lanza
+ * `CalendarioSinRespuesta` (falla cerrado).
  */
 
 const VIDA_CACHE_MS = 5 * 60 * 1000;
@@ -330,9 +334,114 @@ export async function ocupacionDelCalendario(
   return { ...(await peticion), deCache: false };
 }
 
+/* ===========================================================================
+ * Lectura para ESCRIBIR: sin caché y sin tolerar fallos
+ * ======================================================================== */
+
+/**
+ * ¿Hay calendarios del hotel configurados? Es «Google está configurado»: con
+ * `GOOGLE_CALENDAR_ID` vacío no hay nada que leer y la base es la única fuente.
+ * Con calendarios y sin una credencial que cargue, la integración está ROTA, no
+ * apagada, y quien escribe tiene que fallar cerrado.
+ */
+export function calendarioEnUso(): boolean {
+  return configuracionDeCalendarios().calendarios.length > 0;
+}
+
+/**
+ * La lectura que decide si se puede ESCRIBIR una reserva.
+ *
+ * ---------------------------------------------------------------------------
+ * POR QUÉ NO USA LA CACHÉ
+ * ---------------------------------------------------------------------------
+ * La caché de cinco minutos es para pintar pantallas. Una reserva que el equipo
+ * apuntó en Google por WhatsApp hace dos minutos no estaría en ella, y el sitio
+ * vendería esas noches. Justo antes de insertar se pregunta a Google de nuevo;
+ * lo leído refresca además la caché, así que la pantalla siguiente ya lo ve.
+ *
+ * ---------------------------------------------------------------------------
+ * POR QUÉ LANZA
+ * ---------------------------------------------------------------------------
+ * Si Google está configurado y no se pudo leer **entero** (uno solo de los
+ * calendarios que falle basta: el general es el que tiene las 48 reservas
+ * reales), lanza {@link CalendarioSinRespuesta}. Quien llama lo traduce a
+ * «no pudimos comprobar la disponibilidad». Sin calendarios configurados
+ * devuelve el estado `sin_configurar` y no lanza: es el comportamiento de
+ * siempre.
+ */
+export async function leerCalendarioParaEscribir(
+  desde: string,
+  hasta: string,
+): Promise<LecturaCalendario> {
+  const config = configuracionDeCalendarios();
+  if (config.calendarios.length === 0) {
+    return { ...sinConfigurar(config.avisos), deCache: false };
+  }
+  if (!credencialConfigurada()) {
+    throw new CalendarioSinRespuesta(
+      "GOOGLE_CALENDAR_ID tiene calendarios, pero GOOGLE_CALENDAR_CREDENCIALES no carga.",
+    );
+  }
+
+  const ventana = ventanaDe(desde, hasta);
+  let valor: Omit<LecturaCalendario, "deCache">;
+  try {
+    valor = await consultar(ventana.desde, ventana.hasta);
+  } catch (error) {
+    throw new CalendarioSinRespuesta(
+      error instanceof Error ? error.message : "fallo inesperado al leer Google",
+    );
+  }
+
+  /* Lo recién leído pasa a la caché: es más nuevo que lo que hubiera. */
+  const vida =
+    valor.estado === "error" || valor.lecturaIncompleta ? 60_000 : VIDA_CACHE_MS;
+  cache.set(`${ventana.desde}|${ventana.hasta}`, {
+    caducidad: Date.now() + vida,
+    valor,
+  });
+
+  if (valor.estado !== "conectado" || valor.lecturaIncompleta) {
+    throw new CalendarioSinRespuesta(
+      [valor.mensaje, ...valor.avisos].filter(Boolean).join(" · "),
+    );
+  }
+  return { ...valor, deCache: false };
+}
+
+/**
+ * Como {@link choquesDelCalendario}, pero para escribir: sin caché y, si Google
+ * está configurado y no responde, lanza {@link CalendarioSinRespuesta}.
+ */
+export async function choquesDelCalendarioParaEscribir(
+  nombreCabana: string,
+  entrada: string,
+  salida: string,
+): Promise<OcupacionExterna[]> {
+  const lectura = await leerCalendarioParaEscribir(entrada, salida);
+  if (lectura.estado !== "conectado") return [];
+  return franjasQueChocan(lectura.ocupacion, nombreCabana, entrada, salida);
+}
+
+/**
+ * Como {@link personasDiaDeCalmaDelCalendario}, pero para escribir: sin caché
+ * y fallando cerrado.
+ */
+export async function personasDiaDeCalmaParaEscribir(
+  desde: string,
+  hasta: string,
+): Promise<Record<string, number>> {
+  const lectura = await leerCalendarioParaEscribir(desde, hasta);
+  if (lectura.estado !== "conectado") return {};
+  return personasDeDiaDeCalmaPorFecha(lectura.diasDeCalma, desde, hasta);
+}
+
 /**
  * Franjas del calendario del hotel que chocan con una estadía en una cabaña.
  * `nombreCabana` es el de la base («Cabaña 03»).
+ *
+ * Sale de la caché y no lanza: es para PINTAR. Para decidir una escritura,
+ * {@link choquesDelCalendarioParaEscribir}.
  */
 export async function choquesDelCalendario(
   nombreCabana: string,

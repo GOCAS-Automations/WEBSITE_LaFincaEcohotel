@@ -14,9 +14,15 @@
  * El hotel sigue apuntando reservas a mano en su calendario «la finca», y esas
  * fechas también están ocupadas aunque no estén en la base. Se leen desde
  * `@/lib/reserva/ocupacion-externa` (con caché de cinco minutos) y se suman a
- * los choques. A diferencia de las otras dos, esta fuente NO es obligatoria: si
- * Google no está configurado o no responde, la comprobación sigue con reservas
- * y bloqueos y no se bloquea ningún guardado.
+ * los choques. Si Google no está configurado (sin `GOOGLE_CALENDAR_ID`), la
+ * comprobación sigue solo con reservas y bloqueos.
+ *
+ * Si está configurado y NO responde, depende de para qué se pregunta
+ * ({@link OpcionesChoques}): para tomar noches nuevas (crear o reactivar una
+ * reserva) se falla cerrado —lanza `CalendarioSinRespuesta`—, porque hoy todas
+ * las reservas reales viven en Google y un fallo de lectura abriría el
+ * calendario entero. Para un bloqueo, que solo puede quitar noches de la venta,
+ * un fallo no impide guardar.
  *
  * Un evento de Google que choca **sí bloquea** el guardado, igual que una
  * reserva de la base: así el equipo no duplica una reserva que ya estaba
@@ -30,7 +36,7 @@ import { ESTADOS_QUE_OCUPAN, ETIQUETA_ESTADO } from "./tipos";
 import { ocupaCalendario } from "../reserva/holds";
 import {
   choquesDelCalendario,
-  ocupacionDelCalendario,
+  choquesDelCalendarioParaEscribir,
 } from "../reserva/ocupacion-externa";
 import type { EstadoReserva } from "../tipos/basedatos";
 import { formatearFecha, formatearRango, formatearRangoConDias } from "../utils/formato";
@@ -51,9 +57,26 @@ export type Choque = {
   sinCabana?: boolean;
 };
 
+export type OpcionesChoques = {
+  /**
+   * Cómo se consulta el calendario de Google del hotel:
+   *
+   *   · `"estricto"` (por defecto) — para TOMAR noches: se pregunta a Google
+   *     sin caché, justo antes de escribir, y si está configurado y no
+   *     responde se lanza `CalendarioSinRespuesta` (falla cerrado).
+   *   · `"tolerante"` — sale de la caché y un fallo de Google no impide nada.
+   *     Para lo que no vende noches (un bloqueo) o para una reserva que ya las
+   *     tiene apartadas y solo se retoca.
+   */
+  calendario?: "estricto" | "tolerante";
+};
+
 /**
  * Devuelve los choques del rango [entrada, salida) en una cabaña.
  * `excluirReservaId` permite reeditar una reserva sin que choque consigo misma.
+ *
+ * Con Google configurado y sin respuesta, en modo estricto (el de por defecto)
+ * lanza `CalendarioSinRespuesta`: quien llama lo traduce a su mensaje.
  */
 export async function buscarChoques(
   supabase: SupabaseClient,
@@ -61,7 +84,9 @@ export async function buscarChoques(
   entrada: string,
   salida: string,
   excluirReservaId?: string,
+  opciones: OpcionesChoques = {},
 ): Promise<Choque[]> {
+  const estricto = (opciones.calendario ?? "estricto") === "estricto";
   const choques: Choque[] = [];
 
   /* PostgREST no expresa cómodamente el operador de solape sobre `daterange`,
@@ -150,12 +175,15 @@ export async function buscarChoques(
     });
   }
 
-  /* El calendario del hotel, al final y sin poder romper nada: si Google falla,
-     `choquesDelCalendario` devuelve una lista vacía y aquí no se nota. */
+  /* El calendario del hotel, al final. En modo estricto se lee sin caché y un
+     fallo lanza `CalendarioSinRespuesta`; en modo tolerante sale de la caché y
+     un fallo devuelve una lista vacía. */
   const nombreCabana =
     typeof cabana.data?.nombre === "string" ? cabana.data.nombre : "";
   if (nombreCabana) {
-    const franjas = await choquesDelCalendario(nombreCabana, entrada, salida);
+    const franjas = estricto
+      ? await choquesDelCalendarioParaEscribir(nombreCabana, entrada, salida)
+      : await choquesDelCalendario(nombreCabana, entrada, salida);
     for (const franja of franjas) {
       choques.push({
         tipo: "calendario",
@@ -253,16 +281,30 @@ export function describirChoquesEnCabana(
 }
 
 /**
- * ¿Falló la lectura del calendario de Google para esas fechas? Entonces sus
- * eventos no pudieron bloquear nada y conviene decirlo al guardar. Sale de la
- * caché de cinco minutos: no es una llamada más a Google.
+ * ¿Toma esta escritura noches que la reserva NO tenía ya apartadas?
+ *
+ * Decide si hace falta leer Google en modo estricto. Retocar el teléfono de una
+ * reserva confirmada no vende ninguna noche: sus noches ya son suyas, y exigir
+ * que Google responda para eso dejaría al equipo sin poder corregir una reserva
+ * durante una caída de Google. En cambio, crear una reserva, reactivar una
+ * cancelada (o una solicitud vencida), cambiarla de cabaña o alargarla sí toma
+ * noches nuevas, y ahí se falla cerrado.
+ *
+ * `anterior` es la reserva tal como está guardada (`null` si es nueva) y
+ * `ocupaAhora` dice si hoy aparta sus fechas (`ocupaCalendario()`).
  */
-export async function calendarioSinLeer(
-  entrada: string,
-  salida: string,
-): Promise<boolean> {
-  const lectura = await ocupacionDelCalendario(entrada, salida);
-  return lectura.estado === "error" || lectura.lecturaIncompleta;
+export function tomaNochesNuevas(
+  anterior: {
+    alojamientoId: string | null;
+    inicio: string;
+    fin: string;
+    ocupaAhora: boolean;
+  } | null,
+  nueva: { alojamientoId: string | null; inicio: string; fin: string },
+): boolean {
+  if (!anterior || !anterior.ocupaAhora) return true;
+  if (anterior.alojamientoId !== nueva.alojamientoId) return true;
+  return nueva.inicio < anterior.inicio || nueva.fin > anterior.fin;
 }
 
 /** Choques de un bloqueo nuevo (contra otros bloqueos y contra reservas). */
@@ -273,7 +315,11 @@ export async function buscarChoquesDeBloqueo(
   fin: string,
   excluirBloqueoId?: string,
 ): Promise<Choque[]> {
-  const choques = await buscarChoques(supabase, alojamientoId, inicio, fin);
+  /* Un bloqueo solo quita noches de la venta: si Google no responde, guardarlo
+     no puede vender nada, así que no se le exige leerlo. */
+  const choques = await buscarChoques(supabase, alojamientoId, inicio, fin, undefined, {
+    calendario: "tolerante",
+  });
 
   if (!excluirBloqueoId) return choques;
   // Un bloqueo que se reedita no choca consigo mismo.

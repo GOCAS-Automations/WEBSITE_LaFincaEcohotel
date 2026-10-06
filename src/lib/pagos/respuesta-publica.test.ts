@@ -20,12 +20,13 @@ vi.mock("../reserva/liberar-vencidas", () => ({
 }));
 vi.mock("../reserva/ocupacion-externa", () => ({
   choquesDelCalendario: vi.fn(),
-  ocupacionDelCalendario: vi.fn(),
+  choquesDelCalendarioParaEscribir: vi.fn(),
 }));
 
 import { POST } from "../../app/api/reservar/route";
 import { mensajeNochesOcupadasParaHuesped } from "../admin/disponibilidad";
-import { choquesDelCalendario } from "../reserva/ocupacion-externa";
+import { CalendarioSinRespuesta } from "../reserva/calendario-sin-respuesta";
+import { choquesDelCalendarioParaEscribir } from "../reserva/ocupacion-externa";
 import { crearClienteAdmin } from "../supabase/admin";
 import { hoyEnBogota, sumarDias } from "../utils/formato";
 import { cotizarEnServidor } from "./cotizar-en-servidor";
@@ -93,7 +94,7 @@ beforeEach(() => {
       pago: { anticipo: 400_000, total: 800_000 },
     },
   } as unknown as Awaited<ReturnType<typeof cotizarEnServidor>>);
-  vi.mocked(choquesDelCalendario).mockResolvedValue([]);
+  vi.mocked(choquesDelCalendarioParaEscribir).mockResolvedValue([]);
   avisos = vi.spyOn(console, "warn").mockImplementation(() => undefined);
 });
 
@@ -140,7 +141,7 @@ describe("/api/reservar con noches ocupadas", () => {
     vi.mocked(crearClienteAdmin).mockReturnValue(
       clienteFalso({ reservas: [], bloqueos: [], alojamientos: { nombre: "Cabaña 03" } }),
     );
-    vi.mocked(choquesDelCalendario).mockResolvedValue([
+    vi.mocked(choquesDelCalendarioParaEscribir).mockResolvedValue([
       {
         eventoId: "g1",
         titulo: TITULO_EVENTO,
@@ -167,6 +168,37 @@ describe("/api/reservar con noches ocupadas", () => {
       expect(crudo).not.toContain(ajeno);
     }
     expect(crudo).toContain("Cabaña 03");
+  });
+});
+
+describe("/api/reservar con el calendario de Google caído", () => {
+  it("falla cerrado: 503 con el mensaje en español y sin escribir nada", async () => {
+    const inserciones: string[] = [];
+    const base = clienteFalso({ reservas: [], bloqueos: [], alojamientos: { nombre: "Cabaña 03" } });
+    const desde = base.from.bind(base);
+    (base as unknown as { from: (tabla: string) => unknown }).from = (tabla: string) => {
+      const consulta = desde(tabla) as unknown as Record<string, unknown>;
+      consulta.insert = () => {
+        inserciones.push(tabla);
+        return consulta;
+      };
+      return consulta;
+    };
+    vi.mocked(crearClienteAdmin).mockReturnValue(base);
+    vi.mocked(choquesDelCalendarioParaEscribir).mockRejectedValue(
+      new CalendarioSinRespuesta("Google rechazó la credencial del calendario (401)."),
+    );
+    const errores = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    const respuesta = await POST(peticion("203.0.113.12"));
+
+    expect(respuesta.status).toBe(503);
+    expect(await respuesta.json()).toEqual({
+      error:
+        "No pudimos comprobar la disponibilidad en este momento. Intenta en unos minutos o escríbenos por WhatsApp.",
+    });
+    expect(inserciones).toEqual([]);
+    errores.mockRestore();
   });
 });
 
