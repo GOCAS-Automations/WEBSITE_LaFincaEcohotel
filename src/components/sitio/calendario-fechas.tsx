@@ -604,7 +604,9 @@ export function CalendarioFechas({
   const ayuda = diaUnico
     ? entrada
       ? "Vienes solo ese día, sin dormir. Toca otro día si quieres cambiarlo."
-      : `Elige el día de tu visita, ${TEXTO_ANTELACION}. Es un día completo, sin dormir.`
+      : primera > hoy
+        ? `Elige el día de tu visita, ${TEXTO_ANTELACION}. Es un día completo, sin dormir.`
+        : "Elige el día de la visita. Es un día completo, sin dormir."
     : eligiendoSalida
       ? tope !== null && tope <= entrada
         ? "Esa llegada ya no está libre. Borra las fechas y elige otra."

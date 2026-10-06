@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { guardarReservaAction } from "./acciones";
+import { useOcupacionPanel } from "./usar-ocupacion-panel";
 import { FormularioAccion } from "@/components/admin/formulario-accion";
+import { CalendarioFechas } from "@/components/sitio/calendario-fechas";
 import {
   AreaTexto,
   Campo,
@@ -14,7 +16,13 @@ import {
   Entrada,
 } from "@/components/admin/ui";
 import type { ExtraDeReserva } from "@/lib/admin/datos";
-import { fechaCorta, hoyISO, nochesEntre, sumarDiasISO } from "@/lib/admin/fechas";
+import {
+  fechaConDia,
+  fechaCorta,
+  hoyISO,
+  nochesEntre,
+  sumarDiasISO,
+} from "@/lib/admin/fechas";
 import {
   AYUDA_ESTADO,
   AYUDA_TIPO_RESERVA,
@@ -43,6 +51,11 @@ import {
   type PorcentajeAnticipo,
 } from "@/lib/reserva/total";
 import { precioDeNoche, type TarifaCotizable } from "@/lib/reserva/cotizacion";
+import {
+  bloqueoDeCabana,
+  tiposOfrecidosDe,
+  validarFechas,
+} from "@/lib/reserva/elegibilidad-calendario";
 import { formatearCOP } from "@/lib/utils/formato";
 import type {
   EstadoReserva,
@@ -79,6 +92,26 @@ import type {
  *
  * El total nunca se escribe a mano: es alojamiento + extras. Que salga de una
  * suma visible evita cuadres imposibles después.
+ *
+ * ---------------------------------------------------------------------------
+ * EL MISMO CALENDARIO QUE EL HUÉSPED (2026-10-05)
+ * ---------------------------------------------------------------------------
+ * Las fechas se eligen con `CalendarioFechas`, el del sitio, y con sus mismas
+ * reglas (`elegibilidad-calendario.ts`): **primero la cabaña, luego las
+ * fechas**, y las noches ocupadas de esa cabaña salen tachadas —reservas de la
+ * base, bloqueos y eventos del calendario de Google del hotel—. La Cabaña 02
+ * sigue sin noches entre semana (no tiene tarifa de Entre Semana) y el Día de
+ * Calma tacha los días sin cupo. Dos diferencias con el sitio, a propósito:
+ *
+ *   · **Se puede reservar para hoy.** La antelación de un día es del sitio
+ *     público; el equipo recibe por WhatsApp reservas con el huésped en camino.
+ *   · **Al editar, las noches de la propia reserva no cuentan** como ocupadas
+ *     (`/admin/api/ocupacion?excluir=…`), y se puede conservar una llegada que
+ *     ya pasó.
+ *
+ * El tachado es ayuda, no seguridad: la Server Action vuelve a comprobar
+ * reservas, bloqueos y eventos de Google antes de escribir, y la restricción
+ * de exclusión de Postgres tiene la última palabra sobre la base.
  */
 
 /** Clave de una línea de extra: el mismo extra puede ir en varias noches. */
@@ -114,8 +147,11 @@ export function FormularioReserva({
   const [tipo, setTipo] = useState<TipoReserva>(reserva?.tipo ?? "hospedaje");
   const esDia = tipo === "dia";
 
+  /* Primero la cabaña: una reserva nueva empieza sin ninguna elegida, y el
+     calendario no se abre hasta elegirla (sus noches tachadas dependen de
+     ella). */
   const [alojamientoId, setAlojamientoId] = useState(
-    reserva?.alojamiento_id ?? alojamientos[0]?.id ?? "",
+    reserva?.alojamiento_id ?? "",
   );
   const [planId, setPlanId] = useState(
     reserva?.plan_id ??
@@ -123,8 +159,46 @@ export function FormularioReserva({
       planes[0]?.id ??
       "",
   );
-  const [entrada, setEntrada] = useState(reserva?.entrada ?? hoy);
-  const [salida, setSalida] = useState(reserva?.salida ?? sumarDiasISO(hoy, 1));
+  const [entrada, setEntrada] = useState(reserva?.entrada ?? "");
+  const [salida, setSalida] = useState(
+    reserva?.tipo === "dia" ? "" : (reserva?.salida ?? ""),
+  );
+
+  /*
+    EL «HOY» DEL CALENDARIO. Hoy de verdad, salvo al editar una estadía que
+    ya empezó: entonces su llegada, para poder conservarla (o corregirla) sin
+    que el calendario la dé por pasada.
+  */
+  const hoyCalendario =
+    reserva && reserva.entrada < hoy ? reserva.entrada : hoy;
+
+  /* El mes que se está mirando en el calendario: de ahí se carga la
+     ocupación (ese mes y el siguiente). Empieza en el de la llegada. */
+  const [mesVisible, setMesVisible] = useState((entrada || hoy).slice(0, 7));
+
+  const ocupacion = useOcupacionPanel({
+    alojamientoId: esDia ? "" : alojamientoId,
+    excluirReservaId: reserva?.id ?? null,
+    mes: mesVisible,
+    activa: esDia || Boolean(alojamientoId),
+  });
+
+  const cabanaElegida =
+    alojamientos.find((alojamiento) => alojamiento.id === alojamientoId) ?? null;
+
+  /* La regla de la 02: los tipos de noche que vende salen de sus tarifas,
+     no de su nombre (la misma función que usa el sitio). */
+  const tiposOfrecidos = useMemo(
+    () =>
+      alojamientoId
+        ? tiposOfrecidosDe({
+            tarifas: Object.entries(tarifas)
+              .filter(([clave]) => clave.startsWith(`${alojamientoId}|`))
+              .map(([, tarifa]) => tarifa),
+          })
+        : null,
+    [alojamientoId, tarifas],
+  );
 
   const [subtotal, setSubtotal] = useState(
     reserva ? String(reserva.subtotal_alojamiento) : "",
@@ -265,13 +339,47 @@ export function FormularioReserva({
     setSubtotal(sugerido !== null ? String(sugerido) : "");
   }, [sugerido, subtotalTocado]);
 
-  // Si la salida deja de ser posterior a la entrada, se corrige sola: es más
-  // amable que un error después de darle a guardar.
-  useEffect(() => {
-    if (!esDia && entrada && salida && salida <= entrada) {
-      setSalida(sumarDiasISO(entrada, 1));
+  /*
+    ¿SIGUEN VALIENDO LAS FECHAS PUESTAS?
+    Al cambiar de cabaña (o al abrir una reserva para editarla) las fechas ya
+    están elegidas. Se comprueban con las reglas del calendario en cuanto sus
+    meses están cargados. No se borran solas: se avisa, y el servidor no
+    dejará guardar unas noches ocupadas.
+  */
+  const conflictoDeFechas = useMemo(() => {
+    if (!entrada) return null;
+    if (!esDia && !alojamientoId) return null;
+    const ultima = esDia || !salida ? entrada : sumarDiasISO(salida, -1);
+    for (let mes = entrada.slice(0, 7); mes <= ultima.slice(0, 7); ) {
+      if (!ocupacion.mesCargado(mes)) return null;
+      const [anio, numero] = mes.split("-").map(Number);
+      mes = numero === 12 ? `${anio + 1}-01` : `${anio}-${String(numero + 1).padStart(2, "0")}`;
     }
-  }, [esDia, entrada, salida]);
+    const resultado = validarFechas(
+      { entrada, salida: esDia ? "" : salida, diaUnico: esDia },
+      {
+        hoy: hoyCalendario,
+        bloqueo: esDia
+          ? undefined
+          : bloqueoDeCabana({
+              ocupadas: ocupacion.noches,
+              tiposOfrecidos,
+              nombreCabana: cabanaElegida?.nombre ?? null,
+            }),
+        sinCupo: (dia) => ocupacion.diasSinCupo.includes(dia),
+      },
+    );
+    return resultado.valido ? null : resultado;
+  }, [
+    entrada,
+    salida,
+    esDia,
+    alojamientoId,
+    ocupacion,
+    hoyCalendario,
+    tiposOfrecidos,
+    cabanaElegida,
+  ]);
 
   /* --- Las cuentas ------------------------------------------------------- */
 
@@ -390,7 +498,17 @@ export function FormularioReserva({
         </Campo>
 
         {!esDia && (
-          <Campo etiqueta="Cabaña" htmlFor="alojamiento_id" obligatorio>
+          <Campo
+            etiqueta="Cabaña"
+            htmlFor="alojamiento_id"
+            obligatorio
+            className="sm:col-span-2"
+            ayuda={
+              alojamientoId
+                ? undefined
+                : "Primero la cabaña: el calendario de abajo tacha sus noches ocupadas."
+            }
+          >
             <Desplegable
               id="alojamiento_id"
               name="alojamiento_id"
@@ -398,6 +516,11 @@ export function FormularioReserva({
               onChange={(evento) => setAlojamientoId(evento.target.value)}
               required
             >
+              {!alojamientoId ? (
+                <option value="" disabled>
+                  Elige la cabaña
+                </option>
+              ) : null}
               {alojamientos.map((alojamiento) => (
                 <option key={alojamiento.id} value={alojamiento.id}>
                   {alojamiento.nombre}
@@ -407,6 +530,74 @@ export function FormularioReserva({
             </Desplegable>
           </Campo>
         )}
+
+        {/*
+          LAS FECHAS, CON EL CALENDARIO DEL SITIO.
+          Sin cabaña elegida queda apagado dentro de un `<fieldset disabled>`
+          (fuera del tabulador), igual que el paso 2 de `/reservar`. Los dos
+          campos ocultos `entrada` y `salida` los pinta el propio calendario.
+        */}
+        <fieldset
+          disabled={!esDia && !alojamientoId}
+          className="min-w-0 sm:col-span-2"
+        >
+          <legend className="mb-1.5 text-[0.8125rem] font-semibold text-crema-900">
+            {esDia ? "Fecha del día" : "Fechas de la estadía"}
+            <span className="text-red-700"> *</span>
+          </legend>
+          <div className={!esDia && !alojamientoId ? "opacity-55" : undefined}>
+            <CalendarioFechas
+              /* Cambiar de tipo cambia el modo del calendario: se monta de
+                 nuevo para no arrastrar una fase a medias. */
+              key={esDia ? "dia" : "hospedaje"}
+              entrada={entrada}
+              salida={esDia ? "" : salida}
+              alCambiar={(nuevaEntrada, nuevaSalida) => {
+                setEntrada(nuevaEntrada);
+                setSalida(nuevaSalida);
+              }}
+              hoy={hoyCalendario}
+              diaUnico={esDia}
+              nochesOcupadas={esDia ? [] : ocupacion.noches}
+              tiposDeNocheOfrecidos={esDia ? null : tiposOfrecidos}
+              nombreCabana={cabanaElegida?.nombre ?? null}
+              diasSinCupo={esDia ? ocupacion.diasSinCupo : undefined}
+              cargandoOcupacion={ocupacion.estado === "cargando"}
+              alCambiarMes={setMesVisible}
+              nota={notaDelCalendario({
+                esDia,
+                cabana: cabanaElegida?.nombre ?? null,
+                soloFinDeSemana:
+                  !esDia &&
+                  tiposOfrecidos !== null &&
+                  !tiposOfrecidos.includes("entre_semana"),
+                errorDeCarga: ocupacion.estado === "error",
+                calendarioCaido: ocupacion.calendarioCaido,
+              })}
+            />
+          </div>
+          <p className="mt-1.5 text-[0.75rem] leading-snug text-crema-600">
+            {!esDia && !alojamientoId
+              ? "Elige primero la cabaña para ver sus fechas libres."
+              : esDia
+                ? "El Día de Calma dura un solo día y no ocupa ninguna cabaña. Los días sin cupo salen tachados."
+                : noches > 0
+                  ? `${noches} ${noches === 1 ? "noche" : "noches"}: del ${fechaConDia(entrada)} al ${fechaConDia(salida)}. Desde el panel sí se puede reservar para hoy.`
+                  : "Toca el día de llegada y luego el de salida. Desde el panel sí se puede reservar para hoy."}
+          </p>
+          {conflictoDeFechas ? (
+            <p
+              role="alert"
+              className="mt-2 rounded-tarjeta bg-red-50 px-3.5 py-2.5 text-[0.8125rem] leading-snug text-red-800 ring-1 ring-red-200"
+            >
+              {esDia
+                ? `El ${fechaConDia(conflictoDeFechas.fecha)} no se puede: ${conflictoDeFechas.motivo}. Elige otro día.`
+                : conflictoDeFechas.causa === "no_ofrecida"
+                  ? `Esas fechas no se pueden en la ${cabanaElegida?.nombre ?? "cabaña"}: ${conflictoDeFechas.motivo.replace(/^no disponible: /, "")} (la noche del ${fechaConDia(conflictoDeFechas.fecha)}). Elige otras fechas u otra cabaña.`
+                  : `Esas fechas no están libres en la ${cabanaElegida?.nombre ?? "cabaña"}: la noche del ${fechaConDia(conflictoDeFechas.fecha)} ya está ocupada. Elige otras fechas u otra cabaña.`}
+            </p>
+          ) : null}
+        </fieldset>
 
         <Campo
           etiqueta="Plan"
@@ -435,49 +626,6 @@ export function FormularioReserva({
             ))}
           </Desplegable>
         </Campo>
-
-        <Campo
-          etiqueta={esDia ? "Fecha del día" : "Entrada"}
-          htmlFor="entrada"
-          obligatorio
-          ayuda={
-            esDia
-              ? "El Día de Calma dura un solo día y no ocupa ninguna cabaña."
-              : undefined
-          }
-        >
-          <Entrada
-            id="entrada"
-            name="entrada"
-            type="date"
-            value={entrada}
-            onChange={(evento) => setEntrada(evento.target.value)}
-            required
-          />
-        </Campo>
-
-        {!esDia && (
-          <Campo
-            etiqueta="Salida"
-            htmlFor="salida"
-            obligatorio
-            ayuda={
-              noches > 0
-                ? `${noches} ${noches === 1 ? "noche" : "noches"}`
-                : "La salida debe ser posterior a la entrada."
-            }
-          >
-            <Entrada
-              id="salida"
-              name="salida"
-              type="date"
-              value={salida}
-              min={entrada ? sumarDiasISO(entrada, 1) : undefined}
-              onChange={(evento) => setSalida(evento.target.value)}
-              required
-            />
-          </Campo>
-        )}
 
         <Campo
           etiqueta={esDia ? "Cuántas personas" : "Cuántos adultos"}
@@ -872,6 +1020,38 @@ export function FormularioReserva({
       </div>
     </FormularioAccion>
   );
+}
+
+/** La explicación dentro del calendario: la regla de la 02 y los fallos de carga. */
+function notaDelCalendario({
+  esDia,
+  cabana,
+  soloFinDeSemana,
+  errorDeCarga,
+  calendarioCaido,
+}: {
+  esDia: boolean;
+  cabana: string | null;
+  soloFinDeSemana: boolean;
+  errorDeCarga: boolean;
+  calendarioCaido: boolean;
+}): string | undefined {
+  const partes: string[] = [];
+  if (errorDeCarga) {
+    partes.push(
+      "No se pudo cargar la ocupación: nada sale tachado. Al guardar se vuelve a comprobar.",
+    );
+  } else if (calendarioCaido && !esDia) {
+    partes.push(
+      "El calendario de Google del hotel no respondió: lo tachado es solo lo del panel y el sitio. Al guardar se vuelve a comprobar.",
+    );
+  }
+  if (soloFinDeSemana) {
+    partes.push(
+      `La ${cabana ?? "cabaña"} solo se ofrece en noches de fin de semana o festivo: sus noches de lunes a jueves salen tachadas.`,
+    );
+  }
+  return partes.length > 0 ? partes.join(" ") : undefined;
 }
 
 /** Una experiencia dentro de una noche (o de la estadía): casilla y cantidad. */

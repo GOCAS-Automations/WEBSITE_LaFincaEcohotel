@@ -4,7 +4,11 @@ import { redirect } from "next/navigation";
 
 import { requireAdmin } from "@/lib/admin/auth";
 import { REINTENTOS_CODIGO, siguienteCodigo } from "@/lib/admin/codigo-reserva";
-import { buscarChoques, describirChoques } from "@/lib/admin/disponibilidad";
+import {
+  buscarChoques,
+  calendarioSinLeer,
+  describirChoquesEnCabana,
+} from "@/lib/admin/disponibilidad";
 import {
   aRangoFechas,
   leerRangoFechas,
@@ -373,6 +377,8 @@ export async function guardarReservaAction(
     }
 
     let alojamiento: { nombre: string; capacidad: number } | null = null;
+    /** Si Google no respondió, sus eventos no pudieron bloquear: se avisa. */
+    let avisoGoogle = "";
 
     if (!esDia && alojamientoId) {
       const { data } = await supabase
@@ -397,8 +403,22 @@ export async function guardarReservaAction(
           salida,
           id || undefined,
         );
+        /*
+          AQUÍ SE BLOQUEA TAMBIÉN POR EL CALENDARIO DE GOOGLE.
+          La restricción de exclusión de Postgres solo ve la base; los eventos
+          que el hotel apunta a mano en Google los añade `buscarChoques`. Un
+          choque con cualquiera de las tres fuentes impide guardar, y el
+          mensaje dice cuál: así el equipo no duplica una reserva que ya está
+          en el calendario del hotel.
+        */
         if (choques.length > 0) {
-          throw new ErrorDeValidacion(describirChoques(choques));
+          throw new ErrorDeValidacion(
+            describirChoquesEnCabana(choques, alojamiento.nombre),
+          );
+        }
+        if (await calendarioSinLeer(entrada, salida)) {
+          avisoGoogle =
+            "\nOjo: no se pudo consultar el calendario de Google del hotel. Revisa allí que esas noches no estén ya apuntadas.";
         }
       }
     }
@@ -539,8 +559,8 @@ export async function guardarReservaAction(
 
     const avisoCapacidad =
       alojamiento && numPersonas > alojamiento.capacidad
-        ? `\nAviso: son más personas de las que caben normalmente en ${alojamiento.nombre} (${alojamiento.capacidad}).`
-        : "";
+        ? `\nAviso: son más personas de las que caben normalmente en ${alojamiento.nombre} (${alojamiento.capacidad}).${avisoGoogle}`
+        : avisoGoogle;
 
     if (id) {
       /* El estado anterior, para saber si esta edición ES la confirmación (y
@@ -745,7 +765,7 @@ export async function cambiarEstadoReservaAction(formData: FormData) {
 
   const { data: reserva, error: errorLectura } = await supabase
     .from("reservas")
-    .select("alojamiento_id, estancia, estado, huesped_email")
+    .select("alojamiento_id, estancia, estado, huesped_email, alojamientos(nombre)")
     .eq("id", id)
     .maybeSingle();
 
@@ -766,9 +786,15 @@ export async function cambiarEstadoReservaAction(formData: FormData) {
         id,
       );
       if (choques.length > 0) {
+          const relacion = reserva.alojamientos as
+          | { nombre?: string }
+          | { nombre?: string }[]
+          | null;
+        const nombreCabana =
+          (Array.isArray(relacion) ? relacion[0]?.nombre : relacion?.nombre) ?? "";
         redirect(
           `${RUTA_LISTA}/${id}?error=${encodeURIComponent(
-            `No se pudo cambiar el estado. ${describirChoques(choques)}`,
+            `No se pudo cambiar el estado. ${describirChoquesEnCabana(choques, nombreCabana)}`,
           )}`,
         );
       }

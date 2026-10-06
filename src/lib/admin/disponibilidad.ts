@@ -17,18 +17,43 @@
  * los choques. A diferencia de las otras dos, esta fuente NO es obligatoria: si
  * Google no está configurado o no responde, la comprobación sigue con reservas
  * y bloqueos y no se bloquea ningún guardado.
+ *
+ * Un evento de Google que choca **sí bloquea** el guardado, igual que una
+ * reserva de la base: así el equipo no duplica una reserva que ya estaba
+ * apuntada a mano en el calendario del hotel. El mensaje del panel
+ * ({@link describirChoquesEnCabana}) dice de dónde viene cada choque.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { fechaCorta, leerRangoFechas, rangoCorto, seCruzan } from "./fechas";
+import {
+  fechaCorta,
+  leerRangoFechas,
+  rangoConDias,
+  rangoCorto,
+  seCruzan,
+} from "./fechas";
 import { ESTADOS_QUE_OCUPAN, ETIQUETA_ESTADO } from "./tipos";
-import { ocupaCalendario } from "@/lib/reserva/holds";
-import { choquesDelCalendario } from "@/lib/reserva/ocupacion-externa";
-import type { EstadoReserva } from "@/lib/tipos/basedatos";
+import { ocupaCalendario } from "../reserva/holds";
+import {
+  choquesDelCalendario,
+  ocupacionDelCalendario,
+} from "../reserva/ocupacion-externa";
+import type { EstadoReserva } from "../tipos/basedatos";
 
 export type Choque = {
   tipo: "reserva" | "bloqueo" | "calendario";
+  /** La frase de siempre (la usan el sitio y los bloqueos). */
   descripcion: string;
+  /** Primera noche y día de liberación de lo que choca. */
+  inicio: string;
+  fin: string;
+  /**
+   * Quién ocupa: el huésped («Ana Pérez · LF-1234 (Confirmada)»), el motivo
+   * del bloqueo o el título del evento de Google, tal cual.
+   */
+  quien: string;
+  /** Evento de Google que no dice qué cabaña (ocupa todas). */
+  sinCabana?: boolean;
 };
 
 /**
@@ -103,11 +128,15 @@ export async function buscarChoques(
     if (!seCruzan(entrada, salida, rango.inicio, rango.fin)) continue;
 
     const estado = fila.estado as EstadoReserva;
+    const quien = `${fila.huesped_nombre} · ${fila.codigo} (${
+      ETIQUETA_ESTADO[estado] ?? estado
+    })`;
     choques.push({
       tipo: "reserva",
-      descripcion: `${fila.huesped_nombre} · ${fila.codigo} (${
-        ETIQUETA_ESTADO[estado] ?? estado
-      }), del ${rangoCorto(rango.inicio, rango.fin)}`,
+      descripcion: `${quien}, del ${rangoCorto(rango.inicio, rango.fin)}`,
+      inicio: rango.inicio,
+      fin: rango.fin,
+      quien,
     });
   }
 
@@ -120,6 +149,9 @@ export async function buscarChoques(
     choques.push({
       tipo: "bloqueo",
       descripcion: `${motivo}, del ${rangoCorto(rango.inicio, rango.fin)}`,
+      inicio: rango.inicio,
+      fin: rango.fin,
+      quien: motivo,
     });
   }
 
@@ -142,6 +174,10 @@ export async function buscarChoques(
                 franja.inicio,
                 franja.fin,
               )}`,
+        inicio: franja.inicio,
+        fin: franja.fin,
+        quien: franja.titulo,
+        sinCabana: franja.motivo === "sin_cabana",
       });
     }
   }
@@ -153,6 +189,62 @@ export async function buscarChoques(
 export function describirChoques(choques: Choque[]): string {
   const lista = choques.map((item) => `• ${item.descripcion}`).join("\n");
   return `Esas fechas ya están ocupadas en esa cabaña:\n${lista}`;
+}
+
+/**
+ * El mensaje del PANEL cuando unas noches ya están ocupadas: nombra la cabaña
+ * y dice de dónde sale cada choque, con fechas `dd/mm/aaaa`.
+ *
+ *   «Esas noches ya están ocupadas en la Cabaña 03 por «Juan Pérez cabaña 3»
+ *    (calendario del hotel), del mar 13/10/2026 al vie 16/10/2026.»
+ *
+ * Cuando el choque viene del calendario de Google, añade la pista que evita
+ * el error de verdad: esa reserva ya está apuntada allí, no hay que duplicarla.
+ *
+ * Solo para el panel: lleva nombres de huéspedes.
+ */
+export function describirChoquesEnCabana(
+  choques: Choque[],
+  nombreCabana: string,
+): string {
+  const frase = (choque: Choque) => {
+    const fechas = `del ${rangoConDias(choque.inicio, choque.fin)}`;
+    if (choque.tipo === "reserva") {
+      return `la reserva de ${choque.quien}, ${fechas}`;
+    }
+    if (choque.tipo === "bloqueo") {
+      return `un bloqueo («${choque.quien}»), ${fechas}`;
+    }
+    return `«${choque.quien}» (calendario del hotel), ${fechas}${
+      choque.sinCabana
+        ? " — el evento no dice qué cabaña, así que ocupa todas"
+        : ""
+    }`;
+  };
+  const cabana = nombreCabana ? `la ${nombreCabana}` : "esa cabaña";
+  const cuerpo =
+    choques.length === 1
+      ? `Esas noches ya están ocupadas en ${cabana} por ${frase(choques[0])}.`
+      : `Esas noches ya están ocupadas en ${cabana}:\n${choques
+          .map((choque) => `• ${frase(choque)}`)
+          .join("\n")}`;
+  const pista = choques.some((choque) => choque.tipo === "calendario")
+    ? "\nSi es la misma reserva, ya está apuntada en el calendario de Google del hotel: no hace falta registrarla otra vez. Si no, elige otras fechas u otra cabaña."
+    : "\nElige otras fechas u otra cabaña.";
+  return cuerpo + pista;
+}
+
+/**
+ * ¿Falló la lectura del calendario de Google para esas fechas? Entonces sus
+ * eventos no pudieron bloquear nada y conviene decirlo al guardar. Sale de la
+ * caché de cinco minutos: no es una llamada más a Google.
+ */
+export async function calendarioSinLeer(
+  entrada: string,
+  salida: string,
+): Promise<boolean> {
+  const lectura = await ocupacionDelCalendario(entrada, salida);
+  return lectura.estado === "error" || lectura.lecturaIncompleta;
 }
 
 /** Choques de un bloqueo nuevo (contra otros bloqueos y contra reservas). */
