@@ -50,7 +50,7 @@ El hosting viejo está cancelado y el dominio ya sirve desde Vercel: **esto no b
 
 ### 1.5 🟡 Nombres y correos del equipo del hotel — depende del **hotel**
 
-Hoy en el panel solo existen la cuenta del hotel (`fincavillarreal@gmail.com`, propietario) y la temporal de pruebas (`panel@lafincaecohotel.com`, equipo).
+Hoy en el panel solo existen la cuenta del hotel (`fincavillarrealcali@gmail.com`, propietario) y la temporal de pruebas (`panel@lafincaecohotel.com`, equipo).
 
 **Qué desbloquea:** la entrega formal y el borrado del usuario de pruebas.
 
@@ -84,7 +84,7 @@ Hoy en el panel solo existen la cuenta del hotel (`fincavillarreal@gmail.com`, p
 1. **Authentication → Policies / Providers → Email**: activar **Leaked password protection**.
 2. Subir **Minimum password length** a **10** (es la que ya exige el panel).
 3. Revisar los **Rate limits** del endpoint `/token`.
-4. **Authentication → Multi-Factor**: habilitar MFA y activarlo para `fincavillarreal@gmail.com`.
+4. **Authentication → Multi-Factor**: habilitar MFA y activarlo para `fincavillarrealcali@gmail.com`.
 
 **6 · Tope de Google Places.** Con el caché propio el consumo es de unas 30 llamadas al mes contra 1.000 gratuitas: es solo una red de seguridad. `console.cloud.google.com` → **Google Maps Platform → Quotas** → desplegable **Places API (New)** → cuota por día **20** (o 2 por minuto si solo existe la de minuto).
 

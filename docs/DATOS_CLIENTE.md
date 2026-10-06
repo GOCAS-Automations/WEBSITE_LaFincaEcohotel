@@ -288,8 +288,9 @@ ve el propietario:
 
 Cuentas creadas:
 
-- **`fincavillarreal@gmail.com` — propietario.** Es la cuenta del hotel; la contraseña se le entrega
-  a Amapola y la cambia desde el panel cuando quiera.
+- **`fincavillarrealcali@gmail.com` — propietario.** Es la cuenta del hotel; la contraseña se le entrega
+  a Amapola y la cambia desde el panel cuando quiera. Correo de acceso cambiado de
+  `fincavillarreal@gmail.com` a este el 06/10/2026, a pedido de Cesar; la contraseña no cambió.
 - **`panel@lafincaecohotel.com` — equipo.** Es la cuenta temporal de pruebas del desarrollo. Ya no es
   propietaria; Cesar decide si la borra desde el panel al entregar.
 
@@ -346,6 +347,6 @@ que el navegador pueda falsificar.
 - [ ] **Nombres y correos de quienes usarán el panel** (Juan Camilo): hoy solo existen la cuenta del
       hotel y la temporal de pruebas `panel@lafincaecohotel.com`, que se borra al entregar.
 - [x] Usuarios del panel — resuelto el 2026-09-16: existe `/admin/usuarios` con los roles
-      propietario y equipo, y la cuenta del hotel (`fincavillarreal@gmail.com`) ya está creada.
+      propietario y equipo, y la cuenta del hotel (`fincavillarrealcali@gmail.com`) ya está creada.
       Sigue pendiente **explicarle a Amapola qué es el panel**: el administrador del sitio donde
       cambian textos, fotos, precios y reservas.
