@@ -111,7 +111,7 @@ export default async function PaginaTemporadas({
               «Primera noche» y «Última noche» son noches, y las dos cuentan.
             </strong>{" "}
             La última noche es la que se duerme, no el día de salida: si la
-            última noche es el 8/1/2027, quien sale el 9/1/2027 paga el 8/1
+            última noche es el 08/01/2027, quien sale el 09/01/2027 paga el 8/1
             con esta tarifa.
           </li>
           <li>
@@ -140,8 +140,8 @@ export default async function PaginaTemporadas({
             </span>
           </p>
           <p className="mt-1">
-            Primera noche: <strong>mar 1/12/2026</strong>. Última noche:{" "}
-            <strong>vie 8/1/2027</strong>. Para todas las cabañas. Estándar a{" "}
+            Primera noche: <strong>mar 01/12/2026</strong>. Última noche:{" "}
+            <strong>vie 08/01/2027</strong>. Para todas las cabañas. Estándar a{" "}
             <strong>$500.000</strong>, Premium a <strong>$600.000</strong> y
             Entre Semana en blanco.
           </p>
@@ -155,9 +155,9 @@ export default async function PaginaTemporadas({
               blanco, se cobra con su precio base.
             </li>
             <li>
-              Quien llega el vie 8/1/2027 y sale el sáb 9/1/2027 duerme una
-              sola noche, la del 8/1, y la paga con esta tarifa. Quien llega el
-              sáb 9/1/2027 ya paga el precio base.
+              Quien llega el vie 08/01/2027 y sale el sáb 09/01/2027 duerme una
+              sola noche, la del 08/01, y la paga con esta tarifa. Quien llega el
+              sáb 09/01/2027 ya paga el precio base.
             </li>
           </ul>
         </div>

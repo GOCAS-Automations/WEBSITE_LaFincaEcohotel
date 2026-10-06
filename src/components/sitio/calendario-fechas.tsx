@@ -791,7 +791,11 @@ export function CalendarioFechas({
           </div>
 
           <div className="lg:[grid-area:textos]">
-          <p className="mb-2 text-xs leading-snug text-crema-600">{ayuda}</p>
+          <p className="mb-2 text-xs leading-snug text-crema-600">
+            {eligiendoMes
+              ? "Elige un mes. Con las flechas de arriba de la rejilla cambias de año."
+              : ayuda}
+          </p>
 
           {/*
             MIENTRAS LLEGA LA OCUPACIÓN.
@@ -965,7 +969,7 @@ export function CalendarioFechas({
             que no hay que traducir nada. `aria-hidden`: el lector de pantalla
             ya oye el motivo en cada día.
           */}
-          {hayOcupados && !nota ? (
+          {hayOcupados && !nota && !eligiendoMes ? (
             <p
               aria-hidden="true"
               className="mt-2 flex items-center gap-2 text-[0.7rem] leading-snug text-crema-700"
@@ -987,7 +991,7 @@ export function CalendarioFechas({
             calendario para verla. Aquí se lee mientras se elige: «1 noche entre
             semana y 2 noches de fin de semana o festivo».
           */}
-          {resumenNoches && !diaUnico ? (
+          {resumenNoches && !diaUnico && !eligiendoMes ? (
             <p className="mt-3 rounded-[var(--radius-suave)] bg-petroleo-50 px-3 py-2 text-xs leading-snug font-medium text-petroleo-800">
               {resumenNoches}
             </p>

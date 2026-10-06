@@ -178,7 +178,7 @@ export function FormularioTemporada({
           etiqueta="Primera noche"
           htmlFor="primera_noche"
           obligatorio
-          ayuda="La primera noche que se cobra con esta tarifa; se incluye. Por ejemplo, si es el 1/12/2026, quien duerme esa noche la paga con esta tarifa."
+          ayuda="La primera noche que se cobra con esta tarifa; se incluye. Por ejemplo, si es el 01/12/2026, quien duerme esa noche la paga con esta tarifa."
         >
           <Entrada
             id="primera_noche"
@@ -194,7 +194,7 @@ export function FormularioTemporada({
           etiqueta="Última noche"
           htmlFor="ultima_noche"
           obligatorio
-          ayuda="La última noche que se cobra con esta tarifa; también se incluye. Es la noche que se duerme, no el día de salida: si es el 8/1/2027, quien sale el 9/1/2027 paga el 8/1 con esta tarifa."
+          ayuda="La última noche que se cobra con esta tarifa; también se incluye. Es la noche que se duerme, no el día de salida: si es el 08/01/2027, quien sale el 09/01/2027 paga el 08/01 con esta tarifa."
         >
           <Entrada
             id="ultima_noche"

@@ -83,7 +83,9 @@ export function EstadoCalendarioHotel({
         )}
       </div>
 
-      <p className="min-w-0 flex-1 text-[0.75rem] leading-snug text-crema-600">
+      {/* En el celular el texto baja a su propia línea: apretado al lado de la
+          pastilla quedaba en 24 px y una palabra larga ensanchaba la página. */}
+      <p className="min-w-0 basis-full text-[0.75rem] leading-snug text-crema-600 [overflow-wrap:anywhere] sm:basis-0 sm:flex-1">
         {mensaje}
         {consultado && (
           <span className="block text-crema-500">
