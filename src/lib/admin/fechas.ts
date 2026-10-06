@@ -247,3 +247,29 @@ export function diasDeMes(objetivo: AnioMes): string[] {
 export function esFinDeSemana(iso: string): boolean {
   return indiceDiaSemana(iso) >= 5;
 }
+
+/* ---------------------------------------------------------------------------
+ * Fechas numéricas `dd/mm/aaaa` (2026-10-05)
+ *
+ * Lo nuevo del panel (el calendario del mes, el Resumen, los mensajes de
+ * choque) ya escribe las fechas así. El resto del sitio pasará a este formato
+ * en una ronda aparte.
+ * ------------------------------------------------------------------------- */
+
+/** "2026-12-15" → "15/12/2026". */
+export function fechaNumerica(iso: string): string {
+  if (!FECHA_ISO.test(iso)) return iso;
+  const [anio, mes, dia] = iso.split("-");
+  return `${dia}/${mes}/${anio}`;
+}
+
+/** "2026-12-15" → "mar 15/12/2026". */
+export function fechaConDia(iso: string): string {
+  if (!FECHA_ISO.test(iso)) return iso;
+  return `${DIAS_SEMANA_CORTOS[indiceDiaSemana(iso)]} ${fechaNumerica(iso)}`;
+}
+
+/** "mar 13/10/2026 al vie 16/10/2026" (la salida es el día en que se va). */
+export function rangoConDias(inicio: string, fin: string): string {
+  return `${fechaConDia(inicio)} al ${fechaConDia(fin)}`;
+}

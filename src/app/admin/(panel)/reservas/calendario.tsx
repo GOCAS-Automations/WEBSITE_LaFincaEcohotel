@@ -2,74 +2,70 @@ import Link from "next/link";
 import type { CSSProperties } from "react";
 
 import {
-  DIAS_SEMANA_INICIAL,
+  LEYENDA,
+  pielDeBarra,
+  tonoCupo,
+} from "./estilos-calendario";
+import { NavegacionMes } from "./navegacion-mes";
+import { VistasCalendario } from "./vistas-calendario";
+import {
+  armarCalendarioMes,
+  type Barra,
+  type CalendarioDelMes,
+  type DiaDelCalendario,
+} from "@/lib/admin/calendario-mes";
+import {
   claveMes,
-  diasDeMes,
-  esFinDeSemana,
+  fechaConDia,
   hoyISO,
-  indiceDiaSemana,
-  sumarMeses,
   tituloMes,
   type AnioMes,
 } from "@/lib/admin/fechas";
-import { ETIQUETA_ESTADO } from "@/lib/admin/tipos";
-import { CUPO_DIA_DE_CALMA } from "@/lib/reserva/dia-de-calma";
-import { ocupaCalendario } from "@/lib/reserva/holds";
-import { cabanasAfectadas } from "@/lib/reserva/calendario-externo";
-import type { OcupacionExterna } from "@/lib/reserva/calendario-externo";
 import type {
   BloqueoAdmin,
   OpcionAlojamiento,
   ReservaAdmin,
 } from "@/lib/admin/tipos";
-import type { EstadoReserva } from "@/lib/tipos/basedatos";
+import type { OcupacionExterna } from "@/lib/reserva/calendario-externo";
+import { CUPO_DIA_DE_CALMA } from "@/lib/reserva/dia-de-calma";
+import { limitesDelPanel } from "@/lib/utils/selector-mes";
 
 /**
  * Calendario mensual del hotel: una fila por cabaña, una columna por día.
  *
- * Es la pantalla que el cliente abre todos los días, así que está pensada para
- * responder de un vistazo a "¿qué tengo ocupado este mes?". Cada celda es una
- * noche; las noches de una misma reserva se pintan como una barra continua con
- * el nombre del huésped encima.
+ * Es la pantalla que el cliente abre todos los días: responde de un vistazo
+ * a «¿qué tengo ocupado este mes?». Las reglas de qué ocupa cada noche viven
+ * en `armarCalendarioMes()` (`src/lib/admin/calendario-mes.ts`); aquí solo se
+ * dibuja.
  *
- * Debajo de las cabañas hay una fila más: el **Día de Calma**. No es una
- * cabaña —esas reservas no ocupan ninguna— pero sí tiene un límite propio, de
- * {@link CUPO_DIA_DE_CALMA} personas por día en toda la finca, y el equipo
- * necesita verlo junto al resto del mes: `4/10`, con el color subiendo de tono
- * según se llena.
+ * ---------------------------------------------------------------------------
+ * LA CUADRÍCULA (2026-10-05)
+ * ---------------------------------------------------------------------------
+ * · **Todas las columnas miden lo mismo**, tengan o no reservas: es una
+ *   rejilla CSS con `minmax(5rem, 1fr)` por día (80 px: el nombre de pila y
+ *   el apellido de una estadía de UNA noche se leen en dos líneas). La versión anterior era
+ *   una tabla de ancho automático y los días con nombres largos se comían a
+ *   los vacíos.
+ * · **Cada estadía es UNA barra** que abarca sus noches (`grid-column: span
+ *   n`), con el nombre a lo ancho de toda la barra.
+ * · **Columna de cabañas y cabecera de días fijas** (`sticky`) dentro del
+ *   contenedor que se desplaza.
+ * · Fines de semana y festivos con tono suave; hoy, marcado.
  *
- * Es un componente de SERVIDOR: el mes viaja en la dirección (`?mes=2026-09`),
- * así que las flechas son enlaces normales. No hay estado en el navegador que
- * pueda quedar desincronizado con los datos.
+ * ---------------------------------------------------------------------------
+ * ⚠ EL DESPLAZAMIENTO VA DENTRO, NUNCA EN LA PÁGINA
+ * ---------------------------------------------------------------------------
+ * El contenedor que se desplaza lleva `relative`. Sin él, los textos para
+ * lector de pantalla (`sr-only`, que son `position: absolute`) tomaban como
+ * referencia un antepasado de FUERA del contenedor, escapaban de su
+ * `overflow` y ensanchaban el documento entero: la página del panel se iba
+ * 700 px a la derecha (`scrollWidth` 2112 en una ventana de 1440). Esa era la
+ * franja vacía que se veía.
+ *
+ * El mes viaja en la dirección (`?mes=2026-10`). La cabecera (flechas,
+ * selector de mes y año, «Hoy») y la agenda del celular son componentes de
+ * cliente; la cuadrícula se pinta en el servidor.
  */
-
-type Ocupacion =
-  | { tipo: "reserva"; reserva: ReservaAdmin }
-  | { tipo: "bloqueo"; bloqueo: BloqueoAdmin }
-  | { tipo: "google"; franja: OcupacionExterna };
-
-const COLOR_ESTADO: Record<EstadoReserva, string> = {
-  pendiente: "bg-dorado-400 text-dorado-950",
-  confirmada: "bg-petroleo-500 text-white",
-  completada: "bg-petroleo-200 text-petroleo-900",
-  cancelada: "bg-crema-300 text-crema-800",
-};
-
-const COLOR_BLOQUEO = "bg-crema-600 text-white";
-
-/**
- * La capa de Google se pinta RAYADA, no con un color plano.
- *
- * Tiene que distinguirse de un vistazo de lo que vive en la base: esas franjas
- * no son reservas nuestras —no tienen código, ni huésped, ni total— sino lo
- * que el hotel apuntó a mano en su calendario. Una trama diagonal dice
- * «ocupado, pero de otra fuente» sin gastar otro color de la paleta.
- */
-const PATRON_GOOGLE: CSSProperties = {
-  backgroundImage:
-    "repeating-linear-gradient(45deg, rgba(31,90,90,0.34) 0 3px, rgba(31,90,90,0.10) 3px 7px)",
-};
-
 export function CalendarioMes({
   mes,
   alojamientos,
@@ -77,6 +73,7 @@ export function CalendarioMes({
   bloqueos,
   personasDeDia,
   ocupacionGoogle = [],
+  consulta = "",
 }: {
   mes: AnioMes;
   alojamientos: OpcionAlojamiento[];
@@ -86,101 +83,35 @@ export function CalendarioMes({
   personasDeDia: Map<string, number>;
   /** Franjas del Google Calendar del hotel. Vacío si no está conectado. */
   ocupacionGoogle?: OcupacionExterna[];
+  /** El resto de la dirección (filtro del listado), para no perderlo al cambiar de mes. */
+  consulta?: string;
 }) {
-  const dias = diasDeMes(mes);
   const hoy = hoyISO();
-
-  const anterior = claveMes(sumarMeses(mes, -1));
-  const siguiente = claveMes(sumarMeses(mes, 1));
-  const actual = claveMes({
-    anio: Number(hoy.slice(0, 4)),
-    mes: Number(hoy.slice(5, 7)),
+  const calendario = armarCalendarioMes({
+    mes,
+    hoy,
+    alojamientos,
+    reservas,
+    bloqueos,
+    franjas: ocupacionGoogle,
+    personasDeDia,
+    ahora: new Date(),
   });
-
-  /** Qué ocupa cada noche de cada cabaña. */
-  const ocupacion = new Map<string, Ocupacion>();
-
-  /* Google va PRIMERO, o sea DEBAJO: si una noche está en las dos fuentes,
-     manda la nuestra, que es la que tiene nombre, código y teléfono. La franja
-     de Google sin cabaña reconocible se pinta en las cinco filas, que es lo
-     mismo que hace la comprobación de disponibilidad. */
-  const cabanasParaEmparejar = alojamientos.map((alojamiento) => ({
-    id: alojamiento.id,
-    nombre: alojamiento.nombre,
-  }));
-  for (const franja of ocupacionGoogle) {
-    for (const cabana of cabanasAfectadas(franja, cabanasParaEmparejar)) {
-      for (const dia of dias) {
-        if (dia >= franja.inicio && dia < franja.fin) {
-          ocupacion.set(`${cabana.id}|${dia}`, { tipo: "google", franja });
-        }
-      }
-    }
-  }
-
-  for (const bloqueo of bloqueos) {
-    for (const dia of dias) {
-      if (dia >= bloqueo.inicio && dia < bloqueo.fin) {
-        ocupacion.set(`${bloqueo.alojamiento_id}|${dia}`, {
-          tipo: "bloqueo",
-          bloqueo,
-        });
-      }
-    }
-  }
-
-  // Las reservas se pintan encima de los bloqueos: si por lo que sea coexisten,
-  // manda la información del huésped.
-  /* Un solo instante para todo el mes: si cada fila leyera su propio `new
-     Date()`, dos celdas de la misma reserva podrían caer a lados distintos del
-     vencimiento y la barra saldría partida. */
-  const ahora = new Date();
-
-  for (const reserva of reservas) {
-    /* Las de Día de Calma no ocupan cabaña: van en su propia fila, abajo. */
-    if (reserva.tipo === "dia") continue;
-    if (!reserva.alojamiento_id) continue;
-    /* La MISMA regla que el sitio público y que la comprobación de choques:
-       una cancelada no ocupa, y tampoco una solicitud cuyo hold venció. Pintar
-       una noche como ocupada cuando el sitio la vende libre sería enseñarle al
-       hotel un calendario que no es el que tienen los huéspedes. */
-    if (!ocupaCalendario(reserva, ahora)) continue;
-    for (const dia of dias) {
-      if (dia >= reserva.entrada && dia < reserva.salida) {
-        ocupacion.set(`${reserva.alojamiento_id}|${dia}`, {
-          tipo: "reserva",
-          reserva,
-        });
-      }
-    }
-  }
+  const indiceHoy = calendario.dias.findIndex((dia) => dia.esHoy);
 
   return (
-    <div className="rounded-amplio bg-white shadow-tarjeta ring-1 ring-crema-900/[0.06]">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-crema-900/[0.07] px-4 py-3.5 sm:px-6">
-        <div className="flex items-center gap-1.5">
-          <FlechaMes href={`?mes=${anterior}`} etiqueta="Mes anterior">
-            <path d="m14 6-6 6 6 6" />
-          </FlechaMes>
-          <h2 className="min-w-[10rem] text-center font-titulo text-[1.0625rem] font-semibold text-crema-900">
-            {tituloMes(mes)}
-          </h2>
-          <FlechaMes href={`?mes=${siguiente}`} etiqueta="Mes siguiente">
-            <path d="m10 6 6 6-6 6" />
-          </FlechaMes>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3">
-          {claveMes(mes) !== actual && (
-            <Link
-              href={`?mes=${actual}`}
-              className="rounded-full bg-crema-900/[0.06] px-3 py-1.5 text-[0.8125rem] font-semibold text-crema-900 transition-colors hover:bg-crema-900/[0.1]"
-            >
-              Ir a hoy
-            </Link>
-          )}
-          <Leyenda />
-        </div>
+    <section
+      aria-label={`Calendario de ${tituloMes(mes)}`}
+      className="rounded-amplio bg-white shadow-tarjeta ring-1 ring-crema-900/[0.06]"
+    >
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-crema-900/[0.07] px-3 py-3 sm:px-5">
+        <NavegacionMes
+          mes={claveMes(mes)}
+          mesDeHoy={hoy.slice(0, 7)}
+          limites={limitesDelPanel(hoy)}
+          consulta={consulta}
+          titulo={tituloMes(mes)}
+        />
       </header>
 
       {alojamientos.length === 0 ? (
@@ -188,372 +119,313 @@ export function CalendarioMes({
           Todavía no hay cabañas creadas, así que el calendario está vacío.
         </p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[52rem] border-separate border-spacing-0 text-[0.75rem]">
-            <caption className="sr-only">
-              Ocupación de {tituloMes(mes)}: una fila por cabaña y una columna por
-              día.
-            </caption>
-            <thead>
-              <tr>
-                <th
-                  scope="col"
-                  className="sticky left-0 z-10 w-36 border-b border-crema-900/[0.07] bg-white px-3 py-2 text-left font-semibold text-crema-700"
-                >
-                  Cabaña
-                </th>
-                {dias.map((dia) => {
-                  const numero = Number(dia.slice(8, 10));
-                  const finde = esFinDeSemana(dia);
-                  const esHoy = dia === hoy;
-                  return (
-                    <th
-                      key={dia}
-                      scope="col"
-                      className={`w-[1.9rem] border-b border-crema-900/[0.07] px-0 py-1.5 text-center font-medium ${
-                        esHoy
-                          ? "bg-petroleo-600/10 text-petroleo-800"
-                          : finde
-                            ? "bg-crema-900/[0.04] text-crema-700"
-                            : "text-crema-600"
-                      }`}
-                    >
-                      <span className="block text-[0.5625rem] uppercase leading-none">
-                        {DIAS_SEMANA_INICIAL[indiceDiaSemana(dia)]}
-                      </span>
-                      <span
-                        className={`mt-0.5 block leading-none ${esHoy ? "font-bold" : ""}`}
-                      >
-                        {numero}
-                      </span>
-                    </th>
-                  );
-                })}
-              </tr>
-            </thead>
-            <tbody>
-              {alojamientos.map((alojamiento) => (
-                <tr key={alojamiento.id}>
-                  <th
-                    scope="row"
-                    className="sticky left-0 z-10 border-b border-crema-900/[0.05] bg-white px-3 py-2 text-left"
-                  >
-                    <span className="block truncate text-[0.8125rem] font-semibold text-crema-900">
-                      {alojamiento.nombre}
-                    </span>
-                    {!alojamiento.activo && (
-                      <span className="block text-[0.625rem] text-crema-500">
-                        pausada
-                      </span>
-                    )}
-                  </th>
-                  {dias.map((dia, indice) => (
-                    <Celda
-                      key={dia}
-                      dia={dia}
-                      hoy={hoy}
-                      ocupacion={ocupacion.get(`${alojamiento.id}|${dia}`)}
-                      anterior={
-                        indice > 0
-                          ? ocupacion.get(`${alojamiento.id}|${dias[indice - 1]}`)
-                          : undefined
-                      }
-                      siguiente={
-                        indice < dias.length - 1
-                          ? ocupacion.get(`${alojamiento.id}|${dias[indice + 1]}`)
-                          : undefined
-                      }
-                    />
-                  ))}
-                </tr>
-              ))}
-
-              {/*
-                LA FILA DEL DÍA DE CALMA.
-                No es una cabaña: es el cupo de la finca entera para las visitas
-                de día. Va debajo de las cinco cabañas, separada por una línea
-                más marcada, porque se lee distinto: aquí no hay barras de
-                reserva sino cuántas de las diez personas del día están tomadas.
-              */}
-              <tr>
-                <th
-                  scope="row"
-                  className="sticky left-0 z-10 border-t-2 border-b border-crema-900/[0.05] border-t-crema-900/[0.12] bg-white px-3 py-2 text-left"
-                >
-                  <span className="block truncate text-[0.8125rem] font-semibold text-crema-900">
-                    Día de Calma
-                  </span>
-                  <span className="block text-[0.625rem] text-crema-500">
-                    cupo {CUPO_DIA_DE_CALMA} personas/día
-                  </span>
-                </th>
-                {dias.map((dia) => (
-                  <CeldaCupo
-                    key={dia}
-                    dia={dia}
-                    hoy={hoy}
-                    personas={personasDeDia.get(dia) ?? 0}
-                  />
-                ))}
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <VistasCalendario
+          calendario={calendario}
+          indiceInicial={indiceHoy >= 0 ? indiceHoy : 0}
+          cuadricula={<Cuadricula calendario={calendario} titulo={tituloMes(mes)} />}
+        />
       )}
+
+      <footer className="border-t border-crema-900/[0.07] px-4 py-3 sm:px-5">
+        <Leyenda />
+      </footer>
+    </section>
+  );
+}
+
+/* ===========================================================================
+ * La cuadrícula
+ * ======================================================================== */
+
+/** Clases de fondo de una columna: hoy manda sobre fin de semana o festivo. */
+function fondoDeColumna(dia: DiaDelCalendario): string {
+  if (dia.esHoy) return "bg-petroleo-50";
+  if (dia.destacado) return "bg-crema-100";
+  return "";
+}
+
+function Cuadricula({
+  calendario,
+  titulo,
+}: {
+  calendario: CalendarioDelMes;
+  titulo: string;
+}) {
+  const { dias, filas, personasDeDia } = calendario;
+  const columnas = `repeat(${dias.length}, minmax(var(--ancho-dia), 1fr))`;
+
+  return (
+    /* `relative` es la corrección del desbordamiento: ver la cabecera. */
+    <div
+      role="region"
+      aria-label={`Ocupación de ${titulo}: una fila por cabaña, una columna por día. Se desplaza hacia los lados.`}
+      tabIndex={0}
+      className="relative max-h-[min(78vh,44rem)] overflow-auto overscroll-x-contain rounded-b-amplio outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-petroleo-500 [--ancho-cabana:6.75rem] [--ancho-dia:4.25rem] md:[--ancho-cabana:8.5rem] md:[--ancho-dia:5rem]"
+    >
+      {/* Ancho explícito y no `max-content`: con `max-content` cada columna
+          crecía hasta el nombre más largo que tuviera y los días dejaban de
+          medir lo mismo. Así cada día mide `--ancho-dia` como mínimo y, si
+          sobra pantalla, todos crecen por igual. */}
+      <div
+        className="grid text-[0.75rem]"
+        style={{
+          gridTemplateColumns: `var(--ancho-cabana) ${columnas}`,
+          width: `max(100%, calc(var(--ancho-cabana) + ${dias.length} * var(--ancho-dia)))`,
+        }}
+      >
+        {/* --- Cabecera: esquina + un día por columna --------------------- */}
+        <div className="sticky left-0 top-0 z-30 flex items-end border-b border-r border-crema-900/[0.08] bg-white px-3 pb-2 pt-3 text-[0.75rem] font-semibold text-crema-700">
+          Cabaña
+        </div>
+        {dias.map((dia) => (
+          <div
+            key={dia.iso}
+            title={
+              dia.festivo
+                ? `${fechaConDia(dia.iso)} · festivo: ${dia.festivo}`
+                : fechaConDia(dia.iso)
+            }
+            className={`sticky top-0 z-20 flex flex-col items-center gap-0.5 border-b border-crema-900/[0.08] px-0.5 pb-1.5 pt-2 ${
+              dia.esHoy ? "bg-petroleo-50" : dia.destacado ? "bg-crema-100" : "bg-white"
+            }`}
+          >
+            <span
+              className={`text-[0.625rem] font-semibold uppercase tracking-wide ${
+                dia.esHoy ? "text-petroleo-700" : dia.destacado ? "text-crema-800" : "text-crema-500"
+              }`}
+            >
+              {dia.semana}
+            </span>
+            <span
+              className={`flex size-7 items-center justify-center rounded-full text-[0.8125rem] tabular-nums ${
+                dia.esHoy
+                  ? "bg-petroleo-600 font-bold text-white"
+                  : "font-semibold text-crema-900"
+              }`}
+            >
+              {dia.numero}
+            </span>
+            <span
+              aria-hidden="true"
+              className={`size-1 rounded-full ${dia.festivo ? "bg-oliva-500" : "bg-transparent"}`}
+            />
+          </div>
+        ))}
+
+        {/* --- Una fila por cabaña --------------------------------------- */}
+        {filas.map((fila) => (
+          <FilaDeCabana
+            key={fila.id}
+            nombre={fila.nombre}
+            activo={fila.activo}
+            barras={fila.barras}
+            dias={dias}
+            columnas={columnas}
+          />
+        ))}
+
+        {/* --- El Día de Calma: el cupo de la finca, no una cabaña -------- */}
+        <div className="sticky left-0 z-10 flex flex-col justify-center border-r border-t-2 border-crema-900/[0.08] border-t-crema-900/[0.12] bg-white px-3 py-2">
+          <span className="truncate text-[0.8125rem] font-semibold text-crema-900">
+            Día de Calma
+          </span>
+          <span className="text-[0.6875rem] text-crema-600">
+            cupo {CUPO_DIA_DE_CALMA} personas/día
+          </span>
+        </div>
+        <div
+          className="grid border-t-2 border-t-crema-900/[0.12]"
+          style={{ gridColumn: `2 / span ${dias.length}`, gridTemplateColumns: columnas }}
+        >
+          {dias.map((dia, indice) => {
+            const personas = personasDeDia[dia.iso] ?? 0;
+            return (
+              <div
+                key={dia.iso}
+                style={{ gridColumn: indice + 1 }}
+                className={`flex h-12 items-center px-1 ${fondoDeColumna(dia)}`}
+              >
+                {personas > 0 ? (
+                  <span
+                    title={`${fechaConDia(dia.iso)}: ${personas} de ${CUPO_DIA_DE_CALMA} cupos del Día de Calma${personas >= CUPO_DIA_DE_CALMA ? " (completo)" : ""}`}
+                    className={`flex h-8 flex-1 items-center justify-center rounded-[8px] text-[0.6875rem] font-bold tabular-nums ${tonoCupo(personas)}`}
+                  >
+                    {personas}/{CUPO_DIA_DE_CALMA}
+                    <span className="sr-only">
+                      {" "}
+                      personas en el Día de Calma el {fechaConDia(dia.iso)}
+                    </span>
+                  </span>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
 
-/**
- * Una celda de la fila del Día de Calma: cuántas de las diez personas del día
- * están tomadas.
- *
- * El color sube de tono con la ocupación —claro cuando hay sitio de sobra,
- * ámbar cuando queda poco, lleno cuando no cabe nadie más— para poder barrer
- * el mes con la vista sin leer los números uno a uno. El texto («4/10») sigue
- * ahí para quien sí necesita el dato exacto, y el `title` lo dice con
- * palabras para quien usa lector de pantalla.
- */
-function CeldaCupo({
-  dia,
-  hoy,
-  personas,
+function FilaDeCabana({
+  nombre,
+  activo,
+  barras,
+  dias,
+  columnas,
 }: {
-  dia: string;
-  hoy: string;
-  personas: number;
+  nombre: string;
+  activo: boolean;
+  barras: Barra[];
+  dias: DiaDelCalendario[];
+  columnas: string;
 }) {
-  const finde = esFinDeSemana(dia);
-  const esHoy = dia === hoy;
-  const lleno = personas >= CUPO_DIA_DE_CALMA;
-
-  const fondoLibre = esHoy
-    ? "bg-petroleo-600/[0.07]"
-    : finde
-      ? "bg-crema-900/[0.03]"
-      : "";
-
-  if (personas <= 0) {
-    return (
-      <td
-        className={`h-9 border-t-2 border-b border-crema-900/[0.05] border-t-crema-900/[0.12] p-0 align-middle ${fondoLibre}`}
-      />
-    );
-  }
-
-  const tono = lleno
-    ? "bg-crema-700 text-white"
-    : personas >= CUPO_DIA_DE_CALMA * 0.6
-      ? "bg-dorado-400 text-dorado-950"
-      : "bg-oliva-200 text-oliva-900";
-
   return (
-    <td
-      className={`h-9 border-t-2 border-b border-crema-900/[0.05] border-t-crema-900/[0.12] p-0 align-middle ${fondoLibre}`}
-    >
-      <div className="flex h-full items-stretch px-0.5 py-1">
-        <span
-          title={`${personas} de ${CUPO_DIA_DE_CALMA} cupos del Día de Calma${lleno ? " — completo" : ""}`}
-          className={`flex flex-1 items-center justify-center rounded-[4px] text-[0.5rem] leading-none font-bold tabular-nums ${tono}`}
-        >
-          {personas}/{CUPO_DIA_DE_CALMA}
-          <span className="sr-only">
-            {" "}
-            personas en el Día de Calma{lleno ? ", completo" : ""}
-          </span>
+    <>
+      <div className="sticky left-0 z-10 flex flex-col justify-center border-b border-r border-crema-900/[0.06] bg-white px-3 py-2">
+        <span className="truncate text-[0.8125rem] font-semibold text-crema-900">
+          {nombre}
         </span>
+        {!activo ? (
+          <span className="text-[0.6875rem] text-crema-500">pausada</span>
+        ) : null}
       </div>
-    </td>
+      <div
+        role="group"
+        aria-label={nombre}
+        className="grid border-b border-crema-900/[0.06]"
+        style={{ gridColumn: `2 / span ${dias.length}`, gridTemplateColumns: columnas }}
+      >
+        {/* El fondo de cada día: tono de fin de semana o festivo, y hoy. */}
+        {dias.map((dia, indice) => (
+          <div
+            key={dia.iso}
+            aria-hidden="true"
+            style={{ gridColumn: indice + 1, gridRow: 1 }}
+            className={`h-16 border-l border-crema-900/[0.04] ${fondoDeColumna(dia)}`}
+          />
+        ))}
+        {barras.map((barra) => (
+          <BarraDeOcupacion key={barra.clave} barra={barra} />
+        ))}
+      </div>
+    </>
   );
 }
 
-/** Identidad de lo que ocupa una celda, para saber si la barra continúa. */
-function identidad(ocupacion?: Ocupacion): string | null {
-  if (!ocupacion) return null;
-  if (ocupacion.tipo === "reserva") return ocupacion.reserva.id;
-  if (ocupacion.tipo === "bloqueo") return ocupacion.bloqueo.id;
-  return `google:${ocupacion.franja.eventoId}`;
-}
+function BarraDeOcupacion({ barra }: { barra: Barra }) {
+  const { clase, estilo } = pielDeBarra(barra);
+  const posicion: CSSProperties = {
+    ...estilo,
+    gridColumn: `${barra.inicio + 1} / span ${barra.noches}`,
+    gridRow: 1,
+  };
+  /* Bordes redondeados solo donde la estadía empieza o termina de verdad: si
+     viene del mes anterior o sigue en el siguiente, el borde va recto. */
+  const bordes = [
+    barra.continuaAntes ? "rounded-l-none ml-0" : "rounded-l-[10px] ml-1",
+    barra.continuaDespues ? "rounded-r-none mr-0" : "rounded-r-[10px] mr-1",
+  ].join(" ");
+  const clases = `relative z-[1] my-1.5 flex min-w-0 items-center gap-1 overflow-hidden px-1.5 ${bordes} ${clase}`;
+  /* El icono solo cuando hay sitio: en una estadía de una noche, cada
+     píxel es para el nombre. */
+  const conIcono = barra.noches >= 2;
 
-function Celda({
-  dia,
-  hoy,
-  ocupacion,
-  anterior,
-  siguiente,
-}: {
-  dia: string;
-  hoy: string;
-  ocupacion?: Ocupacion;
-  anterior?: Ocupacion;
-  siguiente?: Ocupacion;
-}) {
-  const finde = esFinDeSemana(dia);
-  const esHoy = dia === hoy;
-
-  const fondoLibre = esHoy
-    ? "bg-petroleo-600/[0.07]"
-    : finde
-      ? "bg-crema-900/[0.03]"
-      : "";
-
-  const claseCelda = `h-9 border-b border-crema-900/[0.05] p-0 align-middle ${fondoLibre}`;
-
-  if (!ocupacion) return <td className={claseCelda} />;
-
-  /* Las noches seguidas de la misma reserva se pintan como UNA barra continua:
-     solo el primer día lleva el nombre y solo los extremos van redondeados. */
-  const clave = identidad(ocupacion);
-  const empieza = clave !== identidad(anterior);
-  const termina = clave !== identidad(siguiente);
-
-  const bordes = `${empieza ? "ml-0.5 rounded-l-[4px] pl-1" : ""} ${
-    termina ? "mr-0.5 rounded-r-[4px]" : ""
-  }`;
-
-  if (ocupacion.tipo === "google") {
-    const { franja } = ocupacion;
-    const aclaracion =
-      franja.motivo === "sin_cabana"
-        ? " — el evento no dice qué cabaña, así que se marcan todas"
-        : "";
-    return (
-      <td className={claseCelda}>
-        <div className="flex h-full items-stretch py-1">
-          <span
-            style={PATRON_GOOGLE}
-            title={`Calendario del hotel: ${franja.titulo}${aclaracion}`}
-            className={`flex flex-1 items-center overflow-hidden text-petroleo-900 ${bordes}`}
-          >
-            {empieza && (
-              <span className="truncate text-[0.5625rem] font-semibold leading-none">
-                {franja.titulo}
-              </span>
-            )}
-            <span className="sr-only">
-              Ocupado en el calendario del hotel: {franja.titulo}
-              {aclaracion}
-            </span>
-          </span>
-        </div>
-      </td>
-    );
-  }
-
-  if (ocupacion.tipo === "bloqueo") {
-    const { bloqueo } = ocupacion;
-    const motivo = bloqueo.motivo ?? "sin motivo";
-    return (
-      <td className={claseCelda}>
-        <div className="flex h-full items-stretch py-1">
-          <span
-            title={`Bloqueo: ${motivo}`}
-            className={`flex flex-1 items-center overflow-hidden ${bordes} ${COLOR_BLOQUEO}`}
-          >
-            {empieza && (
-              <svg
-                viewBox="0 0 24 24"
-                className="h-3 w-3 shrink-0"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.4"
-                aria-hidden="true"
-              >
-                <path d="M7 11V8a5 5 0 0 1 10 0v3M6 11h12v9H6z" />
-              </svg>
-            )}
-            <span className="sr-only">Bloqueado: {motivo}</span>
-          </span>
-        </div>
-      </td>
-    );
-  }
-
-  const { reserva } = ocupacion;
-  return (
-    <td className={claseCelda}>
-      <div className="flex h-full items-stretch py-1">
-        <Link
-          href={`/admin/reservas/${reserva.id}`}
-          title={`${reserva.huesped_nombre} · ${reserva.codigo} · ${ETIQUETA_ESTADO[reserva.estado]}`}
-          className={`flex flex-1 items-center overflow-hidden transition-opacity hover:opacity-80 ${bordes} ${COLOR_ESTADO[reserva.estado]}`}
+  const contenido = (
+    <>
+      {barra.fuente === "bloqueo" && conIcono ? (
+        <svg
+          viewBox="0 0 24 24"
+          className="h-3.5 w-3.5 shrink-0"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          aria-hidden="true"
         >
-          {empieza && (
-            <span className="truncate text-[0.5625rem] font-semibold leading-none">
-              {primerNombre(reserva.huesped_nombre)}
-            </span>
-          )}
-          <span className="sr-only">
-            {reserva.huesped_nombre}, reserva {reserva.codigo},{" "}
-            {ETIQUETA_ESTADO[reserva.estado]}
-          </span>
-        </Link>
-      </div>
-    </td>
-  );
-}
-
-function primerNombre(nombre: string): string {
-  return nombre.trim().split(/\s+/)[0] ?? nombre;
-}
-
-function FlechaMes({
-  href,
-  etiqueta,
-  children,
-}: {
-  href: string;
-  etiqueta: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <Link
-      href={href}
-      aria-label={etiqueta}
-      title={etiqueta}
-      className="inline-flex h-9 w-9 items-center justify-center rounded-full text-crema-700 transition-colors hover:bg-crema-900/[0.07]"
-    >
-      <svg
-        viewBox="0 0 24 24"
-        className="h-5 w-5"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+          <path d="M7 11V8a5 5 0 0 1 10 0v3M6 11h12v9H6z" />
+        </svg>
+      ) : null}
+      {barra.fuente === "google" && barra.sinCabana && conIcono ? (
+        <svg
+          viewBox="0 0 24 24"
+          className="h-3.5 w-3.5 shrink-0 text-dorado-700"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M12 9v4m0 4h.01M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
+        </svg>
+      ) : null}
+      {barra.fuente === "google" && !barra.sinCabana && conIcono ? (
+        <svg
+          viewBox="0 0 24 24"
+          className="h-3.5 w-3.5 shrink-0 text-petroleo-700"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          aria-hidden="true"
+        >
+          <path d="M4 8h16M7 4v3m10-3v3M5 20h14a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1Z" />
+        </svg>
+      ) : null}
+      <span
+        className="line-clamp-2 min-w-0 break-words text-[0.75rem] font-semibold leading-[1.15]"
         aria-hidden="true"
       >
-        {children}
-      </svg>
-    </Link>
+        {barra.etiqueta}
+      </span>
+      <span className="sr-only">{barra.detalle}</span>
+    </>
+  );
+
+  if (barra.href) {
+    return (
+      <Link
+        href={barra.href}
+        title={barra.detalle}
+        style={posicion}
+        className={`${clases} transition-[filter] hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-petroleo-700`}
+      >
+        {contenido}
+      </Link>
+    );
+  }
+  return (
+    <span title={barra.detalle} style={posicion} className={clases}>
+      {contenido}
+    </span>
   );
 }
 
 function Leyenda() {
-  const items: { color: string; etiqueta: string; estilo?: CSSProperties }[] = [
-    { color: COLOR_ESTADO.confirmada, etiqueta: "Confirmada" },
-    { color: COLOR_ESTADO.pendiente, etiqueta: "Pendiente" },
-    { color: COLOR_ESTADO.completada, etiqueta: "Completada" },
-    { color: COLOR_BLOQUEO, etiqueta: "Bloqueo" },
-    { color: "bg-oliva-200", etiqueta: "Día de Calma" },
-    { color: "", etiqueta: "Google Calendar", estilo: PATRON_GOOGLE },
-  ];
-
   return (
-    <ul className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-      {items.map((item) => (
-        <li
-          key={item.etiqueta}
-          className="flex items-center gap-1.5 text-[0.75rem] text-crema-700"
-        >
+    <ul
+      aria-label="Qué significa cada color"
+      className="flex flex-wrap items-center gap-x-3.5 gap-y-1.5 text-[0.75rem] text-crema-700"
+    >
+      <li className="font-semibold text-crema-900">Reservas del sitio y del panel:</li>
+      {LEYENDA.map((item) => (
+        <li key={item.etiqueta} className="flex items-center gap-1.5">
           <span
-            style={item.estilo}
-            className={`h-3 w-3 rounded-[3px] ${item.color}`}
             aria-hidden="true"
+            style={item.estilo}
+            className={`h-3.5 w-5 rounded-[4px] ${item.clase}`}
           />
           {item.etiqueta}
         </li>
       ))}
+      <li className="flex items-center gap-1.5">
+        <span
+          aria-hidden="true"
+          className={`flex h-3.5 w-7 items-center justify-center rounded-[4px] text-[0.5625rem] font-bold ${tonoCupo(4)}`}
+        >
+          4/10
+        </span>
+        Día de Calma (personas del día)
+      </li>
     </ul>
   );
 }
